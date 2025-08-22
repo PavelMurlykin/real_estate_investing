@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ипотечный калькулятор</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -35,7 +36,7 @@
             margin-bottom: 5px;
             font-weight: bold;
         }
-        input[type="text"], input[type="number"], select {
+        input[type="text"], input[type="number"], input[type="date"], select {
             width: 100%;
             padding: 8px;
             border: 1px solid #ddd;
@@ -62,6 +63,7 @@
             border-radius: 4px;
             cursor: pointer;
             margin-right: 10px;
+            margin-top: 15px;
         }
         button:hover {
             background-color: #45a049;
@@ -100,16 +102,27 @@
         .hidden {
             display: none;
         }
+        .form-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .flatpickr-input {
+            background-color: white;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Ипотечный калькулятор</h1>
-        
+
         <div class="form-section">
             <form method="post">
                 {% csrf_token %}
-                
+
                 <div class="form-row">
                     <label for="{{ form.PROPERTY_COST.id_for_label }}">{{ form.PROPERTY_COST.label }}</label>
                     {{ form.PROPERTY_COST }}
@@ -117,7 +130,7 @@
                         <div class="error">{{ form.PROPERTY_COST.errors }}</div>
                     {% endif %}
                 </div>
-                
+
                 <div class="form-row">
                     <label for="{{ form.INITIAL_PAYMENT_PERCENT.id_for_label }}">{{ form.INITIAL_PAYMENT_PERCENT.label }}</label>
                     {{ form.INITIAL_PAYMENT_PERCENT }}
@@ -125,7 +138,7 @@
                         <div class="error">{{ form.INITIAL_PAYMENT_PERCENT.errors }}</div>
                     {% endif %}
                 </div>
-                
+
                 <div class="form-row">
                     <label for="{{ form.INITIAL_PAYMENT_DATE.id_for_label }}">{{ form.INITIAL_PAYMENT_DATE.label }}</label>
                     {{ form.INITIAL_PAYMENT_DATE }}
@@ -133,7 +146,7 @@
                         <div class="error">{{ form.INITIAL_PAYMENT_DATE.errors }}</div>
                     {% endif %}
                 </div>
-                
+
                 <div class="form-row">
                     <label for="{{ form.MORTGAGE_TERM.id_for_label }}">{{ form.MORTGAGE_TERM.label }}</label>
                     {{ form.MORTGAGE_TERM }}
@@ -141,7 +154,7 @@
                         <div class="error">{{ form.MORTGAGE_TERM.errors }}</div>
                     {% endif %}
                 </div>
-                
+
                 <div class="form-row">
                     <label for="{{ form.ANNUAL_RATE.id_for_label }}">{{ form.ANNUAL_RATE.label }}</label>
                     {{ form.ANNUAL_RATE }}
@@ -149,7 +162,7 @@
                         <div class="error">{{ form.ANNUAL_RATE.errors }}</div>
                     {% endif %}
                 </div>
-                
+
                 <div class="form-row">
                     <label>{{ form.HAS_GRACE_PERIOD.label }}</label>
                     <div class="radio-group">
@@ -161,7 +174,7 @@
                         <div class="error">{{ form.HAS_GRACE_PERIOD.errors }}</div>
                     {% endif %}
                 </div>
-                
+
                 <div id="grace-period-fields" class="hidden">
                     <div class="form-row">
                         <label for="{{ form.GRACE_PERIOD_TERM.id_for_label }}">{{ form.GRACE_PERIOD_TERM.label }}</label>
@@ -170,7 +183,7 @@
                             <div class="error">{{ form.GRACE_PERIOD_TERM.errors }}</div>
                         {% endif %}
                     </div>
-                    
+
                     <div class="form-row">
                         <label for="{{ form.GRACE_PERIOD_RATE.id_for_label }}">{{ form.GRACE_PERIOD_RATE.label }}</label>
                         {{ form.GRACE_PERIOD_RATE }}
@@ -179,65 +192,65 @@
                         {% endif %}
                     </div>
                 </div>
-                
+
                 <button type="submit" name="calculate">Рассчитать</button>
                 {% if result %}
                     <button type="submit" name="export">Сохранить в Excel</button>
                 {% endif %}
             </form>
         </div>
-        
+
         {% if result %}
         <div class="results-section">
             <h2>Результаты расчета</h2>
-            
+
             <div class="results-grid">
                 <div class="result-item">
                     <h3>Число платежей за льготный период</h3>
                     <p>{{ result.grace_payments_count }}</p>
                 </div>
-                
+
                 <div class="result-item">
                     <h3>Дата последнего платежа по льготному периоду</h3>
                     <p>{{ result.grace_period_end_date|date:"d.m.Y" }}</p>
                 </div>
-                
+
                 <div class="result-item">
                     <h3>Сумма ежемесячного платежа во время льготного периода, руб.</h3>
-                    <p>{{ result.grace_monthly_payment }}</p>
+                    <p class="formatted-number">{{ result.grace_monthly_payment }}</p>
                 </div>
-                
+
                 <div class="result-item">
                     <h3>Сумма кредита после окончания льготного периода, руб.</h3>
-                    <p>{{ result.loan_after_grace }}</p>
+                    <p class="formatted-number">{{ result.loan_after_grace }}</p>
                 </div>
-                
+
                 <div class="result-item">
                     <h3>Число платежей за основной период</h3>
                     <p>{{ result.main_payments_count }}</p>
                 </div>
-                
+
                 <div class="result-item">
                     <h3>Дата последнего платежа по ипотеке</h3>
                     <p>{{ result.mortgage_end_date|date:"d.m.Y" }}</p>
                 </div>
-                
+
                 <div class="result-item">
                     <h3>Сумма ежемесячного платежа за основной период, руб.</h3>
-                    <p>{{ result.main_monthly_payment }}</p>
+                    <p class="formatted-number">{{ result.main_monthly_payment }}</p>
                 </div>
-                
+
                 <div class="result-item">
                     <h3>Сумма кредита, руб.</h3>
-                    <p>{{ result.total_loan_amount }}</p>
+                    <p class="formatted-number">{{ result.total_loan_amount }}</p>
                 </div>
-                
+
                 <div class="result-item">
                     <h3>Сумма переплат по кредиту, руб.</h3>
-                    <p>{{ result.total_overpayment }}</p>
+                    <p class="formatted-number">{{ result.total_overpayment }}</p>
                 </div>
             </div>
-            
+
             <h2>График платежей</h2>
             <div style="overflow-x: auto;">
                 <table>
@@ -256,10 +269,10 @@
                         <tr>
                             <td>{{ payment.payment_number }}</td>
                             <td>{{ payment.payment_date|date:"d.m.Y" }}</td>
-                            <td>{{ payment.payment_amount }}</td>
-                            <td>{{ payment.interest_amount }}</td>
-                            <td>{{ payment.principal_amount }}</td>
-                            <td>{{ payment.remaining_debt }}</td>
+                            <td class="formatted-number">{{ payment.payment_amount }}</td>
+                            <td class="formatted-number">{{ payment.interest_amount }}</td>
+                            <td class="formatted-number">{{ payment.principal_amount }}</td>
+                            <td class="formatted-number">{{ payment.remaining_debt }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -269,15 +282,43 @@
         {% endif %}
     </div>
 
+    <!-- Подключение flatpickr -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ru.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Инициализация flatpickr
+            const dateInput = document.getElementById('id_INITIAL_PAYMENT_DATE');
+            if (dateInput) {
+                flatpickr(dateInput, {
+                    dateFormat: "d.m.Y",
+                    locale: "ru",
+                    allowInput: true,
+                    clickOpens: true,
+                    onChange: function(selectedDates, dateStr, instance) {
+                        // Конвертируем дату в нужный формат при ручном вводе
+                        if (dateStr && !dateStr.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
+                            const date = new Date(dateStr);
+                            if (!isNaN(date)) {
+                                const day = String(date.getDate()).padStart(2, '0');
+                                const month = String(date.getMonth() + 1).padStart(2, '0');
+                                const year = date.getFullYear();
+                                const formattedDate = `${day}.${month}.${year}`;
+                                instance.setDate(formattedDate, true);
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Обработка отображения полей льготного периода
             const gracePeriodField = document.querySelector('input[name="HAS_GRACE_PERIOD"]:checked');
             const gracePeriodFields = document.getElementById('grace-period-fields');
-            
+
             if (gracePeriodField && gracePeriodField.value === 'да') {
                 gracePeriodFields.classList.remove('hidden');
             }
-            
+
             document.querySelectorAll('input[name="HAS_GRACE_PERIOD"]').forEach(function(radio) {
                 radio.addEventListener('change', function() {
                     if (this.value === 'да') {
@@ -286,6 +327,33 @@
                         gracePeriodFields.classList.add('hidden');
                     }
                 });
+            });
+
+            // Функция для форматирования чисел
+            function formatNumber(number) {
+                if (number === null || number === undefined || number === '') return '';
+
+                // Преобразуем в число, убирая пробелы и заменяя запятую на точку
+                const num = parseFloat(
+                    number.toString()
+                        .replace(/\s/g, '')
+                        .replace(',', '.')
+                );
+
+                if (isNaN(num)) return number;
+
+                // Форматируем с разделителями тысяч и двумя знаками после запятой
+                return num.toLocaleString('ru-RU', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+
+            // Форматирование всех чисел на странице после загрузки
+            document.querySelectorAll('.formatted-number').forEach(function(element) {
+                if (element.textContent && element.textContent.trim() !== '') {
+                    element.textContent = formatNumber(element.textContent);
+                }
             });
         });
     </script>
