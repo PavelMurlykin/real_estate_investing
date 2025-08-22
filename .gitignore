@@ -1,3 +1,8 @@
+# SQL
+SQL_DB/.vs
+SQL_DB/bin
+SQL_DB/obj
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ипотечный калькулятор</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .form-section, .results-section {
+            margin-bottom: 30px;
+        }
+        .form-row {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .radio-group {
+            display: flex;
+            gap: 20px;
+        }
+        .radio-group label {
+            display: inline;
+            font-weight: normal;
+        }
+        .error {
+            color: red;
+            font-size: 0.9em;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .result-item {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #4CAF50;
+        }
+        .result-item h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ипотечный калькулятор</h1>
+        
+        <div class="form-section">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="form-row">
+                    <label for="{{ form.PROPERTY_COST.id_for_label }}">{{ form.PROPERTY_COST.label }}</label>
+                    {{ form.PROPERTY_COST }}
+                    {% if form.PROPERTY_COST.errors %}
+                        <div class="error">{{ form.PROPERTY_COST.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-row">
+                    <label for="{{ form.INITIAL_PAYMENT_PERCENT.id_for_label }}">{{ form.INITIAL_PAYMENT_PERCENT.label }}</label>
+                    {{ form.INITIAL_PAYMENT_PERCENT }}
+                    {% if form.INITIAL_PAYMENT_PERCENT.errors %}
+                        <div class="error">{{ form.INITIAL_PAYMENT_PERCENT.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-row">
+                    <label for="{{ form.INITIAL_PAYMENT_DATE.id_for_label }}">{{ form.INITIAL_PAYMENT_DATE.label }}</label>
+                    {{ form.INITIAL_PAYMENT_DATE }}
+                    {% if form.INITIAL_PAYMENT_DATE.errors %}
+                        <div class="error">{{ form.INITIAL_PAYMENT_DATE.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-row">
+                    <label for="{{ form.MORTGAGE_TERM.id_for_label }}">{{ form.MORTGAGE_TERM.label }}</label>
+                    {{ form.MORTGAGE_TERM }}
+                    {% if form.MORTGAGE_TERM.errors %}
+                        <div class="error">{{ form.MORTGAGE_TERM.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-row">
+                    <label for="{{ form.ANNUAL_RATE.id_for_label }}">{{ form.ANNUAL_RATE.label }}</label>
+                    {{ form.ANNUAL_RATE }}
+                    {% if form.ANNUAL_RATE.errors %}
+                        <div class="error">{{ form.ANNUAL_RATE.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-row">
+                    <label>{{ form.HAS_GRACE_PERIOD.label }}</label>
+                    <div class="radio-group">
+                        {% for choice in form.HAS_GRACE_PERIOD %}
+                            {{ choice }}
+                        {% endfor %}
+                    </div>
+                    {% if form.HAS_GRACE_PERIOD.errors %}
+                        <div class="error">{{ form.HAS_GRACE_PERIOD.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div id="grace-period-fields" class="hidden">
+                    <div class="form-row">
+                        <label for="{{ form.GRACE_PERIOD_TERM.id_for_label }}">{{ form.GRACE_PERIOD_TERM.label }}</label>
+                        {{ form.GRACE_PERIOD_TERM }}
+                        {% if form.GRACE_PERIOD_TERM.errors %}
+                            <div class="error">{{ form.GRACE_PERIOD_TERM.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-row">
+                        <label for="{{ form.GRACE_PERIOD_RATE.id_for_label }}">{{ form.GRACE_PERIOD_RATE.label }}</label>
+                        {{ form.GRACE_PERIOD_RATE }}
+                        {% if form.GRACE_PERIOD_RATE.errors %}
+                            <div class="error">{{ form.GRACE_PERIOD_RATE.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <button type="submit" name="calculate">Рассчитать</button>
+                {% if result %}
+                    <button type="submit" name="export">Сохранить в Excel</button>
+                {% endif %}
+            </form>
+        </div>
+        
+        {% if result %}
+        <div class="results-section">
+            <h2>Результаты расчета</h2>
+            
+            <div class="results-grid">
+                <div class="result-item">
+                    <h3>Число платежей за льготный период</h3>
+                    <p>{{ result.grace_payments_count }}</p>
+                </div>
+                
+                <div class="result-item">
+                    <h3>Дата последнего платежа по льготному периоду</h3>
+                    <p>{{ result.grace_period_end_date|date:"d.m.Y" }}</p>
+                </div>
+                
+                <div class="result-item">
+                    <h3>Сумма ежемесячного платежа во время льготного периода, руб.</h3>
+                    <p>{{ result.grace_monthly_payment }}</p>
+                </div>
+                
+                <div class="result-item">
+                    <h3>Сумма кредита после окончания льготного периода, руб.</h3>
+                    <p>{{ result.loan_after_grace }}</p>
+                </div>
+                
+                <div class="result-item">
+                    <h3>Число платежей за основной период</h3>
+                    <p>{{ result.main_payments_count }}</p>
+                </div>
+                
+                <div class="result-item">
+                    <h3>Дата последнего платежа по ипотеке</h3>
+                    <p>{{ result.mortgage_end_date|date:"d.m.Y" }}</p>
+                </div>
+                
+                <div class="result-item">
+                    <h3>Сумма ежемесячного платежа за основной период, руб.</h3>
+                    <p>{{ result.main_monthly_payment }}</p>
+                </div>
+                
+                <div class="result-item">
+                    <h3>Сумма кредита, руб.</h3>
+                    <p>{{ result.total_loan_amount }}</p>
+                </div>
+                
+                <div class="result-item">
+                    <h3>Сумма переплат по кредиту, руб.</h3>
+                    <p>{{ result.total_overpayment }}</p>
+                </div>
+            </div>
+            
+            <h2>График платежей</h2>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>№</th>
+                            <th>Дата платежа</th>
+                            <th>Сумма платежа, руб.</th>
+                            <th>В том числе проценты, руб.</th>
+                            <th>В том числе основной долг, руб.</th>
+                            <th>Остаток долга, руб.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payment_schedule %}
+                        <tr>
+                            <td>{{ payment.payment_number }}</td>
+                            <td>{{ payment.payment_date|date:"d.m.Y" }}</td>
+                            <td>{{ payment.payment_amount }}</td>
+                            <td>{{ payment.interest_amount }}</td>
+                            <td>{{ payment.principal_amount }}</td>
+                            <td>{{ payment.remaining_debt }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const gracePeriodField = document.querySelector('input[name="HAS_GRACE_PERIOD"]:checked');
+            const gracePeriodFields = document.getElementById('grace-period-fields');
+            
+            if (gracePeriodField && gracePeriodField.value === 'да') {
+                gracePeriodFields.classList.remove('hidden');
+            }
+            
+            document.querySelectorAll('input[name="HAS_GRACE_PERIOD"]').forEach(function(radio) {
+                radio.addEventListener('change', function() {
+                    if (this.value === 'да') {
+                        gracePeriodFields.classList.remove('hidden');
+                    } else {
+                        gracePeriodFields.classList.add('hidden');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
