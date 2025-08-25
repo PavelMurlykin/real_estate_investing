@@ -35,26 +35,34 @@ def mortgage_calculator(request):
             # Выполняем расчет
             result = calculator.calculate()
 
+            # Получаем исходный график платежей (с числами)
+            raw_payment_schedule = calculator.get_payment_schedule()
+
             # Форматируем числовые значения для отображения
             formatted_result = {}
             for key, value in result.items():
-                if isinstance(value, (int, float, decimal.Decimal)):
+                if key in ['grace_payments_count', 'main_payments_count', 'mortgage_term']:
+                    # Целые числа
+                    formatted_result[key] = int(value) if value else 0
+                elif isinstance(value, (int, float, decimal.Decimal)):
+                    # Денежные значения
                     formatted_result[key] = format_currency(value)
                 else:
                     formatted_result[key] = value
 
-            # Получаем график платежей
-            payment_schedule = calculator.get_payment_schedule()
-
-            # Форматируем числовые значения в графике платежей
-            for payment in payment_schedule:
+            # Форматируем график платежей для отображения
+            formatted_payment_schedule = []
+            for payment in raw_payment_schedule:
+                formatted_payment = payment.copy()
                 for key in ['payment_amount', 'interest_amount', 'principal_amount', 'remaining_debt']:
-                    if key in payment:
-                        payment[key] = format_currency(payment[key])
+                    if key in formatted_payment:
+                        formatted_payment[key] = format_currency(formatted_payment[key])
+                formatted_payment_schedule.append(formatted_payment)
 
             # Сохраняем расчет в контекст
             context['result'] = formatted_result
-            context['payment_schedule'] = payment_schedule
+            context['has_grace_period'] = data['HAS_GRACE_PERIOD'] == 'да'
+            context['payment_schedule'] = formatted_payment_schedule
             context['form'] = form
 
             # Сохраняем в базу данных
@@ -100,7 +108,7 @@ def mortgage_calculator(request):
 
             # Выполняем расчет
             result = calculator.calculate()
-            payment_schedule = calculator.get_payment_schedule()
+            payment_schedule = calculator.get_payment_schedule()  # Исходные числовые значения
 
             # Создаем Excel-файл
             response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -114,6 +122,11 @@ def mortgage_calculator(request):
             number_style = NamedStyle(name="number_style")
             number_style.number_format = '# ##0.00'
             wb.add_named_style(number_style)
+
+            # Создаем стиль для целых чисел
+            integer_style = NamedStyle(name="integer_style")
+            integer_style.number_format = '# ##0'
+            wb.add_named_style(integer_style)
 
             # Заголовок
             ws.merge_cells('A1:B1')
@@ -146,8 +159,12 @@ def mortgage_calculator(request):
 
                 # Применяем форматирование к числам
                 if isinstance(value, (int, float, decimal.Decimal)):
-                    cell.value = value
-                    cell.style = number_style
+                    if param in ['Срок ипотеки, годы', 'Срок льготного периода, годы']:
+                        cell.value = int(value)
+                        cell.style = integer_style
+                    else:
+                        cell.value = value
+                        cell.style = number_style
                 else:
                     cell.value = value
 
@@ -156,17 +173,28 @@ def mortgage_calculator(request):
             ws[f'A{start_row}'] = 'Результаты расчета:'
             ws[f'A{start_row}'].font = Font(bold=True)
 
-            result_data = [
-                ['Число платежей за льготный период', result['grace_payments_count']],
-                ['Дата последнего платежа по льготному периоду', result['grace_period_end_date'].strftime('%d.%m.%Y')],
-                ['Сумма ежемесячного платежа во время льготного периода, руб.', result['grace_monthly_payment']],
-                ['Сумма кредита после окончания льготного периода, руб.', result['loan_after_grace']],
+            # Форматируем дату льготного периода с проверкой на None
+            grace_period_end_date_str = ''
+            if result['grace_period_end_date']:
+                grace_period_end_date_str = result['grace_period_end_date'].strftime('%d.%m.%Y')
+
+            result_data = []
+
+            if data['HAS_GRACE_PERIOD'] == 'да':
+                result_data.extend([
+                    ['Число платежей за льготный период', result['grace_payments_count']],
+                    ['Дата последнего платежа по льготному периоду', grace_period_end_date_str],
+                    ['Сумма ежемесячного платежа во время льготного периода, руб.', result['grace_monthly_payment']],
+                    ['Сумма кредита после окончания льготного периода, руб.', result['loan_after_grace']],
+                ])
+
+            result_data.extend([
                 ['Число платежей за основной период', result['main_payments_count']],
                 ['Дата последнего платежа по ипотеке', result['mortgage_end_date'].strftime('%d.%m.%Y')],
                 ['Сумма ежемесячного платежа за основной период, руб.', result['main_monthly_payment']],
                 ['Сумма кредита, руб.', result['total_loan_amount']],
                 ['Сумма переплат по кредиту, руб.', result['total_overpayment']],
-            ]
+            ])
 
             for i, (param, value) in enumerate(result_data, start=start_row + 1):
                 ws[f'A{i}'] = param
@@ -174,14 +202,18 @@ def mortgage_calculator(request):
 
                 # Применяем форматирование к числам
                 if isinstance(value, (int, float, decimal.Decimal)):
-                    cell.value = value
-                    cell.style = number_style
+                    if param in ['Число платежей за льготный период', 'Число платежей за основной период']:
+                        cell.value = int(value)
+                        cell.style = integer_style
+                    else:
+                        cell.value = value
+                        cell.style = number_style
                 else:
                     cell.value = value
 
             # График платежей
             schedule_start = start_row + len(result_data) + 2
-            ws[f'A{schedule_start}'] = 'График платешений:'
+            ws[f'A{schedule_start}'] = 'График платежей:'
             ws[f'A{schedule_start}'].font = Font(bold=True)
 
             headers = ['№', 'Дата платежа', 'Сумма платежа, руб.', 'В том числе проценты, руб.',
@@ -196,7 +228,7 @@ def mortgage_calculator(request):
                 ws.cell(row=row, column=1, value=payment['payment_number'])
                 ws.cell(row=row, column=2, value=payment['payment_date'].strftime('%d.%m.%Y'))
 
-                # Форматируем числовые значения
+                # Используем исходные числовые значения
                 for col_idx, key in enumerate(
                         ['payment_amount', 'interest_amount', 'principal_amount', 'remaining_debt'], start=3):
                     cell = ws.cell(row=row, column=col_idx, value=payment[key])
