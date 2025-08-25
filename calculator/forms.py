@@ -1,5 +1,5 @@
 from django import forms
-from datetime import datetime
+from datetime import datetime, date
 import re
 
 
@@ -26,9 +26,10 @@ class MortgageForm(forms.Form):
             'type': 'text',
             'placeholder': 'ДД.ММ.ГГГГ'
         }),
-        input_formats=['%d.%m.%Y', '%Y-%m-%d', '%d/%m/%Y']
+        input_formats=['%d.%m.%Y', '%Y-%m-%d', '%d/%m/%Y'],
+        initial=date.today  # Сегодняшняя дата по умолчанию
     )
-    MORTGAGE_TERM = forms.IntegerField(
+    MORTGAGE_TERM = forms.IntegerField(  # Целое число
         label='Срок ипотеки, годы',
         min_value=1,
         max_value=50,
@@ -47,7 +48,7 @@ class MortgageForm(forms.Form):
         widget=forms.RadioSelect,
         initial='нет'
     )
-    GRACE_PERIOD_TERM = forms.IntegerField(
+    GRACE_PERIOD_TERM = forms.IntegerField(  # Целое число
         label='Срок льготного периода, годы',
         min_value=0,
         max_value=50,

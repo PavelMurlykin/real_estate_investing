@@ -14,7 +14,7 @@
             background-color: #f4f4f4;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             background: white;
             padding: 20px;
@@ -24,9 +24,23 @@
         h1 {
             text-align: center;
             color: #333;
-        }
-        .form-section, .results-section {
             margin-bottom: 30px;
+        }
+        .main-content {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .input-section {
+            flex: 1;
+            min-width: 400px;
+        }
+        .results-section {
+            flex: 1;
+            min-width: 400px;
+        }
+        .payment-schedule {
+            margin-top: 30px;
         }
         .form-row {
             margin-bottom: 15px;
@@ -86,7 +100,7 @@
         }
         .results-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: 1fr;
             gap: 15px;
         }
         .result-item {
@@ -98,6 +112,12 @@
         .result-item h3 {
             margin-top: 0;
             color: #333;
+            font-size: 1em;
+        }
+        .result-item p {
+            margin: 5px 0;
+            font-size: 1.1em;
+            font-weight: bold;
         }
         .hidden {
             display: none;
@@ -113,145 +133,175 @@
             background-color: white;
             cursor: pointer;
         }
+        .section-title {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Ипотечный калькулятор</h1>
 
-        <div class="form-section">
-            <form method="post">
-                {% csrf_token %}
-
-                <div class="form-row">
-                    <label for="{{ form.PROPERTY_COST.id_for_label }}">{{ form.PROPERTY_COST.label }}</label>
-                    {{ form.PROPERTY_COST }}
-                    {% if form.PROPERTY_COST.errors %}
-                        <div class="error">{{ form.PROPERTY_COST.errors }}</div>
-                    {% endif %}
+        <div class="main-content">
+            <div class="input-section">
+                <div class="section-title">
+                    <h2>Входные параметры</h2>
                 </div>
 
-                <div class="form-row">
-                    <label for="{{ form.INITIAL_PAYMENT_PERCENT.id_for_label }}">{{ form.INITIAL_PAYMENT_PERCENT.label }}</label>
-                    {{ form.INITIAL_PAYMENT_PERCENT }}
-                    {% if form.INITIAL_PAYMENT_PERCENT.errors %}
-                        <div class="error">{{ form.INITIAL_PAYMENT_PERCENT.errors }}</div>
-                    {% endif %}
-                </div>
+                <form method="post">
+                    {% csrf_token %}
 
-                <div class="form-row">
-                    <label for="{{ form.INITIAL_PAYMENT_DATE.id_for_label }}">{{ form.INITIAL_PAYMENT_DATE.label }}</label>
-                    {{ form.INITIAL_PAYMENT_DATE }}
-                    {% if form.INITIAL_PAYMENT_DATE.errors %}
-                        <div class="error">{{ form.INITIAL_PAYMENT_DATE.errors }}</div>
-                    {% endif %}
-                </div>
-
-                <div class="form-row">
-                    <label for="{{ form.MORTGAGE_TERM.id_for_label }}">{{ form.MORTGAGE_TERM.label }}</label>
-                    {{ form.MORTGAGE_TERM }}
-                    {% if form.MORTGAGE_TERM.errors %}
-                        <div class="error">{{ form.MORTGAGE_TERM.errors }}</div>
-                    {% endif %}
-                </div>
-
-                <div class="form-row">
-                    <label for="{{ form.ANNUAL_RATE.id_for_label }}">{{ form.ANNUAL_RATE.label }}</label>
-                    {{ form.ANNUAL_RATE }}
-                    {% if form.ANNUAL_RATE.errors %}
-                        <div class="error">{{ form.ANNUAL_RATE.errors }}</div>
-                    {% endif %}
-                </div>
-
-                <div class="form-row">
-                    <label>{{ form.HAS_GRACE_PERIOD.label }}</label>
-                    <div class="radio-group">
-                        {% for choice in form.HAS_GRACE_PERIOD %}
-                            {{ choice }}
-                        {% endfor %}
-                    </div>
-                    {% if form.HAS_GRACE_PERIOD.errors %}
-                        <div class="error">{{ form.HAS_GRACE_PERIOD.errors }}</div>
-                    {% endif %}
-                </div>
-
-                <div id="grace-period-fields" class="hidden">
                     <div class="form-row">
-                        <label for="{{ form.GRACE_PERIOD_TERM.id_for_label }}">{{ form.GRACE_PERIOD_TERM.label }}</label>
-                        {{ form.GRACE_PERIOD_TERM }}
-                        {% if form.GRACE_PERIOD_TERM.errors %}
-                            <div class="error">{{ form.GRACE_PERIOD_TERM.errors }}</div>
+                        <label for="{{ form.PROPERTY_COST.id_for_label }}">{{ form.PROPERTY_COST.label }}</label>
+                        {{ form.PROPERTY_COST }}
+                        {% if form.PROPERTY_COST.errors %}
+                            <div class="error">{{ form.PROPERTY_COST.errors }}</div>
                         {% endif %}
                     </div>
 
                     <div class="form-row">
-                        <label for="{{ form.GRACE_PERIOD_RATE.id_for_label }}">{{ form.GRACE_PERIOD_RATE.label }}</label>
-                        {{ form.GRACE_PERIOD_RATE }}
-                        {% if form.GRACE_PERIOD_RATE.errors %}
-                            <div class="error">{{ form.GRACE_PERIOD_RATE.errors }}</div>
+                        <label for="{{ form.INITIAL_PAYMENT_PERCENT.id_for_label }}">{{ form.INITIAL_PAYMENT_PERCENT.label }}</label>
+                        {{ form.INITIAL_PAYMENT_PERCENT }}
+                        {% if form.PROPERTY_COST.errors %}
+                            <div class="error">{{ form.INITIAL_PAYMENT_PERCENT.errors }}</div>
                         {% endif %}
                     </div>
-                </div>
 
-                <button type="submit" name="calculate">Рассчитать</button>
-                {% if result %}
-                    <button type="submit" name="export">Сохранить в Excel</button>
-                {% endif %}
-            </form>
-        </div>
+                    <div class="form-row">
+                        <label for="{{ form.INITIAL_PAYMENT_DATE.id_for_label }}">{{ form.INITIAL_PAYMENT_DATE.label }}</label>
+                        {{ form.INITIAL_PAYMENT_DATE }}
+                        {% if form.INITIAL_PAYMENT_DATE.errors %}
+                            <div class="error">{{ form.INITIAL_PAYMENT_DATE.errors }}</div>
+                        {% endif %}
+                    </div>
 
-        {% if result %}
-        <div class="results-section">
-            <h2>Результаты расчета</h2>
+                    <div class="form-row">
+                        <label for="{{ form.MORTGAGE_TERM.id_for_label }}">{{ form.MORTGAGE_TERM.label }}</label>
+                        {{ form.MORTGAGE_TERM }}
+                        {% if form.MORTGAGE_TERM.errors %}
+                            <div class="error">{{ form.MORTGAGE_TERM.errors }}</div>
+                        {% endif %}
+                    </div>
 
-            <div class="results-grid">
-                <div class="result-item">
-                    <h3>Число платежей за льготный период</h3>
-                    <p>{{ result.grace_payments_count }}</p>
-                </div>
+                    <div class="form-row">
+                        <label for="{{ form.ANNUAL_RATE.id_for_label }}">{{ form.ANNUAL_RATE.label }}</label>
+                        {{ form.ANNUAL_RATE }}
+                        {% if form.ANNUAL_RATE.errors %}
+                            <div class="error">{{ form.ANNUAL_RATE.errors }}</div>
+                        {% endif %}
+                    </div>
 
-                <div class="result-item">
-                    <h3>Дата последнего платежа по льготному периоду</h3>
-                    <p>{{ result.grace_period_end_date|date:"d.m.Y" }}</p>
-                </div>
+                    <div class="form-row">
+                        <label>{{ form.HAS_GRACE_PERIOD.label }}</label>
+                        <div class="radio-group">
+                            {% for choice in form.HAS_GRACE_PERIOD %}
+                                {{ choice }}
+                            {% endfor %}
+                        </div>
+                        {% if form.HAS_GRACE_PERIOD.errors %}
+                            <div class="error">{{ form.HAS_GRACE_PERIOD.errors }}</div>
+                        {% endif %}
+                    </div>
 
-                <div class="result-item">
-                    <h3>Сумма ежемесячного платежа во время льготного периода, руб.</h3>
-                    <p class="formatted-number">{{ result.grace_monthly_payment }}</p>
-                </div>
+                    <div id="grace-period-fields" class="hidden">
+                        <div class="form-row">
+                            <label for="{{ form.GRACE_PERIOD_TERM.id_for_label }}">{{ form.GRACE_PERIOD_TERM.label }}</label>
+                            {{ form.GRACE_PERIOD_TERM }}
+                            {% if form.GRACE_PERIOD_TERM.errors %}
+                                <div class="error">{{ form.GRACE_PERIOD_TERM.errors }}</div>
+                            {% endif %}
+                        </div>
 
-                <div class="result-item">
-                    <h3>Сумма кредита после окончания льготного периода, руб.</h3>
-                    <p class="formatted-number">{{ result.loan_after_grace }}</p>
-                </div>
+                        <div class="form-row">
+                            <label for="{{ form.GRACE_PERIOD_RATE.id_for_label }}">{{ form.GRACE_PERIOD_RATE.label }}</label>
+                            {{ form.GRACE_PERIOD_RATE }}
+                            {% if form.GRACE_PERIOD_RATE.errors %}
+                                <div class="error">{{ form.GRACE_PERIOD_RATE.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
 
-                <div class="result-item">
-                    <h3>Число платежей за основной период</h3>
-                    <p>{{ result.main_payments_count }}</p>
-                </div>
-
-                <div class="result-item">
-                    <h3>Дата последнего платежа по ипотеке</h3>
-                    <p>{{ result.mortgage_end_date|date:"d.m.Y" }}</p>
-                </div>
-
-                <div class="result-item">
-                    <h3>Сумма ежемесячного платежа за основной период, руб.</h3>
-                    <p class="formatted-number">{{ result.main_monthly_payment }}</p>
-                </div>
-
-                <div class="result-item">
-                    <h3>Сумма кредита, руб.</h3>
-                    <p class="formatted-number">{{ result.total_loan_amount }}</p>
-                </div>
-
-                <div class="result-item">
-                    <h3>Сумма переплат по кредиту, руб.</h3>
-                    <p class="formatted-number">{{ result.total_overpayment }}</p>
-                </div>
+                    <button type="submit" name="calculate">Рассчитать</button>
+                    {% if result %}
+                        <button type="submit" name="export">Сохранить в Excel</button>
+                    {% endif %}
+                </form>
             </div>
 
-            <h2>График платежей</h2>
+            {% if result %}
+            <div class="results-section">
+                <div class="section-title">
+                    <h2>Результаты расчета</h2>
+                </div>
+
+                <div class="results-grid">
+                    {% if has_grace_period %}
+                    <div class="result-item">
+                        <h3>Число платежей за льготный период</h3>
+                        <p>{{ result.grace_payments_count }}</p>
+                    </div>
+
+                    <div class="result-item">
+                        <h3>Дата последнего платежа по льготному периоду</h3>
+                        <p>
+                            {% if result.grace_period_end_date %}
+                                {{ result.grace_period_end_date|date:"d.m.Y" }}
+                            {% else %}
+                                Не применимо
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <div class="result-item">
+                        <h3>Сумма ежемесячного платежа во время льготного периода, руб.</h3>
+                        <p class="formatted-number">{{ result.grace_monthly_payment }}</p>
+                    </div>
+
+                    <div class="result-item">
+                        <h3>Сумма кредита после окончания льготного периода, руб.</h3>
+                        <p class="formatted-number">{{ result.loan_after_grace }}</p>
+                    </div>
+                    {% endif %}
+
+                    <div class="result-item">
+                        <h3>Число платежей за основной период</h3>
+                        <p>{{ result.main_payments_count }}</p>
+                    </div>
+
+                    <div class="result-item">
+                        <h3>Дата последнего платежа по ипотеке</h3>
+                        <p>{{ result.mortgage_end_date|date:"d.m.Y" }}</p>
+                    </div>
+
+                    <div class="result-item">
+                        <h3>Сумма ежемесячного платежа за основной период, руб.</h3>
+                        <p class="formatted-number">{{ result.main_monthly_payment }}</p>
+                    </div>
+
+                    <div class="result-item">
+                        <h3>Сумма кредита, руб.</h3>
+                        <p class="formatted-number">{{ result.total_loan_amount }}</p>
+                    </div>
+
+                    <div class="result-item">
+                        <h3>Сумма переплат по кредиту, руб.</h3>
+                        <p class="formatted-number">{{ result.total_overpayment }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if result and payment_schedule %}
+        <div class="payment-schedule">
+            <div class="section-title">
+                <h2>График платежей</h2>
+            </div>
+
             <div style="overflow-x: auto;">
                 <table>
                     <thead>
@@ -290,11 +340,21 @@
             // Инициализация flatpickr
             const dateInput = document.getElementById('id_INITIAL_PAYMENT_DATE');
             if (dateInput) {
+                // Установка сегодняшней даты по умолчанию, если поле пустое
+                if (!dateInput.value) {
+                    const today = new Date();
+                    const day = String(today.getDate()).padStart(2, '0');
+                    const month = String(today.getMonth() + 1).padStart(2, '0');
+                    const year = today.getFullYear();
+                    dateInput.value = `${day}.${month}.${year}`;
+                }
+
                 flatpickr(dateInput, {
                     dateFormat: "d.m.Y",
                     locale: "ru",
                     allowInput: true,
                     clickOpens: true,
+                    defaultDate: dateInput.value,
                     onChange: function(selectedDates, dateStr, instance) {
                         // Конвертируем дату в нужный формат при ручном вводе
                         if (dateStr && !dateStr.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
