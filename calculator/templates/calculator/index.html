@@ -14,7 +14,7 @@
             background-color: #f4f4f4;
         }
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
             background: white;
             padding: 20px;
@@ -31,19 +31,20 @@
             gap: 30px;
             margin-bottom: 30px;
         }
-        .input-section {
+        .property-section, .mortgage-section, .results-section {
             flex: 1;
-            min-width: 400px;
         }
-        .results-section {
-            flex: 1;
-            min-width: 400px;
-        }
-        .payment-schedule {
-            margin-top: 30px;
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
         }
         .form-row {
             margin-bottom: 15px;
+            min-height: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
         label {
             display: block;
@@ -108,14 +109,20 @@
             padding: 15px;
             border-radius: 4px;
             border-left: 4px solid #4CAF50;
+            min-height: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-sizing: border-box;
         }
         .result-item h3 {
             margin-top: 0;
             color: #333;
             font-size: 1em;
+            margin-bottom: 8px;
         }
         .result-item p {
-            margin: 5px 0;
+            margin: 0;
             font-size: 1.1em;
             font-weight: bold;
         }
@@ -140,87 +147,144 @@
             border-radius: 4px;
             margin-bottom: 20px;
         }
+        .payment-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .dynamic-label {
+            color: #2196F3;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Ипотечный калькулятор</h1>
 
-        <div class="main-content">
-            <div class="input-section">
+        <form method="post">
+            {% csrf_token %}
+
+            <!-- Секция данных объекта -->
+            <div class="property-section">
                 <div class="section-title">
-                    <h2>Входные параметры</h2>
+                    <h2>Данные объекта</h2>
                 </div>
 
-                <form method="post">
-                    {% csrf_token %}
-
+                <div class="two-columns">
+                    {% for field in property_form %}
                     <div class="form-row">
-                        <label for="{{ form.PROPERTY_COST.id_for_label }}">{{ form.PROPERTY_COST.label }}</label>
-                        {{ form.PROPERTY_COST }}
-                        {% if form.PROPERTY_COST.errors %}
-                            <div class="error">{{ form.PROPERTY_COST.errors }}</div>
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                            <div class="error">{{ field.errors }}</div>
                         {% endif %}
                     </div>
+                    {% endfor %}
+                </div>
+            </div>
 
-                    <div class="form-row">
-                        <label for="{{ form.INITIAL_PAYMENT_PERCENT.id_for_label }}">{{ form.INITIAL_PAYMENT_PERCENT.label }}</label>
-                        {{ form.INITIAL_PAYMENT_PERCENT }}
-                        {% if form.PROPERTY_COST.errors %}
-                            <div class="error">{{ form.INITIAL_PAYMENT_PERCENT.errors }}</div>
-                        {% endif %}
+            <div class="main-content">
+                <!-- Секция параметров ипотеки -->
+                <div class="mortgage-section">
+                    <div class="section-title">
+                        <h2>Параметры ипотеки</h2>
                     </div>
 
+                    <!-- Корректировка стоимости -->
                     <div class="form-row">
-                        <label for="{{ form.INITIAL_PAYMENT_DATE.id_for_label }}">{{ form.INITIAL_PAYMENT_DATE.label }}</label>
-                        {{ form.INITIAL_PAYMENT_DATE }}
-                        {% if form.INITIAL_PAYMENT_DATE.errors %}
-                            <div class="error">{{ form.INITIAL_PAYMENT_DATE.errors }}</div>
-                        {% endif %}
-                    </div>
-
-                    <div class="form-row">
-                        <label for="{{ form.MORTGAGE_TERM.id_for_label }}">{{ form.MORTGAGE_TERM.label }}</label>
-                        {{ form.MORTGAGE_TERM }}
-                        {% if form.MORTGAGE_TERM.errors %}
-                            <div class="error">{{ form.MORTGAGE_TERM.errors }}</div>
-                        {% endif %}
-                    </div>
-
-                    <div class="form-row">
-                        <label for="{{ form.ANNUAL_RATE.id_for_label }}">{{ form.ANNUAL_RATE.label }}</label>
-                        {{ form.ANNUAL_RATE }}
-                        {% if form.ANNUAL_RATE.errors %}
-                            <div class="error">{{ form.ANNUAL_RATE.errors }}</div>
-                        {% endif %}
-                    </div>
-
-                    <div class="form-row">
-                        <label>{{ form.HAS_GRACE_PERIOD.label }}</label>
+                        <label>Тип корректировки стоимости</label>
                         <div class="radio-group">
-                            {% for choice in form.HAS_GRACE_PERIOD %}
+                            {% for choice in mortgage_form.DISCOUNT_MARKUP_TYPE %}
                                 {{ choice }}
                             {% endfor %}
                         </div>
-                        {% if form.HAS_GRACE_PERIOD.errors %}
-                            <div class="error">{{ form.HAS_GRACE_PERIOD.errors }}</div>
+                        {% if mortgage_form.DISCOUNT_MARKUP_TYPE.errors %}
+                            <div class="error">{{ mortgage_form.DISCOUNT_MARKUP_TYPE.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-row">
+                        <label id="discount_markup_label" for="{{ mortgage_form.DISCOUNT_MARKUP_VALUE.id_for_label }}">Скидка, %</label>
+                        {{ mortgage_form.DISCOUNT_MARKUP_VALUE }}
+                        {% if mortgage_form.DISCOUNT_MARKUP_VALUE.errors %}
+                            <div class="error">{{ mortgage_form.DISCOUNT_MARKUP_VALUE.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-row">
+                        <label>Итоговая стоимость объекта, руб.</label>
+                        <p id="final_property_cost_display" class="formatted-number">{% if final_property_cost %}{{ final_property_cost }}{% else %}0{% endif %}</p>
+                    </div>
+
+                    <!-- Первоначальный взнос -->
+                    <div class="form-row">
+                        <label>Первоначальный взнос</label>
+                        <div class="payment-inputs">
+                            <div>
+                                <label for="initial_payment_percent">В процентах, %</label>
+                                <input type="number" id="initial_payment_percent" name="initial_payment_percent" class="form-input" step="0.01"
+                                       value="{% if initial_payment_percent %}{{ initial_payment_percent }}{% else %}{{ mortgage_form.INITIAL_PAYMENT_PERCENT.value|default:0 }}{% endif %}">
+                            </div>
+                            <div>
+                                <label for="initial_payment_rubles">В рублях, руб.</label>
+                                <input type="number" id="initial_payment_rubles" name="initial_payment_rubles" class="form-input" step="0.01"
+                                       value="{% if initial_payment_rubles %}{{ initial_payment_rubles }}{% else %}0{% endif %}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Остальные параметры ипотеки -->
+                    <div class="form-row">
+                        <label for="{{ mortgage_form.INITIAL_PAYMENT_DATE.id_for_label }}">{{ mortgage_form.INITIAL_PAYMENT_DATE.label }}</label>
+                        {{ mortgage_form.INITIAL_PAYMENT_DATE }}
+                        {% if mortgage_form.INITIAL_PAYMENT_DATE.errors %}
+                            <div class="error">{{ mortgage_form.INITIAL_PAYMENT_DATE.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-row">
+                        <label for="{{ mortgage_form.MORTGAGE_TERM.id_for_label }}">{{ mortgage_form.MORTGAGE_TERM.label }}</label>
+                        {{ mortgage_form.MORTGAGE_TERM }}
+                        {% if mortgage_form.MORTGAGE_TERM.errors %}
+                            <div class="error">{{ mortgage_form.MORTGAGE_TERM.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-row">
+                        <label for="{{ mortgage_form.ANNUAL_RATE.id_for_label }}">{{ mortgage_form.ANNUAL_RATE.label }}</label>
+                        {{ mortgage_form.ANNUAL_RATE }}
+                        {% if mortgage_form.ANNUAL_RATE.errors %}
+                            <div class="error">{{ mortgage_form.ANNUAL_RATE.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-row">
+                        <label>{{ mortgage_form.HAS_GRACE_PERIOD.label }}</label>
+                        <div class="radio-group">
+                            {% for choice in mortgage_form.HAS_GRACE_PERIOD %}
+                                {{ choice }}
+                            {% endfor %}
+                        </div>
+                        {% if mortgage_form.HAS_GRACE_PERIOD.errors %}
+                            <div class="error">{{ mortgage_form.HAS_GRACE_PERIOD.errors }}</div>
                         {% endif %}
                     </div>
 
                     <div id="grace-period-fields" class="hidden">
                         <div class="form-row">
-                            <label for="{{ form.GRACE_PERIOD_TERM.id_for_label }}">{{ form.GRACE_PERIOD_TERM.label }}</label>
-                            {{ form.GRACE_PERIOD_TERM }}
-                            {% if form.GRACE_PERIOD_TERM.errors %}
-                                <div class="error">{{ form.GRACE_PERIOD_TERM.errors }}</div>
+                            <label for="{{ mortgage_form.GRACE_PERIOD_TERM.id_for_label }}">{{ mortgage_form.GRACE_PERIOD_TERM.label }}</label>
+                            {{ mortgage_form.GRACE_PERIOD_TERM }}
+                            {% if mortgage_form.GRACE_PERIOD_TERM.errors %}
+                                <div class="error">{{ mortgage_form.GRACE_PERIOD_TERM.errors }}</div>
                             {% endif %}
                         </div>
 
                         <div class="form-row">
-                            <label for="{{ form.GRACE_PERIOD_RATE.id_for_label }}">{{ form.GRACE_PERIOD_RATE.label }}</label>
-                            {{ form.GRACE_PERIOD_RATE }}
-                            {% if form.GRACE_PERIOD_RATE.errors %}
-                                <div class="error">{{ form.GRACE_PERIOD_RATE.errors }}</div>
+                            <label for="{{ mortgage_form.GRACE_PERIOD_RATE.id_for_label }}">{{ mortgage_form.GRACE_PERIOD_RATE.label }}</label>
+                            {{ mortgage_form.GRACE_PERIOD_RATE }}
+                            {% if mortgage_form.GRACE_PERIOD_RATE.errors %}
+                                <div class="error">{{ mortgage_form.GRACE_PERIOD_RATE.errors }}</div>
                             {% endif %}
                         </div>
                     </div>
@@ -229,74 +293,76 @@
                     {% if result %}
                         <button type="submit" name="export">Сохранить в Excel</button>
                     {% endif %}
-                </form>
-            </div>
-
-            {% if result %}
-            <div class="results-section">
-                <div class="section-title">
-                    <h2>Результаты расчета</h2>
                 </div>
 
-                <div class="results-grid">
-                    {% if has_grace_period %}
-                    <div class="result-item">
-                        <h3>Число платежей за льготный период</h3>
-                        <p>{{ result.grace_payments_count }}</p>
+                {% if result %}
+                <!-- Секция результатов расчета -->
+                <div class="results-section">
+                    <div class="section-title">
+                        <h2>Результаты расчета</h2>
                     </div>
 
-                    <div class="result-item">
-                        <h3>Дата последнего платежа по льготному периоду</h3>
-                        <p>
-                            {% if result.grace_period_end_date %}
-                                {{ result.grace_period_end_date|date:"d.m.Y" }}
-                            {% else %}
-                                Не применимо
-                            {% endif %}
-                        </p>
-                    </div>
+                    <div class="results-grid">
+                        {% if has_grace_period %}
+                        <div class="result-item">
+                            <h3>Число платежей за льготный период</h3>
+                            <p>{{ result.grace_payments_count }}</p>
+                        </div>
 
-                    <div class="result-item">
-                        <h3>Сумма ежемесячного платежа во время льготного периода, руб.</h3>
-                        <p class="formatted-number">{{ result.grace_monthly_payment }}</p>
-                    </div>
+                        <div class="result-item">
+                            <h3>Дата последнего платежа по льготному периоду</h3>
+                            <p>
+                                {% if result.grace_period_end_date %}
+                                    {{ result.grace_period_end_date|date:"d.m.Y" }}
+                                {% else %}
+                                    Не применимо
+                                {% endif %}
+                            </p>
+                        </div>
 
-                    <div class="result-item">
-                        <h3>Сумма кредита после окончания льготного периода, руб.</h3>
-                        <p class="formatted-number">{{ result.loan_after_grace }}</p>
-                    </div>
-                    {% endif %}
+                        <div class="result-item">
+                            <h3>Сумма ежемесячного платежа во время льготного периода, руб.</h3>
+                            <p class="formatted-number">{{ result.grace_monthly_payment }}</p>
+                        </div>
 
-                    <div class="result-item">
-                        <h3>Число платежей за основной период</h3>
-                        <p>{{ result.main_payments_count }}</p>
-                    </div>
+                        <div class="result-item">
+                            <h3>Сумма кредита после окончания льготного периода, руб.</h3>
+                            <p class="formatted-number">{{ result.loan_after_grace }}</p>
+                        </div>
+                        {% endif %}
 
-                    <div class="result-item">
-                        <h3>Дата последнего платежа по ипотеке</h3>
-                        <p>{{ result.mortgage_end_date|date:"d.m.Y" }}</p>
-                    </div>
+                        <div class="result-item">
+                            <h3>Число платежей за основной период</h3>
+                            <p>{{ result.main_payments_count }}</p>
+                        </div>
 
-                    <div class="result-item">
-                        <h3>Сумма ежемесячного платежа за основной период, руб.</h3>
-                        <p class="formatted-number">{{ result.main_monthly_payment }}</p>
-                    </div>
+                        <div class="result-item">
+                            <h3>Дата последнего платежа по ипотеке</h3>
+                            <p>{{ result.mortgage_end_date|date:"d.m.Y" }}</p>
+                        </div>
 
-                    <div class="result-item">
-                        <h3>Сумма кредита, руб.</h3>
-                        <p class="formatted-number">{{ result.total_loan_amount }}</p>
-                    </div>
+                        <div class="result-item">
+                            <h3>Сумма ежемесячного платежа за основной период, руб.</h3>
+                            <p class="formatted-number">{{ result.main_monthly_payment }}</p>
+                        </div>
 
-                    <div class="result-item">
-                        <h3>Сумма переплат по кредиту, руб.</h3>
-                        <p class="formatted-number">{{ result.total_overpayment }}</p>
+                        <div class="result-item">
+                            <h3>Сумма кредита, руб.</h3>
+                            <p class="formatted-number">{{ result.total_loan_amount }}</p>
+                        </div>
+
+                        <div class="result-item">
+                            <h3>Сумма переплат по кредиту, руб.</h3>
+                            <p class="formatted-number">{{ result.total_overpayment }}</p>
+                        </div>
                     </div>
                 </div>
+                {% endif %}
             </div>
-            {% endif %}
-        </div>
+        </form>
 
         {% if result and payment_schedule %}
+        <!-- График платежей -->
         <div class="payment-schedule">
             <div class="section-title">
                 <h2>График платежей</h2>
@@ -389,7 +455,87 @@
                 });
             });
 
-            // Функция для форматирования чисел
+            // Динамическое изменение заголовка для скидки/удорожания
+            const discountMarkupTypeRadios = document.querySelectorAll('input[name="DISCOUNT_MARKUP_TYPE"]');
+            const discountMarkupLabel = document.getElementById('discount_markup_label');
+
+            function updateDiscountMarkupLabel() {
+                const selectedValue = document.querySelector('input[name="DISCOUNT_MARKUP_TYPE"]:checked').value;
+                if (selectedValue === 'discount') {
+                    discountMarkupLabel.textContent = 'Скидка, %';
+                } else {
+                    discountMarkupLabel.textContent = 'Удорожание, %';
+                }
+            }
+
+            discountMarkupTypeRadios.forEach(function(radio) {
+                radio.addEventListener('change', updateDiscountMarkupLabel);
+            });
+
+            // Инициализация заголовка
+            updateDiscountMarkupLabel();
+
+            // Расчет итоговой стоимости объекта
+            const propertyCostInput = document.getElementById('id_property_cost');
+            const discountMarkupValueInput = document.getElementById('id_DISCOUNT_MARKUP_VALUE');
+            const finalPropertyCostDisplay = document.getElementById('final_property_cost_display');
+
+            function updateFinalPropertyCost() {
+                const propertyCost = parseFloat(propertyCostInput.value.replace(/\s/g, '').replace(',', '.') || 0);
+                const discountMarkupValue = parseFloat(discountMarkupValueInput.value || 0);
+                const discountMarkupType = document.querySelector('input[name="DISCOUNT_MARKUP_TYPE"]:checked').value;
+
+                let finalCost = propertyCost;
+
+                if (discountMarkupType === 'discount') {
+                    finalCost = propertyCost * (1 - discountMarkupValue / 100);
+                } else {
+                    finalCost = propertyCost * (1 + discountMarkupValue / 100);
+                }
+
+                finalPropertyCostDisplay.textContent = finalCost.toLocaleString('ru-RU', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+
+            propertyCostInput.addEventListener('input', updateFinalPropertyCost);
+            discountMarkupValueInput.addEventListener('input', updateFinalPropertyCost);
+            discountMarkupTypeRadios.forEach(function(radio) {
+                radio.addEventListener('change', updateFinalPropertyCost);
+            });
+
+            // Синхронизация первоначального взноса в процентах и рублях
+            const initialPaymentPercentInput = document.getElementById('initial_payment_percent');
+            const initialPaymentRublesInput = document.getElementById('initial_payment_rubles');
+
+            function updateInitialPaymentRubles() {
+                const percent = parseFloat(initialPaymentPercentInput.value || 0);
+                const propertyCost = parseFloat(propertyCostInput.value.replace(/\s/g, '').replace(',', '.') || 0);
+                const rubles = propertyCost * percent / 100;
+
+                initialPaymentRublesInput.value = rubles.toFixed(2);
+            }
+
+            function updateInitialPaymentPercent() {
+                const rubles = parseFloat(initialPaymentRublesInput.value || 0);
+                const propertyCost = parseFloat(propertyCostInput.value.replace(/\s/g, '').replace(',', '.') || 0);
+                const percent = propertyCost > 0 ? (rubles / propertyCost * 100) : 0;
+
+                initialPaymentPercentInput.value = percent.toFixed(2);
+            }
+
+            initialPaymentPercentInput.addEventListener('input', updateInitialPaymentRubles);
+            initialPaymentRublesInput.addEventListener('input', updateInitialPaymentPercent);
+            propertyCostInput.addEventListener('input', function() {
+                updateInitialPaymentRubles();
+                updateFinalPropertyCost();
+            });
+
+            // Инициализация значений
+            updateInitialPaymentRubles();
+
+            // Функция для форматирования чисел с разделителями
             function formatNumber(number) {
                 if (number === null || number === undefined || number === '') return '';
 
