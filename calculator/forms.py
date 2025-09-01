@@ -1,6 +1,7 @@
-from django import forms
 from datetime import datetime, date
-import re
+
+from django import forms
+
 from .models import Property
 
 
