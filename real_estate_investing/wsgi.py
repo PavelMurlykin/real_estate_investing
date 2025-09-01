@@ -1,5 +1,5 @@
 """
-WSGI config for mortgage project.
+WSGI config for real_estate_investing project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 
@@ -11,6 +11,6 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mortgage.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'real_estate_investing.settings')
 
 application = get_wsgi_application()

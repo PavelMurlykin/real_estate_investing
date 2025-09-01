@@ -1,7 +1,6 @@
-from datetime import datetime, date
-from dateutil.relativedelta import relativedelta
 from math import pow
-import decimal
+
+from dateutil.relativedelta import relativedelta
 
 
 class MortgageCalculator:

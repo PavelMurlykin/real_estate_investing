@@ -1,14 +1,15 @@
-from django.shortcuts import render
+import decimal
+
+import openpyxl
 from django.http import HttpResponse
+from django.shortcuts import render
+from openpyxl.styles import Font, Alignment, NamedStyle
+from openpyxl.utils import get_column_letter
+
 from .forms import PropertyForm, MortgageForm
-from .models import Property, MortgageCalculation
+from .models import MortgageCalculation
 from .mortgage_calculator import MortgageCalculator
 from .utils import format_currency
-from datetime import datetime
-import openpyxl
-from openpyxl.utils import get_column_letter
-from openpyxl.styles import Font, Alignment, Border, Side, NamedStyle
-import decimal
 
 
 def mortgage_calculator(request):
