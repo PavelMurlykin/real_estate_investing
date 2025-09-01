@@ -29,7 +29,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'mortgage.urls'
+ROOT_URLCONF = 'real_estate_investing.urls'
 
 TEMPLATES = [
     {
@@ -46,7 +46,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'mortgage.wsgi.application'
+WSGI_APPLICATION = 'real_estate_investing.wsgi.application'
 
 DATABASES = {
     'default': {
