@@ -383,4 +383,4 @@ def mortgage_calculator(request):
                 wb.save(response)
                 return response
 
-    return render(request, 'calculator/index.html', context)
+    return render(request, 'calculator/calculator.html', context)
