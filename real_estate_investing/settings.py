@@ -25,7 +25,8 @@ INSTALLED_APPS = [
 
     'homepage.apps.HomepageConfig',
     'property.apps.PropertyConfig',
-    'calculator.apps.CalculatorConfig',
+    'mortgage.apps.CalculatorConfig',
+    'trench_mortgage.apps.TrenchMortgageConfig',
 ]
 
 MIDDLEWARE = [
@@ -56,6 +57,8 @@ TEMPLATES = [
         },
     },
 ]
+
+# STATICFILES_DIRS = [BASE_DIR / 'static']
 
 WSGI_APPLICATION = 'real_estate_investing.wsgi.application'
 

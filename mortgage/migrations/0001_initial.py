@@ -63,7 +63,7 @@ class Migration(migrations.Migration):
                 ('total_loan_amount', models.DecimalField(blank=True, decimal_places=2, max_digits=15, null=True)),
                 ('total_overpayment', models.DecimalField(blank=True, decimal_places=2, max_digits=15, null=True)),
                 ('timestamp', models.DateTimeField(auto_now_add=True)),
-                ('property', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='calculator.property',
+                ('property', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='mortgage.property',
                                                verbose_name='Объект')),
             ],
         ),

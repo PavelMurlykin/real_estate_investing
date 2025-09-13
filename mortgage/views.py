@@ -1,32 +1,58 @@
 import decimal
-
 import openpyxl
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
 from openpyxl.styles import Font, Alignment, NamedStyle
 from openpyxl.utils import get_column_letter
 
-from .forms import PropertyForm, MortgageForm
+from .forms import MortgageForm
 from .models import MortgageCalculation
 from .mortgage_calculator import MortgageCalculator
-from .utils import format_currency
+from .utils import format_currency, format_integer
+from property.models import Property  # импортируем из нового приложения
 
 
 def mortgage_calculator(request):
-    # Инициализация форм
-    property_form = PropertyForm(request.POST or None)
-    mortgage_form = MortgageForm(request.POST or None)
+    # Если передан параметр property_id, предзаполняем форму
+    property_id = request.GET.get('property_id')
+    property_cost = request.GET.get('property_cost')
+    initial_data = {}
+    property_obj = None
+
+    if property_id:
+        try:
+            property_obj = Property.objects.get(pk=property_id)
+            initial_data['PROPERTY'] = property_obj
+
+            if property_obj and not property_cost:
+                # Форматируем стоимость объекта для передачи в URL
+                property_cost = format_currency(property_obj.property_cost).replace(' ', '').replace(',', '.')
+
+            # Преобразуем стоимость объекта в правильный формат
+            if property_cost:
+                # Убираем пробелы и заменяем запятую на точку
+                property_cost = property_cost.replace(' ', '').replace(',', '.')
+                initial_data['property_cost'] = property_cost
+            else:
+                initial_data['property_cost'] = property_obj.property_cost
+
+        except Property.DoesNotExist:
+            pass
+
+    # Инициализация формы
+    mortgage_form = MortgageForm(request.POST or None, initial=initial_data)
 
     context = {
-        'property_form': property_form,
-        'mortgage_form': mortgage_form
+        'mortgage_form': mortgage_form,
+        'property_obj': property_obj
     }
 
     if request.method == 'POST':
         if 'calculate' in request.POST:
-            if property_form.is_valid() and mortgage_form.is_valid():
-                # Сохраняем объект
-                property_obj = property_form.save()
+            if mortgage_form.is_valid():
+                # Получаем объект недвижимости
+                property_obj = mortgage_form.cleaned_data['PROPERTY']
 
                 # Получаем данные из ипотечной формы
                 data = mortgage_form.cleaned_data
@@ -131,16 +157,16 @@ def mortgage_calculator(request):
                 context['final_property_cost'] = format_currency(final_property_cost)
                 context['discount_markup_type'] = data['DISCOUNT_MARKUP_TYPE']
                 context['discount_markup_value'] = discount_markup_value
+                context['property'] = property_obj
 
-                # Передаем заполненные формы в контекст
-                context['property_form'] = property_form
+                # Передаем заполненную форму в контекст
                 context['mortgage_form'] = mortgage_form
 
         elif 'export' in request.POST:
             # Аналогичные изменения для блока экспорта
-            if property_form.is_valid() and mortgage_form.is_valid():
+            if mortgage_form.is_valid():
                 # Получаем данные из форм
-                property_data = property_form.cleaned_data
+                property_obj = mortgage_form.cleaned_data['PROPERTY']
                 mortgage_data = mortgage_form.cleaned_data
 
                 # Получаем значения первоначального взноса
@@ -148,7 +174,7 @@ def mortgage_calculator(request):
                 initial_payment_rubles = mortgage_data.get('INITIAL_PAYMENT_RUBLES', 0) or 0
 
                 # Рассчитываем итоговую стоимость объекта
-                property_cost = float(property_data['property_cost'])
+                property_cost = float(property_obj.property_cost)
                 discount_markup_value = float(mortgage_data.get('DISCOUNT_MARKUP_VALUE', 0) or 0)
 
                 if mortgage_data['DISCOUNT_MARKUP_TYPE'] == 'discount':
@@ -215,16 +241,16 @@ def mortgage_calculator(request):
                 ws['A3'].font = Font(bold=True)
 
                 property_data_list = [
-                    ['Застройщик', property_data['developer']],
-                    ['Город', property_data['city']],
-                    ['Название ЖК', property_data['complex_name']],
-                    ['Класс ЖК', property_data['complex_class']],
-                    ['Корпус', property_data['building']],
-                    ['№ квартиры', property_data['apartment_number']],
-                    ['Планировка', property_data['layout']],
-                    ['Площадь', property_data['area']],
-                    ['Этаж', property_data['floor']],
-                    ['Стоимость объекта, руб.', property_data['property_cost']],
+                    ['Застройщик', property_obj.developer],
+                    ['Город', property_obj.get_city_display()],
+                    ['Название ЖК', property_obj.complex_name],
+                    ['Класс ЖК', property_obj.get_complex_class_display()],
+                    ['Корпус', property_obj.building],
+                    ['№ квартиры', property_obj.apartment_number],
+                    ['Планировка', property_obj.layout],
+                    ['Площадь', property_obj.area],
+                    ['Этаж', property_obj.floor],
+                    ['Стоимость объекта, руб.', property_obj.property_cost],
                     ['Тип изменения цены',
                      'Скидка' if mortgage_data['DISCOUNT_MARKUP_TYPE'] == 'discount' else 'Удорожание'],
                     ['Значение, %', mortgage_data['DISCOUNT_MARKUP_VALUE']],
@@ -383,4 +409,34 @@ def mortgage_calculator(request):
                 wb.save(response)
                 return response
 
-    return render(request, 'calculator/calculator.html', context)
+    return render(request, 'mortgage/mortgage_calculator.html', context)
+
+
+def calculation_list(request):
+    """Список всех расчетов"""
+    calculations = MortgageCalculation.objects.select_related('property').all().order_by('-timestamp')
+    return render(request, 'mortgage/calculation_list.html', {
+        'calculations': calculations
+    })
+
+
+def calculation_detail(request, pk):
+    """Детальная информация о расчете"""
+    calculation = get_object_or_404(MortgageCalculation.objects.select_related('property'), pk=pk)
+
+    # Форматируем значения для отображения
+    calculation.formatted_final_property_cost = format_currency(calculation.final_property_cost)
+    calculation.formatted_grace_monthly_payment = format_currency(
+        calculation.grace_monthly_payment) if calculation.grace_monthly_payment else None
+    calculation.formatted_loan_after_grace = format_currency(
+        calculation.loan_after_grace) if calculation.loan_after_grace else None
+    calculation.formatted_main_monthly_payment = format_currency(
+        calculation.main_monthly_payment) if calculation.main_monthly_payment else None
+    calculation.formatted_total_loan_amount = format_currency(
+        calculation.total_loan_amount) if calculation.total_loan_amount else None
+    calculation.formatted_total_overpayment = format_currency(
+        calculation.total_overpayment) if calculation.total_overpayment else None
+
+    return render(request, 'mortgage/calculation_detail.html', {
+        'calculation': calculation
+    })

@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Детали расчета ипотеки</h2>
+        <div>
+            <a href="{% url 'mortgage:calculation_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Назад к списку
+            </a>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Информация о расчете</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Дата расчета:</strong> {{ calculation.timestamp|date:"d.m.Y H:i" }}</p>
+                    <p><strong>Объект:</strong> {{ calculation.property.complex_name }}, кв. {{ calculation.property.apartment_number }}</p>
+                    <p><strong>Итоговая стоимость объекта:</strong> {{ calculation.formatted_final_property_cost }} руб.</p>
+                    <p><strong>Первоначальный взнос:</strong> {{ calculation.initial_payment_percent }}%</p>
+                    <p><strong>Дата первоначального взноса:</strong> {{ calculation.initial_payment_date|date:"d.m.Y" }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Срок ипотеки:</strong> {{ calculation.mortgage_term }} лет</p>
+                    <p><strong>Годовая ставка:</strong> {{ calculation.annual_rate }}%</p>
+                    <p><strong>Льготный период:</strong> {{ calculation.has_grace_period|yesno:"Да,Нет" }}</p>
+                    {% if calculation.has_grace_period %}
+                    <p><strong>Срок льготного периода:</strong> {{ calculation.grace_period_term }} лет</p>
+                    <p><strong>Ставка в льготный период:</strong> {{ calculation.grace_period_rate }}%</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h4>Результаты расчета</h4>
+        </div>
+        <div class="card-body">
+            {% if calculation.has_grace_period %}
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <h5>Льготный период</h5>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Число платежей за льготный период:</strong> {{ calculation.grace_payments_count }}</p>
+                    <p><strong>Дата окончания льготного периода:</strong> {{ calculation.grace_period_end_date|date:"d.m.Y" }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Ежемесячный платеж в льготный период:</strong> {{ calculation.formatted_grace_monthly_payment }} руб.</p>
+                    <p><strong>Сумма кредита после льготного периода:</strong> {{ calculation.formatted_loan_after_grace }} руб.</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="row">
+                <div class="col-md-12">
+                    <h5>Основной период</h5>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Число платежей за основной период:</strong> {{ calculation.main_payments_count }}</p>
+                    <p><strong>Дата окончания ипотеки:</strong> {{ calculation.mortgage_end_date|date:"d.m.Y" }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Ежемесячный платеж за основной период:</strong> {{ calculation.formatted_main_monthly_payment }} руб.</p>
+                    <p><strong>Общая сумма кредита:</strong> {{ calculation.formatted_total_loan_amount }} руб.</p>
+                    <p><strong>Общая переплата по кредиту:</strong> {{ calculation.formatted_total_overpayment }} руб.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

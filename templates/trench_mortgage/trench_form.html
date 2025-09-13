@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Ввод параметров траншей</h2>
+
+    <form id="trenchDataForm">
+        {% csrf_token %}
+
+        <div id="trenchForms">
+            {% for i in trench_count|get_range %}
+            <div class="card mb-3 trench-form">
+                <div class="card-header">
+                    <h5>Транш {{ forloop.counter }}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="trench_date_{{ forloop.counter }}" class="form-label">Дата транша</label>
+                            <input type="date" class="form-control trench-date" name="trench_date_{{ forloop.counter }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="trench_percent_{{ forloop.counter }}" class="form-label">Сумма транша, %</label>
+                            <input type="number" class="form-control trench-percent" name="trench_percent_{{ forloop.counter }}"
+                                   step="0.01" min="0" {% if forloop.last %}readonly{% else %}required{% endif %}>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="annual_rate_{{ forloop.counter }}" class="form-label">Годовая ставка, %</label>
+                            <input type="number" class="form-control annual-rate" name="annual_rate_{{ forloop.counter }}"
+                                   step="0.01" min="0" required>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <button type="button" id="calculateBtn" class="btn btn-primary">Рассчитать</button>
+    </form>
+
+    <div id="results" class="mt-4" style="display: none;">
+        <!-- Результаты будут отображаться здесь -->
+    </div>
+</div>
+
+<script>
+// JavaScript для расчета и отображения результатов
+document.getElementById('calculateBtn').addEventListener('click', function() {
+    const trenchData = [];
+    const trenchForms = document.querySelectorAll('.trench-form');
+    let totalPercent = 0;
+
+    trenchForms.forEach((form, index) => {
+        const trenchDate = form.querySelector('.trench-date').value;
+        const trenchPercent = index < trenchForms.length - 1 ?
+            parseFloat(form.querySelector('.trench-percent').value) : 0;
+        const annualRate = parseFloat(form.querySelector('.annual-rate').value);
+
+        if (index < trenchForms.length - 1) {
+            totalPercent += trenchPercent;
+        }
+
+        trenchData.push({
+            trench_date: trenchDate,
+            trench_percent: trenchPercent,
+            annual_rate: annualRate
+        });
+    });
+
+    // Для последнего транша устанавливаем остаток
+    if (trenchForms.length > 0) {
+        const lastTrenchPercent = 100 - totalPercent;
+        trenchData[trenchData.length - 1].trench_percent = lastTrenchPercent;
+        document.querySelectorAll('.trench-percent')[trenchForms.length - 1].value = lastTrenchPercent.toFixed(2);
+    }
+
+    // Отправка данных на сервер
+    const formData = new FormData();
+    formData.append('trench_data', JSON.stringify(trenchData));
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+    fetch('{% url "calculate_trench_mortgage" %}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayResults(data.result);
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка: ' + error);
+    });
+});
+
+function displayResults(result) {
+    const resultsDiv = document.getElementById('results');
+    resultsDiv.style.display = 'block';
+
+    let html = `
+        <div class="card">
+            <div class="card-header">
+                <h4>Результаты расчета</h4>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Итоговая стоимость объекта:</strong> ${result.final_property_cost} руб.
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Первоначальный взнос:</strong> ${result.initial_payment} руб. (${result.initial_payment_date})
+                    </div>
+                </div>
+
+                <h5>Детали траншей:</h5>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Транш</th>
+                            <th>Дата</th>
+                            <th>Сумма, %</th>
+                            <th>Сумма, руб.</th>
+                            <th>Ставка, %</th>
+                            <th>Ежемесячный платеж</th>
+                            <th>Число платежей</th>
+                            <th>Остаток долга</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
+    result.trenches.forEach(trench => {
+        html += `
+            <tr>
+                <td>${trench.number}</td>
+                <td>${trench.date}</td>
+                <td>${trench.percent}%</td>
+                <td>${trench.amount}</td>
+                <td>${trench.annual_rate}%</td>
+                <td>${trench.monthly_payment}</td>
+                <td>${trench.payments_count}</td>
+                <td>${trench.remaining_debt}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+                    </tbody>
+                </table>
+
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <strong>Общая сумма кредита:</strong> ${result.total_loan_amount} руб.
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Общая переплата:</strong> ${result.total_overpayment} руб.
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    resultsDiv.innerHTML = html;
+}
+</script>
+{% endblock %}

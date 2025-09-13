@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>История расчетов ипотеки</h2>
+        <a href="{% url 'mortgage:mortgage_calculator' %}" class="btn btn-primary">
+            <i class="bi bi-calculator"></i> Новый расчет
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            {% if calculations %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Дата расчета</th>
+                                <th>Объект</th>
+                                <th>Стоимость объекта</th>
+                                <th>Первоначальный взнос</th>
+                                <th>Срок</th>
+                                <th>Ставка</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for calculation in calculations %}
+                            <tr>
+                                <td>{{ calculation.timestamp|date:"d.m.Y H:i" }}</td>
+                                <td>{{ calculation.property.complex_name }}, кв. {{ calculation.property.apartment_number }}</td>
+                                <td>{{ calculation.final_property_cost|floatformat:2 }} руб.</td>
+                                <td>{{ calculation.initial_payment_percent }}%</td>
+                                <td>{{ calculation.mortgage_term }} лет</td>
+                                <td>{{ calculation.annual_rate }}%</td>
+                                <td>
+                                    <a href="{% url 'mortgage:calculation_detail' calculation.pk %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i> Подробнее
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted">Нет сохраненных расчетов</p>
+                    <a href="{% url 'mortgage:mortgage_calculator' %}" class="btn btn-primary">Создать первый расчет</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

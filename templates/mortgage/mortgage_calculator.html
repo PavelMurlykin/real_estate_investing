@@ -1,144 +1,168 @@
 {% extends "base.html" %}
 
- {% block title %}
+{% block title %}
     Ипотечный калькулятор
- {% endblock %}
+{% endblock %}
 
- {% block content %}
+{% block content %}
     <div class="container">
         <h1>Ипотечный калькулятор</h1>
 
         <form method="post">
             {% csrf_token %}
 
-            <!-- Секция данных объекта -->
-            <div class="property-section">
-                <div class="section-title">
-                    <h2>Данные объекта</h2>
-                </div>
-
-                <div class="two-columns">
-                    {% for field in property_form %}
-                    <div class="form-row">
-                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                        {{ field }}
-                        {% if field.errors %}
-                            <div class="error">{{ field.errors }}</div>
-                        {% endif %}
+            <div class="calculator-grid">
+                <!-- Секция данных объекта -->
+                <div class="property-section">
+                    <div class="section-title">
+                        <h2>Данные объекта</h2>
                     </div>
-                    {% endfor %}
-                </div>
-            </div>
 
-            <div class="main-content">
+                    <div class="two-columns">
+                        <div class="form-row">
+                            <label for="id_property">Объект недвижимости</label>
+                            <select id="id_property" name="property" class="form-input" required>
+                                <option value="">-- Выберите объект --</option>
+                                {% for property in properties %}
+                                    <option value="{{ property.id }}"
+                                            {% if selected_property_id == property.id %}selected{% endif %}
+                                            data-cost="{{ property.cost }}">
+                                        {{ property.address }} ({{ property.cost }} руб.)
+                                    </option>
+                                {% empty %}
+                                    <option value="">Нет доступных объектов</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-row">
+                            <label for="id_property_cost">Стоимость объекта, руб.</label>
+                            <input type="number" id="id_property_cost" name="property_cost"
+                                   class="form-input" step="0.01" min="0"
+                                   value="{% if property_cost %}{{ property_cost }}{% elif selected_property %}{{ selected_property.cost }}{% endif %}"
+                                   required>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Секция параметров ипотеки -->
                 <div class="mortgage-section">
                     <div class="section-title">
                         <h2>Параметры ипотеки</h2>
                     </div>
 
-                    <!-- Корректировка стоимости -->
-                    <div class="form-row">
-                        <label>Тип корректировки стоимости</label>
-                        <div class="radio-group">
-                            {% for choice in mortgage_form.DISCOUNT_MARKUP_TYPE %}
-                                {{ choice }}
-                            {% endfor %}
-                        </div>
-                        {% if mortgage_form.DISCOUNT_MARKUP_TYPE.errors %}
-                            <div class="error">{{ mortgage_form.DISCOUNT_MARKUP_TYPE.errors }}</div>
-                        {% endif %}
-                    </div>
-
-                    <div class="form-row">
-                        <label id="discount_markup_label" for="{{ mortgage_form.DISCOUNT_MARKUP_VALUE.id_for_label }}">Скидка, %</label>
-                        {{ mortgage_form.DISCOUNT_MARKUP_VALUE }}
-                        {% if mortgage_form.DISCOUNT_MARKUP_VALUE.errors %}
-                            <div class="error">{{ mortgage_form.DISCOUNT_MARKUP_VALUE.errors }}</div>
-                        {% endif %}
-                    </div>
-
-                    <div class="form-row">
-                        <label>Итоговая стоимость объекта, руб.</label>
-                        <p id="final_property_cost_display" class="formatted-number">{% if final_property_cost %}{{ final_property_cost }}{% else %}0{% endif %}</p>
-                    </div>
-
-                    <!-- Первоначальный взнос -->
-                    <div class="form-row">
-                        <label>Первоначальный взнос</label>
-                        <div class="payment-inputs">
-                            <div>
-                                <label for="initial_payment_percent">В процентах, %</label>
-                                <input type="number" id="initial_payment_percent" name="initial_payment_percent" class="form-input" step="0.01"
-                                       value="{% if initial_payment_percent %}{{ initial_payment_percent }}{% else %}{{ mortgage_form.INITIAL_PAYMENT_PERCENT.value|default:0 }}{% endif %}">
-                            </div>
-                            <div>
-                                <label for="initial_payment_rubles">В рублях, руб.</label>
-                                <input type="number" id="initial_payment_rubles" name="initial_payment_rubles" class="form-input" step="0.01"
-                                       value="{% if initial_payment_rubles %}{{ initial_payment_rubles }}{% else %}0{% endif %}">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Остальные параметры ипотеки -->
-                    <div class="form-row">
-                        <label for="{{ mortgage_form.INITIAL_PAYMENT_DATE.id_for_label }}">{{ mortgage_form.INITIAL_PAYMENT_DATE.label }}</label>
-                        {{ mortgage_form.INITIAL_PAYMENT_DATE }}
-                        {% if mortgage_form.INITIAL_PAYMENT_DATE.errors %}
-                            <div class="error">{{ mortgage_form.INITIAL_PAYMENT_DATE.errors }}</div>
-                        {% endif %}
-                    </div>
-
-                    <div class="form-row">
-                        <label for="{{ mortgage_form.MORTGAGE_TERM.id_for_label }}">{{ mortgage_form.MORTGAGE_TERM.label }}</label>
-                        {{ mortgage_form.MORTGAGE_TERM }}
-                        {% if mortgage_form.MORTGAGE_TERM.errors %}
-                            <div class="error">{{ mortgage_form.MORTGAGE_TERM.errors }}</div>
-                        {% endif %}
-                    </div>
-
-                    <div class="form-row">
-                        <label for="{{ mortgage_form.ANNUAL_RATE.id_for_label }}">{{ mortgage_form.ANNUAL_RATE.label }}</label>
-                        {{ mortgage_form.ANNUAL_RATE }}
-                        {% if mortgage_form.ANNUAL_RATE.errors %}
-                            <div class="error">{{ mortgage_form.ANNUAL_RATE.errors }}</div>
-                        {% endif %}
-                    </div>
-
-                    <div class="form-row">
-                        <label>{{ mortgage_form.HAS_GRACE_PERIOD.label }}</label>
-                        <div class="radio-group">
-                            {% for choice in mortgage_form.HAS_GRACE_PERIOD %}
-                                {{ choice }}
-                            {% endfor %}
-                        </div>
-                        {% if mortgage_form.HAS_GRACE_PERIOD.errors %}
-                            <div class="error">{{ mortgage_form.HAS_GRACE_PERIOD.errors }}</div>
-                        {% endif %}
-                    </div>
-
-                    <div id="grace-period-fields" class="hidden">
+                    <div class="form-content">
+                        <!-- Корректировка стоимости -->
                         <div class="form-row">
-                            <label for="{{ mortgage_form.GRACE_PERIOD_TERM.id_for_label }}">{{ mortgage_form.GRACE_PERIOD_TERM.label }}</label>
-                            {{ mortgage_form.GRACE_PERIOD_TERM }}
-                            {% if mortgage_form.GRACE_PERIOD_TERM.errors %}
-                                <div class="error">{{ mortgage_form.GRACE_PERIOD_TERM.errors }}</div>
+                            <label>Тип корректировки стоимости</label>
+                            <div class="radio-group">
+                                {% for choice in mortgage_form.DISCOUNT_MARKUP_TYPE %}
+                                    <div class="radio-option">
+                                        {{ choice.tag }}
+                                        <label for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            {% if mortgage_form.DISCOUNT_MARKUP_TYPE.errors %}
+                                <div class="error">{{ mortgage_form.DISCOUNT_MARKUP_TYPE.errors }}</div>
                             {% endif %}
                         </div>
 
                         <div class="form-row">
-                            <label for="{{ mortgage_form.GRACE_PERIOD_RATE.id_for_label }}">{{ mortgage_form.GRACE_PERIOD_RATE.label }}</label>
-                            {{ mortgage_form.GRACE_PERIOD_RATE }}
-                            {% if mortgage_form.GRACE_PERIOD_RATE.errors %}
-                                <div class="error">{{ mortgage_form.GRACE_PERIOD_RATE.errors }}</div>
+                            <label id="discount_markup_label" for="{{ mortgage_form.DISCOUNT_MARKUP_VALUE.id_for_label }}">Скидка, %</label>
+                            {{ mortgage_form.DISCOUNT_MARKUP_VALUE }}
+                            {% if mortgage_form.DISCOUNT_MARKUP_VALUE.errors %}
+                                <div class="error">{{ mortgage_form.DISCOUNT_MARKUP_VALUE.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-row">
+                            <label>Итоговая стоимость объекта, руб.</label>
+                            <p id="final_property_cost_display" class="formatted-number">{% if final_property_cost %}{{ final_property_cost }}{% else %}0{% endif %}</p>
+                        </div>
+
+                        <!-- Первоначальный взнос -->
+                        <div class="form-row">
+                            <label>Первоначальный взнос</label>
+                            <div class="payment-inputs">
+                                <div class="input-group">
+                                    <label for="initial_payment_percent">В процентах, %</label>
+                                    <input type="number" id="initial_payment_percent" name="initial_payment_percent" class="form-input" step="0.01"
+                                           value="{% if initial_payment_percent %}{{ initial_payment_percent }}{% else %}{{ mortgage_form.INITIAL_PAYMENT_PERCENT.value|default:0 }}{% endif %}">
+                                </div>
+                                <div class="input-group">
+                                    <label for="initial_payment_rubles">В рублях, руб.</label>
+                                    <input type="number" id="initial_payment_rubles" name="initial_payment_rubles" class="form-input" step="0.01"
+                                           value="{% if initial_payment_rubles %}{{ initial_payment_rubles }}{% else %}0{% endif %}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Остальные параметры ипотеки -->
+                        <div class="form-row">
+                            <label for="{{ mortgage_form.INITIAL_PAYMENT_DATE.id_for_label }}">{{ mortgage_form.INITIAL_PAYMENT_DATE.label }}</label>
+                            {{ mortgage_form.INITIAL_PAYMENT_DATE }}
+                            {% if mortgage_form.INITIAL_PAYMENT_DATE.errors %}
+                                <div class="error">{{ mortgage_form.INITIAL_PAYMENT_DATE.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-row">
+                            <label for="{{ mortgage_form.MORTGAGE_TERM.id_for_label }}">{{ mortgage_form.MORTGAGE_TERM.label }}</label>
+                            {{ mortgage_form.MORTGAGE_TERM }}
+                            {% if mortgage_form.MORTGAGE_TERM.errors %}
+                                <div class="error">{{ mortgage_form.MORTGAGE_TERM.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-row">
+                            <label for="{{ mortgage_form.ANNUAL_RATE.id_for_label }}">{{ mortgage_form.ANNUAL_RATE.label }}</label>
+                            {{ mortgage_form.ANNUAL_RATE }}
+                            {% if mortgage_form.ANNUAL_RATE.errors %}
+                                <div class="error">{{ mortgage_form.ANNUAL_RATE.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-row">
+                            <label>{{ mortgage_form.HAS_GRACE_PERIOD.label }}</label>
+                            <div class="radio-group">
+                                {% for choice in mortgage_form.HAS_GRACE_PERIOD %}
+                                    <div class="radio-option">
+                                        {{ choice.tag }}
+                                        <label for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            {% if mortgage_form.HAS_GRACE_PERIOD.errors %}
+                                <div class="error">{{ mortgage_form.HAS_GRACE_PERIOD.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div id="grace-period-fields" class="hidden">
+                            <div class="form-row">
+                                <label for="{{ mortgage_form.GRACE_PERIOD_TERM.id_for_label }}">{{ mortgage_form.GRACE_PERIOD_TERM.label }}</label>
+                                {{ mortgage_form.GRACE_PERIOD_TERM }}
+                                {% if mortgage_form.GRACE_PERIOD_TERM.errors %}
+                                    <div class="error">{{ mortgage_form.GRACE_PERIOD_TERM.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="form-row">
+                                <label for="{{ mortgage_form.GRACE_PERIOD_RATE.id_for_label }}">{{ mortgage_form.GRACE_PERIOD_RATE.label }}</label>
+                                {{ mortgage_form.GRACE_PERIOD_RATE }}
+                                {% if mortgage_form.GRACE_PERIOD_RATE.errors %}
+                                    <div class="error">{{ mortgage_form.GRACE_PERIOD_RATE.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="button-group">
+                            <button type="submit" name="calculate" class="btn btn-primary">Рассчитать</button>
+                            {% if result %}
+                                <button type="submit" name="export" class="btn btn-secondary">Сохранить в Excel</button>
                             {% endif %}
                         </div>
                     </div>
-
-                    <button type="submit" name="calculate">Рассчитать</button>
-                    {% if result %}
-                        <button type="submit" name="export">Сохранить в Excel</button>
-                    {% endif %}
                 </div>
 
                 {% if result %}
@@ -215,7 +239,7 @@
             </div>
 
             <div style="overflow-x: auto;">
-                <table>
+                <table class="styled-table">
                     <thead>
                         <tr>
                             <th>№</th>
@@ -321,8 +345,24 @@
             // Инициализация заголовка
             updateDiscountMarkupLabel();
 
-            // Расчет итоговой стоимости объекта
+            // Обновление стоимости объекта при выборе из списка
+            const propertySelect = document.getElementById('id_property');
             const propertyCostInput = document.getElementById('id_property_cost');
+
+            if (propertySelect && propertyCostInput) {
+                propertySelect.addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    if (selectedOption && selectedOption.dataset.cost) {
+                        propertyCostInput.value = selectedOption.dataset.cost;
+                        // Обновляем итоговую стоимость
+                        updateFinalPropertyCost();
+                        // Обновляем первоначальный взнос
+                        updateInitialPaymentRubles();
+                    }
+                });
+            }
+
+            // Расчет итоговой стоимости объекта
             const discountMarkupValueInput = document.getElementById('id_DISCOUNT_MARKUP_VALUE');
             const finalPropertyCostDisplay = document.getElementById('final_property_cost_display');
 
@@ -380,6 +420,7 @@
 
             // Инициализация значений
             updateInitialPaymentRubles();
+            updateFinalPropertyCost();
 
             // Функция для форматирования чисел с разделителями
             function formatNumber(number) {
@@ -409,4 +450,4 @@
             });
         });
     </script>
- {% endblock %}
+{% endblock %}
