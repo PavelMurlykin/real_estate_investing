@@ -12,7 +12,6 @@
             {% csrf_token %}
 
             <!-- Секция данных объекта -->
-            <!-- Секция данных объекта -->
             <div class="property-section">
                 <div class="section-title">
                     <h2>Данные объекта</h2>
@@ -20,16 +19,25 @@
 
                 <div class="form-row">
                     <label for="{{ mortgage_form.PROPERTY.id_for_label }}">{{ mortgage_form.PROPERTY.label }}</label>
-                    {{ mortgage_form.PROPERTY }}
+                    <select name="{{ mortgage_form.PROPERTY.name }}" id="{{ mortgage_form.PROPERTY.id_for_label }}" class="form-input" onchange="updatePropertyCost()">
+                        <option value="">---------</option>
+                        {% for property in properties %}
+                            <option value="{{ property.id }}" data-cost="{{ property.property_cost }}" {% if mortgage_form.PROPERTY.value|stringformat:"s" == property.id|stringformat:"s" %}selected{% endif %}>
+                                {{ property.building.real_estate_complex.name }}, кв. {{ property.apartment_number }} - {{ property.property_cost }} руб.
+                            </option>
+                        {% endfor %}
+                    </select>
                     {% if mortgage_form.PROPERTY.errors %}
                         <div class="error">{{ mortgage_form.PROPERTY.errors }}</div>
                     {% endif %}
                 </div>
 
                 <div class="form-row">
-                    <label for="property_cost_input">Базовая стоимость объекта, руб.</label>
-                    <input type="number" id="property_cost_input" name="property_cost" class="form-input" step="0.01"
-                           value="{% if selected_property %}{{ selected_property.property_cost }}{% endif %}">
+                    <label for="{{ mortgage_form.PROPERTY_COST.id_for_label }}">{{ mortgage_form.PROPERTY_COST.label }}</label>
+                    {{ mortgage_form.PROPERTY_COST }}
+                    {% if mortgage_form.PROPERTY_COST.errors %}
+                        <div class="error">{{ mortgage_form.PROPERTY_COST.errors }}</div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -71,14 +79,18 @@
                         <label>Первоначальный взнос</label>
                         <div class="payment-inputs">
                             <div>
-                                <label for="initial_payment_percent">В процентах, %</label>
-                                <input type="number" id="initial_payment_percent" name="initial_payment_percent" class="form-input" step="0.01"
-                                       value="{% if initial_payment_percent %}{{ initial_payment_percent }}{% else %}{{ mortgage_form.INITIAL_PAYMENT_PERCENT.value|default:0 }}{% endif %}">
+                                <label for="{{ mortgage_form.INITIAL_PAYMENT_PERCENT.id_for_label }}">В процентах, %</label>
+                                {{ mortgage_form.INITIAL_PAYMENT_PERCENT }}
+                                {% if mortgage_form.INITIAL_PAYMENT_PERCENT.errors %}
+                                    <div class="error">{{ mortgage_form.INITIAL_PAYMENT_PERCENT.errors }}</div>
+                                {% endif %}
                             </div>
                             <div>
-                                <label for="initial_payment_rubles">В рублях, руб.</label>
-                                <input type="number" id="initial_payment_rubles" name="initial_payment_rubles" class="form-input" step="0.01"
-                                       value="{% if initial_payment_rubles %}{{ initial_payment_rubles }}{% else %}0{% endif %}">
+                                <label for="{{ mortgage_form.INITIAL_PAYMENT_RUBLES.id_for_label }}">В рублях, руб.</label>
+                                {{ mortgage_form.INITIAL_PAYMENT_RUBLES }}
+                                {% if mortgage_form.INITIAL_PAYMENT_RUBLES.errors %}
+                                    <div class="error">{{ mortgage_form.INITIAL_PAYMENT_RUBLES.errors }}</div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -373,12 +385,11 @@
                 });
             }
 
-            // Обновляем обработчики событий для использования propertyCostInput
+            propertyCostInput.addEventListener('input', updateFinalPropertyCost);
             discountMarkupValueInput.addEventListener('input', updateFinalPropertyCost);
             discountMarkupTypeRadios.forEach(function(radio) {
                 radio.addEventListener('change', updateFinalPropertyCost);
             });
-            propertyCostInput.addEventListener('input', updateFinalPropertyCost);
 
             // Синхронизация первоначального взноса в процентах и рублях
             const initialPaymentPercentInput = document.getElementById('initial_payment_percent');

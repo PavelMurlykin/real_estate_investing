@@ -33,12 +33,12 @@ def mortgage_calculator(request):
                 # Получаем выбранный объект недвижимости
                 property_obj = data['PROPERTY']
 
-                # Получаем стоимость из input поля
-                property_cost = float(request.POST.get('property_cost', property_obj.property_cost))
+                # Получаем стоимость из формы и преобразуем в float
+                property_cost = float(data['PROPERTY_COST'])
 
-                # Получаем значения первоначального взноса
-                initial_payment_percent = data.get('INITIAL_PAYMENT_PERCENT', 0) or 0
-                initial_payment_rubles = data.get('INITIAL_PAYMENT_RUBLES', 0) or 0
+                # Получаем значения первоначального взноса и преобразуем в float
+                initial_payment_percent = float(data.get('INITIAL_PAYMENT_PERCENT', 0) or 0)
+                initial_payment_rubles = float(data.get('INITIAL_PAYMENT_RUBLES', 0) or 0)
 
                 # Рассчитываем итоговую стоимость объекта
                 discount_markup_value = float(data.get('DISCOUNT_MARKUP_VALUE', 0) or 0)
@@ -51,30 +51,25 @@ def mortgage_calculator(request):
                 # Если введены рубли, но не проценты, рассчитываем проценты
                 if initial_payment_rubles and not initial_payment_percent and final_property_cost > 0:
                     initial_payment_percent = (initial_payment_rubles / final_property_cost) * 100
-                    # Обновляем значение в форме
-                    mortgage_form.cleaned_data['INITIAL_PAYMENT_PERCENT'] = initial_payment_percent
 
                 # Если введены проценты, но не рубли, рассчитываем рубли
                 if initial_payment_percent and not initial_payment_rubles and final_property_cost > 0:
                     initial_payment_rubles = final_property_cost * initial_payment_percent / 100
-                    # Обновляем значение в форме
-                    mortgage_form.cleaned_data['INITIAL_PAYMENT_RUBLES'] = initial_payment_rubles
 
                 # Если оба поля заполнены, используем проценты как основной источник
                 if initial_payment_percent and initial_payment_rubles:
                     # Пересчитываем рубли на основе процентов для consistency
                     initial_payment_rubles = final_property_cost * initial_payment_percent / 100
-                    mortgage_form.cleaned_data['INITIAL_PAYMENT_RUBLES'] = initial_payment_rubles
 
-                # Создаем экземпляр калькулятора
+                # Создаем экземпляр калькулятора (все значения преобразуем к float)
                 calculator = MortgageCalculator(
-                    property_cost=final_property_cost,
+                    property_cost=float(final_property_cost),
                     initial_payment_percent=float(initial_payment_percent),
                     initial_payment_date=data['INITIAL_PAYMENT_DATE'],
-                    mortgage_term=data['MORTGAGE_TERM'],
+                    mortgage_term=int(data['MORTGAGE_TERM']),
                     annual_rate=float(data['ANNUAL_RATE']),
                     has_grace_period=data['HAS_GRACE_PERIOD'] == 'да',
-                    grace_period_term=data['GRACE_PERIOD_TERM'] or 0,
+                    grace_period_term=int(data['GRACE_PERIOD_TERM'] or 0),
                     grace_period_rate=float(data['GRACE_PERIOD_RATE'] or 0)
                 )
 
@@ -102,29 +97,29 @@ def mortgage_calculator(request):
                         if key in payment:
                             payment[key] = format_currency(payment[key])
 
-                # Сохраняем расчет в базу данных
+                # Сохраняем расчет в базу данных (сохраняем как Decimal)
                 calculation = MortgageCalculation(
                     property=property_obj,
-                    initial_payment_percent=initial_payment_percent,
+                    initial_payment_percent=decimal.Decimal(str(initial_payment_percent)),
                     initial_payment_date=data['INITIAL_PAYMENT_DATE'],
                     mortgage_term=data['MORTGAGE_TERM'],
-                    annual_rate=data['ANNUAL_RATE'],
+                    annual_rate=decimal.Decimal(str(data['ANNUAL_RATE'])),
                     has_grace_period=data['HAS_GRACE_PERIOD'] == 'да',
                     grace_period_term=data['GRACE_PERIOD_TERM'],
-                    grace_period_rate=data['GRACE_PERIOD_RATE'],
+                    grace_period_rate=decimal.Decimal(str(data['GRACE_PERIOD_RATE'] or 0)),
                     discount_markup_type=data['DISCOUNT_MARKUP_TYPE'],
-                    discount_markup_value=discount_markup_value,
-                    final_property_cost=final_property_cost,
+                    discount_markup_value=decimal.Decimal(str(discount_markup_value)),
+                    final_property_cost=decimal.Decimal(str(final_property_cost)),
                     # Результаты
                     grace_payments_count=result['grace_payments_count'],
                     grace_period_end_date=result['grace_period_end_date'],
-                    grace_monthly_payment=result['grace_monthly_payment'],
-                    loan_after_grace=result['loan_after_grace'],
+                    grace_monthly_payment=decimal.Decimal(str(result['grace_monthly_payment'])),
+                    loan_after_grace=decimal.Decimal(str(result['loan_after_grace'])),
                     main_payments_count=result['main_payments_count'],
                     mortgage_end_date=result['mortgage_end_date'],
-                    main_monthly_payment=result['main_monthly_payment'],
-                    total_loan_amount=result['total_loan_amount'],
-                    total_overpayment=result['total_overpayment']
+                    main_monthly_payment=decimal.Decimal(str(result['main_monthly_payment'])),
+                    total_loan_amount=decimal.Decimal(str(result['total_loan_amount'])),
+                    total_overpayment=decimal.Decimal(str(result['total_overpayment']))
                 )
                 calculation.save()
 
@@ -149,12 +144,14 @@ def mortgage_calculator(request):
                 # Получаем выбранный объект недвижимости
                 property_obj = mortgage_data['PROPERTY']
 
-                # Получаем значения первоначального взноса
-                initial_payment_percent = mortgage_data.get('INITIAL_PAYMENT_PERCENT', 0) or 0
-                initial_payment_rubles = mortgage_data.get('INITIAL_PAYMENT_RUBLES', 0) or 0
+                # Получаем стоимость из формы и преобразуем в float
+                property_cost = float(mortgage_data['PROPERTY_COST'])
+
+                # Получаем значения первоначального взноса и преобразуем в float
+                initial_payment_percent = float(mortgage_data.get('INITIAL_PAYMENT_PERCENT', 0) or 0)
+                initial_payment_rubles = float(mortgage_data.get('INITIAL_PAYMENT_RUBLES', 0) or 0)
 
                 # Рассчитываем итоговую стоимость объекта
-                property_cost = float(property_obj.property_cost)
                 discount_markup_value = float(mortgage_data.get('DISCOUNT_MARKUP_VALUE', 0) or 0)
 
                 if mortgage_data['DISCOUNT_MARKUP_TYPE'] == 'discount':
@@ -175,15 +172,15 @@ def mortgage_calculator(request):
                     # Пересчитываем рубли на основе процентов для consistency
                     initial_payment_rubles = final_property_cost * initial_payment_percent / 100
 
-                # Создаем экземпляр калькулятора
+                # Создаем экземпляр калькулятора (все значения преобразуем к float)
                 calculator = MortgageCalculator(
-                    property_cost=final_property_cost,
-                    initial_payment_percent=initial_payment_percent,
+                    property_cost=float(final_property_cost),
+                    initial_payment_percent=float(initial_payment_percent),
                     initial_payment_date=mortgage_data['INITIAL_PAYMENT_DATE'],
-                    mortgage_term=mortgage_data['MORTGAGE_TERM'],
+                    mortgage_term=int(mortgage_data['MORTGAGE_TERM']),
                     annual_rate=float(mortgage_data['ANNUAL_RATE']),
                     has_grace_period=mortgage_data['HAS_GRACE_PERIOD'] == 'да',
-                    grace_period_term=mortgage_data['GRACE_PERIOD_TERM'] or 0,
+                    grace_period_term=int(mortgage_data['GRACE_PERIOD_TERM'] or 0),
                     grace_period_rate=float(mortgage_data['GRACE_PERIOD_RATE'] or 0)
                 )
 
@@ -228,12 +225,12 @@ def mortgage_calculator(request):
                     ['Корпус', property_obj.building.number],
                     ['№ квартиры', property_obj.apartment_number],
                     ['Планировка', property_obj.layout.name],
-                    ['Площадь', property_obj.area],
+                    ['Площадь', float(property_obj.area)],
                     ['Этаж', property_obj.floor],
-                    ['Стоимость объекта, руб.', property_obj.property_cost],
+                    ['Стоимость объекта, руб.', property_cost],
                     ['Тип изменения цены',
                      'Скидка' if mortgage_data['DISCOUNT_MARKUP_TYPE'] == 'discount' else 'Удорожание'],
-                    ['Значение, %', mortgage_data['DISCOUNT_MARKUP_VALUE']],
+                    ['Значение, %', discount_markup_value],
                     ['Итоговая стоимость объекта, руб.', final_property_cost],
                 ]
 
@@ -242,7 +239,7 @@ def mortgage_calculator(request):
                     cell = ws[f'B{i}']
 
                     # Применяем форматирование к числам
-                    if isinstance(value, (int, float, decimal.Decimal)):
+                    if isinstance(value, (int, float)):
                         if param == 'Этаж':
                             cell.value = int(value)
                             cell.style = integer_style
@@ -269,15 +266,15 @@ def mortgage_calculator(request):
                     ['Первоначальный взнос, %', initial_payment_percent],
                     ['Первоначальный взнос, руб.', final_property_cost * initial_payment_percent / 100],
                     ['Дата первоначального взноса', mortgage_data['INITIAL_PAYMENT_DATE'].strftime('%d.%m.%Y')],
-                    ['Срок ипотеки, годы', mortgage_data['MORTGAGE_TERM']],
-                    ['Годовая ставка, %', mortgage_data['ANNUAL_RATE']],
+                    ['Срок ипотеки, годы', int(mortgage_data['MORTGAGE_TERM'])],
+                    ['Годовая ставка, %', float(mortgage_data['ANNUAL_RATE'])],
                     ['Наличие льготного периода', 'Да' if mortgage_data['HAS_GRACE_PERIOD'] == 'да' else 'Нет'],
                 ]
 
                 if mortgage_data['HAS_GRACE_PERIOD'] == 'да':
                     mortgage_data_list.extend([
-                        ['Срок льготного периода, годы', mortgage_data['GRACE_PERIOD_TERM']],
-                        ['Годовая ставка в льготный период, %', mortgage_data['GRACE_PERIOD_RATE']]
+                        ['Срок льготного периода, годы', int(mortgage_data['GRACE_PERIOD_TERM'])],
+                        ['Годовая ставка в льготный период, %', float(mortgage_data['GRACE_PERIOD_RATE'])]
                     ])
 
                 for i, (param, value) in enumerate(mortgage_data_list, start=start_row + 1):
@@ -285,7 +282,7 @@ def mortgage_calculator(request):
                     cell = ws[f'B{i}']
 
                     # Применяем форматирование к числам
-                    if isinstance(value, (int, float, decimal.Decimal)):
+                    if isinstance(value, (int, float)):
                         if param in ['Срок ипотеки, годы', 'Срок льготного периода, годы']:
                             cell.value = int(value)
                             cell.style = integer_style
@@ -315,16 +312,16 @@ def mortgage_calculator(request):
                         ['Число платежей за льготный период', result['grace_payments_count']],
                         ['Дата последнего платежа по льготному периоду', grace_period_end_date_str],
                         ['Сумма ежемесячного платежа во время льготного периода, руб.',
-                         result['grace_monthly_payment']],
-                        ['Сумма кредита после окончания льготного периода, руб.', result['loan_after_grace']],
+                         float(result['grace_monthly_payment'])],
+                        ['Сумма кредита после окончания льготного периода, руб.', float(result['loan_after_grace'])],
                     ])
 
                 result_data.extend([
                     ['Число платежей за основной период', result['main_payments_count']],
                     ['Дата последнего платежа по ипотеке', result['mortgage_end_date'].strftime('%d.%m.%Y')],
-                    ['Сумма ежемесячного платежа за основной период, руб.', result['main_monthly_payment']],
-                    ['Сумма кредита, руб.', result['total_loan_amount']],
-                    ['Сумма переплат по кредиту, руб.', result['total_overpayment']],
+                    ['Сумма ежемесячного платежа за основной период, руб.', float(result['main_monthly_payment'])],
+                    ['Сумма кредита, руб.', float(result['total_loan_amount'])],
+                    ['Сумма переплат по кредиту, руб.', float(result['total_overpayment'])],
                 ])
 
                 for i, (param, value) in enumerate(result_data, start=result_start + 1):
@@ -332,7 +329,7 @@ def mortgage_calculator(request):
                     cell = ws[f'B{i}']
 
                     # Применяем форматирование к числам
-                    if isinstance(value, (int, float, decimal.Decimal)):
+                    if isinstance(value, (int, float)):
                         if param in ['Число платежей за льготный период', 'Число платежей за основной период']:
                             cell.value = int(value)
                             cell.style = integer_style
@@ -370,7 +367,7 @@ def mortgage_calculator(request):
                         if isinstance(value, str):
                             numeric_value = float(value.replace(' ', '').replace(',', '.'))
                         else:
-                            numeric_value = value
+                            numeric_value = float(value)
                         cell = ws.cell(row=row, column=col_idx, value=numeric_value)
                         cell.style = number_style
                         cell.alignment = Alignment(horizontal='center')

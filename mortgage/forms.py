@@ -15,14 +15,15 @@ class MortgageForm(forms.Form):
         })
     )
 
-    # Поле для отображения стоимости выбранного объекта (только для чтения)
-    PROPERTY_COST_DISPLAY = forms.DecimalField(
-        label='Стоимость объекта',
-        required=False,
+    # Поле для базовой стоимости объекта
+    PROPERTY_COST = forms.DecimalField(
+        label='Базовая стоимость объекта, руб.',
+        max_digits=15,
+        decimal_places=2,
         widget=forms.NumberInput(attrs={
             'class': 'form-input',
-            'readonly': 'readonly',
-            'id': 'property_cost_display'
+            'step': '0.01',
+            'id': 'property_cost_input'
         })
     )
 
@@ -49,13 +50,13 @@ class MortgageForm(forms.Form):
         })
     )
 
+    # Первоначальный взнос (сделаем оба поля обязательными)
     INITIAL_PAYMENT_PERCENT = forms.DecimalField(
         label='Первоначальный взнос, %',
         min_value=0,
         max_value=100,
         max_digits=5,
         decimal_places=2,
-        required=False,
         widget=forms.NumberInput(attrs={
             'class': 'form-input',
             'step': '0.01',
@@ -69,7 +70,6 @@ class MortgageForm(forms.Form):
         min_value=0,
         max_digits=15,
         decimal_places=2,
-        required=False,
         widget=forms.NumberInput(attrs={
             'class': 'form-input',
             'step': '0.01',
