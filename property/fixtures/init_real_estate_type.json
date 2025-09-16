@@ -1,0 +1,26 @@
+[
+  {
+    "model": "property.realestatetype",
+    "pk": 1,
+    "fields": {
+      "name": "Первичная",
+      "description": "Новостройки от застройщика"
+    }
+  },
+  {
+    "model": "property.realestatetype",
+    "pk": 2,
+    "fields": {
+      "name": "Вторичная",
+      "description": "Жилье на вторичном рынке"
+    }
+  },
+  {
+    "model": "property.realestatetype",
+    "pk": 3,
+    "fields": {
+      "name": "Загородная",
+      "description": "Загородная недвижимость: дома, коттеджи, участки"
+    }
+  }
+]

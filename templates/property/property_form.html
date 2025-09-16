@@ -1,12 +1,12 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+
+{% block title %}{% if object %}Редактирование{% else %}Создание{% endif %} объекта недвижимости{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>{{ title }}</h2>
-        <a href="{% url 'property:property_list' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Назад к списку
-        </a>
+        <h1>{% if object %}Редактирование{% else %}Создание{% endif %} объекта недвижимости</h1>
+        <a href="{% url 'property:list' %}" class="btn btn-secondary">Назад к списку</a>
     </div>
 
     <div class="card">
@@ -14,43 +14,252 @@
             <form method="post">
                 {% csrf_token %}
 
+                <h4 class="mb-3">Основная информация</h4>
                 <div class="row">
                     <div class="col-md-6">
-                        <h4>Основная информация</h4>
-                        {% for field in form %}
-                            {% if field.name in 'developer,city,complex_name,complex_class,building,apartment_number' %}
-                            <div class="mb-3">
-                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                                {{ field }}
-                                {% if field.errors %}
-                                    <div class="text-danger">{{ field.errors }}</div>
-                                {% endif %}
-                            </div>
+                        <div class="mb-3">
+                            <label for="{{ form.apartment_number.id_for_label }}" class="form-label">{{ form.apartment_number.label }}</label>
+                            {{ form.apartment_number }}
+                            {% if form.apartment_number.errors %}
+                            <div class="text-danger">{{ form.apartment_number.errors }}</div>
                             {% endif %}
-                        {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.area.id_for_label }}" class="form-label">{{ form.area.label }}</label>
+                            {{ form.area }}
+                            {% if form.area.errors %}
+                            <div class="text-danger">{{ form.area.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.floor.id_for_label }}" class="form-label">{{ form.floor.label }}</label>
+                            {{ form.floor }}
+                            {% if form.floor.errors %}
+                            <div class="text-danger">{{ form.floor.errors }}</div>
+                            {% endif %}
+                        </div>
                     </div>
+
                     <div class="col-md-6">
-                        <h4>Характеристики</h4>
-                        {% for field in form %}
-                            {% if field.name in 'layout,area,floor,property_cost' %}
-                            <div class="mb-3">
-                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                                {{ field }}
-                                {% if field.errors %}
-                                    <div class="text-danger">{{ field.errors }}</div>
-                                {% endif %}
-                            </div>
+                        <div class="mb-3">
+                            <label for="{{ form.property_cost.id_for_label }}" class="form-label">{{ form.property_cost.label }}</label>
+                            {{ form.property_cost }}
+                            {% if form.property_cost.errors %}
+                            <div class="text-danger">{{ form.property_cost.errors }}</div>
                             {% endif %}
-                        {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.layout.id_for_label }}" class="form-label">{{ form.layout.label }}</label>
+                            {{ form.layout }}
+                            {% if form.layout.errors %}
+                            <div class="text-danger">{{ form.layout.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.decoration.id_for_label }}" class="form-label">{{ form.decoration.label }}</label>
+                            {{ form.decoration }}
+                            {% if form.decoration.errors %}
+                            <div class="text-danger">{{ form.decoration.errors }}</div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
 
-                <div class="mt-4">
+                <h4 class="mb-3 mt-4">Местоположение</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Регион</label>
+                            <select class="form-control" id="region-select">
+                                <option value="">Выберите регион</option>
+                                {% for region in regions %}
+                                <option value="{{ region.id }}" {% if current_region == region.id %}selected{% endif %}>{{ region.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Город</label>
+                            <select class="form-control" id="city-select">
+                                <option value="">Выберите город</option>
+                                {% if filtered_cities %}
+                                    {% for city in filtered_cities %}
+                                    <option value="{{ city.id }}" {% if current_city == city.id %}selected{% endif %}>{{ city.name }}</option>
+                                    {% endfor %}
+                                {% else %}
+                                    {% for city in cities %}
+                                    <option value="{{ city.id }}" {% if current_city == city.id %}selected{% endif %}>{{ city.name }}</option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Район</label>
+                            <select class="form-control" id="district-select">
+                                <option value="">Выберите район</option>
+                                {% if filtered_districts %}
+                                    {% for district in filtered_districts %}
+                                    <option value="{{ district.id }}" {% if current_district == district.id %}selected{% endif %}>{{ district.name }}</option>
+                                    {% endfor %}
+                                {% else %}
+                                    {% for district in districts %}
+                                    <option value="{{ district.id }}" {% if current_district == district.id %}selected{% endif %}>{{ district.name }}</option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Застройщик</label>
+                            <select class="form-control" id="developer-select">
+                                <option value="">Выберите застройщика</option>
+                                {% for developer in developers %}
+                                <option value="{{ developer.id }}" {% if current_developer == developer.id %}selected{% endif %}>{{ developer.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Жилой комплекс</label>
+                            <select class="form-control" id="complex-select">
+                                <option value="">Выберите ЖК</option>
+                                {% if filtered_complexes %}
+                                    {% for complex in filtered_complexes %}
+                                    <option value="{{ complex.id }}" {% if current_complex == complex.id %}selected{% endif %}>{{ complex.name }}</option>
+                                    {% endfor %}
+                                {% else %}
+                                    {% for complex in complexes %}
+                                    <option value="{{ complex.id }}" {% if current_complex == complex.id %}selected{% endif %}>{{ complex.name }}</option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.building.id_for_label }}" class="form-label">{{ form.building.label }}</label>
+                            <select class="form-control" id="id_building" name="building">
+                                <option value="">Выберите корпус</option>
+                                {% if filtered_buildings %}
+                                    {% for building in filtered_buildings %}
+                                    <option value="{{ building.id }}" {% if current_building == building.id %}selected{% endif %}>{{ building.number }}</option>
+                                    {% endfor %}
+                                {% else %}
+                                    {% for building in buildings %}
+                                    <option value="{{ building.id }}" {% if current_building == building.id %}selected{% endif %}>{{ building.number }}</option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                            {% if form.building.errors %}
+                            <div class="text-danger">{{ form.building.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between mt-4">
                     <button type="submit" class="btn btn-primary">Сохранить</button>
-                    <a href="{% url 'property:property_list' %}" class="btn btn-secondary">Отмена</a>
+                    <a href="{% url 'property:list' %}" class="btn btn-secondary">Отмена</a>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Функция для фильтрации городов по региону
+    const regionSelect = document.getElementById('region-select');
+    const citySelect = document.getElementById('city-select');
+    const districtSelect = document.getElementById('district-select');
+    const developerSelect = document.getElementById('developer-select');
+    const complexSelect = document.getElementById('complex-select');
+    const buildingSelect = document.getElementById('id_building');
+
+    // Функция для загрузки данных через AJAX
+    function loadOptions(url, selectElement, params = {}) {
+        fetch(url + '?' + new URLSearchParams(params))
+            .then(response => response.json())
+            .then(data => {
+                selectElement.innerHTML = '<option value="">Выберите вариант</option>';
+                data.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.textContent = item.name;
+                    selectElement.appendChild(option);
+                });
+
+                // Если есть текущее значение, устанавливаем его
+                if (params.currentValue) {
+                    selectElement.value = params.currentValue;
+                    // Вызываем событие change для обновления следующих списков
+                    selectElement.dispatchEvent(new Event('change'));
+                }
+            });
+    }
+
+    // При изменении региона фильтруем города
+    regionSelect.addEventListener('change', function() {
+        const regionId = this.value;
+        if (regionId) {
+            loadOptions('/api/cities/', citySelect, {region_id: regionId});
+        } else {
+            citySelect.innerHTML = '<option value="">Выберите город</option>';
+            districtSelect.innerHTML = '<option value="">Выберите район</option>';
+            complexSelect.innerHTML = '<option value="">Выберите ЖК</option>';
+            buildingSelect.innerHTML = '<option value="">Выберите корпус</option>';
+        }
+    });
+
+    // При изменении города фильтруем районы
+    citySelect.addEventListener('change', function() {
+        const cityId = this.value;
+        if (cityId) {
+            loadOptions('/api/districts/', districtSelect, {city_id: cityId});
+        } else {
+            districtSelect.innerHTML = '<option value="">Выберите район</option>';
+            complexSelect.innerHTML = '<option value="">Выберите ЖК</option>';
+            buildingSelect.innerHTML = '<option value="">Выберите корпус</option>';
+        }
+    });
+
+    // При изменении района фильтруем ЖК
+    districtSelect.addEventListener('change', function() {
+        const districtId = this.value;
+        if (districtId) {
+            loadOptions('/api/complexes/', complexSelect, {district_id: districtId});
+        } else {
+            complexSelect.innerHTML = '<option value="">Выберите ЖК</option>';
+            buildingSelect.innerHTML = '<option value="">Выберите корпус</option>';
+        }
+    });
+
+    // При изменении ЖК фильтруем корпуса
+    complexSelect.addEventListener('change', function() {
+        const complexId = this.value;
+        if (complexId) {
+            loadOptions('/api/buildings/', buildingSelect, {complex_id: complexId});
+        } else {
+            buildingSelect.innerHTML = '<option value="">Выберите корпус</option>';
+        }
+    });
+
+    // Если при загрузке страницы есть выбранные значения, инициируем цепочку событий
+    {% if current_region %}
+    regionSelect.dispatchEvent(new Event('change'));
+    {% endif %}
+});
+</script>
 {% endblock %}

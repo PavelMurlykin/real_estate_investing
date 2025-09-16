@@ -1,17 +1,20 @@
 import os
-import environ
+# import environ
 from pathlib import Path
 
-env = environ.Env(
-    DEBUG=(bool, False)
-)
+
+# env = environ.Env(
+#     DEBUG=(bool, False)
+# )
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+# environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
-DEBUG = env('DEBUG')
-SECRET_KEY = env('SECRET_KEY')
+# DEBUG = env('DEBUG')
+# SECRET_KEY = env('SECRET_KEY')
+DEBUG = True
+SECRET_KEY = '%-+#vp2)jwz#e_bl#*d92)%c%oh10*ta-e)1tfu-e#vuelqs3='
 
 ALLOWED_HOSTS = ['*']
 
@@ -61,7 +64,7 @@ TEMPLATES = [
 # STATICFILES_DIRS = [BASE_DIR / 'static']
 
 WSGI_APPLICATION = 'real_estate_investing.wsgi.application'
-
+"""
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -70,6 +73,17 @@ DATABASES = {
         'PASSWORD': env('DB_PASSWORD'),
         'HOST': env('DB_HOST'),
         'PORT': env('DB_PORT', default='5432'),
+    }
+}
+"""
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'real_estate_investing',
+        'USER': 'pavel_murlykin',
+        'PASSWORD': '89313586441Pavel',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 

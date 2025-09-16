@@ -1,0 +1,274 @@
+[
+  {
+    "model": "property.district",
+    "pk": 1,
+    "fields": {
+      "name": "Адмиралтейский",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 2,
+    "fields": {
+      "name": "Василеостровский",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 3,
+    "fields": {
+      "name": "Выборгский",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 4,
+    "fields": {
+      "name": "Калининский",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 5,
+    "fields": {
+      "name": "Кировский",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 6,
+    "fields": {
+      "name": "Колпинский",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 7,
+    "fields": {
+      "name": "Красногвардейский",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 8,
+    "fields": {
+      "name": "Красносельский",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 9,
+    "fields": {
+      "name": "Кронштадтский",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 10,
+    "fields": {
+      "name": "Курортный",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 11,
+    "fields": {
+      "name": "Московский",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 12,
+    "fields": {
+      "name": "Невский",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 13,
+    "fields": {
+      "name": "Петроградский",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 14,
+    "fields": {
+      "name": "Петродворцовый",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 15,
+    "fields": {
+      "name": "Приморский",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 16,
+    "fields": {
+      "name": "Пушкинский",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 17,
+    "fields": {
+      "name": "Фрунзенский",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 18,
+    "fields": {
+      "name": "Центральный",
+      "city": 1
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 19,
+    "fields": {
+      "name": "Центральный административный округ",
+      "city": 2
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 20,
+    "fields": {
+      "name": "Северный административный округ",
+      "city": 2
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 21,
+    "fields": {
+      "name": "Северо-Восточный административный округ",
+      "city": 2
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 22,
+    "fields": {
+      "name": "Восточный административный округ",
+      "city": 2
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 23,
+    "fields": {
+      "name": "Юго-Восточный административный округ",
+      "city": 2
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 24,
+    "fields": {
+      "name": "Южный административный округ",
+      "city": 2
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 25,
+    "fields": {
+      "name": "Юго-Западный административный округ",
+      "city": 2
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 26,
+    "fields": {
+      "name": "Западный административный округ",
+      "city": 2
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 27,
+    "fields": {
+      "name": "Северо-Западный административный округ",
+      "city": 2
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 28,
+    "fields": {
+      "name": "Зеленоградский административный округ",
+      "city": 2
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 29,
+    "fields": {
+      "name": "Троицкий административный округ",
+      "city": 2
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 30,
+    "fields": {
+      "name": "Новомосковский административный округ",
+      "city": 2
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 31,
+    "fields": {
+      "name": "Центральный",
+      "city": 3
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 32,
+    "fields": {
+      "name": "Ленинградский",
+      "city": 3
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 33,
+    "fields": {
+      "name": "Московский",
+      "city": 3
+    }
+  },
+  {
+    "model": "property.district",
+    "pk": 34,
+    "fields": {
+      "name": "Балтийский",
+      "city": 3
+    }
+  }
+]

@@ -1,95 +1,98 @@
 {% extends "base.html" %}
 
-{% block title %}
-   Информация по объекту
-{% endblock %}
+{% block title %}Объект недвижимости #{{ property.id }}{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Объект недвижимости</h2>
+        <h1>Объект недвижимости #{{ property.id }}</h1>
         <div>
-            <a href="{% url 'property:property_update' property.pk %}" class="btn btn-secondary">
-                <i class="bi bi-pencil"></i> Редактировать
-            </a>
-            <a href="{% url 'property:property_list' %}" class="btn btn-outline-primary">
-                <i class="bi bi-arrow-left"></i> Назад к списку
-            </a>
+            <a href="{% url 'property:update' property.pk %}" class="btn btn-warning">Редактировать</a>
+            <a href="{% url 'property:delete' property.pk %}" class="btn btn-danger">Удалить</a>
+            <a href="{% url 'property:list' %}" class="btn btn-secondary">Назад к списку</a>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <h4>Основная информация</h4>
-                    <table class="table table-borderless">
-                        <tr>
-                            <th width="40%">Застройщик:</th>
-                            <td>{{ property.developer }}</td>
-                        </tr>
-                        <tr>
-                            <th>Город:</th>
-                            <td>{{ property.get_city_display }}</td>
-                        </tr>
-                        <tr>
-                            <th>Название ЖК:</th>
-                            <td>{{ property.complex_name }}</td>
-                        </tr>
-                        <tr>
-                            <th>Класс ЖК:</th>
-                            <td>{{ property.get_complex_class_display }}</td>
-                        </tr>
-                        <tr>
-                            <th>Корпус:</th>
-                            <td>{{ property.building }}</td>
-                        </tr>
-                        <tr>
-                            <th>Квартира:</th>
-                            <td>{{ property.apartment_number }}</td>
-                        </tr>
-                    </table>
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Основная информация</h5>
                 </div>
-                <div class="col-md-6">
-                    <h4>Характеристики</h4>
-                    <table class="table table-borderless">
-                        <tr>
-                            <th width="40%">Планировка:</th>
-                            <td>{{ property.layout }}</td>
-                        </tr>
-                        <tr>
-                            <th>Площадь:</th>
-                            <td>{{ property.area }} м²</td>
-                        </tr>
-                        <tr>
-                            <th>Этаж:</th>
-                            <td>{{ property.floor }}</td>
-                        </tr>
-                        <tr>
-                            <th>Стоимость:</th>
-                            <td>{{ property.formatted_cost }} руб.</td>
-                        </tr>
-                        <tr>
-                            <th>Дата создания:</th>
-                            <td>{{ property.created_at|date:"d.m.Y H:i" }}</td>
-                        </tr>
-                        <tr>
-                            <th>Последнее обновление:</th>
-                            <td>{{ property.updated_at|date:"d.m.Y H:i" }}</td>
-                        </tr>
-                    </table>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Застройщик:</strong> {{ property.building.real_estate_complex.developer.name }}</p>
+                            <p><strong>ЖК:</strong> {{ property.building.real_estate_complex.name }}</p>
+                            <p><strong>Корпус:</strong> {{ property.building.number }}</p>
+                            <p><strong>Квартира:</strong> {{ property.apartment_number }}</p>
+                            <p><strong>Планировка:</strong> {{ property.layout.name }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Отделка:</strong> {{ property.decoration.name }}</p>
+                            <p><strong>Площадь:</strong> {{ property.area }} м²</p>
+                            <p><strong>Этаж:</strong> {{ property.floor }}</p>
+                            <p><strong>Стоимость:</strong> {{ property.property_cost }} руб.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Информация о ЖК</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Класс ЖК:</strong> {{ property.building.real_estate_complex.real_estate_class.name }}</p>
+                            <p><strong>Тип недвижимости:</strong> {{ property.building.real_estate_complex.real_estate_type.name }}</p>
+                            <p><strong>Район:</strong> {{ property.building.real_estate_complex.district.name }}</p>
+                            <p><strong>Город:</strong> {{ property.building.real_estate_complex.district.city.name }}</p>
+                            <p><strong>Регион:</strong> {{ property.building.real_estate_complex.district.city.region.name }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            {% if property.building.real_estate_complex.map_link %}
+                            <p><strong>Ссылка на картах:</strong> <a href="{{ property.building.real_estate_complex.map_link }}" target="_blank">Посмотреть</a></p>
+                            {% endif %}
+                            {% if property.building.real_estate_complex.presentation_link %}
+                            <p><strong>Презентация:</strong> <a href="{{ property.building.real_estate_complex.presentation_link }}" target="_blank">Скачать</a></p>
+                            {% endif %}
+                            {% if property.building.commissioning_date %}
+                            <p><strong>Дата ввода в эксплуатацию:</strong> {{ property.building.commissioning_date }}</p>
+                            {% endif %}
+                            {% if property.building.key_handover_date %}
+                            <p><strong>Дата выдачи ключей:</strong> {{ property.building.key_handover_date }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="mt-3 d-flex justify-content-between">
-        <a href="{% url 'property:property_delete' property.pk %}" class="btn btn-outline-danger">
-            <i class="bi bi-trash"></i> Удалить объект
-        </a>
-        <a href="{% url 'mortgage:mortgage_calculator' %}?property_id={{ property.pk }}&property_cost={{ property.property_cost|stringformat:'f' }}" class="btn btn-primary">
-            <i class="bi bi-calculator"></i> Рассчитать ипотеку
-        </a>
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Действия</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'mortgage:mortgage_calculator' %}?property_id={{ property.id }}" class="btn btn-primary">Рассчитать ипотеку</a>
+                        <a href="{% url 'trench_mortgage:trench_mortgage_calculator' %}?property_id={{ property.id }}" class="btn btn-primary">Рассчитать траншевую ипотеку</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5>Системная информация</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Дата создания:</strong> {{ property.created_at }}</p>
+                    <p><strong>Дата обновления:</strong> {{ property.updated_at }}</p>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
