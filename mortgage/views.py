@@ -1,68 +1,46 @@
 import decimal
 import openpyxl
 from django.http import HttpResponse
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
+from django.shortcuts import render, get_object_or_404
 from openpyxl.styles import Font, Alignment, NamedStyle
 from openpyxl.utils import get_column_letter
 
 from .forms import MortgageForm
 from .models import MortgageCalculation
 from .mortgage_calculator import MortgageCalculator
-from .utils import format_currency, format_integer
-from property.models import Property  # импортируем из нового приложения
+from .utils import format_currency
+from property.models import Property
 
 
 def mortgage_calculator(request):
-    # Если передан параметр property_id, предзаполняем форму
-    property_id = request.GET.get('property_id')
-    property_cost = request.GET.get('property_cost')
-    initial_data = {}
-    property_obj = None
-
-    if property_id:
-        try:
-            property_obj = Property.objects.get(pk=property_id)
-            initial_data['PROPERTY'] = property_obj
-
-            if property_obj and not property_cost:
-                # Форматируем стоимость объекта для передачи в URL
-                property_cost = format_currency(property_obj.property_cost).replace(' ', '').replace(',', '.')
-
-            # Преобразуем стоимость объекта в правильный формат
-            if property_cost:
-                # Убираем пробелы и заменяем запятую на точку
-                property_cost = property_cost.replace(' ', '').replace(',', '.')
-                initial_data['property_cost'] = property_cost
-            else:
-                initial_data['property_cost'] = property_obj.property_cost
-
-        except Property.DoesNotExist:
-            pass
-
     # Инициализация формы
-    mortgage_form = MortgageForm(request.POST or None, initial=initial_data)
+    mortgage_form = MortgageForm(request.POST or None)
+
+    # Получаем список всех объектов
+    properties = Property.objects.all()
 
     context = {
         'mortgage_form': mortgage_form,
-        'property_obj': property_obj
+        'properties': properties
     }
 
     if request.method == 'POST':
         if 'calculate' in request.POST:
             if mortgage_form.is_valid():
-                # Получаем объект недвижимости
-                property_obj = mortgage_form.cleaned_data['PROPERTY']
-
-                # Получаем данные из ипотечной формы
+                # Получаем данные из формы
                 data = mortgage_form.cleaned_data
+
+                # Получаем выбранный объект недвижимости
+                property_obj = data['PROPERTY']
+
+                # Получаем стоимость из input поля
+                property_cost = float(request.POST.get('property_cost', property_obj.property_cost))
 
                 # Получаем значения первоначального взноса
                 initial_payment_percent = data.get('INITIAL_PAYMENT_PERCENT', 0) or 0
                 initial_payment_rubles = data.get('INITIAL_PAYMENT_RUBLES', 0) or 0
 
                 # Рассчитываем итоговую стоимость объекта
-                property_cost = float(property_obj.property_cost)
                 discount_markup_value = float(data.get('DISCOUNT_MARKUP_VALUE', 0) or 0)
 
                 if data['DISCOUNT_MARKUP_TYPE'] == 'discount':
@@ -157,7 +135,7 @@ def mortgage_calculator(request):
                 context['final_property_cost'] = format_currency(final_property_cost)
                 context['discount_markup_type'] = data['DISCOUNT_MARKUP_TYPE']
                 context['discount_markup_value'] = discount_markup_value
-                context['property'] = property_obj
+                context['selected_property'] = property_obj
 
                 # Передаем заполненную форму в контекст
                 context['mortgage_form'] = mortgage_form
@@ -165,9 +143,11 @@ def mortgage_calculator(request):
         elif 'export' in request.POST:
             # Аналогичные изменения для блока экспорта
             if mortgage_form.is_valid():
-                # Получаем данные из форм
-                property_obj = mortgage_form.cleaned_data['PROPERTY']
+                # Получаем данные из формы
                 mortgage_data = mortgage_form.cleaned_data
+
+                # Получаем выбранный объект недвижимости
+                property_obj = mortgage_data['PROPERTY']
 
                 # Получаем значения первоначального взноса
                 initial_payment_percent = mortgage_data.get('INITIAL_PAYMENT_PERCENT', 0) or 0
@@ -241,13 +221,13 @@ def mortgage_calculator(request):
                 ws['A3'].font = Font(bold=True)
 
                 property_data_list = [
-                    ['Застройщик', property_obj.developer],
-                    ['Город', property_obj.get_city_display()],
-                    ['Название ЖК', property_obj.complex_name],
-                    ['Класс ЖК', property_obj.get_complex_class_display()],
-                    ['Корпус', property_obj.building],
+                    ['Застройщик', property_obj.building.real_estate_complex.developer.name],
+                    ['Город', property_obj.building.real_estate_complex.district.city.name],
+                    ['Название ЖК', property_obj.building.real_estate_complex.name],
+                    ['Класс ЖК', property_obj.building.real_estate_complex.real_estate_class.name],
+                    ['Корпус', property_obj.building.number],
                     ['№ квартиры', property_obj.apartment_number],
-                    ['Планировка', property_obj.layout],
+                    ['Планировка', property_obj.layout.name],
                     ['Площадь', property_obj.area],
                     ['Этаж', property_obj.floor],
                     ['Стоимость объекта, руб.', property_obj.property_cost],

@@ -29,7 +29,7 @@
                             {% for calculation in calculations %}
                             <tr>
                                 <td>{{ calculation.timestamp|date:"d.m.Y H:i" }}</td>
-                                <td>{{ calculation.property.complex_name }}, кв. {{ calculation.property.apartment_number }}</td>
+                                <td>{{ calculation.property.building.real_estate_complex.name }}, кв. {{ calculation.property.apartment_number }}</td>
                                 <td>{{ calculation.final_property_cost|floatformat:2 }} руб.</td>
                                 <td>{{ calculation.initial_payment_percent }}%</td>
                                 <td>{{ calculation.mortgage_term }} лет</td>

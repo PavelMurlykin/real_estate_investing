@@ -19,7 +19,7 @@
             <div class="row">
                 <div class="col-md-6">
                     <p><strong>Дата расчета:</strong> {{ calculation.timestamp|date:"d.m.Y H:i" }}</p>
-                    <p><strong>Объект:</strong> {{ calculation.property.complex_name }}, кв. {{ calculation.property.apartment_number }}</p>
+                    <p><strong>Объект:</strong> {{ calculation.property.building.real_estate_complex.name }}, кв. {{ calculation.property.apartment_number }}</p>
                     <p><strong>Итоговая стоимость объекта:</strong> {{ calculation.formatted_final_property_cost }} руб.</p>
                     <p><strong>Первоначальный взнос:</strong> {{ calculation.initial_payment_percent }}%</p>
                     <p><strong>Дата первоначального взноса:</strong> {{ calculation.initial_payment_date|date:"d.m.Y" }}</p>
