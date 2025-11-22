@@ -1,3 +1,4 @@
+# mortgage/views.py
 import decimal
 import openpyxl
 from django.http import HttpResponse
@@ -35,6 +36,9 @@ def mortgage_calculator(request):
 
                 # Получаем стоимость из формы и преобразуем в float
                 property_cost = float(data['PROPERTY_COST'])
+
+                # Получаем базовую стоимость из скрытого поля
+                base_property_cost = float(data.get('BASE_PROPERTY_COST', property_obj.property_cost))
 
                 # Получаем значения первоначального взноса и преобразуем в float
                 initial_payment_percent = float(data.get('INITIAL_PAYMENT_PERCENT', 0) or 0)
@@ -100,6 +104,7 @@ def mortgage_calculator(request):
                 # Сохраняем расчет в базу данных (сохраняем как Decimal)
                 calculation = MortgageCalculation(
                     property=property_obj,
+                    base_property_cost=decimal.Decimal(str(base_property_cost)),
                     initial_payment_percent=decimal.Decimal(str(initial_payment_percent)),
                     initial_payment_date=data['INITIAL_PAYMENT_DATE'],
                     mortgage_term=data['MORTGAGE_TERM'],
@@ -131,6 +136,8 @@ def mortgage_calculator(request):
                 context['discount_markup_type'] = data['DISCOUNT_MARKUP_TYPE']
                 context['discount_markup_value'] = discount_markup_value
                 context['selected_property'] = property_obj
+                context['initial_payment_percent'] = initial_payment_percent
+                context['initial_payment_rubles'] = initial_payment_rubles
 
                 # Передаем заполненную форму в контекст
                 context['mortgage_form'] = mortgage_form

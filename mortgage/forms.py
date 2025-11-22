@@ -1,9 +1,13 @@
+# mortgage/forms.py
 from datetime import datetime, date
 from django import forms
 from property.models import Property
 
 
 class MortgageForm(forms.Form):
+    """
+    Входные параметры для расчета ипотеки.
+    """
     # Поле для выбора объекта недвижимости
     PROPERTY = forms.ModelChoiceField(
         queryset=Property.objects.all(),
@@ -12,6 +16,20 @@ class MortgageForm(forms.Form):
             'class': 'form-input',
             'id': 'id_PROPERTY',
             'onchange': 'updatePropertyCost()'
+        })
+    )
+
+    # Поле для базовой стоимости объекта (сделано видимым для проверки)
+    BASE_PROPERTY_COST = forms.DecimalField(
+        label='Исходная стоимость объекта, руб.',
+        max_digits=15,
+        decimal_places=2,
+        required=False,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01',
+            'id': 'base_property_cost',
+            'readonly': 'readonly'
         })
     )
 

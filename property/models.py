@@ -1,14 +1,22 @@
+# property/models.py
 from django.db import models
+from django.contrib.auth import get_user_model
+from django.urls import reverse
+
+from core.models import BaseModel
 
 
-class Region(models.Model):
+User = get_user_model()
+
+
+class Region(BaseModel):
     """
     Справочник регионов.
     """
     name = models.CharField(max_length=100, unique=True, verbose_name='Регион')
     code = models.CharField(max_length=10, unique=True, verbose_name='Код региона')
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """
         Метаданные таблицы.
         """
@@ -21,14 +29,14 @@ class Region(models.Model):
         return self.name
 
 
-class City(models.Model):
+class City(BaseModel):
     """
     Справочник городов.
     """
     name = models.CharField(max_length=100, verbose_name='Город')
     region = models.ForeignKey(Region, on_delete=models.PROTECT, verbose_name='Регион')
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """
         Метаданные таблицы.
         """
@@ -42,14 +50,14 @@ class City(models.Model):
         return self.name
 
 
-class District(models.Model):
+class District(BaseModel):
     """
     Справочник районов городов.
     """
     name = models.CharField(max_length=100, verbose_name='Район')
     city = models.ForeignKey(City, on_delete=models.PROTECT, verbose_name='Город')
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """
         Метаданные таблицы.
         """
@@ -63,14 +71,14 @@ class District(models.Model):
         return self.name
 
 
-class Developer(models.Model):
+class Developer(BaseModel):
     """
     Справочник застройщиков.
     """
     name = models.CharField(max_length=255, unique=True, verbose_name='Застройщик')
     description = models.TextField(blank=True, null=True, verbose_name='Описание')
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """
         Метаданные таблицы.
         """
@@ -83,14 +91,14 @@ class Developer(models.Model):
         return self.name
 
 
-class RealEstateType(models.Model):
+class RealEstateType(BaseModel):
     """
     Справочник типов недвижимости.
     """
     name = models.CharField(max_length=100, unique=True, verbose_name='Тип недвижимости')
     description = models.TextField(blank=True, null=True, verbose_name='Описание')
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """
         Метаданные таблицы.
         """
@@ -103,7 +111,7 @@ class RealEstateType(models.Model):
         return self.name
 
 
-class RealEstateClass(models.Model):
+class RealEstateClass(BaseModel):
     """
     Справочник типов недвижимости.
     """
@@ -111,7 +119,7 @@ class RealEstateClass(models.Model):
     description = models.TextField(blank=True, null=True, verbose_name='Описание')
     weight = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='Коэффициент класса')
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """
         Метаданные таблицы.
         """
@@ -124,7 +132,7 @@ class RealEstateClass(models.Model):
         return self.name
 
 
-class RealEstateComplex(models.Model):
+class RealEstateComplex(BaseModel):
     """
     Справочник ЖК.
     """
@@ -138,7 +146,7 @@ class RealEstateComplex(models.Model):
     real_estate_class = models.ForeignKey(RealEstateClass, on_delete=models.PROTECT, verbose_name='Класс ЖК')
     real_estate_type = models.ForeignKey(RealEstateType, on_delete=models.PROTECT, verbose_name='Тип недвижимости')
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """
         Метаданные таблицы.
         """
@@ -152,7 +160,7 @@ class RealEstateComplex(models.Model):
         return self.name
 
 
-class RealEstateComplexBuilding(models.Model):
+class RealEstateComplexBuilding(BaseModel):
     """
     Список корпусов ЖК.
     """
@@ -163,7 +171,7 @@ class RealEstateComplexBuilding(models.Model):
 
     real_estate_complex = models.ForeignKey(RealEstateComplex, on_delete=models.PROTECT, verbose_name='ЖК')
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """
         Метаданные таблицы.
         """
@@ -177,14 +185,14 @@ class RealEstateComplexBuilding(models.Model):
         return self.number
 
 
-class ApartmentLayout(models.Model):
+class ApartmentLayout(BaseModel):
     """
     Справочник планировок объектов.
     """
     name = models.CharField(max_length=100, unique=True, verbose_name='Планировка')
     description = models.TextField(blank=True, null=True, verbose_name='Описание')
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """
         Метаданные таблицы.
         """
@@ -197,14 +205,14 @@ class ApartmentLayout(models.Model):
         return self.name
 
 
-class ApartmentDecoration(models.Model):
+class ApartmentDecoration(BaseModel):
     """
     Справочник типов отделки.
     """
     name = models.CharField(max_length=100, unique=True, verbose_name='Отделка')
     description = models.TextField(blank=True, null=True, verbose_name='Описание')
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """
         Метаданные таблицы.
         """
@@ -217,7 +225,7 @@ class ApartmentDecoration(models.Model):
         return self.name
 
 
-class Property(models.Model):
+class Property(BaseModel):
     """
     Список объектов недвижимости.
     """
@@ -229,10 +237,8 @@ class Property(models.Model):
     area = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Площадь')
     floor = models.IntegerField(verbose_name='Этаж')
     property_cost = models.DecimalField(max_digits=15, decimal_places=2, verbose_name='Стоимость объекта, руб.')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """
         Метаданные таблицы.
         """
@@ -240,6 +246,12 @@ class Property(models.Model):
         verbose_name = 'Объект недвижимости'
         verbose_name_plural = 'Объекты недвижимости'
         ordering = ['apartment_number']
+
+    def get_absolute_url(self):
+        """
+        Возвращение URL объекта.
+        """
+        return reverse('property:detail', kwargs={'pk': self.pk})
 
     def __str__(self):
         return f'ЖК "{self.building.real_estate_complex.name}", корпус {self.building.number}, кв. {self.apartment_number}'

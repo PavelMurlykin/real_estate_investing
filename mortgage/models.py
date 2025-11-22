@@ -1,3 +1,4 @@
+# mortgage/models.py
 from django.db import models
 from property.models import Property  # импортируем из нового приложения
 
@@ -14,6 +15,7 @@ class MortgageCalculation(models.Model):
 
     # Исходные данные
     property = models.ForeignKey(Property, on_delete=models.PROTECT, verbose_name='Объект')
+    base_property_cost = models.DecimalField(max_digits=15, decimal_places=2, verbose_name='Базовая стоимость объекта, руб.')
     initial_payment_percent = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='Первоначальный взнос, %')
     initial_payment_date = models.DateField(verbose_name='Дата первоначального взноса')
     mortgage_term = models.IntegerField(verbose_name='Срок ипотеки, годы')

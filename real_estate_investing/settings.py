@@ -1,3 +1,4 @@
+# real_estate_investing/settings.py
 import os
 # import environ
 from pathlib import Path
@@ -25,6 +26,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_bootstrap5',
 
     'homepage.apps.HomepageConfig',
     'property.apps.PropertyConfig',
@@ -61,8 +63,6 @@ TEMPLATES = [
     },
 ]
 
-# STATICFILES_DIRS = [BASE_DIR / 'static']
-
 WSGI_APPLICATION = 'real_estate_investing.wsgi.application'
 """
 DATABASES = {
@@ -93,6 +93,9 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+# STATICFILES_DIRS = [
+#     BASE_DIR / "static",
+# ]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
