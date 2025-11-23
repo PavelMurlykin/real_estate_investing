@@ -6,19 +6,27 @@
     <title>{% block title %}Real Estate Investing{% endblock %}</title>
     {% load django_bootstrap5 %}
     {% bootstrap_css %}
+
+    {% block extra_css %}
+    {% endblock %}
 </head>
-    <body>
-        {% include "includes/header.html" %}
-        <hr>
+<body>
+    {% include "includes/header.html" %}
+    <hr>
 
-        <main>
-            <div class="container pt-5">
-                {% block content %}
-                {% endblock %}
-            </div>
-        </main>
+    <main>
+        <div class="container pt-5">
+            {% block content %}
+            {% endblock %}
+        </div>
+    </main>
 
-        <hr>
-        {% include "includes/footer.html" %}
-    </body>
+    <hr>
+    {% include "includes/footer.html" %}
+
+    {% bootstrap_javascript %}
+
+    {% block extra_scripts %}
+    {% endblock %}
+</body>
 </html>

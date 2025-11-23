@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+{% load static %}
+
+{% block title %}
+    Ипотечный калькулятор
+{% endblock %}
+
+{% block content %}
+
+<form method="post">
+    {% csrf_token %}
+
+    <div class="mb-3">
+        <label class="form-label">Объект недвижимости</label>
+
+        <select id="id_PROPERTY"
+                name="PROPERTY"
+                class="form-select"
+                onchange="updatePropertyCost()">
+
+            <option value="">---------</option>
+
+            {% for obj in properties %}
+                <option value="{{ obj.id }}"
+                        data-cost="{{ obj.property_cost }}"
+                        {% if mortgage_form.initial.PROPERTY == obj.id or mortgage_form.data.PROPERTY == obj.id %}
+                            selected
+                        {% endif %}>
+                    {{ obj }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        {{ mortgage_form.BASE_PROPERTY_COST.label_tag }}
+        {{ mortgage_form.BASE_PROPERTY_COST }}
+    </div>
+
+    <div class="mb-3">
+        {{ mortgage_form.PROPERTY_COST.label_tag }}
+        {{ mortgage_form.PROPERTY_COST }}
+    </div>
+
+    <div class="mb-3">
+        {{ mortgage_form.DISCOUNT_MARKUP_TYPE.label_tag }}
+        {{ mortgage_form.DISCOUNT_MARKUP_TYPE }}
+    </div>
+
+    <div class="mb-3">
+        {{ mortgage_form.DISCOUNT_MARKUP_VALUE.label_tag }}
+        {{ mortgage_form.DISCOUNT_MARKUP_VALUE }}
+    </div>
+
+    <div class="mb-3">
+        {{ mortgage_form.INITIAL_PAYMENT_PERCENT.label_tag }}
+        {{ mortgage_form.INITIAL_PAYMENT_PERCENT }}
+    </div>
+
+    <div class="mb-3">
+        {{ mortgage_form.INITIAL_PAYMENT_RUBLES.label_tag }}
+        {{ mortgage_form.INITIAL_PAYMENT_RUBLES }}
+    </div>
+
+    <div class="mb-3">
+        {{ mortgage_form.INITIAL_PAYMENT_DATE.label_tag }}
+        {{ mortgage_form.INITIAL_PAYMENT_DATE }}
+    </div>
+
+    <div class="mb-3">
+        {{ mortgage_form.MORTGAGE_TERM.label_tag }}
+        {{ mortgage_form.MORTGAGE_TERM }}
+    </div>
+
+    <div class="mb-3">
+        {{ mortgage_form.ANNUAL_RATE.label_tag }}
+        {{ mortgage_form.ANNUAL_RATE }}
+    </div>
+
+    <div class="mb-3">
+        {{ mortgage_form.HAS_GRACE_PERIOD.label_tag }}
+        {{ mortgage_form.HAS_GRACE_PERIOD }}
+    </div>
+
+    <div class="mb-3">
+        {{ mortgage_form.GRACE_PERIOD_TERM.label_tag }}
+        {{ mortgage_form.GRACE_PERIOD_TERM }}
+    </div>
+
+    <div class="mb-3">
+        {{ mortgage_form.GRACE_PERIOD_RATE.label_tag }}
+        {{ mortgage_form.GRACE_PERIOD_RATE }}
+    </div>
+
+    <button type="submit" name="calculate" class="btn btn-primary">Рассчитать</button>
+</form>
+
+
+<script>
+function updatePropertyCost() {
+    const selector = document.getElementById("id_PROPERTY");
+    const costInput = document.getElementById("property_cost_input");
+    const baseInput = document.getElementById("base_property_cost");
+
+    const selected = selector.options[selector.selectedIndex];
+    const cost = selected.getAttribute("data-cost");
+
+    if (cost) {
+        costInput.value = cost;
+        baseInput.value = cost;
+    } else {
+        costInput.value = "";
+        baseInput.value = "";
+    }
+}
+</script>
+
+{% endblock %}

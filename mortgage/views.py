@@ -1,16 +1,17 @@
 # mortgage/views.py
 import decimal
+
 import openpyxl
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
 from openpyxl.styles import Font, Alignment, NamedStyle
 from openpyxl.utils import get_column_letter
 
+from property.models import Property
 from .forms import MortgageForm
 from .models import MortgageCalculation
 from .mortgage_calculator import MortgageCalculator
 from .utils import format_currency
-from property.models import Property
 
 
 def mortgage_calculator(request):
@@ -26,6 +27,16 @@ def mortgage_calculator(request):
     }
 
     if request.method == 'POST':
+
+        selected_id = request.POST.get("PROPERTY")
+        if selected_id:
+            try:
+                obj = Property.objects.get(id=selected_id)
+                mortgage_form.fields['PROPERTY_COST'].initial = obj.property_cost
+                mortgage_form.fields['BASE_PROPERTY_COST'].initial = obj.property_cost
+            except Property.DoesNotExist:
+                pass
+
         if 'calculate' in request.POST:
             if mortgage_form.is_valid():
                 # Получаем данные из формы
@@ -393,13 +404,13 @@ def mortgage_calculator(request):
                 wb.save(response)
                 return response
 
-    return render(request, 'mortgage/mortgage_calculator.html', context)
+    return render(request, 'mortgage/mortgage_form.html', context)
 
 
 def calculation_list(request):
     """Список всех расчетов"""
     calculations = MortgageCalculation.objects.select_related('property').all().order_by('-timestamp')
-    return render(request, 'mortgage/calculation_list.html', {
+    return render(request, 'mortgage/mortgage_list.html', {
         'calculations': calculations
     })
 
@@ -421,6 +432,6 @@ def calculation_detail(request, pk):
     calculation.formatted_total_overpayment = format_currency(
         calculation.total_overpayment) if calculation.total_overpayment else None
 
-    return render(request, 'mortgage/calculation_detail.html', {
+    return render(request, 'mortgage/mortgage_detail.html', {
         'calculation': calculation
     })
