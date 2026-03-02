@@ -1,9 +1,13 @@
 from django.contrib import admin
 from django.urls import path, include
 
+
 urlpatterns = [
-    path('', include('homepage.urls')),
     path('admin/', admin.site.urls),
-    path('property/', include('property.urls')),
-    path('calculator/', include('calculator.urls')),
+    path('', include('homepage.urls')),
+    path('property/', include('property.urls', namespace='property')),
+    path('api/', include('property.api_urls')),
+    path('mortgage/', include('mortgage.urls', namespace='mortgage')),
+    path('trench-mortgage/', include('trench_mortgage.urls',
+         namespace='trench_mortgage')),
 ]

@@ -1,0 +1,26 @@
+[
+  {
+    "model": "property.region",
+    "pk": 1,
+    "fields": {
+      "name": "Санкт-Петербург",
+      "code": "78"
+    }
+  },
+  {
+    "model": "property.region",
+    "pk": 2,
+    "fields": {
+      "name": "Москва",
+      "code": "77"
+    }
+  },
+  {
+    "model": "property.region",
+    "pk": 3,
+    "fields": {
+      "name": "Калининградская область",
+      "code": "39"
+    }
+  }
+]

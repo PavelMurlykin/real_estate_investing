@@ -1,0 +1,34 @@
+[
+  {
+    "model": "property.apartmentdecoration",
+    "pk": 1,
+    "fields": {
+      "name": "Черновая",
+      "description": "Отделка не выполнена, только базовые строительные работы"
+    }
+  },
+  {
+    "model": "property.apartmentdecoration",
+    "pk": 2,
+    "fields": {
+      "name": "Чистовая",
+      "description": "Полная отделка с установкой сантехники и электроприборов"
+    }
+  },
+  {
+    "model": "property.apartmentdecoration",
+    "pk": 3,
+    "fields": {
+      "name": "Под ключ",
+      "description": "Полностью готовая к проживанию квартира с мебелью и техникой"
+    }
+  },
+  {
+    "model": "property.apartmentdecoration",
+    "pk": 4,
+    "fields": {
+      "name": "Предчистовая",
+      "description": "Выполнены основные строительные работы, но без финишной отделки"
+    }
+  }
+]

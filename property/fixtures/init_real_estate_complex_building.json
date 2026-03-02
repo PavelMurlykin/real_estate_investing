@@ -1,0 +1,178 @@
+[
+  {
+    "model": "property.realestatecomplexbuilding",
+    "pk": 1,
+    "fields": {
+      "number": "1",
+      "address": "Приморский район, ул. Савушкина, д. 1",
+      "commissioning_date": "2025-12-31",
+      "key_handover_date": "2025-12-31",
+      "real_estate_complex": 1
+    }
+  },
+  {
+    "model": "property.realestatecomplexbuilding",
+    "pk": 2,
+    "fields": {
+      "number": "2",
+      "address": "Приморский район, ул. Савушкина, д. 2",
+      "commissioning_date": "2026-06-30",
+      "key_handover_date": "2026-06-30",
+      "real_estate_complex": 1
+    }
+  },
+  {
+    "model": "property.realestatecomplexbuilding",
+    "pk": 3,
+    "fields": {
+      "number": "1",
+      "address": "Московский район, ул. Типанова, д. 1",
+      "commissioning_date": "2025-09-30",
+      "key_handover_date": "2025-09-30",
+      "real_estate_complex": 2
+    }
+  },
+  {
+    "model": "property.realestatecomplexbuilding",
+    "pk": 4,
+    "fields": {
+      "number": "1",
+      "address": "Невский район, ул. Подвойского, д. 1",
+      "commissioning_date": "2025-11-30",
+      "key_handover_date": "2025-11-30",
+      "real_estate_complex": 3
+    }
+  },
+  {
+    "model": "property.realestatecomplexbuilding",
+    "pk": 5,
+    "fields": {
+      "number": "1",
+      "address": "Калининский район, ул. Учительская, д. 1",
+      "commissioning_date": "2025-08-31",
+      "key_handover_date": "2025-08-31",
+      "real_estate_complex": 4
+    }
+  },
+  {
+    "model": "property.realestatecomplexbuilding",
+    "pk": 6,
+    "fields": {
+      "number": "1",
+      "address": "Центральный административный округ, ул. Пресненская, д. 1",
+      "commissioning_date": "2026-03-31",
+      "key_handover_date": "2026-03-31",
+      "real_estate_complex": 5
+    }
+  },
+  {
+    "model": "property.realestatecomplexbuilding",
+    "pk": 7,
+    "fields": {
+      "number": "1",
+      "address": "Калининград, ул. Балтийская, д. 1",
+      "commissioning_date": "2025-10-31",
+      "key_handover_date": "2025-10-31",
+      "real_estate_complex": 6
+    }
+  },
+  {
+    "model": "property.realestatecomplexbuilding",
+    "pk": 8,
+    "fields": {
+      "number": "1",
+      "address": "Приморский район, ул. Савушкина, д. 3",
+      "commissioning_date": "2025-12-31",
+      "key_handover_date": "2025-12-31",
+      "real_estate_complex": 7
+    }
+  },
+  {
+    "model": "property.realestatecomplexbuilding",
+    "pk": 9,
+    "fields": {
+      "number": "1",
+      "address": "Василеостровский район, ул. Шкиперский проток, д. 19",
+      "commissioning_date": "2026-02-28",
+      "key_handover_date": "2026-02-28",
+      "real_estate_complex": 8
+    }
+  },
+  {
+    "model": "property.realestatecomplexbuilding",
+    "pk": 10,
+    "fields": {
+      "number": "1",
+      "address": "Фрунзенский район, Витебский пр., д. 1",
+      "commissioning_date": "2026-04-30",
+      "key_handover_date": "2026-04-30",
+      "real_estate_complex": 9
+    }
+  },
+  {
+    "model": "property.realestatecomplexbuilding",
+    "pk": 11,
+    "fields": {
+      "number": "1",
+      "address": "Московский район, ул. Гастелло, д. 1",
+      "commissioning_date": "2025-12-31",
+      "key_handover_date": "2025-12-31",
+      "real_estate_complex": 10
+    }
+  },
+  {
+    "model": "property.realestatecomplexbuilding",
+    "pk": 12,
+    "fields": {
+      "number": "1",
+      "address": "Центральный район, ул. Некрасова, д. 1",
+      "commissioning_date": "2026-05-31",
+      "key_handover_date": "2026-05-31",
+      "real_estate_complex": 11
+    }
+  },
+  {
+    "model": "property.realestatecomplexbuilding",
+    "pk": 13,
+    "fields": {
+      "number": "1",
+      "address": "Приморский район, ул. Парусная, д. 1",
+      "commissioning_date": "2026-01-31",
+      "key_handover_date": "2026-01-31",
+      "real_estate_complex": 12
+    }
+  },
+  {
+    "model": "property.realestatecomplexbuilding",
+    "pk": 14,
+    "fields": {
+      "number": "1",
+      "address": "Московский район, ул. Гастелло, д. 2",
+      "commissioning_date": "2025-11-30",
+      "key_handover_date": "2025-11-30",
+      "real_estate_complex": 13
+    }
+  },
+  {
+    "model": "property.realestatecomplexbuilding",
+    "pk": 15,
+    "fields": {
+      "number": "1",
+      "address": "Московский район, пр. Космонавтов, д. 1",
+      "commissioning_date": "2026-07-31",
+      "key_handover_date": "2026-07-31",
+      "real_estate_complex": 14
+    }
+  },
+  {
+    "model": "property.realestatecomplexbuilding",
+    "pk": 16,
+    "fields": {
+      "number": "2",
+      "address": "Московский район, пр. Космонавтов, д. 2",
+      "commissioning_date": "2026-12-31",
+      "key_handover_date": "2026-12-31",
+      "real_estate_complex": 14
+    }
+  }
+]

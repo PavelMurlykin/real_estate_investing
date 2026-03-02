@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Калькулятор траншевой ипотеки
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <h2 class="mb-4">Калькулятор траншевой ипотеки</h2>
+
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+            {% for error in form.non_field_errors %}
+                <div>{{ error }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header">Данные объекта</div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="{{ form.PROPERTY.id_for_label }}" class="form-label">{{ form.PROPERTY.label }}</label>
+                            {{ form.PROPERTY }}
+                            {% for error in form.PROPERTY.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label d-block">{{ form.DISCOUNT_MARKUP_TYPE.label }}</label>
+                            {{ form.DISCOUNT_MARKUP_TYPE }}
+                            {% for error in form.DISCOUNT_MARKUP_TYPE.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-0">
+                            <label for="{{ form.DISCOUNT_MARKUP_VALUE.id_for_label }}" class="form-label">{{ form.DISCOUNT_MARKUP_VALUE.label }}</label>
+                            {{ form.DISCOUNT_MARKUP_VALUE }}
+                            {% for error in form.DISCOUNT_MARKUP_VALUE.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header">Параметры ипотеки</div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="{{ form.INITIAL_PAYMENT_PERCENT.id_for_label }}" class="form-label">{{ form.INITIAL_PAYMENT_PERCENT.label }}</label>
+                            {{ form.INITIAL_PAYMENT_PERCENT }}
+                            {% for error in form.INITIAL_PAYMENT_PERCENT.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.INITIAL_PAYMENT_DATE.id_for_label }}" class="form-label">{{ form.INITIAL_PAYMENT_DATE.label }}</label>
+                            {{ form.INITIAL_PAYMENT_DATE }}
+                            {% for error in form.INITIAL_PAYMENT_DATE.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.MORTGAGE_TERM.id_for_label }}" class="form-label">{{ form.MORTGAGE_TERM.label }}</label>
+                            {{ form.MORTGAGE_TERM }}
+                            {% for error in form.MORTGAGE_TERM.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-0">
+                            <label for="{{ form.TRENCH_COUNT.id_for_label }}" class="form-label">{{ form.TRENCH_COUNT.label }}</label>
+                            {{ form.TRENCH_COUNT }}
+                            {% for error in form.TRENCH_COUNT.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Далее</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

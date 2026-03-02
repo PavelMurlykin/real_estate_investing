@@ -1,0 +1,38 @@
+[
+  {
+    "model": "property.realestateclass",
+    "pk": 1,
+    "fields": {
+      "name": "Комфорт",
+      "description": "Жилье комфорт-класса",
+      "weight": "1.10"
+    }
+  },
+  {
+    "model": "property.realestateclass",
+    "pk": 2,
+    "fields": {
+      "name": "Комфорт+",
+      "description": "Улучшенный комфорт-класс",
+      "weight": "1.20"
+    }
+  },
+  {
+    "model": "property.realestateclass",
+    "pk": 3,
+    "fields": {
+      "name": "Бизнес",
+      "description": "Жилье бизнес-класса",
+      "weight": "1.30"
+    }
+  },
+  {
+    "model": "property.realestateclass",
+    "pk": 4,
+    "fields": {
+      "name": "Элит",
+      "description": "Элитное жилье",
+      "weight": "1.50"
+    }
+  }
+]

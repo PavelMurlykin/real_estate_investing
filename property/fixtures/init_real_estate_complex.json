@@ -1,0 +1,198 @@
+[
+  {
+    "model": "property.realestatecomplex",
+    "pk": 1,
+    "fields": {
+      "name": "Лондон Парк",
+      "description": "ЖК бизнес-класса в Приморском районе",
+      "map_link": "https://yandex.ru/maps/org/194578967894",
+      "presentation_link": "https://londonpark.spb.ru/presentation",
+      "developer": 1,
+      "district": 15,
+      "real_estate_class": 3,
+      "real_estate_type": 1
+    }
+  },
+  {
+    "model": "property.realestatecomplex",
+    "pk": 2,
+    "fields": {
+      "name": "Светлый мир",
+      "description": "ЖК комфорт-класса в Московском районе",
+      "map_link": "https://yandex.ru/maps/org/194578967895",
+      "presentation_link": "https://svetlymir.ru/presentation",
+      "developer": 2,
+      "district": 11,
+      "real_estate_class": 1,
+      "real_estate_type": 1
+    }
+  },
+  {
+    "model": "property.realestatecomplex",
+    "pk": 3,
+    "fields": {
+      "name": "Зималово",
+      "description": "ЖК комфорт+ класса в Невском районе",
+      "map_link": "https://yandex.ru/maps/org/194578967896",
+      "presentation_link": "https://zimalovo.ru/presentation",
+      "developer": 3,
+      "district": 12,
+      "real_estate_class": 2,
+      "real_estate_type": 1
+    }
+  },
+  {
+    "model": "property.realestatecomplex",
+    "pk": 4,
+    "fields": {
+      "name": "ЦДС Северный",
+      "description": "ЖК комфорт-класса в Калининском районе",
+      "map_link": "https://yandex.ru/maps/org/194578967897",
+      "presentation_link": "https://cds-severny.ru/presentation",
+      "developer": 9,
+      "district": 4,
+      "real_estate_class": 1,
+      "real_estate_type": 1
+    }
+  },
+  {
+    "model": "property.realestatecomplex",
+    "pk": 5,
+    "fields": {
+      "name": "Пресня Сити",
+      "description": "ЖК бизнес-класса в центре Москвы",
+      "map_link": "https://yandex.ru/maps/org/194578967898",
+      "presentation_link": "https://presnyacity.ru/presentation",
+      "developer": 5,
+      "district": 19,
+      "real_estate_class": 3,
+      "real_estate_type": 1
+    }
+  },
+  {
+    "model": "property.realestatecomplex",
+    "pk": 6,
+    "fields": {
+      "name": "Балтийская Жемчужина",
+      "description": "ЖК комфорт+ класса в Калининграде",
+      "map_link": "https://yandex.ru/maps/org/194578967899",
+      "presentation_link": "https://balt-pearl.ru/presentation",
+      "developer": 10,
+      "district": 31,
+      "real_estate_class": 2,
+      "real_estate_type": 1
+    }
+  },
+  {
+    "model": "property.realestatecomplex",
+    "pk": 7,
+    "fields": {
+      "name": "Астра Континенталь",
+      "description": "ЖК комфорт-класса в Приморском районе Санкт-Петербурга",
+      "map_link": "https://yandex.ru/maps/org/astra_continental",
+      "presentation_link": "https://astra-continental.ru/presentation",
+      "developer": 11,
+      "district": 15,
+      "real_estate_class": 2,
+      "real_estate_type": 1
+    }
+  },
+  {
+    "model": "property.realestatecomplex",
+    "pk": 8,
+    "fields": {
+      "name": "Шкиперский 19",
+      "description": "ЖК комфорт-класса в Василеостровском районе Санкт-Петербурга",
+      "map_link": "https://yandex.ru/maps/org/skhipersky_19",
+      "presentation_link": "https://skhipersky19.ru/presentation",
+      "developer": 3,
+      "district": 2,
+      "real_estate_class": 2,
+      "real_estate_type": 1
+    }
+  },
+  {
+    "model": "property.realestatecomplex",
+    "pk": 9,
+    "fields": {
+      "name": "Витебский Парк",
+      "description": "ЖК комфорт-класса в Фрунзенском районе Санкт-Петербурга",
+      "map_link": "https://yandex.ru/maps/org/vitebsky_park",
+      "presentation_link": "https://vitebsky-park.ru/presentation",
+      "developer": 3,
+      "district": 17,
+      "real_estate_class": 2,
+      "real_estate_type": 1
+    }
+  },
+  {
+    "model": "property.realestatecomplex",
+    "pk": 10,
+    "fields": {
+      "name": "Галактика",
+      "description": "ЖК комфорт-класса в Московском районе Санкт-Петербурга",
+      "map_link": "https://yandex.ru/maps/org/galaktika",
+      "presentation_link": "https://galaktika-spb.ru/presentation",
+      "developer": 5,
+      "district": 11,
+      "real_estate_class": 2,
+      "real_estate_type": 1
+    }
+  },
+  {
+    "model": "property.realestatecomplex",
+    "pk": 11,
+    "fields": {
+      "name": "Нигилист",
+      "description": "ЖК комфорт-класса в Центральном районе Санкт-Петербурга",
+      "map_link": "https://yandex.ru/maps/org/nigilist",
+      "presentation_link": "https://nigilist-spb.ru/presentation",
+      "developer": 13,
+      "district": 18,
+      "real_estate_class": 2,
+      "real_estate_type": 1
+    }
+  },
+  {
+    "model": "property.realestatecomplex",
+    "pk": 12,
+    "fields": {
+      "name": "Парусная 1",
+      "description": "ЖК комфорт-класса в Приморском районе Санкт-Петербурга",
+      "map_link": "https://yandex.ru/maps/org/parusnaya_1",
+      "presentation_link": "https://parusnaya1.ru/presentation",
+      "developer": 8,
+      "district": 15,
+      "real_estate_class": 2,
+      "real_estate_type": 1
+    }
+  },
+  {
+    "model": "property.realestatecomplex",
+    "pk": 13,
+    "fields": {
+      "name": "Лофт",
+      "description": "ЖК комфорт-класса в Московском районе Санкт-Петербурга",
+      "map_link": "https://yandex.ru/maps/org/loft_spb",
+      "presentation_link": "https://loft-spb.ru/presentation",
+      "developer": 11,
+      "district": 11,
+      "real_estate_class": 2,
+      "real_estate_type": 1
+    }
+  },
+  {
+    "model": "property.realestatecomplex",
+    "pk": 14,
+    "fields": {
+      "name": "ID Парк Победы",
+      "description": "ЖК комфорт-класса в Московском районе Санкт-Петербурга",
+      "map_link": "https://yandex.ru/maps/org/id_park_pobedy",
+      "presentation_link": "https://id-park-pobedy.ru/presentation",
+      "developer": 12,
+      "district": 11,
+      "real_estate_class": 2,
+      "real_estate_type": 1
+    }
+  }
+]

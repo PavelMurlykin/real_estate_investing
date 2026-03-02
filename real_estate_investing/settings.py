@@ -1,17 +1,20 @@
 import os
-import environ
+# import environ
 from pathlib import Path
 
-env = environ.Env(
-    DEBUG=(bool, False)
-)
+
+# env = environ.Env(
+#     DEBUG=(bool, False)
+# )
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+# environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
-DEBUG = env('DEBUG')
-SECRET_KEY = env('SECRET_KEY')
+# DEBUG = env('DEBUG')
+# SECRET_KEY = env('SECRET_KEY')
+DEBUG = True
+SECRET_KEY = '%-+#vp2)jwz#e_bl#*d92)%c%oh10*ta-e)1tfu-e#vuelqs3='
 
 ALLOWED_HOSTS = ['*']
 
@@ -22,10 +25,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_bootstrap5',
 
     'homepage.apps.HomepageConfig',
     'property.apps.PropertyConfig',
-    'calculator.apps.CalculatorConfig',
+    'mortgage.apps.CalculatorConfig',
+    'trench_mortgage.apps.TrenchMortgageConfig',
 ]
 
 MIDDLEWARE = [
@@ -58,7 +63,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'real_estate_investing.wsgi.application'
-
+"""
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -69,6 +74,17 @@ DATABASES = {
         'PORT': env('DB_PORT', default='5432'),
     }
 }
+"""
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'real_estate_investing',
+        'USER': 'pavel_murlykin',
+        'PASSWORD': '89313586441Pavel',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
 
 LANGUAGE_CODE = 'ru-ru'
 TIME_ZONE = 'Europe/Moscow'
@@ -76,6 +92,9 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+# STATICFILES_DIRS = [
+#     BASE_DIR / "static",
+# ]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000

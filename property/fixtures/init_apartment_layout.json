@@ -1,0 +1,74 @@
+[
+  {
+    "model": "property.apartmentlayout",
+    "pk": 1,
+    "fields": {
+      "name": "Студия",
+      "description": "Помещение без внутренних перегородок"
+    }
+  },
+  {
+    "model": "property.apartmentlayout",
+    "pk": 2,
+    "fields": {
+      "name": "1-комнатная",
+      "description": "Квартира с одной жилой комнатой"
+    }
+  },
+  {
+    "model": "property.apartmentlayout",
+    "pk": 3,
+    "fields": {
+      "name": "2-комнатная",
+      "description": "Квартира с двумя жилыми комнатами"
+    }
+  },
+  {
+    "model": "property.apartmentlayout",
+    "pk": 4,
+    "fields": {
+      "name": "3-комнатная",
+      "description": "Квартира с тремя жилыми комнатами"
+    }
+  },
+  {
+    "model": "property.apartmentlayout",
+    "pk": 5,
+    "fields": {
+      "name": "4-комнатная",
+      "description": "Квартира с четырьмя жилыми комнатами"
+    }
+  },
+  {
+    "model": "property.apartmentlayout",
+    "pk": 6,
+    "fields": {
+      "name": "2Е",
+      "description": "Двухкомнатная квартира с улучшенной планировкой"
+    }
+  },
+  {
+    "model": "property.apartmentlayout",
+    "pk": 7,
+    "fields": {
+      "name": "3Е",
+      "description": "Трехкомнатная квартира с улучшенной планировкой"
+    }
+  },
+  {
+    "model": "property.apartmentlayout",
+    "pk": 8,
+    "fields": {
+      "name": "4Е",
+      "description": "Четырехкомнатная квартира с улучшенной планировкой"
+    }
+  },
+  {
+    "model": "property.apartmentlayout",
+    "pk": 9,
+    "fields": {
+      "name": "Свободная планировка",
+      "description": "Помещение без внутренних перегородок для самостоятельного зонирования"
+    }
+  }
+]
