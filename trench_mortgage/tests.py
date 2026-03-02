@@ -18,32 +18,56 @@ class TrenchMortgageCalculationTests(SimpleTestCase):
         post_data = {
             "trench_date_1": "2026-01-10",
             "trench_percent_1": "40",
+            "trench_amount_1": "",
             "annual_rate_1": "11.5",
             "trench_date_2": "2026-06-10",
             "trench_percent_2": "",
+            "trench_amount_2": "",
             "annual_rate_2": "10",
         }
 
-        entries, _, errors = _parse_trench_inputs(post_data, 2)
+        entries, _, errors = _parse_trench_inputs(post_data, 2, 1_000_000, 10)
 
         self.assertEqual(errors, [])
         self.assertEqual(len(entries), 2)
         self.assertEqual(entries[1]["trench_percent"], Decimal("60.00"))
+        self.assertEqual(entries[1]["trench_amount"], Decimal("600000.00"))
 
     def test_parse_trench_inputs_rejects_percent_sum_over_or_equal_hundred(self):
         post_data = {
             "trench_date_1": "2026-01-10",
             "trench_percent_1": "100",
+            "trench_amount_1": "",
             "annual_rate_1": "11.5",
             "trench_date_2": "2026-06-10",
             "trench_percent_2": "",
+            "trench_amount_2": "",
             "annual_rate_2": "10",
         }
 
-        entries, _, errors = _parse_trench_inputs(post_data, 2)
+        entries, _, errors = _parse_trench_inputs(post_data, 2, 1_000_000, 10)
 
         self.assertEqual(entries, [])
         self.assertTrue(errors)
+
+    def test_parse_trench_inputs_converts_amount_to_percent(self):
+        post_data = {
+            "trench_date_1": "2026-01-10",
+            "trench_percent_1": "",
+            "trench_amount_1": "250000",
+            "annual_rate_1": "11.5",
+            "trench_date_2": "2026-06-10",
+            "trench_percent_2": "",
+            "trench_amount_2": "",
+            "annual_rate_2": "10",
+        }
+
+        entries, _, errors = _parse_trench_inputs(post_data, 2, 1_000_000, 10)
+
+        self.assertEqual(errors, [])
+        self.assertEqual(entries[0]["trench_percent"], Decimal("25.00"))
+        self.assertEqual(entries[0]["trench_amount"], Decimal("250000.00"))
+        self.assertEqual(entries[1]["trench_percent"], Decimal("75.00"))
 
     def test_months_remaining_depends_on_actual_dates(self):
         self.assertEqual(_calculate_months_remaining(date(2026, 1, 15), date(2027, 1, 15)), 12)

@@ -16,7 +16,11 @@
         </div>
     {% endif %}
 
-    <form method="post" novalidate>
+    {% if error_message %}
+        <div class="alert alert-danger">{{ error_message }}</div>
+    {% endif %}
+
+    <form method="post" novalidate id="trenchMortgageForm">
         {% csrf_token %}
 
         <div class="row g-4">
@@ -33,6 +37,22 @@
                         </div>
 
                         <div class="mb-3">
+                            <label for="{{ form.BASE_PROPERTY_COST.id_for_label }}" class="form-label">{{ form.BASE_PROPERTY_COST.label }}</label>
+                            {{ form.BASE_PROPERTY_COST }}
+                            {% for error in form.BASE_PROPERTY_COST.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.PROPERTY_COST.id_for_label }}" class="form-label">{{ form.PROPERTY_COST.label }}</label>
+                            {{ form.PROPERTY_COST }}
+                            {% for error in form.PROPERTY_COST.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
                             <label class="form-label d-block">{{ form.DISCOUNT_MARKUP_TYPE.label }}</label>
                             {{ form.DISCOUNT_MARKUP_TYPE }}
                             {% for error in form.DISCOUNT_MARKUP_TYPE.errors %}
@@ -40,12 +60,23 @@
                             {% endfor %}
                         </div>
 
-                        <div class="mb-0">
+                        <div class="mb-3">
                             <label for="{{ form.DISCOUNT_MARKUP_VALUE.id_for_label }}" class="form-label">{{ form.DISCOUNT_MARKUP_VALUE.label }}</label>
                             {{ form.DISCOUNT_MARKUP_VALUE }}
                             {% for error in form.DISCOUNT_MARKUP_VALUE.errors %}
                                 <div class="invalid-feedback d-block">{{ error }}</div>
                             {% endfor %}
+                        </div>
+
+                        <div class="mb-0">
+                            <label for="final_property_cost_display" class="form-label">Итоговая стоимость объекта, руб.</label>
+                            <input
+                                id="final_property_cost_display"
+                                type="text"
+                                class="form-control"
+                                value="{% if final_property_cost %}{{ final_property_cost }}{% endif %}"
+                                readonly
+                            >
                         </div>
                     </div>
                 </div>
@@ -55,15 +86,24 @@
                 <div class="card h-100">
                     <div class="card-header">Параметры ипотеки</div>
                     <div class="card-body">
-                        <div class="mb-3">
-                            <label for="{{ form.INITIAL_PAYMENT_PERCENT.id_for_label }}" class="form-label">{{ form.INITIAL_PAYMENT_PERCENT.label }}</label>
-                            {{ form.INITIAL_PAYMENT_PERCENT }}
-                            {% for error in form.INITIAL_PAYMENT_PERCENT.errors %}
-                                <div class="invalid-feedback d-block">{{ error }}</div>
-                            {% endfor %}
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <label for="{{ form.INITIAL_PAYMENT_PERCENT.id_for_label }}" class="form-label">{{ form.INITIAL_PAYMENT_PERCENT.label }}</label>
+                                {{ form.INITIAL_PAYMENT_PERCENT }}
+                                {% for error in form.INITIAL_PAYMENT_PERCENT.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-6">
+                                <label for="{{ form.INITIAL_PAYMENT_RUBLES.id_for_label }}" class="form-label">{{ form.INITIAL_PAYMENT_RUBLES.label }}</label>
+                                {{ form.INITIAL_PAYMENT_RUBLES }}
+                                {% for error in form.INITIAL_PAYMENT_RUBLES.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mt-3">
                             <label for="{{ form.INITIAL_PAYMENT_DATE.id_for_label }}" class="form-label">{{ form.INITIAL_PAYMENT_DATE.label }}</label>
                             {{ form.INITIAL_PAYMENT_DATE }}
                             {% for error in form.INITIAL_PAYMENT_DATE.errors %}
@@ -71,7 +111,7 @@
                             {% endfor %}
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mt-3">
                             <label for="{{ form.MORTGAGE_TERM.id_for_label }}" class="form-label">{{ form.MORTGAGE_TERM.label }}</label>
                             {{ form.MORTGAGE_TERM }}
                             {% for error in form.MORTGAGE_TERM.errors %}
@@ -79,11 +119,79 @@
                             {% endfor %}
                         </div>
 
-                        <div class="mb-0">
+                        <div class="mt-3">
+                            <label for="{{ form.ANNUAL_RATE.id_for_label }}" class="form-label">{{ form.ANNUAL_RATE.label }}</label>
+                            {{ form.ANNUAL_RATE }}
+                            {% for error in form.ANNUAL_RATE.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mt-3">
                             <label for="{{ form.TRENCH_COUNT.id_for_label }}" class="form-label">{{ form.TRENCH_COUNT.label }}</label>
                             {{ form.TRENCH_COUNT }}
                             {% for error in form.TRENCH_COUNT.errors %}
                                 <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div id="trench-fields" class="mt-3">
+                            {% for row in trench_input_rows %}
+                                <div
+                                    class="border rounded p-3 mb-3 trench-row"
+                                    data-trench-number="{{ row.number }}"
+                                    {% if not row.is_active %}style="display: none;"{% endif %}
+                                >
+                                    <div class="fw-semibold mb-2">Транш {{ row.number }}</div>
+                                    <div class="row g-3">
+                                        <div class="col-md-3">
+                                            <label class="form-label" for="trench_date_{{ row.number }}">Дата транша</label>
+                                            <input
+                                                id="trench_date_{{ row.number }}"
+                                                type="date"
+                                                class="form-control trench-date"
+                                                name="trench_date_{{ row.number }}"
+                                                value="{{ row.trench_date }}"
+                                            >
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label" for="trench_percent_{{ row.number }}">Сумма транша, %</label>
+                                            <input
+                                                id="trench_percent_{{ row.number }}"
+                                                type="number"
+                                                class="form-control trench-percent"
+                                                name="trench_percent_{{ row.number }}"
+                                                value="{{ row.trench_percent }}"
+                                                step="0.01"
+                                                min="0"
+                                            >
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label" for="trench_amount_{{ row.number }}">Сумма транша, руб.</label>
+                                            <input
+                                                id="trench_amount_{{ row.number }}"
+                                                type="number"
+                                                class="form-control trench-amount"
+                                                name="trench_amount_{{ row.number }}"
+                                                value="{{ row.trench_amount }}"
+                                                step="0.01"
+                                                min="0"
+                                            >
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label" for="annual_rate_{{ row.number }}">Годовая ставка, %</label>
+                                            <input
+                                                id="annual_rate_{{ row.number }}"
+                                                type="number"
+                                                class="form-control annual-rate"
+                                                name="annual_rate_{{ row.number }}"
+                                                value="{{ row.annual_rate }}"
+                                                step="0.01"
+                                                min="0"
+                                            >
+                                        </div>
+                                    </div>
+                                </div>
                             {% endfor %}
                         </div>
                     </div>
@@ -91,9 +199,318 @@
             </div>
         </div>
 
-        <div class="mt-4">
-            <button type="submit" class="btn btn-primary">Далее</button>
+        <div class="mt-4 d-flex gap-2">
+            <button type="submit" name="calculate" class="btn btn-primary">Рассчитать</button>
+            {% if result %}
+                <button type="submit" name="export" class="btn btn-outline-success">Сохранить в Excel</button>
+            {% endif %}
         </div>
     </form>
+
+    {% if result %}
+        <div class="card mt-4">
+            <div class="card-header">Результаты расчета</div>
+            <div class="card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <strong>Итоговая стоимость объекта:</strong>
+                        <div>{{ result.final_property_cost }} руб.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Первоначальный взнос:</strong>
+                        <div>{{ result.initial_payment }} руб. ({{ result.initial_payment_date }})</div>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Общая сумма кредита:</strong>
+                        <div>{{ result.total_loan_amount }} руб.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Общая переплата:</strong>
+                        <div>{{ result.total_overpayment }} руб.</div>
+                    </div>
+                </div>
+
+                <h5>Детали траншей</h5>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Транш</th>
+                                <th>Дата</th>
+                                <th>Сумма, %</th>
+                                <th>Сумма, руб.</th>
+                                <th>Ставка, %</th>
+                                <th>Ежемесячный платеж, руб.</th>
+                                <th>Число платежей</th>
+                                <th>Остаток долга, руб.</th>
+                                <th>Переплата, руб.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for trench in result.trenches %}
+                                <tr>
+                                    <td>{{ trench.number }}</td>
+                                    <td>{{ trench.date }}</td>
+                                    <td>{{ trench.percent }}</td>
+                                    <td>{{ trench.amount }}</td>
+                                    <td>{{ trench.annual_rate }}</td>
+                                    <td>{{ trench.monthly_payment }}</td>
+                                    <td>{{ trench.payments_count }}</td>
+                                    <td>{{ trench.remaining_debt }}</td>
+                                    <td>{{ trench.overpayment }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% endif %}
 </div>
+
+<script>
+const propertyCostApiTemplate = "{% url 'mortgage:property_cost_api' 0 %}";
+
+function parseNumber(value) {
+    if (value === null || value === undefined) {
+        return 0;
+    }
+    const normalized = String(value).replace(/\s/g, '').replace(',', '.');
+    const parsed = parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatMoney(value) {
+    return value.toLocaleString('ru-RU', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+}
+
+function getSelectedDiscountType() {
+    const checked = document.querySelector('input[name="DISCOUNT_MARKUP_TYPE"]:checked');
+    return checked ? checked.value : 'discount';
+}
+
+function getFinalPropertyCostNumber() {
+    const propertyCostInput = document.getElementById('property_cost_input');
+    const discountMarkupValueInput = document.getElementById('id_DISCOUNT_MARKUP_VALUE');
+    const propertyCost = parseNumber(propertyCostInput ? propertyCostInput.value : 0);
+    const discountMarkupValue = parseNumber(discountMarkupValueInput ? discountMarkupValueInput.value : 0);
+    const discountType = getSelectedDiscountType();
+
+    if (discountType === 'discount') {
+        return propertyCost * (1 - discountMarkupValue / 100);
+    }
+    return propertyCost * (1 + discountMarkupValue / 100);
+}
+
+function getLoanAmountNumber() {
+    const finalCost = getFinalPropertyCostNumber();
+    const initialPaymentRublesInput = document.getElementById('initial_payment_rubles');
+    const initialPaymentRubles = parseNumber(initialPaymentRublesInput ? initialPaymentRublesInput.value : 0);
+    return Math.max(0, finalCost - initialPaymentRubles);
+}
+
+function updateFinalPropertyCost() {
+    const finalField = document.getElementById('final_property_cost_display');
+    if (!finalField) {
+        return;
+    }
+
+    const finalCost = getFinalPropertyCostNumber();
+    finalField.value = formatMoney(finalCost);
+    updateInitialPaymentRubles();
+}
+
+function updateInitialPaymentRubles() {
+    const percentInput = document.getElementById('initial_payment_percent');
+    const rublesInput = document.getElementById('initial_payment_rubles');
+    if (!percentInput || !rublesInput) {
+        return;
+    }
+
+    const percent = parseNumber(percentInput.value);
+    const finalCost = getFinalPropertyCostNumber();
+    rublesInput.value = (finalCost * percent / 100).toFixed(2);
+    updateTrenchRows();
+}
+
+function updateInitialPaymentPercent() {
+    const percentInput = document.getElementById('initial_payment_percent');
+    const rublesInput = document.getElementById('initial_payment_rubles');
+    if (!percentInput || !rublesInput) {
+        return;
+    }
+
+    const rubles = parseNumber(rublesInput.value);
+    const finalCost = getFinalPropertyCostNumber();
+    if (finalCost <= 0) {
+        percentInput.value = '0.00';
+        updateTrenchRows();
+        return;
+    }
+
+    percentInput.value = (rubles / finalCost * 100).toFixed(2);
+    updateTrenchRows();
+}
+
+function updatePropertyCost() {
+    const selector = document.getElementById('id_PROPERTY');
+    const costInput = document.getElementById('property_cost_input');
+    const baseInput = document.getElementById('base_property_cost');
+    if (!selector || !costInput || !baseInput) {
+        return;
+    }
+
+    const propertyId = selector.value;
+    if (!propertyId) {
+        costInput.value = '';
+        baseInput.value = '';
+        updateFinalPropertyCost();
+        return;
+    }
+
+    const url = propertyCostApiTemplate.replace(/0\/$/, `${propertyId}/`);
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            if (!data || data.property_cost === undefined) {
+                return;
+            }
+
+            costInput.value = data.property_cost;
+            baseInput.value = data.property_cost;
+            updateFinalPropertyCost();
+        })
+        .catch(() => {
+            // Do nothing on network errors, user can still edit values manually.
+        });
+}
+
+function updateTrenchRows() {
+    const countInput = document.getElementById('id_TRENCH_COUNT');
+    const baseAnnualRateInput = document.getElementById('id_ANNUAL_RATE');
+    const rows = Array.from(document.querySelectorAll('.trench-row'));
+    if (!countInput || !rows.length) {
+        return;
+    }
+
+    const trenchCount = Math.max(1, Math.min(5, parseInt(countInput.value || '1', 10) || 1));
+    const loanAmount = getLoanAmountNumber();
+    let sumPercent = 0;
+
+    rows.forEach((row, index) => {
+        const number = index + 1;
+        const isActive = number <= trenchCount;
+        const isLast = number === trenchCount;
+        const dateInput = row.querySelector('.trench-date');
+        const percentInput = row.querySelector('.trench-percent');
+        const amountInput = row.querySelector('.trench-amount');
+        const annualRateInput = row.querySelector('.annual-rate');
+
+        row.style.display = isActive ? 'block' : 'none';
+
+        if (!isActive) {
+            dateInput.required = false;
+            annualRateInput.required = false;
+            percentInput.required = false;
+            amountInput.required = false;
+            percentInput.readOnly = false;
+            amountInput.readOnly = false;
+            return;
+        }
+
+        dateInput.required = true;
+        annualRateInput.required = true;
+        if (!annualRateInput.value && baseAnnualRateInput && baseAnnualRateInput.value) {
+            annualRateInput.value = baseAnnualRateInput.value;
+        }
+
+        if (isLast) {
+            const lastPercent = Math.max(0, 100 - sumPercent);
+            const lastAmount = loanAmount * lastPercent / 100;
+            percentInput.value = lastPercent.toFixed(2);
+            amountInput.value = lastAmount.toFixed(2);
+            percentInput.readOnly = true;
+            amountInput.readOnly = true;
+            percentInput.required = false;
+            amountInput.required = false;
+            return;
+        }
+
+        percentInput.readOnly = false;
+        amountInput.readOnly = false;
+
+        if (row.dataset.editedSource === 'amount') {
+            const amount = parseNumber(amountInput.value);
+            const percentFromAmount = loanAmount > 0 ? amount / loanAmount * 100 : 0;
+            percentInput.value = percentFromAmount.toFixed(2);
+        } else {
+            const percent = parseNumber(percentInput.value);
+            amountInput.value = (loanAmount * percent / 100).toFixed(2);
+        }
+
+        sumPercent += parseNumber(percentInput.value);
+        percentInput.required = false;
+        amountInput.required = false;
+    });
+}
+
+window.updateFinalPropertyCost = updateFinalPropertyCost;
+window.updateInitialPaymentRubles = updateInitialPaymentRubles;
+window.updateInitialPaymentPercent = updateInitialPaymentPercent;
+window.updatePropertyCost = updatePropertyCost;
+
+document.addEventListener('DOMContentLoaded', function () {
+    const countInput = document.getElementById('id_TRENCH_COUNT');
+    if (countInput) {
+        countInput.addEventListener('change', updateTrenchRows);
+    }
+
+    document.querySelectorAll('.trench-row').forEach(function (row) {
+        const percentInput = row.querySelector('.trench-percent');
+        const amountInput = row.querySelector('.trench-amount');
+        if (percentInput && amountInput) {
+            if (!percentInput.value && amountInput.value) {
+                row.dataset.editedSource = 'amount';
+            } else {
+                row.dataset.editedSource = 'percent';
+            }
+        }
+        if (percentInput) {
+            percentInput.addEventListener('input', function () {
+                row.dataset.editedSource = 'percent';
+                updateTrenchRows();
+            });
+        }
+        if (amountInput) {
+            amountInput.addEventListener('input', function () {
+                row.dataset.editedSource = 'amount';
+                updateTrenchRows();
+            });
+        }
+    });
+
+    const annualRateInput = document.getElementById('id_ANNUAL_RATE');
+    if (annualRateInput) {
+        annualRateInput.addEventListener('input', function () {
+            const value = annualRateInput.value;
+            document.querySelectorAll('.trench-row').forEach(function (row) {
+                const rateInput = row.querySelector('.annual-rate');
+                if (!rateInput.value) {
+                    rateInput.value = value;
+                }
+            });
+        });
+    }
+
+    updateFinalPropertyCost();
+    updateTrenchRows();
+});
+</script>
 {% endblock %}

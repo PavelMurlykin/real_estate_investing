@@ -1,11 +1,11 @@
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from math import pow
 
 import openpyxl
 from dateutil.relativedelta import relativedelta
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import render
 from openpyxl.styles import Alignment, Font, NamedStyle
 from openpyxl.utils import get_column_letter
 
@@ -15,165 +15,243 @@ from property.models import Property
 from .forms import TrenchMortgageForm
 from .models import Trench, TrenchMortgageCalculation
 
-SESSION_KEY = "trench_mortgage_data"
+MAX_TRENCH_COUNT = 5
 
 
 def trench_mortgage_calculator(request):
-    initial = {}
-    property_id = request.GET.get("property_id")
-    if property_id and str(property_id).isdigit():
-        initial["PROPERTY"] = int(property_id)
+    initial = _build_initial_data(request.GET.get("property_id"))
 
     if request.method == "POST":
-        form = TrenchMortgageForm(request.POST)
-        if form.is_valid():
-            cleaned_data = form.cleaned_data
-            request.session[SESSION_KEY] = {
-                "property_id": cleaned_data["PROPERTY"].id,
-                "discount_markup_type": cleaned_data["DISCOUNT_MARKUP_TYPE"],
-                "discount_markup_value": str(cleaned_data["DISCOUNT_MARKUP_VALUE"] or 0),
-                "initial_payment_percent": str(cleaned_data["INITIAL_PAYMENT_PERCENT"]),
-                "initial_payment_date": cleaned_data["INITIAL_PAYMENT_DATE"].isoformat(),
-                "mortgage_term": int(cleaned_data["MORTGAGE_TERM"]),
-                "trench_count": int(cleaned_data["TRENCH_COUNT"]),
-            }
-            return render(
-                request,
-                "trench_mortgage/trench_form.html",
-                _build_trench_context(request.session[SESSION_KEY]),
-            )
+        form_data = request.POST.copy()
+        _hydrate_property_cost_fields(form_data)
+        form = TrenchMortgageForm(form_data)
     else:
         form = TrenchMortgageForm(initial=initial)
 
-    return render(request, "trench_mortgage/calculator.html", {"form": form})
+    trench_count = _resolve_trench_count(form)
+    default_rate = _resolve_default_rate(form)
+    context = {
+        "form": form,
+        "trench_count": trench_count,
+        "trench_input_rows": _build_trench_input_rows(
+            trench_count=trench_count,
+            post_data=form.data if form.is_bound else None,
+            default_annual_rate=default_rate,
+        ),
+        "final_property_cost": _calculate_display_final_cost(form.data if form.is_bound else form.initial),
+    }
 
+    if request.method != "POST" or not form.is_valid():
+        return render(request, "trench_mortgage/calculator.html", context)
 
-def calculate_trench_mortgage(request):
-    if request.method != "POST":
-        return redirect("trench_mortgage:trench_mortgage_calculator")
-
-    mortgage_data = _load_session_mortgage_data(request)
-    if not mortgage_data:
-        return redirect("trench_mortgage:trench_mortgage_calculator")
-
-    trench_entries, input_rows, errors = _parse_trench_inputs(
-        request.POST,
-        mortgage_data["trench_count"],
+    mortgage_data, prep_errors = _prepare_mortgage_data(form.cleaned_data)
+    trench_entries, input_rows, trench_errors = _parse_trench_inputs(
+        post_data=request.POST,
+        trench_count=mortgage_data["trench_count"],
+        loan_amount=mortgage_data["total_loan_amount"],
+        default_annual_rate=mortgage_data["annual_rate"],
     )
-
-    context = _build_trench_context(mortgage_data)
     context["trench_input_rows"] = input_rows
+    context["final_property_cost"] = format_currency(mortgage_data["final_property_cost"])
 
-    if errors:
-        context["error_message"] = " ".join(errors)
-        return render(request, "trench_mortgage/trench_form.html", context)
+    all_errors = prep_errors + trench_errors
+    if all_errors:
+        context["error_message"] = " ".join(all_errors)
+        return render(request, "trench_mortgage/calculator.html", context)
 
     calculation, calc_errors = _calculate_trench_mortgage(mortgage_data, trench_entries)
     if calc_errors:
         context["error_message"] = " ".join(calc_errors)
-        return render(request, "trench_mortgage/trench_form.html", context)
+        return render(request, "trench_mortgage/calculator.html", context)
 
     if "export" in request.POST:
         return _export_trench_excel(calculation)
 
     _save_trench_calculation(calculation)
     context["result"] = _format_result(calculation)
+    return render(request, "trench_mortgage/calculator.html", context)
 
-    return render(request, "trench_mortgage/trench_form.html", context)
 
+def _build_initial_data(raw_property_id):
+    initial = {}
+    if not (raw_property_id and str(raw_property_id).isdigit()):
+        return initial
 
-def _build_trench_context(mortgage_data):
-    property_obj = mortgage_data.get("property_obj")
+    property_obj = Property.objects.filter(pk=int(raw_property_id)).first()
     if not property_obj:
-        property_obj = get_object_or_404(Property, pk=mortgage_data["property_id"])
+        return initial
 
-    return {
-        "trench_count": int(mortgage_data["trench_count"]),
-        "property_obj": property_obj,
-    }
+    initial["PROPERTY"] = property_obj.id
+    initial["BASE_PROPERTY_COST"] = property_obj.property_cost
+    initial["PROPERTY_COST"] = property_obj.property_cost
+    return initial
 
 
-def _load_session_mortgage_data(request):
-    raw = request.session.get(SESSION_KEY)
-    if not raw:
-        return None
+def _hydrate_property_cost_fields(form_data):
+    selected_id = form_data.get("PROPERTY")
+    if not selected_id:
+        return
 
-    property_ref = raw.get("property_id", raw.get("PROPERTY"))
-    if hasattr(property_ref, "id"):
-        property_id = property_ref.id
+    selected_property = Property.objects.filter(id=selected_id).first()
+    if not selected_property:
+        return
+
+    if not form_data.get("BASE_PROPERTY_COST"):
+        form_data["BASE_PROPERTY_COST"] = str(selected_property.property_cost)
+    if not form_data.get("PROPERTY_COST"):
+        form_data["PROPERTY_COST"] = str(selected_property.property_cost)
+
+
+def _resolve_trench_count(form):
+    raw_count = None
+    if form.is_bound:
+        raw_count = form.data.get("TRENCH_COUNT")
+    elif "TRENCH_COUNT" in form.initial:
+        raw_count = form.initial.get("TRENCH_COUNT")
     else:
-        try:
-            property_id = int(property_ref)
-        except (TypeError, ValueError):
-            return None
-
-    property_obj = Property.objects.filter(pk=property_id).first()
-    if not property_obj:
-        return None
-
-    raw_initial_date = raw.get("initial_payment_date", raw.get("INITIAL_PAYMENT_DATE"))
-    if isinstance(raw_initial_date, date):
-        initial_payment_date = raw_initial_date
-    else:
-        try:
-            initial_payment_date = datetime.strptime(str(raw_initial_date), "%Y-%m-%d").date()
-        except (TypeError, ValueError):
-            return None
+        raw_count = form.fields["TRENCH_COUNT"].initial
 
     try:
-        discount_markup_value = Decimal(str(raw.get("discount_markup_value", raw.get("DISCOUNT_MARKUP_VALUE", 0))))
-        initial_payment_percent = Decimal(str(raw.get("initial_payment_percent", raw.get("INITIAL_PAYMENT_PERCENT", 0))))
-        mortgage_term = int(raw.get("mortgage_term", raw.get("MORTGAGE_TERM", 0)))
-        trench_count = int(raw.get("trench_count", raw.get("TRENCH_COUNT", 0)))
-    except (TypeError, ValueError, InvalidOperation):
-        return None
+        count = int(raw_count or 1)
+    except (TypeError, ValueError):
+        count = 1
 
-    if discount_markup_value < 0:
-        return None
-    if initial_payment_percent < 0 or initial_payment_percent > 100:
-        return None
-    if mortgage_term < 1 or mortgage_term > 50:
-        return None
-    if trench_count < 1 or trench_count > 5:
-        return None
+    return max(1, min(MAX_TRENCH_COUNT, count))
+
+
+def _resolve_default_rate(form):
+    if form.is_bound:
+        return str(form.data.get("ANNUAL_RATE", "")).strip()
+    return str(form.initial.get("ANNUAL_RATE", "")).strip()
+
+
+def _build_trench_input_rows(trench_count, post_data=None, default_annual_rate=""):
+    rows = []
+    default_rate_value = str(default_annual_rate or "").strip()
+
+    for idx in range(1, MAX_TRENCH_COUNT + 1):
+        if post_data:
+            trench_date = str(post_data.get(f"trench_date_{idx}", "")).strip()
+            trench_percent = str(post_data.get(f"trench_percent_{idx}", "")).strip()
+            trench_amount = str(post_data.get(f"trench_amount_{idx}", "")).strip()
+            annual_rate = str(post_data.get(f"annual_rate_{idx}", "")).strip()
+        else:
+            trench_date = ""
+            trench_percent = ""
+            trench_amount = ""
+            annual_rate = ""
+
+        if not annual_rate:
+            annual_rate = default_rate_value
+
+        rows.append(
+            {
+                "number": idx,
+                "trench_date": trench_date,
+                "trench_percent": trench_percent,
+                "trench_amount": trench_amount,
+                "annual_rate": annual_rate,
+                "is_active": idx <= trench_count,
+                "is_last": idx == trench_count,
+            }
+        )
+
+    return rows
+
+
+def _calculate_display_final_cost(data):
+    if not data:
+        return ""
+    if not data.get("PROPERTY_COST"):
+        return ""
+
+    try:
+        property_cost = float(data.get("PROPERTY_COST") or 0)
+        discount_value = float(data.get("DISCOUNT_MARKUP_VALUE") or 0)
+    except (TypeError, ValueError):
+        return ""
+
+    discount_type = data.get("DISCOUNT_MARKUP_TYPE") or "discount"
+    if discount_type == "discount":
+        final_cost = property_cost * (1 - discount_value / 100)
+    else:
+        final_cost = property_cost * (1 + discount_value / 100)
+
+    return format_currency(final_cost)
+
+
+def _prepare_mortgage_data(cleaned_data):
+    errors = []
+    property_obj = cleaned_data["PROPERTY"]
+
+    property_cost = float(cleaned_data["PROPERTY_COST"])
+    base_property_cost = float(cleaned_data.get("BASE_PROPERTY_COST", property_obj.property_cost))
+    discount_markup_value = float(cleaned_data.get("DISCOUNT_MARKUP_VALUE", 0) or 0)
+    discount_markup_type = cleaned_data["DISCOUNT_MARKUP_TYPE"]
+
+    if discount_markup_type == "discount":
+        final_property_cost = property_cost * (1 - discount_markup_value / 100)
+    else:
+        final_property_cost = property_cost * (1 + discount_markup_value / 100)
+
+    initial_payment_percent = float(cleaned_data.get("INITIAL_PAYMENT_PERCENT", 0) or 0)
+    initial_payment_rubles = float(cleaned_data.get("INITIAL_PAYMENT_RUBLES", 0) or 0)
+
+    if initial_payment_rubles and not initial_payment_percent and final_property_cost > 0:
+        initial_payment_percent = (initial_payment_rubles / final_property_cost) * 100
+
+    if initial_payment_percent and not initial_payment_rubles and final_property_cost > 0:
+        initial_payment_rubles = final_property_cost * initial_payment_percent / 100
+
+    if initial_payment_percent and initial_payment_rubles:
+        initial_payment_rubles = final_property_cost * initial_payment_percent / 100
+
+    total_loan_amount = final_property_cost - initial_payment_rubles
+    if total_loan_amount <= 0:
+        errors.append("Сумма кредита должна быть больше 0 после вычета первоначального взноса.")
 
     return {
-        "property_id": property_id,
         "property_obj": property_obj,
-        "discount_markup_type": raw.get("discount_markup_type", raw.get("DISCOUNT_MARKUP_TYPE", "discount")),
+        "property_cost": property_cost,
+        "base_property_cost": base_property_cost,
+        "discount_markup_type": discount_markup_type,
         "discount_markup_value": discount_markup_value,
+        "final_property_cost": final_property_cost,
         "initial_payment_percent": initial_payment_percent,
-        "initial_payment_date": initial_payment_date,
-        "mortgage_term": mortgage_term,
-        "trench_count": trench_count,
-    }
+        "initial_payment_rubles": initial_payment_rubles,
+        "initial_payment_date": cleaned_data["INITIAL_PAYMENT_DATE"],
+        "mortgage_term": int(cleaned_data["MORTGAGE_TERM"]),
+        "annual_rate": float(cleaned_data["ANNUAL_RATE"]),
+        "trench_count": int(cleaned_data["TRENCH_COUNT"]),
+        "total_loan_amount": total_loan_amount,
+    }, errors
 
 
-def _parse_trench_inputs(post_data, trench_count):
+def _parse_decimal_value(raw_value):
+    return Decimal(str(raw_value).replace(",", "."))
+
+
+def _parse_trench_inputs(post_data, trench_count, loan_amount, default_annual_rate):
     errors = []
-    input_rows = []
+    input_rows = _build_trench_input_rows(trench_count, post_data, default_annual_rate)
     entries = []
     percent_sum = Decimal("0")
+    loan_amount_decimal = Decimal(str(loan_amount))
+    default_rate_decimal = Decimal(str(default_annual_rate))
 
     for idx in range(1, trench_count + 1):
         trench_date_raw = str(post_data.get(f"trench_date_{idx}", "")).strip()
         trench_percent_raw = str(post_data.get(f"trench_percent_{idx}", "")).strip()
+        trench_amount_raw = str(post_data.get(f"trench_amount_{idx}", "")).strip()
         annual_rate_raw = str(post_data.get(f"annual_rate_{idx}", "")).strip()
-
-        input_rows.append(
-            {
-                "number": idx,
-                "trench_date": trench_date_raw,
-                "trench_percent": trench_percent_raw,
-                "annual_rate": annual_rate_raw,
-            }
-        )
+        row_data = input_rows[idx - 1]
+        row_data["trench_date"] = trench_date_raw
+        row_data["trench_percent"] = trench_percent_raw
+        row_data["trench_amount"] = trench_amount_raw
+        row_data["annual_rate"] = annual_rate_raw or f"{default_rate_decimal:.2f}"
 
         if not trench_date_raw:
             errors.append(f"Не заполнена дата транша №{idx}.")
-            continue
-        if not annual_rate_raw:
-            errors.append(f"Не заполнена ставка транша №{idx}.")
             continue
 
         try:
@@ -182,40 +260,67 @@ def _parse_trench_inputs(post_data, trench_count):
             errors.append(f"Неверный формат даты транша №{idx}.")
             continue
 
-        try:
-            annual_rate = Decimal(annual_rate_raw.replace(",", "."))
-        except (InvalidOperation, AttributeError):
-            errors.append(f"Неверная ставка транша №{idx}.")
-            continue
+        if annual_rate_raw:
+            try:
+                annual_rate = _parse_decimal_value(annual_rate_raw)
+            except (InvalidOperation, ValueError):
+                errors.append(f"Неверная ставка транша №{idx}.")
+                continue
+        else:
+            annual_rate = default_rate_decimal
 
         if annual_rate < 0:
             errors.append(f"Ставка транша №{idx} не может быть отрицательной.")
             continue
 
+        trench_percent = None
+        trench_amount = None
         if idx < trench_count:
-            if not trench_percent_raw:
-                errors.append(f"Не заполнен процент транша №{idx}.")
-                continue
-            try:
-                trench_percent = Decimal(trench_percent_raw.replace(",", "."))
-            except (InvalidOperation, AttributeError):
-                errors.append(f"Неверный процент транша №{idx}.")
+            if not trench_percent_raw and not trench_amount_raw:
+                errors.append(f"Не заполнена сумма транша №{idx} (в % или руб.).")
                 continue
 
-            if trench_percent <= 0:
+            if trench_percent_raw:
+                try:
+                    trench_percent = _parse_decimal_value(trench_percent_raw)
+                except (InvalidOperation, ValueError):
+                    errors.append(f"Неверный процент транша №{idx}.")
+                    continue
+
+            if trench_amount_raw:
+                try:
+                    trench_amount = _parse_decimal_value(trench_amount_raw)
+                except (InvalidOperation, ValueError):
+                    errors.append(f"Неверная сумма транша №{idx} в рублях.")
+                    continue
+
+            if trench_percent is not None and trench_percent <= 0:
                 errors.append(f"Процент транша №{idx} должен быть больше 0.")
                 continue
+            if trench_amount is not None and trench_amount <= 0:
+                errors.append(f"Сумма транша №{idx} в рублях должна быть больше 0.")
+                continue
 
-            percent_sum += trench_percent
-        else:
-            trench_percent = None
+            if trench_percent is not None:
+                computed_percent = trench_percent
+                computed_amount = loan_amount_decimal * computed_percent / Decimal("100")
+            else:
+                computed_amount = trench_amount
+                if loan_amount_decimal <= 0:
+                    errors.append("Сумма кредита должна быть больше 0.")
+                    continue
+                computed_percent = (computed_amount / loan_amount_decimal) * Decimal("100")
 
+            percent_sum += computed_percent
+            trench_percent = computed_percent.quantize(Decimal("0.01"))
+            trench_amount = computed_amount.quantize(Decimal("0.01"))
         entries.append(
             {
                 "number": idx,
                 "trench_date": trench_date,
                 "trench_percent": trench_percent,
-                "annual_rate": annual_rate,
+                "trench_amount": trench_amount,
+                "annual_rate": annual_rate.quantize(Decimal("0.01")),
             }
         )
 
@@ -231,10 +336,18 @@ def _parse_trench_inputs(post_data, trench_count):
         last_percent = Decimal("100") - percent_sum
 
     if last_percent <= 0:
-        return [], input_rows, ["Сумма процентов траншей превышает или равна 100%."]
+        return [], input_rows, [
+            "Сумма процентов траншей превышает или равна 100%."
+        ]
 
+    last_amount = (loan_amount_decimal * last_percent / Decimal("100")).quantize(Decimal("0.01"))
     entries[-1]["trench_percent"] = last_percent.quantize(Decimal("0.01"))
-    input_rows[-1]["trench_percent"] = f"{entries[-1]['trench_percent']:.2f}"
+    entries[-1]["trench_amount"] = last_amount
+
+    for idx, entry in enumerate(entries):
+        input_rows[idx]["trench_percent"] = f"{entry['trench_percent']:.2f}"
+        input_rows[idx]["trench_amount"] = f"{entry['trench_amount']:.2f}"
+        input_rows[idx]["annual_rate"] = f"{entry['annual_rate']:.2f}"
 
     for prev, current in zip(entries, entries[1:]):
         if current["trench_date"] < prev["trench_date"]:
@@ -246,19 +359,7 @@ def _parse_trench_inputs(post_data, trench_count):
 def _calculate_trench_mortgage(mortgage_data, trench_entries):
     errors = []
 
-    property_obj = mortgage_data["property_obj"]
-    property_cost = float(property_obj.property_cost)
-    discount_markup_value = float(mortgage_data["discount_markup_value"])
-
-    if mortgage_data["discount_markup_type"] == "discount":
-        final_property_cost = property_cost * (1 - discount_markup_value / 100)
-    else:
-        final_property_cost = property_cost * (1 + discount_markup_value / 100)
-
-    initial_payment_percent = float(mortgage_data["initial_payment_percent"])
-    initial_payment = final_property_cost * initial_payment_percent / 100
-    loan_amount = final_property_cost - initial_payment
-
+    loan_amount = float(mortgage_data["total_loan_amount"])
     initial_payment_date = mortgage_data["initial_payment_date"]
     mortgage_end_date = initial_payment_date + relativedelta(years=mortgage_data["mortgage_term"])
 
@@ -282,7 +383,7 @@ def _calculate_trench_mortgage(mortgage_data, trench_entries):
             continue
 
         trench_percent = float(trench["trench_percent"])
-        trench_amount = loan_amount * trench_percent / 100
+        trench_amount = float(trench["trench_amount"])
         annual_rate = float(trench["annual_rate"])
         monthly_rate = annual_rate / 100 / 12
 
@@ -316,18 +417,19 @@ def _calculate_trench_mortgage(mortgage_data, trench_entries):
         return None, errors
 
     calculation = {
-        "property_obj": property_obj,
-        "property_cost": property_cost,
+        "property_obj": mortgage_data["property_obj"],
+        "property_cost": mortgage_data["property_cost"],
+        "base_property_cost": mortgage_data["base_property_cost"],
         "discount_markup_type": mortgage_data["discount_markup_type"],
-        "discount_markup_value": discount_markup_value,
-        "final_property_cost": final_property_cost,
-        "initial_payment_percent": initial_payment_percent,
-        "initial_payment": initial_payment,
-        "initial_payment_date": initial_payment_date,
+        "discount_markup_value": mortgage_data["discount_markup_value"],
+        "final_property_cost": mortgage_data["final_property_cost"],
+        "initial_payment_percent": mortgage_data["initial_payment_percent"],
+        "initial_payment": mortgage_data["initial_payment_rubles"],
+        "initial_payment_date": mortgage_data["initial_payment_date"],
         "mortgage_term": mortgage_data["mortgage_term"],
         "mortgage_end_date": mortgage_end_date,
         "trench_count": mortgage_data["trench_count"],
-        "total_loan_amount": loan_amount,
+        "total_loan_amount": mortgage_data["total_loan_amount"],
         "total_overpayment": total_overpayment,
         "trenches": trenches_result,
     }
