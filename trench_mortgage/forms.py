@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from django import forms
 
@@ -9,12 +9,44 @@ class TrenchMortgageForm(forms.Form):
     PROPERTY = forms.ModelChoiceField(
         queryset=Property.objects.all(),
         label="Объект недвижимости",
-        widget=forms.Select(attrs={"class": "form-select"}),
+        widget=forms.Select(
+            attrs={
+                "class": "form-select",
+                "id": "id_PROPERTY",
+                "onchange": "updatePropertyCost()",
+            }
+        ),
+    )
+    BASE_PROPERTY_COST = forms.DecimalField(
+        label="Исходная стоимость объекта, руб.",
+        max_digits=15,
+        decimal_places=2,
+        required=False,
+        widget=forms.NumberInput(
+            attrs={
+                "class": "form-control",
+                "step": "0.01",
+                "id": "base_property_cost",
+                "readonly": "readonly",
+            }
+        ),
+    )
+    PROPERTY_COST = forms.DecimalField(
+        label="Базовая стоимость объекта, руб.",
+        max_digits=15,
+        decimal_places=2,
+        widget=forms.NumberInput(
+            attrs={
+                "class": "form-control",
+                "step": "0.01",
+                "id": "property_cost_input",
+            }
+        ),
     )
     DISCOUNT_MARKUP_TYPE = forms.ChoiceField(
         choices=[("discount", "Скидка"), ("markup", "Удорожание")],
         label="Тип изменения цены",
-        widget=forms.RadioSelect,
+        widget=forms.RadioSelect(attrs={"onchange": "updateFinalPropertyCost()"}),
         initial="discount",
     )
     DISCOUNT_MARKUP_VALUE = forms.DecimalField(
@@ -23,7 +55,13 @@ class TrenchMortgageForm(forms.Form):
         max_digits=5,
         decimal_places=2,
         required=False,
-        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+        widget=forms.NumberInput(
+            attrs={
+                "class": "form-control",
+                "step": "0.01",
+                "oninput": "updateFinalPropertyCost()",
+            }
+        ),
     )
     INITIAL_PAYMENT_PERCENT = forms.DecimalField(
         label="Первоначальный взнос, %",
@@ -31,26 +69,76 @@ class TrenchMortgageForm(forms.Form):
         max_value=100,
         max_digits=5,
         decimal_places=2,
-        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+        widget=forms.NumberInput(
+            attrs={
+                "class": "form-control",
+                "step": "0.01",
+                "id": "initial_payment_percent",
+                "oninput": "updateInitialPaymentRubles()",
+            }
+        ),
+    )
+    INITIAL_PAYMENT_RUBLES = forms.DecimalField(
+        label="Первоначальный взнос, руб.",
+        min_value=0,
+        max_digits=15,
+        decimal_places=2,
+        widget=forms.NumberInput(
+            attrs={
+                "class": "form-control",
+                "step": "0.01",
+                "id": "initial_payment_rubles",
+                "oninput": "updateInitialPaymentPercent()",
+            }
+        ),
     )
     INITIAL_PAYMENT_DATE = forms.DateField(
-        label="Дата первоначального взноса",
+        label="Дата первоначального взноса (ДД.ММ.ГГГГ)",
         initial=date.today,
-        widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+        widget=forms.DateInput(
+            attrs={
+                "class": "form-control",
+                "type": "text",
+                "placeholder": "ДД.ММ.ГГГГ",
+            }
+        ),
+        input_formats=["%d.%m.%Y", "%Y-%m-%d", "%d/%m/%Y"],
     )
     MORTGAGE_TERM = forms.IntegerField(
-        label="Срок кредита, лет",
+        label="Срок ипотеки, годы",
         min_value=1,
         max_value=50,
         widget=forms.NumberInput(attrs={"class": "form-control"}),
+    )
+    ANNUAL_RATE = forms.DecimalField(
+        label="Годовая ставка, %",
+        min_value=0,
+        max_digits=5,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
     )
     TRENCH_COUNT = forms.TypedChoiceField(
         label="Количество траншей",
         choices=[(i, str(i)) for i in range(1, 6)],
         coerce=int,
         empty_value=1,
-        widget=forms.Select(attrs={"class": "form-select"}),
+        initial=1,
+        widget=forms.Select(attrs={"class": "form-select", "id": "id_TRENCH_COUNT"}),
     )
+
+    def clean_INITIAL_PAYMENT_DATE(self):
+        date_str = self.cleaned_data["INITIAL_PAYMENT_DATE"]
+        if isinstance(date_str, str):
+            try:
+                return datetime.strptime(date_str, "%d.%m.%Y").date()
+            except ValueError:
+                try:
+                    return datetime.strptime(date_str, "%Y-%m-%d").date()
+                except ValueError as exc:
+                    raise forms.ValidationError(
+                        "Неверный формат даты. Используйте ДД.ММ.ГГГГ"
+                    ) from exc
+        return date_str
 
     def clean(self):
         cleaned_data = super().clean()
