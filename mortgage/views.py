@@ -2,7 +2,7 @@
 import decimal
 
 import openpyxl
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404
 from openpyxl.styles import Font, Alignment, NamedStyle
 from openpyxl.utils import get_column_letter
@@ -16,26 +16,25 @@ from .utils import format_currency
 
 def mortgage_calculator(request):
     # Инициализация формы
-    mortgage_form = MortgageForm(request.POST or None)
-
-    # Получаем список всех объектов
-    properties = Property.objects.all()
+    if request.method == 'POST':
+        form_data = request.POST.copy()
+        selected_id = form_data.get('PROPERTY')
+        if selected_id:
+            selected_property = Property.objects.filter(id=selected_id).first()
+            if selected_property:
+                if not form_data.get('BASE_PROPERTY_COST'):
+                    form_data['BASE_PROPERTY_COST'] = str(selected_property.property_cost)
+                if not form_data.get('PROPERTY_COST'):
+                    form_data['PROPERTY_COST'] = str(selected_property.property_cost)
+        mortgage_form = MortgageForm(form_data)
+    else:
+        mortgage_form = MortgageForm()
 
     context = {
         'mortgage_form': mortgage_form,
-        'properties': properties
     }
 
     if request.method == 'POST':
-
-        selected_id = request.POST.get("PROPERTY")
-        if selected_id:
-            try:
-                obj = Property.objects.get(id=selected_id)
-                mortgage_form.fields['PROPERTY_COST'].initial = obj.property_cost
-                mortgage_form.fields['BASE_PROPERTY_COST'].initial = obj.property_cost
-            except Property.DoesNotExist:
-                pass
 
         if 'calculate' in request.POST:
             if mortgage_form.is_valid():
@@ -83,7 +82,7 @@ def mortgage_calculator(request):
                     initial_payment_date=data['INITIAL_PAYMENT_DATE'],
                     mortgage_term=int(data['MORTGAGE_TERM']),
                     annual_rate=float(data['ANNUAL_RATE']),
-                    has_grace_period=data['HAS_GRACE_PERIOD'] == 'да',
+                    has_grace_period=data['HAS_GRACE_PERIOD'] == 'yes',
                     grace_period_term=int(data['GRACE_PERIOD_TERM'] or 0),
                     grace_period_rate=float(data['GRACE_PERIOD_RATE'] or 0)
                 )
@@ -120,7 +119,7 @@ def mortgage_calculator(request):
                     initial_payment_date=data['INITIAL_PAYMENT_DATE'],
                     mortgage_term=data['MORTGAGE_TERM'],
                     annual_rate=decimal.Decimal(str(data['ANNUAL_RATE'])),
-                    has_grace_period=data['HAS_GRACE_PERIOD'] == 'да',
+                    has_grace_period=data['HAS_GRACE_PERIOD'] == 'yes',
                     grace_period_term=data['GRACE_PERIOD_TERM'],
                     grace_period_rate=decimal.Decimal(str(data['GRACE_PERIOD_RATE'] or 0)),
                     discount_markup_type=data['DISCOUNT_MARKUP_TYPE'],
@@ -141,7 +140,7 @@ def mortgage_calculator(request):
 
                 # Сохраняем расчет в контекст
                 context['result'] = formatted_result
-                context['has_grace_period'] = data['HAS_GRACE_PERIOD'] == 'да'
+                context['has_grace_period'] = data['HAS_GRACE_PERIOD'] == 'yes'
                 context['payment_schedule'] = payment_schedule
                 context['final_property_cost'] = format_currency(final_property_cost)
                 context['discount_markup_type'] = data['DISCOUNT_MARKUP_TYPE']
@@ -197,7 +196,7 @@ def mortgage_calculator(request):
                     initial_payment_date=mortgage_data['INITIAL_PAYMENT_DATE'],
                     mortgage_term=int(mortgage_data['MORTGAGE_TERM']),
                     annual_rate=float(mortgage_data['ANNUAL_RATE']),
-                    has_grace_period=mortgage_data['HAS_GRACE_PERIOD'] == 'да',
+                    has_grace_period=mortgage_data['HAS_GRACE_PERIOD'] == 'yes',
                     grace_period_term=int(mortgage_data['GRACE_PERIOD_TERM'] or 0),
                     grace_period_rate=float(mortgage_data['GRACE_PERIOD_RATE'] or 0)
                 )
@@ -286,10 +285,10 @@ def mortgage_calculator(request):
                     ['Дата первоначального взноса', mortgage_data['INITIAL_PAYMENT_DATE'].strftime('%d.%m.%Y')],
                     ['Срок ипотеки, годы', int(mortgage_data['MORTGAGE_TERM'])],
                     ['Годовая ставка, %', float(mortgage_data['ANNUAL_RATE'])],
-                    ['Наличие льготного периода', 'Да' if mortgage_data['HAS_GRACE_PERIOD'] == 'да' else 'Нет'],
+                    ['Наличие льготного периода', 'Да' if mortgage_data['HAS_GRACE_PERIOD'] == 'yes' else 'Нет'],
                 ]
 
-                if mortgage_data['HAS_GRACE_PERIOD'] == 'да':
+                if mortgage_data['HAS_GRACE_PERIOD'] == 'yes':
                     mortgage_data_list.extend([
                         ['Срок льготного периода, годы', int(mortgage_data['GRACE_PERIOD_TERM'])],
                         ['Годовая ставка в льготный период, %', float(mortgage_data['GRACE_PERIOD_RATE'])]
@@ -325,7 +324,7 @@ def mortgage_calculator(request):
 
                 result_data = []
 
-                if mortgage_data['HAS_GRACE_PERIOD'] == 'да':
+                if mortgage_data['HAS_GRACE_PERIOD'] == 'yes':
                     result_data.extend([
                         ['Число платежей за льготный период', result['grace_payments_count']],
                         ['Дата последнего платежа по льготному периоду', grace_period_end_date_str],
@@ -405,6 +404,13 @@ def mortgage_calculator(request):
                 return response
 
     return render(request, 'mortgage/mortgage_form.html', context)
+
+
+def property_cost_api(request, pk):
+    property_obj = get_object_or_404(Property, pk=pk)
+    return JsonResponse({
+        'property_cost': str(property_obj.property_cost),
+    })
 
 
 def calculation_list(request):

@@ -1,4 +1,4 @@
-<!-- calculation/templates/calculation/calculation_form.html -->
+<!-- templates/calculation/calculation_form.html -->
 {% extends "base.html" %}
 {% load django_bootstrap5 %}
 
@@ -53,6 +53,109 @@
                         <div class="form-text">Вы можете изменить стоимость для расчетов</div>
                     </div>
 
+                    <!-- Новые поля из модели MortgageCalculation -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_initial_payment_percent" class="form-label">Первоначальный взнос, %</label>
+                                <input type="number" name="initial_payment_percent"
+                                       id="id_initial_payment_percent"
+                                       class="form-control"
+                                       step="0.01"
+                                       value="{{ request.POST.initial_payment_percent|default:'0' }}"
+                                       required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_initial_payment_date" class="form-label">Дата первоначального взноса</label>
+                                <input type="date" name="initial_payment_date"
+                                       id="id_initial_payment_date"
+                                       class="form-control"
+                                       value="{{ request.POST.initial_payment_date|default:'' }}"
+                                       required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_mortgage_term" class="form-label">Срок ипотеки, годы</label>
+                                <input type="number" name="mortgage_term"
+                                       id="id_mortgage_term"
+                                       class="form-control"
+                                       value="{{ request.POST.mortgage_term|default:'0' }}"
+                                       required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_annual_rate" class="form-label">Годовая ставка, %</label>
+                                <input type="number" name="annual_rate"
+                                       id="id_annual_rate"
+                                       class="form-control"
+                                       step="0.01"
+                                       value="{{ request.POST.annual_rate|default:'0' }}"
+                                       required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="has_grace_period"
+                               id="id_has_grace_period"
+                               class="form-check-input"
+                               {% if request.POST.has_grace_period %}checked{% endif %}>
+                        <label for="id_has_grace_period" class="form-check-label">Наличие льготного периода</label>
+                    </div>
+
+                    <div id="grace-period-fields" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_grace_period_term" class="form-label">Срок льготного периода, годы</label>
+                                    <input type="number" name="grace_period_term"
+                                           id="id_grace_period_term"
+                                           class="form-control"
+                                           value="{{ request.POST.grace_period_term|default:'0' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_grace_period_rate" class="form-label">Ставка на льготный период, %</label>
+                                    <input type="number" name="grace_period_rate"
+                                           id="id_grace_period_rate"
+                                           class="form-control"
+                                           step="0.01"
+                                           value="{{ request.POST.grace_period_rate|default:'0' }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_discount_markup_type" class="form-label">Тип изменения цены</label>
+                                <select name="discount_markup_type" id="id_discount_markup_type" class="form-select">
+                                    <option value="discount" {% if request.POST.discount_markup_type == 'discount' %}selected{% endif %}>Скидка</option>
+                                    <option value="markup" {% if request.POST.discount_markup_type == 'markup' %}selected{% endif %}>Удорожание</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_discount_markup_value" class="form-label">Значение изменения цены, %</label>
+                                <input type="number" name="discount_markup_value"
+                                       id="id_discount_markup_value"
+                                       class="form-control"
+                                       step="0.01"
+                                       value="{{ request.POST.discount_markup_value|default:'0' }}">
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                         <button type="submit" class="btn btn-primary">
                             Произвести расчеты
@@ -104,6 +207,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const calculationResults = document.getElementById('calculation-results');
     const resetButton = document.getElementById('reset-button');
     const calculationForm = document.getElementById('calculation-form');
+    const hasGracePeriodCheckbox = document.getElementById('id_has_grace_period');
+    const gracePeriodFields = document.getElementById('grace-period-fields');
+
+    // Функция для управления видимостью полей льготного периода
+    function toggleGracePeriodFields() {
+        if (hasGracePeriodCheckbox.checked) {
+            gracePeriodFields.style.display = 'block';
+        } else {
+            gracePeriodFields.style.display = 'none';
+        }
+    }
+
+    // Инициализация при загрузке страницы
+    toggleGracePeriodFields();
+
+    // Обработчик изменения чекбокса льготного периода
+    hasGracePeriodCheckbox.addEventListener('change', toggleGracePeriodFields);
 
     // Функция для скрытия результатов и сообщений
     function hideResultsAndMessages() {

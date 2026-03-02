@@ -75,7 +75,17 @@ class CalculationView(FormView):
                 'property_description': str(property_obj),
                 'original_cost': float(original_cost),
                 'custom_cost': float(custom_cost),
-                'difference': float(custom_cost) - float(original_cost)
+                'difference': float(custom_cost) - float(original_cost),
+                # Добавляем новые поля в сессию
+                'initial_payment_percent': float(form.cleaned_data['initial_payment_percent']),
+                'initial_payment_date': form.cleaned_data['initial_payment_date'].isoformat(),
+                'mortgage_term': int(form.cleaned_data['mortgage_term']),
+                'annual_rate': float(form.cleaned_data['annual_rate']),
+                'has_grace_period': bool(form.cleaned_data.get('has_grace_period', False)),
+                'grace_period_term': int(form.cleaned_data.get('grace_period_term', 0)),
+                'grace_period_rate': float(form.cleaned_data.get('grace_period_rate', 0)),
+                'discount_markup_type': form.cleaned_data['discount_markup_type'],
+                'discount_markup_value': float(form.cleaned_data['discount_markup_value']),
             }
 
             self.request.session['calculation_data'] = calculation_data
