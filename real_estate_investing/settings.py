@@ -1,4 +1,3 @@
-# real_estate_investing/settings.py
 import os
 # import environ
 from pathlib import Path

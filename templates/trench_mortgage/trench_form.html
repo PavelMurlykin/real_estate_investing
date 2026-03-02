@@ -1,170 +1,243 @@
-{% extends 'base.html' %}
-{% load static %}
+{% extends "base.html" %}
+{% load trench_filters %}
+
+{% block title %}
+    Траншевая ипотека
+{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Ввод параметров траншей</h2>
+<div class="container mt-4 mb-5">
+    <h2 class="mb-4">Ввод параметров траншей</h2>
 
-    <form id="trenchDataForm">
+    <div class="card mb-4">
+        <div class="card-header">Объект</div>
+        <div class="card-body">
+            <div><strong>ЖК:</strong> {{ property_obj.building.real_estate_complex.name }}</div>
+            <div><strong>Квартира:</strong> № {{ property_obj.apartment_number }}</div>
+            <div><strong>Стоимость:</strong> {{ property_obj.property_cost }} руб.</div>
+        </div>
+    </div>
+
+    {% if error_message %}
+        <div class="alert alert-danger">{{ error_message }}</div>
+    {% endif %}
+
+    <form method="post" action="{% url 'trench_mortgage:calculate_trench_mortgage' %}" id="trenchDataForm" novalidate>
         {% csrf_token %}
 
-        <div id="trenchForms">
-            {% for i in trench_count|get_range %}
-            <div class="card mb-3 trench-form">
-                <div class="card-header">
-                    <h5>Транш {{ forloop.counter }}</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <label for="trench_date_{{ forloop.counter }}" class="form-label">Дата транша</label>
-                            <input type="date" class="form-control trench-date" name="trench_date_{{ forloop.counter }}" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="trench_percent_{{ forloop.counter }}" class="form-label">Сумма транша, %</label>
-                            <input type="number" class="form-control trench-percent" name="trench_percent_{{ forloop.counter }}"
-                                   step="0.01" min="0" {% if forloop.last %}readonly{% else %}required{% endif %}>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="annual_rate_{{ forloop.counter }}" class="form-label">Годовая ставка, %</label>
-                            <input type="number" class="form-control annual-rate" name="annual_rate_{{ forloop.counter }}"
-                                   step="0.01" min="0" required>
+        {% if trench_input_rows %}
+            {% for row in trench_input_rows %}
+                <div class="card mb-3 trench-form" data-trench-number="{{ row.number }}">
+                    <div class="card-header">Транш {{ row.number }}</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label" for="trench_date_{{ row.number }}">Дата транша</label>
+                                <input
+                                    id="trench_date_{{ row.number }}"
+                                    type="date"
+                                    class="form-control trench-date"
+                                    name="trench_date_{{ row.number }}"
+                                    value="{{ row.trench_date }}"
+                                    required
+                                >
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="trench_percent_{{ row.number }}">Сумма транша, %</label>
+                                <input
+                                    id="trench_percent_{{ row.number }}"
+                                    type="number"
+                                    class="form-control trench-percent"
+                                    name="trench_percent_{{ row.number }}"
+                                    value="{{ row.trench_percent }}"
+                                    step="0.01"
+                                    min="0"
+                                    {% if row.number == trench_count %}readonly{% else %}required{% endif %}
+                                >
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="annual_rate_{{ row.number }}">Годовая ставка, %</label>
+                                <input
+                                    id="annual_rate_{{ row.number }}"
+                                    type="number"
+                                    class="form-control annual-rate"
+                                    name="annual_rate_{{ row.number }}"
+                                    value="{{ row.annual_rate }}"
+                                    step="0.01"
+                                    min="0"
+                                    required
+                                >
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
             {% endfor %}
-        </div>
+        {% else %}
+            {% for _ in trench_count|get_range %}
+                <div class="card mb-3 trench-form" data-trench-number="{{ forloop.counter }}">
+                    <div class="card-header">Транш {{ forloop.counter }}</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label" for="trench_date_{{ forloop.counter }}">Дата транша</label>
+                                <input
+                                    id="trench_date_{{ forloop.counter }}"
+                                    type="date"
+                                    class="form-control trench-date"
+                                    name="trench_date_{{ forloop.counter }}"
+                                    required
+                                >
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="trench_percent_{{ forloop.counter }}">Сумма транша, %</label>
+                                <input
+                                    id="trench_percent_{{ forloop.counter }}"
+                                    type="number"
+                                    class="form-control trench-percent"
+                                    name="trench_percent_{{ forloop.counter }}"
+                                    step="0.01"
+                                    min="0"
+                                    {% if forloop.last %}readonly{% else %}required{% endif %}
+                                >
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="annual_rate_{{ forloop.counter }}">Годовая ставка, %</label>
+                                <input
+                                    id="annual_rate_{{ forloop.counter }}"
+                                    type="number"
+                                    class="form-control annual-rate"
+                                    name="annual_rate_{{ forloop.counter }}"
+                                    step="0.01"
+                                    min="0"
+                                    required
+                                >
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
 
-        <button type="button" id="calculateBtn" class="btn btn-primary">Рассчитать</button>
+        <div class="d-flex gap-2">
+            <button type="submit" name="calculate" class="btn btn-primary">Рассчитать</button>
+            {% if result %}
+                <button type="submit" name="export" class="btn btn-outline-success">Сохранить в Excel</button>
+            {% endif %}
+            <a href="{% url 'trench_mortgage:trench_mortgage_calculator' %}" class="btn btn-outline-secondary">Изменить базовые параметры</a>
+        </div>
     </form>
 
-    <div id="results" class="mt-4" style="display: none;">
-        <!-- Результаты будут отображаться здесь -->
-    </div>
+    {% if result %}
+        <div class="card mt-4">
+            <div class="card-header">Результаты расчета</div>
+            <div class="card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <strong>Итоговая стоимость объекта:</strong>
+                        <div>{{ result.final_property_cost }} руб.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Первоначальный взнос:</strong>
+                        <div>{{ result.initial_payment }} руб. ({{ result.initial_payment_date }})</div>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Общая сумма кредита:</strong>
+                        <div>{{ result.total_loan_amount }} руб.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Общая переплата:</strong>
+                        <div>{{ result.total_overpayment }} руб.</div>
+                    </div>
+                </div>
+
+                <h5>Детали траншей</h5>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Транш</th>
+                                <th>Дата</th>
+                                <th>Сумма, %</th>
+                                <th>Сумма, руб.</th>
+                                <th>Ставка, %</th>
+                                <th>Ежемесячный платеж, руб.</th>
+                                <th>Число платежей</th>
+                                <th>Остаток долга, руб.</th>
+                                <th>Переплата, руб.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for trench in result.trenches %}
+                                <tr>
+                                    <td>{{ trench.number }}</td>
+                                    <td>{{ trench.date }}</td>
+                                    <td>{{ trench.percent }}</td>
+                                    <td>{{ trench.amount }}</td>
+                                    <td>{{ trench.annual_rate }}</td>
+                                    <td>{{ trench.monthly_payment }}</td>
+                                    <td>{{ trench.payments_count }}</td>
+                                    <td>{{ trench.remaining_debt }}</td>
+                                    <td>{{ trench.overpayment }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% endif %}
 </div>
 
 <script>
-// JavaScript для расчета и отображения результатов
-document.getElementById('calculateBtn').addEventListener('click', function() {
-    const trenchData = [];
-    const trenchForms = document.querySelectorAll('.trench-form');
-    let totalPercent = 0;
-
-    trenchForms.forEach((form, index) => {
-        const trenchDate = form.querySelector('.trench-date').value;
-        const trenchPercent = index < trenchForms.length - 1 ?
-            parseFloat(form.querySelector('.trench-percent').value) : 0;
-        const annualRate = parseFloat(form.querySelector('.annual-rate').value);
-
-        if (index < trenchForms.length - 1) {
-            totalPercent += trenchPercent;
-        }
-
-        trenchData.push({
-            trench_date: trenchDate,
-            trench_percent: trenchPercent,
-            annual_rate: annualRate
-        });
-    });
-
-    // Для последнего транша устанавливаем остаток
-    if (trenchForms.length > 0) {
-        const lastTrenchPercent = 100 - totalPercent;
-        trenchData[trenchData.length - 1].trench_percent = lastTrenchPercent;
-        document.querySelectorAll('.trench-percent')[trenchForms.length - 1].value = lastTrenchPercent.toFixed(2);
+(function () {
+    const form = document.getElementById('trenchDataForm');
+    if (!form) {
+        return;
     }
 
-    // Отправка данных на сервер
-    const formData = new FormData();
-    formData.append('trench_data', JSON.stringify(trenchData));
-    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    function parseNumber(value) {
+        const normalized = String(value || '').replace(/\s/g, '').replace(',', '.');
+        const parsed = parseFloat(normalized);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
 
-    fetch('{% url "calculate_trench_mortgage" %}', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            displayResults(data.result);
-        } else {
-            alert('Ошибка: ' + data.error);
+    function updateLastTrenchPercent() {
+        const inputs = form.querySelectorAll('.trench-percent');
+        if (!inputs.length) {
+            return;
         }
-    })
-    .catch(error => {
-        alert('Ошибка: ' + error);
-    });
-});
 
-function displayResults(result) {
-    const resultsDiv = document.getElementById('results');
-    resultsDiv.style.display = 'block';
+        let total = 0;
+        for (let i = 0; i < inputs.length - 1; i += 1) {
+            total += parseNumber(inputs[i].value);
+        }
 
-    let html = `
-        <div class="card">
-            <div class="card-header">
-                <h4>Результаты расчета</h4>
-            </div>
-            <div class="card-body">
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <strong>Итоговая стоимость объекта:</strong> ${result.final_property_cost} руб.
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Первоначальный взнос:</strong> ${result.initial_payment} руб. (${result.initial_payment_date})
-                    </div>
-                </div>
+        const remainder = Math.max(0, 100 - total);
+        inputs[inputs.length - 1].value = remainder.toFixed(2);
+    }
 
-                <h5>Детали траншей:</h5>
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Транш</th>
-                            <th>Дата</th>
-                            <th>Сумма, %</th>
-                            <th>Сумма, руб.</th>
-                            <th>Ставка, %</th>
-                            <th>Ежемесячный платеж</th>
-                            <th>Число платежей</th>
-                            <th>Остаток долга</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-    `;
-
-    result.trenches.forEach(trench => {
-        html += `
-            <tr>
-                <td>${trench.number}</td>
-                <td>${trench.date}</td>
-                <td>${trench.percent}%</td>
-                <td>${trench.amount}</td>
-                <td>${trench.annual_rate}%</td>
-                <td>${trench.monthly_payment}</td>
-                <td>${trench.payments_count}</td>
-                <td>${trench.remaining_debt}</td>
-            </tr>
-        `;
+    form.querySelectorAll('.trench-percent').forEach(function (input) {
+        if (!input.hasAttribute('readonly')) {
+            input.addEventListener('input', updateLastTrenchPercent);
+        }
     });
 
-    html += `
-                    </tbody>
-                </table>
+    form.addEventListener('submit', function (event) {
+        updateLastTrenchPercent();
 
-                <div class="row mt-3">
-                    <div class="col-md-6">
-                        <strong>Общая сумма кредита:</strong> ${result.total_loan_amount} руб.
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Общая переплата:</strong> ${result.total_overpayment} руб.
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
+        const inputs = form.querySelectorAll('.trench-percent');
+        let total = 0;
+        inputs.forEach(function (input) {
+            total += parseNumber(input.value);
+        });
 
-    resultsDiv.innerHTML = html;
-}
+        if (total > 100.0001) {
+            event.preventDefault();
+            alert('Сумма процентов траншей не должна превышать 100%.');
+        }
+    });
+
+    updateLastTrenchPercent();
+})();
 </script>
 {% endblock %}
