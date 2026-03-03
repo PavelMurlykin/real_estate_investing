@@ -135,7 +135,16 @@
                             {% endfor %}
                         </div>
 
-                        <div id="trench-fields" class="mt-3">
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">Транши</div>
+            <div class="card-body">
+                <div id="trench-fields">
                             {% for row in trench_input_rows %}
                                 <div
                                     class="border rounded p-3 mb-3 trench-row"
@@ -193,12 +202,9 @@
                                     </div>
                                 </div>
                             {% endfor %}
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
-
         <div class="mt-4 d-flex gap-2">
             <button type="submit" name="calculate" class="btn btn-primary">Рассчитать</button>
             {% if result %}
