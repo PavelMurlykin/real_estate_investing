@@ -1,6 +1,6 @@
 <header>
   <nav class="navbar shadow-sm">
-    <div class="container">
+    <div class="container d-flex flex-wrap align-items-center justify-content-between gap-3">
       {% with request.resolver_match.view_name as view_name %}
         <ul class="nav nav-pills">
           <li class="nav-item">
@@ -29,6 +29,15 @@
           </li>
         </ul>
       {% endwith %}
+
+      <div class="d-flex align-items-center gap-2">
+        <label class="form-label mb-0 small" for="theme-selector">Тема</label>
+        <select id="theme-selector" class="form-select form-select-sm" data-theme-selector style="width: auto;">
+          <option value="system">Системная</option>
+          <option value="light">Светлая</option>
+          <option value="dark">Темная</option>
+        </select>
+      </div>
     </div>
   </nav>
 </header>

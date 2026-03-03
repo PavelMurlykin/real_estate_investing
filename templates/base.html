@@ -1,9 +1,71 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Real Estate Investing{% endblock %}</title>
+    <script>
+        (function () {
+            const storageKey = "theme-preference";
+            const validThemes = new Set(["system", "light", "dark"]);
+            const media = window.matchMedia("(prefers-color-scheme: dark)");
+
+            function readThemePreference() {
+                try {
+                    const storedValue = localStorage.getItem(storageKey);
+                    if (validThemes.has(storedValue)) {
+                        return storedValue;
+                    }
+                } catch (error) {
+                    // Ignore storage issues and keep fallback value.
+                }
+                return "system";
+            }
+
+            function resolveTheme(themePreference) {
+                if (themePreference === "system") {
+                    return media.matches ? "dark" : "light";
+                }
+                return themePreference;
+            }
+
+            function syncThemeSelectors(themePreference) {
+                document.querySelectorAll("[data-theme-selector]").forEach(function (selector) {
+                    selector.value = themePreference;
+                });
+            }
+
+            function applyTheme(themePreference) {
+                document.documentElement.setAttribute("data-bs-theme", resolveTheme(themePreference));
+                syncThemeSelectors(themePreference);
+            }
+
+            function setTheme(themePreference) {
+                const normalizedTheme = validThemes.has(themePreference) ? themePreference : "system";
+                try {
+                    localStorage.setItem(storageKey, normalizedTheme);
+                } catch (error) {
+                    // Ignore storage issues and still apply current choice.
+                }
+                applyTheme(normalizedTheme);
+                return normalizedTheme;
+            }
+
+            const initialTheme = readThemePreference();
+            applyTheme(initialTheme);
+
+            window.appTheme = {
+                getTheme: readThemePreference,
+                setTheme: setTheme,
+            };
+
+            media.addEventListener("change", function () {
+                if (readThemePreference() === "system") {
+                    applyTheme("system");
+                }
+            });
+        })();
+    </script>
     {% load django_bootstrap5 %}
     {% bootstrap_css %}
 
@@ -25,6 +87,19 @@
     {% include "includes/footer.html" %}
 
     {% bootstrap_javascript %}
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const selector = document.querySelector("[data-theme-selector]");
+            if (!selector || !window.appTheme) {
+                return;
+            }
+
+            selector.value = window.appTheme.getTheme();
+            selector.addEventListener("change", function () {
+                window.appTheme.setTheme(selector.value);
+            });
+        });
+    </script>
 
     {% block extra_scripts %}
     {% endblock %}
