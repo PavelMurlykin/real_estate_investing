@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}{% if object %}Редактирование{% else %}Создание{% endif %} ЖК{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{% if object %}Редактирование{% else %}Создание{% endif %} ЖК</h1>
+        <a href="{% url 'property:complex_list' %}" class="btn btn-secondary">Назад к списку</a>
+    </div>
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="card mb-4">
+            <div class="card-body">
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }}</label>
+                            {{ form.name }}
+                            {% for error in form.name.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.developer.id_for_label }}" class="form-label">{{ form.developer.label }}</label>
+                            {{ form.developer }}
+                            {% for error in form.developer.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.district.id_for_label }}" class="form-label">{{ form.district.label }}</label>
+                            {{ form.district }}
+                            {% for error in form.district.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="{{ form.real_estate_class.id_for_label }}" class="form-label">{{ form.real_estate_class.label }}</label>
+                            {{ form.real_estate_class }}
+                            {% for error in form.real_estate_class.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="{{ form.real_estate_type.id_for_label }}" class="form-label">{{ form.real_estate_type.label }}</label>
+                            {{ form.real_estate_type }}
+                            {% for error in form.real_estate_type.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.description.id_for_label }}" class="form-label">{{ form.description.label }}</label>
+                    {{ form.description }}
+                    {% for error in form.description.errors %}
+                        <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.map_link.id_for_label }}" class="form-label">{{ form.map_link.label }}</label>
+                            {{ form.map_link }}
+                            {% for error in form.map_link.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.presentation_link.id_for_label }}" class="form-label">{{ form.presentation_link.label }}</label>
+                            {{ form.presentation_link }}
+                            {% for error in form.presentation_link.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-check">
+                    {{ form.is_active }}
+                    <label class="form-check-label" for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label>
+                    {% for error in form.is_active.errors %}
+                        <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Корпуса ЖК</div>
+            <div class="card-body">
+                {{ building_formset.management_form }}
+
+                {% if building_formset.non_form_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in building_formset.non_form_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle">
+                        <thead>
+                            <tr>
+                                <th>Корпус</th>
+                                <th>Адрес</th>
+                                <th>Ввод в эксплуатацию</th>
+                                <th>Выдача ключей</th>
+                                <th>Активен</th>
+                                <th>Удалить</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for building_form in building_formset %}
+                            <tr>
+                                {% for hidden in building_form.hidden_fields %}
+                                    {{ hidden }}
+                                {% endfor %}
+                                <td>
+                                    {{ building_form.number }}
+                                    {% for error in building_form.number.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {{ building_form.address }}
+                                    {% for error in building_form.address.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {{ building_form.commissioning_date }}
+                                    {% for error in building_form.commissioning_date.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {{ building_form.key_handover_date }}
+                                    {% for error in building_form.key_handover_date.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </td>
+                                <td class="text-center">
+                                    {{ building_form.is_active }}
+                                    {% for error in building_form.is_active.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </td>
+                                <td class="text-center">
+                                    {{ building_form.DELETE }}
+                                    {% for error in building_form.DELETE.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                            {% if building_form.non_field_errors %}
+                            <tr>
+                                <td colspan="6">
+                                    {% for error in building_form.non_field_errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="form-text">
+                    Чтобы добавить корпус, заполните пустую строку в таблице. Для удаления отметьте чекбокс в колонке "Удалить" и сохраните форму.
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <a href="{% url 'property:complex_list' %}" class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

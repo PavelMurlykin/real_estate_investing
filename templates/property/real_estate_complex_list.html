@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Жилые комплексы{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Жилые комплексы</h1>
+        <a href="{% url 'property:complex_create' %}" class="btn btn-primary">Добавить ЖК</a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Застройщик</th>
+                            <th>ЖК</th>
+                            <th>Район</th>
+                            <th>Класс</th>
+                            <th>Тип</th>
+                            <th>Корпусов</th>
+                            <th>Активен</th>
+                            <th class="text-nowrap">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for complex in complexes %}
+                        <tr>
+                            <td>{{ complex.developer.name }}</td>
+                            <td>{{ complex.name }}</td>
+                            <td>{{ complex.district.name }}</td>
+                            <td>{{ complex.real_estate_class.name }}</td>
+                            <td>{{ complex.real_estate_type.name }}</td>
+                            <td>{{ complex.buildings_count }}</td>
+                            <td>{{ complex.is_active|yesno:"Да,Нет" }}</td>
+                            <td class="align-middle text-nowrap">
+                                <div class="d-flex gap-2 flex-nowrap">
+                                    <a href="{% url 'property:complex_update' complex.pk %}" class="btn btn-sm btn-outline-primary">Редактировать</a>
+                                    <a href="{% url 'property:complex_delete' complex.pk %}" class="btn btn-sm btn-outline-danger">Удалить</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">ЖК не найдены</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if is_paginated %}
+            <nav aria-label="Пагинация">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1">Первая</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Предыдущая</a>
+                    </li>
+                    {% endif %}
+
+                    <li class="page-item disabled">
+                        <span class="page-link">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Следующая</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Последняя</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
