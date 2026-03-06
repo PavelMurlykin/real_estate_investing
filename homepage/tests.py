@@ -3,14 +3,12 @@ from decimal import Decimal
 from django.test import TestCase
 from django.urls import reverse
 
+from location.models import City, District, Region
 from property.models import (
-    City,
     Developer,
-    District,
     RealEstateClass,
     RealEstateComplex,
     RealEstateType,
-    Region,
 )
 
 

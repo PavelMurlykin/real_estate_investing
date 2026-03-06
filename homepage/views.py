@@ -1,6 +1,7 @@
 from django.shortcuts import render
 
-from property.models import City, RealEstateComplex
+from location.models import City
+from property.models import RealEstateComplex
 
 
 CITY_PREPOSITIONAL_CASE = {
@@ -55,3 +56,4 @@ def index(request):
         ),
     }
     return render(request, template, context)
+

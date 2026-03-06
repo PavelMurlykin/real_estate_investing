@@ -1,6 +1,6 @@
 [
   {
-    "model": "property.city",
+    "model": "location.city",
     "pk": 1,
     "fields": {
       "name": "Санкт-Петербург",
@@ -8,7 +8,7 @@
     }
   },
   {
-    "model": "property.city",
+    "model": "location.city",
     "pk": 2,
     "fields": {
       "name": "Москва",
@@ -16,7 +16,7 @@
     }
   },
   {
-    "model": "property.city",
+    "model": "location.city",
     "pk": 3,
     "fields": {
       "name": "Калининград",
