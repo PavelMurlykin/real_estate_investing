@@ -5,6 +5,9 @@ from . import views
 app_name = 'property'
 
 urlpatterns = [
+    path('locations/', views.LocationCatalogView.as_view(), name='location_catalog'),
+    path('dictionaries/', views.DictionaryCatalogView.as_view(), name='dictionary_catalog'),
+
     path('developers/', views.DeveloperListView.as_view(), name='developer_list'),
     path('developers/create/', views.DeveloperCreateView.as_view(), name='developer_create'),
     path('developers/<int:pk>/update/', views.DeveloperUpdateView.as_view(), name='developer_update'),

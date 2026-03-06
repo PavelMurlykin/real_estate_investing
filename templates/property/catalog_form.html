@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}{{ section_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ section_title }}</h1>
+    </div>
+
+    <ul class="nav nav-tabs mb-4">
+        {% for tab in model_tabs %}
+        <li class="nav-item">
+            <a class="nav-link {% if tab.is_active %}active{% endif %}" href="{{ tab.url }}">
+                {{ tab.title|capfirst }}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+
+    {% if delete_error %}
+    <div class="alert alert-danger">{{ delete_error }}</div>
+    {% endif %}
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">{{ current_model_title|capfirst }}</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    {% for column in columns %}
+                                    <th>{{ column.label|capfirst }}</th>
+                                    {% endfor %}
+                                    <th class="text-nowrap">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in rows %}
+                                <tr>
+                                    {% for cell in row.cells %}
+                                    <td>
+                                        {% if cell.is_long_text %}
+                                            {{ cell.value|truncatechars:100 }}
+                                        {% else %}
+                                            {{ cell.value }}
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                    <td class="text-nowrap">
+                                        <div class="d-flex gap-2 flex-nowrap">
+                                            <a href="{{ row.edit_url }}" class="btn btn-sm btn-outline-primary">Редактировать</a>
+                                            <form method="post" action="{{ form_action_url }}" onsubmit="return confirm('Удалить запись?');">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="delete">
+                                                <input type="hidden" name="model" value="{{ model_key }}">
+                                                <input type="hidden" name="object_id" value="{{ row.pk }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="{{ columns|length|add:1 }}" class="text-center">Записей пока нет</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    {% if is_editing %}Редактирование{% else %}Создание{% endif %} записи
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ form_action_url }}" novalidate>
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="save">
+                        <input type="hidden" name="model" value="{{ model_key }}">
+                        {% if is_editing %}
+                        <input type="hidden" name="object_id" value="{{ edit_object.pk }}">
+                        {% endif %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% for field in form %}
+                            {% if field.field.widget.input_type == 'checkbox' %}
+                            <div class="form-check mb-3">
+                                {{ field }}
+                                <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {% for error in field.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% for error in field.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+
+                        <div class="d-flex justify-content-between">
+                            <button type="submit" class="btn btn-primary">Сохранить</button>
+                            {% if is_editing %}
+                            <a href="{{ cancel_url }}" class="btn btn-secondary">Отмена</a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

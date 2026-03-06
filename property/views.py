@@ -1,9 +1,15 @@
+from dataclasses import dataclass
+
+from django import forms
 from django.db import transaction
+from django.db import models as django_models
 from django.db.models import Count
 from django.db.models.deletion import ProtectedError
+from django.forms import modelform_factory
 from django.http import HttpResponseRedirect
-from django.urls import reverse_lazy
-from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse, reverse_lazy
+from django.views.generic import CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView
 
 from .forms import (
     DeveloperForm,
@@ -19,10 +25,266 @@ from .models import (
     Developer,
     District,
     Property,
+    RealEstateClass,
     RealEstateComplex,
     RealEstateComplexBuilding,
+    RealEstateType,
     Region,
 )
+
+
+@dataclass(frozen=True)
+class CatalogModelConfig:
+    key: str
+    model: type[django_models.Model]
+    form_fields: tuple[str, ...]
+    table_fields: tuple[str, ...]
+    order_by: tuple[str, ...]
+    select_related: tuple[str, ...] = ()
+
+    @property
+    def title(self):
+        return str(self.model._meta.verbose_name_plural)
+
+
+class BaseCatalogView(TemplateView):
+    template_name = 'property/catalog_form.html'
+    section_title = ''
+    url_name = ''
+    default_model_key = ''
+    model_configs: tuple[CatalogModelConfig, ...] = ()
+
+    def get_config_map(self):
+        return {config.key: config for config in self.model_configs}
+
+    def get_current_model_key(self):
+        key = self.request.POST.get('model') or self.request.GET.get('model') or self.default_model_key
+        config_map = self.get_config_map()
+        if key in config_map:
+            return key
+        return self.default_model_key
+
+    def get_config(self):
+        return self.get_config_map()[self.get_current_model_key()]
+
+    def get_model_url(self, model_key, edit_id=None):
+        url = f"{reverse(self.url_name)}?model={model_key}"
+        if edit_id:
+            url = f"{url}&edit={edit_id}"
+        return url
+
+    def get_queryset(self, config):
+        queryset = config.model.objects.all()
+        if config.select_related:
+            queryset = queryset.select_related(*config.select_related)
+        return queryset.order_by(*config.order_by)
+
+    def build_form(self, config, data=None, instance=None):
+        form_class = modelform_factory(config.model, fields=config.form_fields)
+        form = form_class(data=data, instance=instance)
+
+        for field in form.fields.values():
+            widget = field.widget
+            if isinstance(widget, forms.CheckboxInput):
+                widget.attrs['class'] = 'form-check-input'
+                continue
+
+            existing_class = widget.attrs.get('class', '')
+            combined_class = f'{existing_class} form-control'.strip()
+            widget.attrs['class'] = ' '.join(combined_class.split())
+
+        return form
+
+    def format_cell_value(self, value):
+        if isinstance(value, bool):
+            return 'Да' if value else 'Нет'
+        if value in (None, ''):
+            return '-'
+        return str(value)
+
+    def build_columns(self, config):
+        columns = []
+        for field_name in config.table_fields:
+            model_field = config.model._meta.get_field(field_name)
+            columns.append(
+                {
+                    'name': field_name,
+                    'label': model_field.verbose_name,
+                    'is_long_text': model_field.get_internal_type() == 'TextField',
+                }
+            )
+        return columns
+
+    def build_rows(self, config, columns):
+        rows = []
+        queryset = self.get_queryset(config)
+        for obj in queryset:
+            cells = []
+            for column in columns:
+                raw_value = getattr(obj, column['name'])
+                cells.append(
+                    {
+                        'value': self.format_cell_value(raw_value),
+                        'is_long_text': column['is_long_text'],
+                    }
+                )
+            rows.append(
+                {
+                    'pk': obj.pk,
+                    'cells': cells,
+                    'edit_url': self.get_model_url(config.key, edit_id=obj.pk),
+                }
+            )
+        return rows
+
+    def build_nav_models(self, current_key):
+        items = []
+        for config in self.model_configs:
+            items.append(
+                {
+                    'key': config.key,
+                    'title': config.title,
+                    'url': self.get_model_url(config.key),
+                    'is_active': config.key == current_key,
+                }
+            )
+        return items
+
+    def build_context(self, config, form, edit_object=None, delete_error=None):
+        columns = self.build_columns(config)
+        current_model_key = config.key
+        return {
+            'section_title': self.section_title,
+            'model_tabs': self.build_nav_models(current_model_key),
+            'current_model_title': config.title,
+            'model_key': current_model_key,
+            'columns': columns,
+            'rows': self.build_rows(config, columns),
+            'form': form,
+            'is_editing': edit_object is not None,
+            'edit_object': edit_object,
+            'form_action_url': reverse(self.url_name),
+            'cancel_url': self.get_model_url(current_model_key),
+            'delete_error': delete_error,
+        }
+
+    def get_edit_object(self, config):
+        edit_id = self.request.GET.get('edit')
+        if not edit_id:
+            return None
+        return get_object_or_404(config.model, pk=edit_id)
+
+    def get(self, request, *args, **kwargs):
+        config = self.get_config()
+        edit_object = self.get_edit_object(config)
+        form = self.build_form(config, instance=edit_object)
+        context = self.get_context_data(**self.build_context(config, form=form, edit_object=edit_object))
+        return self.render_to_response(context)
+
+    def post(self, request, *args, **kwargs):
+        config = self.get_config()
+        action = request.POST.get('action', 'save')
+
+        if action == 'delete':
+            return self.handle_delete(config)
+        return self.handle_save(config)
+
+    def handle_save(self, config):
+        object_id = self.request.POST.get('object_id')
+        instance = get_object_or_404(config.model, pk=object_id) if object_id else None
+        form = self.build_form(config, data=self.request.POST, instance=instance)
+
+        if form.is_valid():
+            form.save()
+            return redirect(self.get_model_url(config.key))
+
+        context = self.get_context_data(**self.build_context(config, form=form, edit_object=instance))
+        return self.render_to_response(context, status=400)
+
+    def handle_delete(self, config):
+        object_id = self.request.POST.get('object_id')
+        if not object_id:
+            return redirect(self.get_model_url(config.key))
+
+        object_to_delete = get_object_or_404(config.model, pk=object_id)
+
+        try:
+            object_to_delete.delete()
+            return redirect(self.get_model_url(config.key))
+        except ProtectedError:
+            form = self.build_form(config)
+            delete_error = f'Нельзя удалить "{object_to_delete}": есть связанные записи.'
+            context = self.get_context_data(
+                **self.build_context(config, form=form, delete_error=delete_error)
+            )
+            return self.render_to_response(context, status=400)
+
+
+class LocationCatalogView(BaseCatalogView):
+    section_title = 'Локации'
+    url_name = 'property:location_catalog'
+    default_model_key = 'region'
+    model_configs = (
+        CatalogModelConfig(
+            key='region',
+            model=Region,
+            form_fields=('name', 'code', 'is_active'),
+            table_fields=('name', 'code', 'is_active'),
+            order_by=('name',),
+        ),
+        CatalogModelConfig(
+            key='city',
+            model=City,
+            form_fields=('name', 'region', 'is_active'),
+            table_fields=('name', 'region', 'is_active'),
+            order_by=('name',),
+            select_related=('region',),
+        ),
+        CatalogModelConfig(
+            key='district',
+            model=District,
+            form_fields=('name', 'city', 'is_active'),
+            table_fields=('name', 'city', 'is_active'),
+            order_by=('name',),
+            select_related=('city',),
+        ),
+    )
+
+
+class DictionaryCatalogView(BaseCatalogView):
+    section_title = 'Справочники'
+    url_name = 'property:dictionary_catalog'
+    default_model_key = 'real_estate_type'
+    model_configs = (
+        CatalogModelConfig(
+            key='real_estate_type',
+            model=RealEstateType,
+            form_fields=('name', 'description', 'is_active'),
+            table_fields=('name', 'description', 'is_active'),
+            order_by=('name',),
+        ),
+        CatalogModelConfig(
+            key='real_estate_class',
+            model=RealEstateClass,
+            form_fields=('name', 'weight', 'description', 'is_active'),
+            table_fields=('name', 'weight', 'description', 'is_active'),
+            order_by=('weight', 'name'),
+        ),
+        CatalogModelConfig(
+            key='apartment_layout',
+            model=ApartmentLayout,
+            form_fields=('name', 'description', 'is_active'),
+            table_fields=('name', 'description', 'is_active'),
+            order_by=('name',),
+        ),
+        CatalogModelConfig(
+            key='apartment_decoration',
+            model=ApartmentDecoration,
+            form_fields=('name', 'description', 'is_active'),
+            table_fields=('name', 'description', 'is_active'),
+            order_by=('name',),
+        ),
+    )
 
 
 class ProtectedDeleteMixin:

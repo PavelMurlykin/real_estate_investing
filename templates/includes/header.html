@@ -10,6 +10,18 @@
             </a>
           </li>
           <li class="nav-item">
+            <a class="nav-link {% if view_name == 'property:location_catalog' %} active {% endif %}"
+              href="{% url 'property:location_catalog' %}">
+              Локации
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if view_name == 'property:dictionary_catalog' %} active {% endif %}"
+              href="{% url 'property:dictionary_catalog' %}">
+              Справочники
+            </a>
+          </li>
+          <li class="nav-item">
             <a class="nav-link {% if view_name == 'property:developer_list' or view_name == 'property:developer_create' or view_name == 'property:developer_update' or view_name == 'property:developer_delete' %} active {% endif %}"
               href="{% url 'property:developer_list' %}">
               Застройщики
