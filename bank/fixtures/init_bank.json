@@ -1,0 +1,122 @@
+[
+  {
+    "model": "bank.bank",
+    "pk": 1,
+    "fields": {
+      "name": "\u0421\u0431\u0435\u0440\u0431\u0430\u043d\u043a",
+      "interest_rate": "9.90",
+      "salary_client_discount": "0.30",
+      "is_active": true,
+      "created_at": "2026-03-06T00:00:00Z",
+      "updated_at": "2026-03-06T00:00:00Z"
+    }
+  },
+  {
+    "model": "bank.bank",
+    "pk": 2,
+    "fields": {
+      "name": "\u0412\u0422\u0411",
+      "interest_rate": "10.20",
+      "salary_client_discount": "0.40",
+      "is_active": true,
+      "created_at": "2026-03-06T00:00:00Z",
+      "updated_at": "2026-03-06T00:00:00Z"
+    }
+  },
+  {
+    "model": "bank.bank",
+    "pk": 3,
+    "fields": {
+      "name": "\u0413\u0430\u0437\u043f\u0440\u043e\u043c\u0431\u0430\u043d\u043a",
+      "interest_rate": "10.40",
+      "salary_client_discount": "0.30",
+      "is_active": true,
+      "created_at": "2026-03-06T00:00:00Z",
+      "updated_at": "2026-03-06T00:00:00Z"
+    }
+  },
+  {
+    "model": "bank.bank",
+    "pk": 4,
+    "fields": {
+      "name": "\u0410\u043b\u044c\u0444\u0430-\u0411\u0430\u043d\u043a",
+      "interest_rate": "10.50",
+      "salary_client_discount": "0.40",
+      "is_active": true,
+      "created_at": "2026-03-06T00:00:00Z",
+      "updated_at": "2026-03-06T00:00:00Z"
+    }
+  },
+  {
+    "model": "bank.bank",
+    "pk": 5,
+    "fields": {
+      "name": "\u0420\u043e\u0441\u0441\u0435\u043b\u044c\u0445\u043e\u0437\u0431\u0430\u043d\u043a",
+      "interest_rate": "10.10",
+      "salary_client_discount": "0.20",
+      "is_active": true,
+      "created_at": "2026-03-06T00:00:00Z",
+      "updated_at": "2026-03-06T00:00:00Z"
+    }
+  },
+  {
+    "model": "bank.bank",
+    "pk": 6,
+    "fields": {
+      "name": "\u041f\u0421\u0411",
+      "interest_rate": "10.30",
+      "salary_client_discount": "0.30",
+      "is_active": true,
+      "created_at": "2026-03-06T00:00:00Z",
+      "updated_at": "2026-03-06T00:00:00Z"
+    }
+  },
+  {
+    "model": "bank.bank",
+    "pk": 7,
+    "fields": {
+      "name": "\u0421\u043e\u0432\u043a\u043e\u043c\u0431\u0430\u043d\u043a",
+      "interest_rate": "10.60",
+      "salary_client_discount": "0.30",
+      "is_active": true,
+      "created_at": "2026-03-06T00:00:00Z",
+      "updated_at": "2026-03-06T00:00:00Z"
+    }
+  },
+  {
+    "model": "bank.bank",
+    "pk": 8,
+    "fields": {
+      "name": "\u041c\u043e\u0441\u043a\u043e\u0432\u0441\u043a\u0438\u0439 \u043a\u0440\u0435\u0434\u0438\u0442\u043d\u044b\u0439 \u0431\u0430\u043d\u043a",
+      "interest_rate": "10.70",
+      "salary_client_discount": "0.20",
+      "is_active": true,
+      "created_at": "2026-03-06T00:00:00Z",
+      "updated_at": "2026-03-06T00:00:00Z"
+    }
+  },
+  {
+    "model": "bank.bank",
+    "pk": 9,
+    "fields": {
+      "name": "\u0411\u0430\u043d\u043a \u0414\u041e\u041c.\u0420\u0424",
+      "interest_rate": "10.00",
+      "salary_client_discount": "0.30",
+      "is_active": true,
+      "created_at": "2026-03-06T00:00:00Z",
+      "updated_at": "2026-03-06T00:00:00Z"
+    }
+  },
+  {
+    "model": "bank.bank",
+    "pk": 10,
+    "fields": {
+      "name": "\u0422-\u0411\u0430\u043d\u043a",
+      "interest_rate": "10.80",
+      "salary_client_discount": "0.20",
+      "is_active": true,
+      "created_at": "2026-03-06T00:00:00Z",
+      "updated_at": "2026-03-06T00:00:00Z"
+    }
+  }
+]

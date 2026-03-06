@@ -1,0 +1,27 @@
+from django.contrib import admin
+
+from .models import Bank, BankProgram, MortgageProgram
+
+
+@admin.register(Bank)
+class BankAdmin(admin.ModelAdmin):
+    list_display = ('name', 'interest_rate', 'salary_client_discount', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name',)
+    ordering = ('name',)
+
+
+@admin.register(MortgageProgram)
+class MortgageProgramAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_preferential', 'is_active', 'created_at')
+    list_filter = ('is_preferential', 'is_active', 'created_at')
+    search_fields = ('name', 'condition')
+    ordering = ('name',)
+
+
+@admin.register(BankProgram)
+class BankProgramAdmin(admin.ModelAdmin):
+    list_display = ('bank', 'mortgage_program', 'is_active', 'created_at')
+    list_filter = ('bank', 'mortgage_program', 'is_active', 'created_at')
+    search_fields = ('bank__name', 'mortgage_program__name')
+    ordering = ('bank__name', 'mortgage_program__name')

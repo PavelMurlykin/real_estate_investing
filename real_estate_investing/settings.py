@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'homepage.apps.HomepageConfig',
     'location.apps.LocationConfig',
     'property.apps.PropertyConfig',
+    'bank.apps.BankConfig',
     'mortgage.apps.CalculatorConfig',
     'trench_mortgage.apps.TrenchMortgageConfig',
 ]
