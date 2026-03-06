@@ -16,6 +16,12 @@
             </a>
           </li>
           <li class="nav-item">
+            <a class="nav-link {% if view_name == 'bank:catalog' %} active {% endif %}"
+              href="{% url 'bank:catalog' %}">
+              Банки
+            </a>
+          </li>
+          <li class="nav-item">
             <a class="nav-link {% if view_name == 'property:dictionary_catalog' %} active {% endif %}"
               href="{% url 'property:dictionary_catalog' %}">
               Справочники
