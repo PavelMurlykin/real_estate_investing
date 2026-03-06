@@ -395,7 +395,7 @@ class RealEstateComplexDeleteView(ProtectedDeleteMixin, DeleteView):
     model = RealEstateComplex
     template_name = 'property/real_estate_complex_confirm_delete.html'
     success_url = reverse_lazy('property:complex_list')
-    protected_error_message = 'Нельзя удалить ЖК: сначала удалите или отвяжите связанные корпуса и объекты.'
+    protected_error_message = 'Нельзя удалить ЖК: есть связанные объекты недвижимости.'
 
 
 class PropertyListView(ListView):

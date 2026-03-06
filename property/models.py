@@ -169,7 +169,7 @@ class RealEstateComplexBuilding(BaseModel):
     commissioning_date = models.DateField(null=True, verbose_name='Дата ввода в эксплуатацию')
     key_handover_date = models.DateField(null=True, verbose_name='Дата выдачи ключей')
 
-    real_estate_complex = models.ForeignKey(RealEstateComplex, on_delete=models.PROTECT, verbose_name='ЖК')
+    real_estate_complex = models.ForeignKey(RealEstateComplex, on_delete=models.CASCADE, verbose_name='ЖК')
 
     class Meta(BaseModel.Meta):
         """
