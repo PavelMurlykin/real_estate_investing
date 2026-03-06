@@ -1,6 +1,7 @@
 from django.urls import path
 from django.http import JsonResponse
-from .models import City, District, RealEstateComplex, RealEstateComplexBuilding
+from location.models import City, District
+from .models import RealEstateComplex, RealEstateComplexBuilding
 
 
 def cities_api(request):

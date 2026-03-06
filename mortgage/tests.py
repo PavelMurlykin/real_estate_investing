@@ -4,18 +4,16 @@ from django.test import TestCase
 from django.urls import reverse
 
 from mortgage.models import MortgageCalculation
+from location.models import City, District, Region
 from property.models import (
     ApartmentDecoration,
     ApartmentLayout,
-    City,
     Developer,
-    District,
     Property,
     RealEstateClass,
     RealEstateComplex,
     RealEstateComplexBuilding,
     RealEstateType,
-    Region,
 )
 
 

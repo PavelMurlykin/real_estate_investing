@@ -1,8 +1,8 @@
 from django import forms
 from django.forms import BaseInlineFormSet, inlineformset_factory
 
+from location.models import City
 from .models import (
-    City,
     Developer,
     Property,
     RealEstateComplex,
@@ -146,3 +146,4 @@ RealEstateComplexBuildingFormSet = inlineformset_factory(
     extra=1,
     can_delete=True,
 )
+

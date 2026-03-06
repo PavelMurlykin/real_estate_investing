@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView
 
+from location.models import City, District, Region
 from .forms import (
     DeveloperForm,
     PropertyFilterForm,
@@ -21,15 +22,12 @@ from .forms import (
 from .models import (
     ApartmentDecoration,
     ApartmentLayout,
-    City,
     Developer,
-    District,
     Property,
     RealEstateClass,
     RealEstateComplex,
     RealEstateComplexBuilding,
     RealEstateType,
-    Region,
 )
 
 

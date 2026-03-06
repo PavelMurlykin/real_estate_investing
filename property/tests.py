@@ -3,18 +3,16 @@ from decimal import Decimal
 from django.test import TestCase
 from django.urls import reverse
 
+from location.models import City, District, Region
 from .models import (
     ApartmentDecoration,
     ApartmentLayout,
-    City,
     Developer,
-    District,
     Property,
     RealEstateClass,
     RealEstateComplex,
     RealEstateComplexBuilding,
     RealEstateType,
-    Region,
 )
 
 

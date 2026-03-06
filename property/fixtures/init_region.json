@@ -1,6 +1,6 @@
 [
   {
-    "model": "property.region",
+    "model": "location.region",
     "pk": 1,
     "fields": {
       "name": "Санкт-Петербург",
@@ -8,7 +8,7 @@
     }
   },
   {
-    "model": "property.region",
+    "model": "location.region",
     "pk": 2,
     "fields": {
       "name": "Москва",
@@ -16,7 +16,7 @@
     }
   },
   {
-    "model": "property.region",
+    "model": "location.region",
     "pk": 3,
     "fields": {
       "name": "Калининградская область",

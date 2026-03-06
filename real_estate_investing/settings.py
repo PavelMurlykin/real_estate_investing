@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'django_bootstrap5',
 
     'homepage.apps.HomepageConfig',
+    'location.apps.LocationConfig',
     'property.apps.PropertyConfig',
     'mortgage.apps.CalculatorConfig',
     'trench_mortgage.apps.TrenchMortgageConfig',
