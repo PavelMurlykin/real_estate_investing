@@ -100,9 +100,8 @@ class MortgageForm(forms.Form):
         label='Дата первоначального взноса (ДД.ММ.ГГГГ)',
         widget=forms.DateInput(attrs={
             'class': 'form-control',
-            'type': 'text',
-            'placeholder': 'ДД.ММ.ГГГГ'
-        }),
+            'type': 'date',
+        }, format='%Y-%m-%d'),
         input_formats=['%d.%m.%Y', '%Y-%m-%d', '%d/%m/%Y'],
         initial=date.today
     )
