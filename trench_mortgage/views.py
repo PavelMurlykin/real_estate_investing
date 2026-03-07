@@ -82,7 +82,6 @@ def _build_initial_data(raw_property_id):
         return initial
 
     initial["PROPERTY"] = property_obj.id
-    initial["BASE_PROPERTY_COST"] = property_obj.property_cost
     initial["PROPERTY_COST"] = property_obj.property_cost
     return initial
 
@@ -96,8 +95,6 @@ def _hydrate_property_cost_fields(form_data):
     if not selected_property:
         return
 
-    if not form_data.get("BASE_PROPERTY_COST"):
-        form_data["BASE_PROPERTY_COST"] = str(selected_property.property_cost)
     if not form_data.get("PROPERTY_COST"):
         form_data["PROPERTY_COST"] = str(selected_property.property_cost)
 
@@ -185,7 +182,7 @@ def _prepare_mortgage_data(cleaned_data):
     property_obj = cleaned_data["PROPERTY"]
 
     property_cost = float(cleaned_data["PROPERTY_COST"])
-    base_property_cost = float(cleaned_data.get("BASE_PROPERTY_COST", property_obj.property_cost))
+    base_property_cost = float(cleaned_data["PROPERTY_COST"])
     discount_markup_value = float(cleaned_data.get("DISCOUNT_MARKUP_VALUE", 0) or 0)
     discount_markup_type = cleaned_data["DISCOUNT_MARKUP_TYPE"]
 

@@ -71,7 +71,6 @@ class MortgageCalculatorViewTests(TestCase):
         payload = self._base_payload()
         payload.update({
             'calculate': '1',
-            'BASE_PROPERTY_COST': '',
             'PROPERTY_COST': '',
         })
 
@@ -87,7 +86,6 @@ class MortgageCalculatorViewTests(TestCase):
         payload = self._base_payload()
         payload.update({
             'calculate': '1',
-            'BASE_PROPERTY_COST': '5000000',
             'PROPERTY_COST': '6000000',
             'DISCOUNT_MARKUP_TYPE': 'discount',
             'DISCOUNT_MARKUP_VALUE': '10',
@@ -97,7 +95,7 @@ class MortgageCalculatorViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         calculation = MortgageCalculation.objects.latest('id')
-        self.assertEqual(calculation.base_property_cost, Decimal('5000000'))
+        self.assertEqual(calculation.base_property_cost, Decimal('6000000'))
         self.assertEqual(calculation.final_property_cost, Decimal('5400000'))
 
         self.property.refresh_from_db()
@@ -107,7 +105,6 @@ class MortgageCalculatorViewTests(TestCase):
         payload = self._base_payload()
         payload.update({
             'export': '1',
-            'BASE_PROPERTY_COST': '5000000',
             'PROPERTY_COST': '5100000',
             'DISCOUNT_MARKUP_TYPE': 'markup',
             'DISCOUNT_MARKUP_VALUE': '5',
