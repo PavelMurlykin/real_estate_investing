@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+
+{% block title %}{{ section_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ section_title }}</h1>
+    </div>
+
+    <ul class="nav nav-tabs mb-4">
+        {% for tab in model_tabs %}
+        <li class="nav-item">
+            <a class="nav-link {% if tab.is_active %}active{% endif %}" href="{{ tab.url }}">
+                {{ tab.title|capfirst }}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+
+    {% if delete_error %}
+    <div class="alert alert-danger">{{ delete_error }}</div>
+    {% endif %}
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">{{ current_model_title|capfirst }}</div>
+                <div class="card-body">
+                    {% if model_key == 'bank' %}
+                    <form method="get" class="row g-2 mb-4" data-auto-filter-form>
+                        <input type="hidden" name="model" value="bank">
+                        <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                        <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+
+                        <div class="col-md-4">
+                            <label class="form-label">Название</label>
+                            <input type="text" name="filter_name" value="{{ bank_filters.name }}" class="form-control" placeholder="Частичное совпадение">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Процентная ставка с</label>
+                            <input type="number" step="0.01" name="filter_interest_rate_from" value="{{ bank_filters.interest_rate_from }}" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Процентная ставка по</label>
+                            <input type="number" step="0.01" name="filter_interest_rate_to" value="{{ bank_filters.interest_rate_to }}" class="form-control">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Ставка для зарплатных клиентов с</label>
+                            <input type="number" step="0.01" name="filter_salary_rate_from" value="{{ bank_filters.salary_rate_from }}" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Ставка для зарплатных клиентов по</label>
+                            <input type="number" step="0.01" name="filter_salary_rate_to" value="{{ bank_filters.salary_rate_to }}" class="form-control">
+                        </div>
+
+                        <div class="col-12 d-flex gap-2">
+                            <a href="?model=bank" class="btn btn-outline-secondary">Сбросить</a>
+                        </div>
+                    </form>
+                    {% endif %}
+
+                    {% if model_key == 'bank_program' %}
+                    <form method="get" class="row g-2 mb-4" data-auto-filter-form>
+                        <input type="hidden" name="model" value="bank_program">
+                        <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                        <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+
+                        <div class="col-md-6">
+                            <label class="form-label">Банк</label>
+                            <input type="text" name="filter_bank" value="{{ bank_program_filters.bank }}" class="form-control" placeholder="Частичное совпадение">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Программа</label>
+                            <select name="filter_program" class="form-select">
+                                <option value="">Все программы</option>
+                                {% for program in programs_for_filter %}
+                                <option value="{{ program.id }}" {% if bank_program_filters.program == program.id|stringformat:'s' %}selected{% endif %}>
+                                    {{ program.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-12 d-flex gap-2">
+                            <a href="?model=bank_program" class="btn btn-outline-secondary">Сбросить</a>
+                        </div>
+                    </form>
+                    {% endif %}
+
+                    <div id="catalog-results">
+                        {% if model_key == 'bank' %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover align-middle">
+                                <thead>
+                                    <tr>
+                                        {% for column in columns %}
+                                        <th>
+                                            {% if column.is_sortable %}
+                                            <a href="{{ column.sort_url }}" class="text-decoration-none text-body fw-semibold">
+                                                {{ column.label|capfirst }}
+                                                {% if column.is_sorted %}
+                                                    {% if column.sort_direction == 'desc' %}&darr;{% else %}&uarr;{% endif %}
+                                                {% endif %}
+                                            </a>
+                                            {% else %}
+                                            {{ column.label|capfirst }}
+                                            {% endif %}
+                                        </th>
+                                        {% endfor %}
+                                        <th class="text-nowrap">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in rows %}
+                                    <tr class="bank-row" data-bank-id="{{ row.bank_id }}">
+                                        {% for cell in row.cells %}
+                                        <td>
+                                            {% if cell.is_long_text %}
+                                                {{ cell.value|truncatechars:100 }}
+                                            {% else %}
+                                                {{ cell.value }}
+                                            {% endif %}
+                                        </td>
+                                        {% endfor %}
+                                        <td class="text-nowrap">
+                                            <div class="d-flex gap-2 flex-nowrap">
+                                                <a href="{{ row.edit_url }}" class="btn btn-sm btn-outline-primary">Редактировать</a>
+                                                <form method="post" action="{{ form_action_url }}" onsubmit="return confirm('Удалить запись?');">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="delete">
+                                                    <input type="hidden" name="model" value="{{ model_key }}">
+                                                    <input type="hidden" name="object_id" value="{{ row.pk }}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="{{ columns|length|add:1 }}" class="text-center">Записей пока нет</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover align-middle">
+                                <thead>
+                                    <tr>
+                                        {% for column in columns %}
+                                        <th>
+                                            {% if column.is_sortable %}
+                                            <a href="{{ column.sort_url }}" class="text-decoration-none text-body fw-semibold">
+                                                {{ column.label|capfirst }}
+                                                {% if column.is_sorted %}
+                                                    {% if column.sort_direction == 'desc' %}&darr;{% else %}&uarr;{% endif %}
+                                                {% endif %}
+                                            </a>
+                                            {% else %}
+                                            {{ column.label|capfirst }}
+                                            {% endif %}
+                                        </th>
+                                        {% endfor %}
+                                        <th class="text-nowrap">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in rows %}
+                                    <tr>
+                                        {% for cell in row.cells %}
+                                        <td>
+                                            {% if cell.is_long_text %}
+                                                {{ cell.value|truncatechars:100 }}
+                                            {% else %}
+                                                {{ cell.value }}
+                                            {% endif %}
+                                        </td>
+                                        {% endfor %}
+                                        <td class="text-nowrap">
+                                            <div class="d-flex gap-2 flex-nowrap">
+                                                <a href="{{ row.edit_url }}" class="btn btn-sm btn-outline-primary">Редактировать</a>
+                                                <form method="post" action="{{ form_action_url }}" onsubmit="return confirm('Удалить запись?');">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="delete">
+                                                    <input type="hidden" name="model" value="{{ model_key }}">
+                                                    <input type="hidden" name="object_id" value="{{ row.pk }}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="{{ columns|length|add:1 }}" class="text-center">Записей пока нет</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    {% if is_editing %}Редактирование{% else %}Создание{% endif %} записи
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ form_action_url }}" novalidate>
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="save">
+                        <input type="hidden" name="model" value="{{ model_key }}">
+                        {% if is_editing %}
+                        <input type="hidden" name="object_id" value="{{ edit_object.pk }}">
+                        {% endif %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% for field in form %}
+                            {% if field.field.widget.input_type == 'checkbox' %}
+                            <div class="form-check mb-3">
+                                {{ field }}
+                                <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {% for error in field.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% for error in field.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+
+                        <div class="d-flex justify-content-between">
+                            <button type="submit" class="btn btn-primary">Сохранить</button>
+                            {% if is_editing %}
+                            <a href="{{ cancel_url }}" class="btn btn-secondary">Отмена</a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {% if model_key == 'bank' %}
+            <div class="card mt-3" id="bank-programs-panel">
+                <div class="card-header">Доступные программы банков</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Название программы</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bank-programs-body">
+                            <tr>
+                                <td class="text-muted">Выберите банк в таблице слева</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if model_key == 'bank' %}
+{{ bank_program_map|json_script:"bank-program-map-data" }}
+{% endif %}
+
+<script>
+  (function () {
+    const mapElement = document.getElementById('bank-program-map-data');
+    const bankProgramMap = mapElement ? JSON.parse(mapElement.textContent) : {};
+
+    function bindBankRows() {
+      const rows = document.querySelectorAll('.bank-row');
+      const body = document.getElementById('bank-programs-body');
+      if (!rows.length || !body) {
+        return;
+      }
+
+      rows.forEach((row) => {
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', (event) => {
+          if (event.target.closest('a, button, form')) {
+            return;
+          }
+
+          rows.forEach((item) => item.classList.remove('table-active'));
+          row.classList.add('table-active');
+
+          const bankId = row.dataset.bankId;
+          const programs = bankProgramMap[bankId] || [];
+
+          if (!programs.length) {
+            body.innerHTML = '<tr><td class="text-muted">Нет доступных программ</td></tr>';
+            return;
+          }
+
+          body.innerHTML = programs.map((name) => `<tr><td>${name}</td></tr>`).join('');
+        });
+      });
+    }
+
+    function fetchFiltered(form) {
+      const params = new URLSearchParams(new FormData(form));
+      const url = new URL(window.location.href);
+      url.search = params.toString();
+
+      fetch(url.toString(), {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+        .then((response) => response.text())
+        .then((html) => {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+          const newResults = doc.querySelector('#catalog-results');
+          const currentResults = document.querySelector('#catalog-results');
+
+          if (newResults && currentResults) {
+            currentResults.innerHTML = newResults.innerHTML;
+            bindBankRows();
+          }
+
+          window.history.replaceState({}, '', url.toString());
+        });
+    }
+
+    const forms = document.querySelectorAll('[data-auto-filter-form]');
+    forms.forEach((form) => {
+      let debounceTimer = null;
+      const controls = form.querySelectorAll('input:not([type="hidden"]), select, textarea');
+
+      controls.forEach((control) => {
+        const isTextInput = control.tagName !== 'SELECT' && control.type !== 'date';
+        const eventName = isTextInput ? 'input' : 'change';
+
+        control.addEventListener(eventName, () => {
+          if (isTextInput) {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => fetchFiltered(form), 400);
+            return;
+          }
+
+          fetchFiltered(form);
+        });
+      });
+    });
+
+    bindBankRows();
+  })();
+</script>
+{% endblock %}
