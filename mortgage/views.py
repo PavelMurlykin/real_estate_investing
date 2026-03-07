@@ -22,8 +22,6 @@ def mortgage_calculator(request):
         if selected_id:
             selected_property = Property.objects.filter(id=selected_id).first()
             if selected_property:
-                if not form_data.get('BASE_PROPERTY_COST'):
-                    form_data['BASE_PROPERTY_COST'] = str(selected_property.property_cost)
                 if not form_data.get('PROPERTY_COST'):
                     form_data['PROPERTY_COST'] = str(selected_property.property_cost)
         mortgage_form = MortgageForm(form_data)
@@ -48,7 +46,7 @@ def mortgage_calculator(request):
                 property_cost = float(data['PROPERTY_COST'])
 
                 # Получаем базовую стоимость из скрытого поля
-                base_property_cost = float(data.get('BASE_PROPERTY_COST', property_obj.property_cost))
+                base_property_cost = float(data['PROPERTY_COST'])
 
                 # Получаем значения первоначального взноса и преобразуем в float
                 initial_payment_percent = float(data.get('INITIAL_PAYMENT_PERCENT', 0) or 0)

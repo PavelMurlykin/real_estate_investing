@@ -1,58 +1,45 @@
 # mortgage/forms.py
-from datetime import datetime, date
+from datetime import date, datetime
+
 from django import forms
+
 from property.models import Property
 
 
 class MortgageForm(forms.Form):
-    """
-    Входные параметры для расчета ипотеки.
-    """
-    # Поле для выбора объекта недвижимости
+    """Входные параметры для расчета ипотеки."""
+
     PROPERTY = forms.ModelChoiceField(
         queryset=Property.objects.all(),
         label='Объект недвижимости',
-        widget=forms.Select(attrs={
-            'class': 'form-select',
-            'id': 'id_PROPERTY',
-            'onchange': 'updatePropertyCost()'
-        })
+        widget=forms.Select(
+            attrs={
+                'class': 'form-select',
+                'id': 'id_PROPERTY',
+                'onchange': 'updatePropertyCost()',
+            }
+        ),
     )
 
-    # Поле для базовой стоимости объекта (сделано видимым для проверки)
-    BASE_PROPERTY_COST = forms.DecimalField(
-        label='Исходная стоимость объекта, руб.',
-        max_digits=15,
-        decimal_places=2,
-        required=False,
-        widget=forms.NumberInput(attrs={
-            'class': 'form-control',
-            'step': '0.01',
-            'id': 'base_property_cost',
-            'readonly': 'readonly'
-        })
-    )
-
-    # Поле для базовой стоимости объекта
     PROPERTY_COST = forms.DecimalField(
         label='Базовая стоимость объекта, руб.',
         max_digits=15,
         decimal_places=2,
-        widget=forms.NumberInput(attrs={
-            'class': 'form-control',
-            'step': '0.01',
-            'id': 'property_cost_input'
-        })
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'id': 'property_cost_input',
+                'oninput': 'updateFinalPropertyCost()',
+            }
+        ),
     )
 
-    # Корректировка стоимости
     DISCOUNT_MARKUP_TYPE = forms.ChoiceField(
         label='Тип изменения цены',
         choices=[('discount', 'Скидка'), ('markup', 'Удорожание')],
-        widget=forms.RadioSelect(attrs={
-            'onchange': 'updateFinalPropertyCost()'
-        }),
-        initial='discount'
+        widget=forms.RadioSelect(attrs={'onchange': 'updateFinalPropertyCost()'}),
+        initial='discount',
     )
 
     DISCOUNT_MARKUP_VALUE = forms.DecimalField(
@@ -61,26 +48,31 @@ class MortgageForm(forms.Form):
         max_digits=5,
         decimal_places=2,
         required=False,
-        widget=forms.NumberInput(attrs={
-            'class': 'form-control',
-            'step': '0.01',
-            'oninput': 'updateFinalPropertyCost()'
-        })
+        initial=0,
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'oninput': 'updateFinalPropertyCost()',
+            }
+        ),
     )
 
-    # Первоначальный взнос (сделаем оба поля обязательными)
     INITIAL_PAYMENT_PERCENT = forms.DecimalField(
         label='Первоначальный взнос, %',
         min_value=0,
         max_value=100,
         max_digits=5,
         decimal_places=2,
-        widget=forms.NumberInput(attrs={
-            'class': 'form-control',
-            'step': '0.01',
-            'id': 'initial_payment_percent',
-            'oninput': 'updateInitialPaymentRubles()'
-        })
+        initial=20,
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'id': 'initial_payment_percent',
+                'oninput': 'updateInitialPaymentRubles()',
+            }
+        ),
     )
 
     INITIAL_PAYMENT_RUBLES = forms.DecimalField(
@@ -88,29 +80,35 @@ class MortgageForm(forms.Form):
         min_value=0,
         max_digits=15,
         decimal_places=2,
-        widget=forms.NumberInput(attrs={
-            'class': 'form-control',
-            'step': '0.01',
-            'id': 'initial_payment_rubles',
-            'oninput': 'updateInitialPaymentPercent()'
-        })
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'id': 'initial_payment_rubles',
+                'oninput': 'updateInitialPaymentPercent()',
+            }
+        ),
     )
 
     INITIAL_PAYMENT_DATE = forms.DateField(
         label='Дата первоначального взноса (ДД.ММ.ГГГГ)',
-        widget=forms.DateInput(attrs={
-            'class': 'form-control',
-            'type': 'date',
-        }, format='%Y-%m-%d'),
+        widget=forms.DateInput(
+            attrs={
+                'class': 'form-control',
+                'type': 'date',
+            },
+            format='%Y-%m-%d',
+        ),
         input_formats=['%d.%m.%Y', '%Y-%m-%d', '%d/%m/%Y'],
-        initial=date.today
+        initial=date.today,
     )
 
     MORTGAGE_TERM = forms.IntegerField(
         label='Срок ипотеки, годы',
         min_value=1,
         max_value=50,
-        widget=forms.NumberInput(attrs={'class': 'form-control'})
+        initial=30,
+        widget=forms.NumberInput(attrs={'class': 'form-control'}),
     )
 
     ANNUAL_RATE = forms.DecimalField(
@@ -118,16 +116,15 @@ class MortgageForm(forms.Form):
         min_value=0,
         max_digits=5,
         decimal_places=2,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'})
+        initial=15,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
     )
 
     HAS_GRACE_PERIOD = forms.ChoiceField(
         label='Наличие льготного периода',
         choices=[('no', 'Нет'), ('yes', 'Да')],
-        widget=forms.RadioSelect(attrs={
-            'onchange': 'toggleGracePeriod()'
-        }),
-        initial='no'
+        widget=forms.RadioSelect(attrs={'onchange': 'toggleGracePeriod()'}),
+        initial='no',
     )
 
     GRACE_PERIOD_TERM = forms.IntegerField(
@@ -135,7 +132,7 @@ class MortgageForm(forms.Form):
         min_value=0,
         max_value=50,
         required=False,
-        widget=forms.NumberInput(attrs={'class': 'form-control'})
+        widget=forms.NumberInput(attrs={'class': 'form-control'}),
     )
 
     GRACE_PERIOD_RATE = forms.DecimalField(
@@ -144,22 +141,20 @@ class MortgageForm(forms.Form):
         max_digits=5,
         decimal_places=2,
         required=False,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'})
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
     )
 
     def clean_INITIAL_PAYMENT_DATE(self):
-        date_str = self.cleaned_data['INITIAL_PAYMENT_DATE']
-        if isinstance(date_str, str):
+        date_value = self.cleaned_data['INITIAL_PAYMENT_DATE']
+        if isinstance(date_value, str):
             try:
-                date = datetime.strptime(date_str, '%d.%m.%Y').date()
-                return date
+                return datetime.strptime(date_value, '%d.%m.%Y').date()
             except ValueError:
                 try:
-                    date = datetime.strptime(date_str, '%Y-%m-%d').date()
-                    return date
-                except ValueError:
-                    raise forms.ValidationError('Неверный формат даты. Используйте ДД.ММ.ГГГГ')
-        return date_str
+                    return datetime.strptime(date_value, '%Y-%m-%d').date()
+                except ValueError as exc:
+                    raise forms.ValidationError('Неверный формат даты. Используйте ДД.ММ.ГГГГ') from exc
+        return date_value
 
     def clean(self):
         cleaned_data = super().clean()

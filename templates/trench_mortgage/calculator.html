@@ -37,14 +37,6 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="{{ form.BASE_PROPERTY_COST.id_for_label }}" class="form-label">{{ form.BASE_PROPERTY_COST.label }}</label>
-                            {{ form.BASE_PROPERTY_COST }}
-                            {% for error in form.BASE_PROPERTY_COST.errors %}
-                                <div class="invalid-feedback d-block">{{ error }}</div>
-                            {% endfor %}
-                        </div>
-
-                        <div class="mb-3">
                             <label for="{{ form.PROPERTY_COST.id_for_label }}" class="form-label">{{ form.PROPERTY_COST.label }}</label>
                             {{ form.PROPERTY_COST }}
                             {% for error in form.PROPERTY_COST.errors %}
@@ -364,15 +356,13 @@ function updateInitialPaymentPercent() {
 function updatePropertyCost() {
     const selector = document.getElementById('id_PROPERTY');
     const costInput = document.getElementById('property_cost_input');
-    const baseInput = document.getElementById('base_property_cost');
-    if (!selector || !costInput || !baseInput) {
+    if (!selector || !costInput) {
         return;
     }
 
     const propertyId = selector.value;
     if (!propertyId) {
         costInput.value = '';
-        baseInput.value = '';
         updateFinalPropertyCost();
         return;
     }
@@ -390,7 +380,6 @@ function updatePropertyCost() {
             }
 
             costInput.value = data.property_cost;
-            baseInput.value = data.property_cost;
             updateFinalPropertyCost();
         })
         .catch(() => {
