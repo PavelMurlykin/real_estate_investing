@@ -398,9 +398,30 @@ function updatePropertyCost() {
         });
 }
 
+function syncFirstTrenchDateFromInitialPayment() {
+    const initialPaymentDateInput = document.getElementById('id_INITIAL_PAYMENT_DATE');
+    const firstTrenchDateInput = document.getElementById('trench_date_1');
+    if (!initialPaymentDateInput || !firstTrenchDateInput) {
+        return;
+    }
+
+    firstTrenchDateInput.value = initialPaymentDateInput.value || '';
+}
+
+function syncAnnualRateToAllTrenches() {
+    const baseAnnualRateInput = document.getElementById('id_ANNUAL_RATE');
+    if (!baseAnnualRateInput) {
+        return;
+    }
+
+    const value = baseAnnualRateInput.value || '';
+    document.querySelectorAll('.trench-row .annual-rate').forEach(function (rateInput) {
+        rateInput.value = value;
+    });
+}
+
 function updateTrenchRows() {
     const countInput = document.getElementById('id_TRENCH_COUNT');
-    const baseAnnualRateInput = document.getElementById('id_ANNUAL_RATE');
     const rows = Array.from(document.querySelectorAll('.trench-row'));
     if (!countInput || !rows.length) {
         return;
@@ -433,9 +454,6 @@ function updateTrenchRows() {
 
         dateInput.required = true;
         annualRateInput.required = true;
-        if (!annualRateInput.value && baseAnnualRateInput && baseAnnualRateInput.value) {
-            annualRateInput.value = baseAnnualRateInput.value;
-        }
 
         if (isLast) {
             const lastPercent = Math.max(0, 100 - sumPercent);
@@ -504,18 +522,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const annualRateInput = document.getElementById('id_ANNUAL_RATE');
     if (annualRateInput) {
-        annualRateInput.addEventListener('input', function () {
-            const value = annualRateInput.value;
-            document.querySelectorAll('.trench-row').forEach(function (row) {
-                const rateInput = row.querySelector('.annual-rate');
-                if (!rateInput.value) {
-                    rateInput.value = value;
-                }
-            });
-        });
+        annualRateInput.addEventListener('input', syncAnnualRateToAllTrenches);
+        annualRateInput.addEventListener('change', syncAnnualRateToAllTrenches);
+    }
+
+    const initialPaymentDateInput = document.getElementById('id_INITIAL_PAYMENT_DATE');
+    if (initialPaymentDateInput) {
+        initialPaymentDateInput.addEventListener('input', syncFirstTrenchDateFromInitialPayment);
+        initialPaymentDateInput.addEventListener('change', syncFirstTrenchDateFromInitialPayment);
     }
 
     updateFinalPropertyCost();
+    syncFirstTrenchDateFromInitialPayment();
+    syncAnnualRateToAllTrenches();
     updateTrenchRows();
 });
 </script>
