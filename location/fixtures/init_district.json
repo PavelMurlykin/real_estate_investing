@@ -1,0 +1,376 @@
+[
+{
+  "model": "location.district",
+  "pk": 1,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Адмиралтейский",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 2,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Василеостровский",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 3,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Выборгский",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 4,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Калининский",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 5,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Кировский",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 6,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Колпинский",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 7,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Красногвардейский",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 8,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Красносельский",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 9,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Кронштадтский",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 10,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Курортный",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 11,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Московский",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 12,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Невский",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 13,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Петроградский",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 14,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Петродворцовый",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 15,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Приморский",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 16,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Пушкинский",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 17,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Фрунзенский",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 18,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Центральный",
+    "city": 1
+  }
+},
+{
+  "model": "location.district",
+  "pk": 19,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Центральный административный округ",
+    "city": 2
+  }
+},
+{
+  "model": "location.district",
+  "pk": 20,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Северный административный округ",
+    "city": 2
+  }
+},
+{
+  "model": "location.district",
+  "pk": 21,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Северо-Восточный административный округ",
+    "city": 2
+  }
+},
+{
+  "model": "location.district",
+  "pk": 22,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Восточный административный округ",
+    "city": 2
+  }
+},
+{
+  "model": "location.district",
+  "pk": 23,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Юго-Восточный административный округ",
+    "city": 2
+  }
+},
+{
+  "model": "location.district",
+  "pk": 24,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Южный административный округ",
+    "city": 2
+  }
+},
+{
+  "model": "location.district",
+  "pk": 25,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Юго-Западный административный округ",
+    "city": 2
+  }
+},
+{
+  "model": "location.district",
+  "pk": 26,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Западный административный округ",
+    "city": 2
+  }
+},
+{
+  "model": "location.district",
+  "pk": 27,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Северо-Западный административный округ",
+    "city": 2
+  }
+},
+{
+  "model": "location.district",
+  "pk": 28,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Зеленоградский административный округ",
+    "city": 2
+  }
+},
+{
+  "model": "location.district",
+  "pk": 29,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Троицкий административный округ",
+    "city": 2
+  }
+},
+{
+  "model": "location.district",
+  "pk": 30,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Новомосковский административный округ",
+    "city": 2
+  }
+},
+{
+  "model": "location.district",
+  "pk": 31,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Центральный",
+    "city": 3
+  }
+},
+{
+  "model": "location.district",
+  "pk": 32,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Ленинградский",
+    "city": 3
+  }
+},
+{
+  "model": "location.district",
+  "pk": 33,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Московский",
+    "city": 3
+  }
+},
+{
+  "model": "location.district",
+  "pk": 34,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.363Z",
+    "updated_at": "2025-11-22T17:01:30.369Z",
+    "name": "Балтийский",
+    "city": 3
+  }
+}
+]

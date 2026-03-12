@@ -1,38 +1,50 @@
 [
-  {
-    "model": "property.realestateclass",
-    "pk": 1,
-    "fields": {
-      "name": "РљРѕРјС„РѕСЂС‚",
-      "description": "Р–РёР»СЊРµ РєРѕРјС„РѕСЂС‚-РєР»Р°СЃСЃР°",
-      "weight": "1.10"
-    }
-  },
-  {
-    "model": "property.realestateclass",
-    "pk": 2,
-    "fields": {
-      "name": "РљРѕРјС„РѕСЂС‚+",
-      "description": "РЈР»СѓС‡С€РµРЅРЅС‹Р№ РєРѕРјС„РѕСЂС‚-РєР»Р°СЃСЃ",
-      "weight": "1.20"
-    }
-  },
-  {
-    "model": "property.realestateclass",
-    "pk": 3,
-    "fields": {
-      "name": "Р‘РёР·РЅРµСЃ",
-      "description": "Р–РёР»СЊРµ Р±РёР·РЅРµСЃ-РєР»Р°СЃСЃР°",
-      "weight": "1.30"
-    }
-  },
-  {
-    "model": "property.realestateclass",
-    "pk": 4,
-    "fields": {
-      "name": "Р­Р»РёС‚",
-      "description": "Р­Р»РёС‚РЅРѕРµ Р¶РёР»СЊРµ",
-      "weight": "1.50"
-    }
+{
+  "model": "property.realestateclass",
+  "pk": 1,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.374Z",
+    "updated_at": "2025-11-22T17:01:30.378Z",
+    "name": "Комфорт",
+    "description": "Жилье комфорт-класса",
+    "weight": "1.10"
   }
+},
+{
+  "model": "property.realestateclass",
+  "pk": 2,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.374Z",
+    "updated_at": "2025-11-22T17:01:30.378Z",
+    "name": "Комфорт+",
+    "description": "Улучшенный комфорт-класс",
+    "weight": "1.20"
+  }
+},
+{
+  "model": "property.realestateclass",
+  "pk": 3,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.374Z",
+    "updated_at": "2025-11-22T17:01:30.378Z",
+    "name": "Бизнес",
+    "description": "Жилье бизнес-класса",
+    "weight": "1.30"
+  }
+},
+{
+  "model": "property.realestateclass",
+  "pk": 4,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.374Z",
+    "updated_at": "2025-11-22T17:01:30.378Z",
+    "name": "Элит",
+    "description": "Элитное жилье",
+    "weight": "1.50"
+  }
+}
 ]

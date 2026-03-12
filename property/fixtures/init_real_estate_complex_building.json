@@ -1,178 +1,128 @@
 [
-  {
-    "model": "property.realestatecomplexbuilding",
-    "pk": 1,
-    "fields": {
-      "number": "1",
-      "address": "РџСЂРёРјРѕСЂСЃРєРёР№ СЂР°Р№РѕРЅ, СѓР». РЎР°РІСѓС€РєРёРЅР°, Рґ. 1",
-      "commissioning_date": "2025-12-31",
-      "key_handover_date": "2025-12-31",
-      "real_estate_complex": 1
-    }
-  },
-  {
-    "model": "property.realestatecomplexbuilding",
-    "pk": 2,
-    "fields": {
-      "number": "2",
-      "address": "РџСЂРёРјРѕСЂСЃРєРёР№ СЂР°Р№РѕРЅ, СѓР». РЎР°РІСѓС€РєРёРЅР°, Рґ. 2",
-      "commissioning_date": "2026-06-30",
-      "key_handover_date": "2026-06-30",
-      "real_estate_complex": 1
-    }
-  },
-  {
-    "model": "property.realestatecomplexbuilding",
-    "pk": 3,
-    "fields": {
-      "number": "1",
-      "address": "РњРѕСЃРєРѕРІСЃРєРёР№ СЂР°Р№РѕРЅ, СѓР». РўРёРїР°РЅРѕРІР°, Рґ. 1",
-      "commissioning_date": "2025-09-30",
-      "key_handover_date": "2025-09-30",
-      "real_estate_complex": 2
-    }
-  },
-  {
-    "model": "property.realestatecomplexbuilding",
-    "pk": 4,
-    "fields": {
-      "number": "1",
-      "address": "РќРµРІСЃРєРёР№ СЂР°Р№РѕРЅ, СѓР». РџРѕРґРІРѕР№СЃРєРѕРіРѕ, Рґ. 1",
-      "commissioning_date": "2025-11-30",
-      "key_handover_date": "2025-11-30",
-      "real_estate_complex": 3
-    }
-  },
-  {
-    "model": "property.realestatecomplexbuilding",
-    "pk": 5,
-    "fields": {
-      "number": "1",
-      "address": "РљР°Р»РёРЅРёРЅСЃРєРёР№ СЂР°Р№РѕРЅ, СѓР». РЈС‡РёС‚РµР»СЊСЃРєР°СЏ, Рґ. 1",
-      "commissioning_date": "2025-08-31",
-      "key_handover_date": "2025-08-31",
-      "real_estate_complex": 4
-    }
-  },
-  {
-    "model": "property.realestatecomplexbuilding",
-    "pk": 6,
-    "fields": {
-      "number": "1",
-      "address": "Р¦РµРЅС‚СЂР°Р»СЊРЅС‹Р№ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РёРІРЅС‹Р№ РѕРєСЂСѓРі, СѓР». РџСЂРµСЃРЅРµРЅСЃРєР°СЏ, Рґ. 1",
-      "commissioning_date": "2026-03-31",
-      "key_handover_date": "2026-03-31",
-      "real_estate_complex": 5
-    }
-  },
-  {
-    "model": "property.realestatecomplexbuilding",
-    "pk": 7,
-    "fields": {
-      "number": "1",
-      "address": "РљР°Р»РёРЅРёРЅРіСЂР°Рґ, СѓР». Р‘Р°Р»С‚РёР№СЃРєР°СЏ, Рґ. 1",
-      "commissioning_date": "2025-10-31",
-      "key_handover_date": "2025-10-31",
-      "real_estate_complex": 6
-    }
-  },
-  {
-    "model": "property.realestatecomplexbuilding",
-    "pk": 8,
-    "fields": {
-      "number": "1",
-      "address": "РџСЂРёРјРѕСЂСЃРєРёР№ СЂР°Р№РѕРЅ, СѓР». РЎР°РІСѓС€РєРёРЅР°, Рґ. 3",
-      "commissioning_date": "2025-12-31",
-      "key_handover_date": "2025-12-31",
-      "real_estate_complex": 7
-    }
-  },
-  {
-    "model": "property.realestatecomplexbuilding",
-    "pk": 9,
-    "fields": {
-      "number": "1",
-      "address": "Р’Р°СЃРёР»РµРѕСЃС‚СЂРѕРІСЃРєРёР№ СЂР°Р№РѕРЅ, СѓР». РЁРєРёРїРµСЂСЃРєРёР№ РїСЂРѕС‚РѕРє, Рґ. 19",
-      "commissioning_date": "2026-02-28",
-      "key_handover_date": "2026-02-28",
-      "real_estate_complex": 8
-    }
-  },
-  {
-    "model": "property.realestatecomplexbuilding",
-    "pk": 10,
-    "fields": {
-      "number": "1",
-      "address": "Р¤СЂСѓРЅР·РµРЅСЃРєРёР№ СЂР°Р№РѕРЅ, Р’РёС‚РµР±СЃРєРёР№ РїСЂ., Рґ. 1",
-      "commissioning_date": "2026-04-30",
-      "key_handover_date": "2026-04-30",
-      "real_estate_complex": 9
-    }
-  },
-  {
-    "model": "property.realestatecomplexbuilding",
-    "pk": 11,
-    "fields": {
-      "number": "1",
-      "address": "РњРѕСЃРєРѕРІСЃРєРёР№ СЂР°Р№РѕРЅ, СѓР». Р“Р°СЃС‚РµР»Р»Рѕ, Рґ. 1",
-      "commissioning_date": "2025-12-31",
-      "key_handover_date": "2025-12-31",
-      "real_estate_complex": 10
-    }
-  },
-  {
-    "model": "property.realestatecomplexbuilding",
-    "pk": 12,
-    "fields": {
-      "number": "1",
-      "address": "Р¦РµРЅС‚СЂР°Р»СЊРЅС‹Р№ СЂР°Р№РѕРЅ, СѓР». РќРµРєСЂР°СЃРѕРІР°, Рґ. 1",
-      "commissioning_date": "2026-05-31",
-      "key_handover_date": "2026-05-31",
-      "real_estate_complex": 11
-    }
-  },
-  {
-    "model": "property.realestatecomplexbuilding",
-    "pk": 13,
-    "fields": {
-      "number": "1",
-      "address": "РџСЂРёРјРѕСЂСЃРєРёР№ СЂР°Р№РѕРЅ, СѓР». РџР°СЂСѓСЃРЅР°СЏ, Рґ. 1",
-      "commissioning_date": "2026-01-31",
-      "key_handover_date": "2026-01-31",
-      "real_estate_complex": 12
-    }
-  },
-  {
-    "model": "property.realestatecomplexbuilding",
-    "pk": 14,
-    "fields": {
-      "number": "1",
-      "address": "РњРѕСЃРєРѕРІСЃРєРёР№ СЂР°Р№РѕРЅ, СѓР». Р“Р°СЃС‚РµР»Р»Рѕ, Рґ. 2",
-      "commissioning_date": "2025-11-30",
-      "key_handover_date": "2025-11-30",
-      "real_estate_complex": 13
-    }
-  },
-  {
-    "model": "property.realestatecomplexbuilding",
-    "pk": 15,
-    "fields": {
-      "number": "1",
-      "address": "РњРѕСЃРєРѕРІСЃРєРёР№ СЂР°Р№РѕРЅ, РїСЂ. РљРѕСЃРјРѕРЅР°РІС‚РѕРІ, Рґ. 1",
-      "commissioning_date": "2026-07-31",
-      "key_handover_date": "2026-07-31",
-      "real_estate_complex": 14
-    }
-  },
-  {
-    "model": "property.realestatecomplexbuilding",
-    "pk": 16,
-    "fields": {
-      "number": "2",
-      "address": "РњРѕСЃРєРѕРІСЃРєРёР№ СЂР°Р№РѕРЅ, РїСЂ. РљРѕСЃРјРѕРЅР°РІС‚РѕРІ, Рґ. 2",
-      "commissioning_date": "2026-12-31",
-      "key_handover_date": "2026-12-31",
-      "real_estate_complex": 14
-    }
+{
+  "model": "property.realestatecomplexbuilding",
+  "pk": 8,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.391Z",
+    "updated_at": "2026-03-06T18:36:14.633Z",
+    "number": "1",
+    "address": "Приморский район, ул. Савушкина, д. 3",
+    "commissioning_date": "2025-01-01",
+    "key_handover_date": "2025-04-01",
+    "real_estate_complex": 7
   }
+},
+{
+  "model": "property.realestatecomplexbuilding",
+  "pk": 9,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.391Z",
+    "updated_at": "2026-03-06T18:46:47.146Z",
+    "number": "1",
+    "address": "Василеостровский район, ул. Шкиперский проток, д. 19",
+    "commissioning_date": "2026-01-01",
+    "key_handover_date": "2026-04-01",
+    "real_estate_complex": 8
+  }
+},
+{
+  "model": "property.realestatecomplexbuilding",
+  "pk": 10,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.391Z",
+    "updated_at": "2026-03-06T18:45:48.651Z",
+    "number": "1",
+    "address": "Фрунзенский район, Витебский пр., д. 1",
+    "commissioning_date": "2026-01-01",
+    "key_handover_date": "2026-04-01",
+    "real_estate_complex": 9
+  }
+},
+{
+  "model": "property.realestatecomplexbuilding",
+  "pk": 11,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.391Z",
+    "updated_at": "2026-03-06T18:47:21.577Z",
+    "number": "1",
+    "address": "Московский район, ул. Гастелло, д. 1",
+    "commissioning_date": "2024-01-01",
+    "key_handover_date": "2024-04-01",
+    "real_estate_complex": 10
+  }
+},
+{
+  "model": "property.realestatecomplexbuilding",
+  "pk": 12,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.391Z",
+    "updated_at": "2026-03-06T18:38:48.338Z",
+    "number": "1",
+    "address": "Центральный район, ул. Некрасова, д. 1",
+    "commissioning_date": "2025-01-01",
+    "key_handover_date": "2025-04-01",
+    "real_estate_complex": 11
+  }
+},
+{
+  "model": "property.realestatecomplexbuilding",
+  "pk": 13,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.391Z",
+    "updated_at": "2026-03-06T18:45:25.203Z",
+    "number": "1",
+    "address": "Приморский район, ул. Парусная, д. 1",
+    "commissioning_date": "2025-01-01",
+    "key_handover_date": "2025-04-01",
+    "real_estate_complex": 12
+  }
+},
+{
+  "model": "property.realestatecomplexbuilding",
+  "pk": 14,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.391Z",
+    "updated_at": "2026-03-06T18:38:15.967Z",
+    "number": "1",
+    "address": "Московский район, ул. Гастелло, д. 2",
+    "commissioning_date": "2025-01-01",
+    "key_handover_date": "2025-04-01",
+    "real_estate_complex": 13
+  }
+},
+{
+  "model": "property.realestatecomplexbuilding",
+  "pk": 15,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.391Z",
+    "updated_at": "2026-03-06T18:35:40.979Z",
+    "number": "1",
+    "address": "Московский район, пр. Космонавтов, д. 1",
+    "commissioning_date": "2024-01-01",
+    "key_handover_date": "2024-04-01",
+    "real_estate_complex": 14
+  }
+},
+{
+  "model": "property.realestatecomplexbuilding",
+  "pk": 16,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.391Z",
+    "updated_at": "2026-03-06T18:35:40.980Z",
+    "number": "2",
+    "address": "Московский район, пр. Космонавтов, д. 2",
+    "commissioning_date": "2024-01-01",
+    "key_handover_date": "2024-04-01",
+    "real_estate_complex": 14
+  }
+}
 ]

@@ -1,0 +1,35 @@
+[
+{
+  "model": "location.region",
+  "pk": 1,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.405Z",
+    "updated_at": "2025-11-22T17:01:30.409Z",
+    "name": "Санкт-Петербург",
+    "code": "78"
+  }
+},
+{
+  "model": "location.region",
+  "pk": 2,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.405Z",
+    "updated_at": "2025-11-22T17:01:30.409Z",
+    "name": "Москва",
+    "code": "77"
+  }
+},
+{
+  "model": "location.region",
+  "pk": 3,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.405Z",
+    "updated_at": "2025-11-22T17:01:30.409Z",
+    "name": "Калининградская область",
+    "code": "39"
+  }
+}
+]

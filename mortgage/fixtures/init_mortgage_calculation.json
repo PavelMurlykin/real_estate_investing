@@ -1,0 +1,58 @@
+[
+{
+  "model": "mortgage.mortgagecalculation",
+  "pk": 6,
+  "fields": {
+    "property": 3,
+    "base_property_cost": "19500000.00",
+    "initial_payment_percent": "20.00",
+    "initial_payment_date": "2026-03-02",
+    "mortgage_term": 25,
+    "annual_rate": "16.00",
+    "has_grace_period": true,
+    "grace_period_term": 1,
+    "grace_period_rate": "5.00",
+    "discount_markup_type": "discount",
+    "discount_markup_value": "2.00",
+    "final_property_cost": "19306000.00",
+    "grace_payments_count": 12,
+    "grace_period_end_date": "2027-03-02",
+    "grace_monthly_payment": "90288.76",
+    "loan_after_grace": "15126342.61",
+    "main_payments_count": 288,
+    "mortgage_end_date": "2051-03-02",
+    "main_monthly_payment": "206231.13",
+    "total_loan_amount": "15444800.00",
+    "total_overpayment": "45033231.82",
+    "timestamp": "2026-03-02T20:32:50.359Z"
+  }
+},
+{
+  "model": "mortgage.mortgagecalculation",
+  "pk": 7,
+  "fields": {
+    "property": 4,
+    "base_property_cost": "8870000.00",
+    "initial_payment_percent": "20.10",
+    "initial_payment_date": "2026-03-04",
+    "mortgage_term": 30,
+    "annual_rate": "6.00",
+    "has_grace_period": false,
+    "grace_period_term": null,
+    "grace_period_rate": "0.00",
+    "discount_markup_type": "discount",
+    "discount_markup_value": "0.00",
+    "final_property_cost": "8870000.00",
+    "grace_payments_count": 0,
+    "grace_period_end_date": null,
+    "grace_monthly_payment": "0.00",
+    "loan_after_grace": "7087130.00",
+    "main_payments_count": 360,
+    "mortgage_end_date": "2056-03-04",
+    "main_monthly_payment": "42490.93",
+    "total_loan_amount": "7087130.00",
+    "total_overpayment": "8209603.05",
+    "timestamp": "2026-03-04T12:30:01.123Z"
+  }
+}
+]

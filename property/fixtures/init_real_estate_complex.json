@@ -1,198 +1,138 @@
 [
-  {
-    "model": "property.realestatecomplex",
-    "pk": 1,
-    "fields": {
-      "name": "Р›РѕРЅРґРѕРЅ РџР°СЂРє",
-      "description": "Р–Рљ Р±РёР·РЅРµСЃ-РєР»Р°СЃСЃР° РІ РџСЂРёРјРѕСЂСЃРєРѕРј СЂР°Р№РѕРЅРµ",
-      "map_link": "https://yandex.ru/maps/org/194578967894",
-      "presentation_link": "https://londonpark.spb.ru/presentation",
-      "developer": 1,
-      "district": 15,
-      "real_estate_class": 3,
-      "real_estate_type": 1
-    }
-  },
-  {
-    "model": "property.realestatecomplex",
-    "pk": 2,
-    "fields": {
-      "name": "РЎРІРµС‚Р»С‹Р№ РјРёСЂ",
-      "description": "Р–Рљ РєРѕРјС„РѕСЂС‚-РєР»Р°СЃСЃР° РІ РњРѕСЃРєРѕРІСЃРєРѕРј СЂР°Р№РѕРЅРµ",
-      "map_link": "https://yandex.ru/maps/org/194578967895",
-      "presentation_link": "https://svetlymir.ru/presentation",
-      "developer": 2,
-      "district": 11,
-      "real_estate_class": 1,
-      "real_estate_type": 1
-    }
-  },
-  {
-    "model": "property.realestatecomplex",
-    "pk": 3,
-    "fields": {
-      "name": "Р—РёРјР°Р»РѕРІРѕ",
-      "description": "Р–Рљ РєРѕРјС„РѕСЂС‚+ РєР»Р°СЃСЃР° РІ РќРµРІСЃРєРѕРј СЂР°Р№РѕРЅРµ",
-      "map_link": "https://yandex.ru/maps/org/194578967896",
-      "presentation_link": "https://zimalovo.ru/presentation",
-      "developer": 3,
-      "district": 12,
-      "real_estate_class": 2,
-      "real_estate_type": 1
-    }
-  },
-  {
-    "model": "property.realestatecomplex",
-    "pk": 4,
-    "fields": {
-      "name": "Р¦Р”РЎ РЎРµРІРµСЂРЅС‹Р№",
-      "description": "Р–Рљ РєРѕРјС„РѕСЂС‚-РєР»Р°СЃСЃР° РІ РљР°Р»РёРЅРёРЅСЃРєРѕРј СЂР°Р№РѕРЅРµ",
-      "map_link": "https://yandex.ru/maps/org/194578967897",
-      "presentation_link": "https://cds-severny.ru/presentation",
-      "developer": 9,
-      "district": 4,
-      "real_estate_class": 1,
-      "real_estate_type": 1
-    }
-  },
-  {
-    "model": "property.realestatecomplex",
-    "pk": 5,
-    "fields": {
-      "name": "РџСЂРµСЃРЅСЏ РЎРёС‚Рё",
-      "description": "Р–Рљ Р±РёР·РЅРµСЃ-РєР»Р°СЃСЃР° РІ С†РµРЅС‚СЂРµ РњРѕСЃРєРІС‹",
-      "map_link": "https://yandex.ru/maps/org/194578967898",
-      "presentation_link": "https://presnyacity.ru/presentation",
-      "developer": 5,
-      "district": 19,
-      "real_estate_class": 3,
-      "real_estate_type": 1
-    }
-  },
-  {
-    "model": "property.realestatecomplex",
-    "pk": 6,
-    "fields": {
-      "name": "Р‘Р°Р»С‚РёР№СЃРєР°СЏ Р–РµРјС‡СѓР¶РёРЅР°",
-      "description": "Р–Рљ РєРѕРјС„РѕСЂС‚+ РєР»Р°СЃСЃР° РІ РљР°Р»РёРЅРёРЅРіСЂР°РґРµ",
-      "map_link": "https://yandex.ru/maps/org/194578967899",
-      "presentation_link": "https://balt-pearl.ru/presentation",
-      "developer": 10,
-      "district": 31,
-      "real_estate_class": 2,
-      "real_estate_type": 1
-    }
-  },
-  {
-    "model": "property.realestatecomplex",
-    "pk": 7,
-    "fields": {
-      "name": "РђСЃС‚СЂР° РљРѕРЅС‚РёРЅРµРЅС‚Р°Р»СЊ",
-      "description": "Р–Рљ РєРѕРјС„РѕСЂС‚-РєР»Р°СЃСЃР° РІ РџСЂРёРјРѕСЂСЃРєРѕРј СЂР°Р№РѕРЅРµ РЎР°РЅРєС‚-РџРµС‚РµСЂР±СѓСЂРіР°",
-      "map_link": "https://yandex.ru/maps/org/astra_continental",
-      "presentation_link": "https://astra-continental.ru/presentation",
-      "developer": 11,
-      "district": 15,
-      "real_estate_class": 2,
-      "real_estate_type": 1
-    }
-  },
-  {
-    "model": "property.realestatecomplex",
-    "pk": 8,
-    "fields": {
-      "name": "РЁРєРёРїРµСЂСЃРєРёР№ 19",
-      "description": "Р–Рљ РєРѕРјС„РѕСЂС‚-РєР»Р°СЃСЃР° РІ Р’Р°СЃРёР»РµРѕСЃС‚СЂРѕРІСЃРєРѕРј СЂР°Р№РѕРЅРµ РЎР°РЅРєС‚-РџРµС‚РµСЂР±СѓСЂРіР°",
-      "map_link": "https://yandex.ru/maps/org/skhipersky_19",
-      "presentation_link": "https://skhipersky19.ru/presentation",
-      "developer": 3,
-      "district": 2,
-      "real_estate_class": 2,
-      "real_estate_type": 1
-    }
-  },
-  {
-    "model": "property.realestatecomplex",
-    "pk": 9,
-    "fields": {
-      "name": "Р’РёС‚РµР±СЃРєРёР№ РџР°СЂРє",
-      "description": "Р–Рљ РєРѕРјС„РѕСЂС‚-РєР»Р°СЃСЃР° РІ Р¤СЂСѓРЅР·РµРЅСЃРєРѕРј СЂР°Р№РѕРЅРµ РЎР°РЅРєС‚-РџРµС‚РµСЂР±СѓСЂРіР°",
-      "map_link": "https://yandex.ru/maps/org/vitebsky_park",
-      "presentation_link": "https://vitebsky-park.ru/presentation",
-      "developer": 3,
-      "district": 17,
-      "real_estate_class": 2,
-      "real_estate_type": 1
-    }
-  },
-  {
-    "model": "property.realestatecomplex",
-    "pk": 10,
-    "fields": {
-      "name": "Р“Р°Р»Р°РєС‚РёРєР°",
-      "description": "Р–Рљ РєРѕРјС„РѕСЂС‚-РєР»Р°СЃСЃР° РІ РњРѕСЃРєРѕРІСЃРєРѕРј СЂР°Р№РѕРЅРµ РЎР°РЅРєС‚-РџРµС‚РµСЂР±СѓСЂРіР°",
-      "map_link": "https://yandex.ru/maps/org/galaktika",
-      "presentation_link": "https://galaktika-spb.ru/presentation",
-      "developer": 5,
-      "district": 11,
-      "real_estate_class": 2,
-      "real_estate_type": 1
-    }
-  },
-  {
-    "model": "property.realestatecomplex",
-    "pk": 11,
-    "fields": {
-      "name": "РќРёРіРёР»РёСЃС‚",
-      "description": "Р–Рљ РєРѕРјС„РѕСЂС‚-РєР»Р°СЃСЃР° РІ Р¦РµРЅС‚СЂР°Р»СЊРЅРѕРј СЂР°Р№РѕРЅРµ РЎР°РЅРєС‚-РџРµС‚РµСЂР±СѓСЂРіР°",
-      "map_link": "https://yandex.ru/maps/org/nigilist",
-      "presentation_link": "https://nigilist-spb.ru/presentation",
-      "developer": 13,
-      "district": 18,
-      "real_estate_class": 2,
-      "real_estate_type": 1
-    }
-  },
-  {
-    "model": "property.realestatecomplex",
-    "pk": 12,
-    "fields": {
-      "name": "РџР°СЂСѓСЃРЅР°СЏ 1",
-      "description": "Р–Рљ РєРѕРјС„РѕСЂС‚-РєР»Р°СЃСЃР° РІ РџСЂРёРјРѕСЂСЃРєРѕРј СЂР°Р№РѕРЅРµ РЎР°РЅРєС‚-РџРµС‚РµСЂР±СѓСЂРіР°",
-      "map_link": "https://yandex.ru/maps/org/parusnaya_1",
-      "presentation_link": "https://parusnaya1.ru/presentation",
-      "developer": 8,
-      "district": 15,
-      "real_estate_class": 2,
-      "real_estate_type": 1
-    }
-  },
-  {
-    "model": "property.realestatecomplex",
-    "pk": 13,
-    "fields": {
-      "name": "Р›РѕС„С‚",
-      "description": "Р–Рљ РєРѕРјС„РѕСЂС‚-РєР»Р°СЃСЃР° РІ РњРѕСЃРєРѕРІСЃРєРѕРј СЂР°Р№РѕРЅРµ РЎР°РЅРєС‚-РџРµС‚РµСЂР±СѓСЂРіР°",
-      "map_link": "https://yandex.ru/maps/org/loft_spb",
-      "presentation_link": "https://loft-spb.ru/presentation",
-      "developer": 11,
-      "district": 11,
-      "real_estate_class": 2,
-      "real_estate_type": 1
-    }
-  },
-  {
-    "model": "property.realestatecomplex",
-    "pk": 14,
-    "fields": {
-      "name": "ID РџР°СЂРє РџРѕР±РµРґС‹",
-      "description": "Р–Рљ РєРѕРјС„РѕСЂС‚-РєР»Р°СЃСЃР° РІ РњРѕСЃРєРѕРІСЃРєРѕРј СЂР°Р№РѕРЅРµ РЎР°РЅРєС‚-РџРµС‚РµСЂР±СѓСЂРіР°",
-      "map_link": "https://yandex.ru/maps/org/id_park_pobedy",
-      "presentation_link": "https://id-park-pobedy.ru/presentation",
-      "developer": 12,
-      "district": 11,
-      "real_estate_class": 2,
-      "real_estate_type": 1
-    }
+{
+  "model": "property.realestatecomplex",
+  "pk": 7,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.381Z",
+    "updated_at": "2026-03-06T18:36:14.631Z",
+    "name": "Астра Континенталь",
+    "description": "ЖК комфорт-класса в Приморском районе Санкт-Петербурга",
+    "map_link": "https://yandex.com/maps/-/CPujJNkr",
+    "presentation_link": "",
+    "developer": 11,
+    "district": 15,
+    "real_estate_class": 2,
+    "real_estate_type": 1
   }
+},
+{
+  "model": "property.realestatecomplex",
+  "pk": 8,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.381Z",
+    "updated_at": "2026-03-06T18:46:47.145Z",
+    "name": "Шкиперский 19",
+    "description": "ЖК комфорт-класса в Василеостровском районе Санкт-Петербурга",
+    "map_link": "https://yandex.com/maps/-/CPujV-94",
+    "presentation_link": "",
+    "developer": 3,
+    "district": 2,
+    "real_estate_class": 2,
+    "real_estate_type": 1
+  }
+},
+{
+  "model": "property.realestatecomplex",
+  "pk": 9,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.381Z",
+    "updated_at": "2026-03-06T18:45:48.650Z",
+    "name": "Витебский Парк",
+    "description": "ЖК комфорт-класса в Фрунзенском районе Санкт-Петербурга",
+    "map_link": "https://yandex.com/maps/-/CPujV0jL",
+    "presentation_link": "",
+    "developer": 3,
+    "district": 17,
+    "real_estate_class": 2,
+    "real_estate_type": 1
+  }
+},
+{
+  "model": "property.realestatecomplex",
+  "pk": 10,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.381Z",
+    "updated_at": "2026-03-06T18:47:21.575Z",
+    "name": "Галактика",
+    "description": "ЖК комфорт-класса в Московском районе Санкт-Петербурга",
+    "map_link": "https://yandex.com/maps/-/CPujZM3Q",
+    "presentation_link": "",
+    "developer": 5,
+    "district": 11,
+    "real_estate_class": 2,
+    "real_estate_type": 2
+  }
+},
+{
+  "model": "property.realestatecomplex",
+  "pk": 11,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.381Z",
+    "updated_at": "2026-03-06T18:38:48.337Z",
+    "name": "Нигилист",
+    "description": "ЖК комфорт-класса в Центральном районе Санкт-Петербурга",
+    "map_link": "https://yandex.com/maps/-/CPujNB~r",
+    "presentation_link": "",
+    "developer": 13,
+    "district": 18,
+    "real_estate_class": 2,
+    "real_estate_type": 1
+  }
+},
+{
+  "model": "property.realestatecomplex",
+  "pk": 12,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.381Z",
+    "updated_at": "2026-03-06T18:45:25.202Z",
+    "name": "Парусная 1",
+    "description": "ЖК комфорт-класса в Приморском районе Санкт-Петербурга",
+    "map_link": "https://yandex.com/maps/-/CPujVOy2",
+    "presentation_link": "",
+    "developer": 8,
+    "district": 15,
+    "real_estate_class": 2,
+    "real_estate_type": 1
+  }
+},
+{
+  "model": "property.realestatecomplex",
+  "pk": 13,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.381Z",
+    "updated_at": "2026-03-06T18:38:15.966Z",
+    "name": "Лофт",
+    "description": "ЖК комфорт-класса в Московском районе Санкт-Петербурга",
+    "map_link": "https://yandex.com/maps/-/CPujNEnY",
+    "presentation_link": "",
+    "developer": 11,
+    "district": 11,
+    "real_estate_class": 2,
+    "real_estate_type": 1
+  }
+},
+{
+  "model": "property.realestatecomplex",
+  "pk": 14,
+  "fields": {
+    "is_active": true,
+    "created_at": "2025-11-22T17:01:30.381Z",
+    "updated_at": "2026-03-06T18:35:40.972Z",
+    "name": "ID Парк Победы",
+    "description": "ЖК комфорт-класса в Московском районе Санкт-Петербурга",
+    "map_link": "https://yandex.com/maps/-/CPujFTIJ",
+    "presentation_link": "",
+    "developer": 12,
+    "district": 11,
+    "real_estate_class": 2,
+    "real_estate_type": 1
+  }
+}
 ]
