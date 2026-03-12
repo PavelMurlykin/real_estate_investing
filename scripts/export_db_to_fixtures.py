@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
+import io
+import json
 import os
 import sys
 from pathlib import Path
@@ -42,6 +44,25 @@ def _iter_project_models():
             yield model
 
 
+def _validate_utf8_json_fixture(fixture_path: Path) -> None:
+    try:
+        raw_content = fixture_path.read_bytes()
+        text_content = raw_content.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise ValueError(
+            "Exported fixture is not UTF-8 encoded: "
+            f"{fixture_path.relative_to(BASE_DIR)} (byte position {exc.start})."
+        ) from exc
+
+    try:
+        json.loads(text_content)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            "Exported fixture contains invalid JSON: "
+            f"{fixture_path.relative_to(BASE_DIR)} (line {exc.lineno}, column {exc.colno})."
+        ) from exc
+
+
 def export_fixtures() -> int:
     models = sorted(_iter_project_models(), key=lambda model: (model._meta.app_label, model._meta.model_name))
     if not models:
@@ -56,14 +77,17 @@ def export_fixtures() -> int:
 
         fixture_path = fixture_dir / f"init_{model._meta.db_table}.json"
         model_label = f"{model._meta.app_label}.{model._meta.model_name}"
+        output_buffer = io.StringIO()
         call_command(
             "dumpdata",
             model_label,
             format="json",
             indent=2,
-            output=str(fixture_path),
+            stdout=output_buffer,
             verbosity=0,
         )
+        fixture_path.write_text(output_buffer.getvalue(), encoding="utf-8", newline="\n")
+        _validate_utf8_json_fixture(fixture_path)
         print(f"[OK] {model_label} -> {fixture_path.relative_to(BASE_DIR)}")
         exported_count += 1
 

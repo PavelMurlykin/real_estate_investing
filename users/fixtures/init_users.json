@@ -1,0 +1,22 @@
+[
+{
+  "model": "users.user",
+  "pk": 1,
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$g012y8w8bq7D6wvNRSffdb$9X4gm+5oka6iSJ2jAzafqIJeFqcpY+mlM0o+C1KTcS4=",
+    "last_login": "2026-03-12T20:36:12.476Z",
+    "is_superuser": true,
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2026-03-12T20:34:40.137Z",
+    "first_name": "Павел",
+    "last_name": "Мурлыкин",
+    "email": "pavelmurlykin@yandex.ru",
+    "phone_number": "89313586441",
+    "is_real_estate_agent": false,
+    "agency_name": "",
+    "groups": [],
+    "user_permissions": []
+  }
+}
+]

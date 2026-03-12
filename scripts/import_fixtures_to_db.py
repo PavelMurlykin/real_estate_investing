@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -99,6 +100,26 @@ def _fixture_path_for_model(model) -> Path:
     return Path(app_config.path) / "fixtures" / f"init_{model._meta.db_table}.json"
 
 
+def _validate_utf8_json_fixture(fixture_path: Path) -> None:
+    try:
+        raw_content = fixture_path.read_bytes()
+        text_content = raw_content.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise ValueError(
+            "Fixture is not UTF-8 encoded: "
+            f"{fixture_path.relative_to(BASE_DIR)} (byte position {exc.start}). "
+            "Please re-save it as UTF-8."
+        ) from exc
+
+    try:
+        json.loads(text_content)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            "Fixture contains invalid JSON: "
+            f"{fixture_path.relative_to(BASE_DIR)} (line {exc.lineno}, column {exc.colno})."
+        ) from exc
+
+
 def import_fixtures() -> int:
     project_models = sorted(_iter_project_models(), key=_model_sort_key)
     if not project_models:
@@ -116,6 +137,7 @@ def import_fixtures() -> int:
                 missing_count += 1
                 continue
 
+            _validate_utf8_json_fixture(fixture_path)
             call_command("loaddata", str(fixture_path), verbosity=0)
             print(f"[OK] Loaded {fixture_path.relative_to(BASE_DIR)}")
             loaded_count += 1

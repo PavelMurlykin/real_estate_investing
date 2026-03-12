@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}Registration{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-5">
+    <h1 class="h3 mb-4">Registration</h1>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% bootstrap_form form %}
+      {% bootstrap_button button_type="submit" content="Create account" button_class="btn btn-primary w-100" %}
+    </form>
+
+    <p class="mt-3 mb-0 text-center">
+      Already have an account?
+      <a href="{% url 'users:login' %}">Login</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
