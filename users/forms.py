@@ -27,6 +27,15 @@ class UserRegistrationForm(UserCreationForm):
             combined = f'{existing_class} form-control'.strip()
             self.fields[field_name].widget.attrs['class'] = ' '.join(combined.split())
 
+        self.fields['first_name'].label = 'Имя'
+        self.fields['last_name'].label = 'Фамилия'
+        self.fields['email'].label = 'Email'
+        self.fields['phone_number'].label = 'Телефон'
+        self.fields['is_real_estate_agent'].label = 'Я агент недвижимости'
+        self.fields['agency_name'].label = 'Название агентства'
+        self.fields['password1'].label = 'Пароль'
+        self.fields['password2'].label = 'Подтверждение пароля'
+
         self.fields['is_real_estate_agent'].widget.attrs['class'] = 'form-check-input'
         self.fields['email'].widget.attrs['autocomplete'] = 'email'
         self.fields['phone_number'].widget.attrs['autocomplete'] = 'tel'
@@ -39,7 +48,7 @@ class UserRegistrationForm(UserCreationForm):
     def clean_phone_number(self):
         phone_number = normalize_phone_number(self.cleaned_data['phone_number'])
         if not phone_number:
-            raise ValidationError('Enter a valid phone number.')
+            raise ValidationError('Введите корректный номер телефона.')
         return phone_number
 
     def clean(self):
@@ -48,7 +57,7 @@ class UserRegistrationForm(UserCreationForm):
         agency_name = (cleaned_data.get('agency_name') or '').strip()
 
         if is_agent and not agency_name:
-            self.add_error('agency_name', 'Agency name is required for agents.')
+            self.add_error('agency_name', 'Для агента недвижимости нужно указать название агентства.')
         if not is_agent:
             cleaned_data['agency_name'] = ''
 
@@ -56,7 +65,7 @@ class UserRegistrationForm(UserCreationForm):
 
 
 class UserLoginForm(AuthenticationForm):
-    username = forms.CharField(label='Email or phone')
+    username = forms.CharField(label='Email или телефон')
 
     def __init__(self, request=None, *args, **kwargs):
         super().__init__(request, *args, **kwargs)
