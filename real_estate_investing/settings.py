@@ -1,20 +1,13 @@
 import os
-# import environ
 from pathlib import Path
+from dotenv import load_dotenv
 
-
-# env = environ.Env(
-#     DEBUG=(bool, False)
-# )
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
-# environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
-
-# DEBUG = env('DEBUG')
-# SECRET_KEY = env('SECRET_KEY')
-DEBUG = True
-SECRET_KEY = '%-+#vp2)jwz#e_bl#*d92)%c%oh10*ta-e)1tfu-e#vuelqs3='
+DEBUG = os.getenv('DEBUG', 'False').strip().lower() in ('1', 'true', 'yes', 'on')
+SECRET_KEY = os.getenv('SECRET_KEY', '')
 
 ALLOWED_HOSTS = ['*']
 
@@ -65,26 +58,14 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'real_estate_investing.wsgi.application'
-"""
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('DB_NAME'),
-        'USER': env('DB_USER'),
-        'PASSWORD': env('DB_PASSWORD'),
-        'HOST': env('DB_HOST'),
-        'PORT': env('DB_PORT', default='5432'),
-    }
-}
-"""
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'real_estate_investing',
-        'USER': 'pavel_murlykin',
-        'PASSWORD': '89313586441Pavel',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.getenv('DB_NAME', ''),
+        'USER': os.getenv('DB_USER', ''),
+        'PASSWORD': os.getenv('DB_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
 
