@@ -199,3 +199,7 @@ marimo/_lsp/
 __marimo__/
 *.env
 python_base_prompt.md
+
+# Django fixtures (all apps)
+**/fixtures/*
+!**/fixtures/.gitkeep
