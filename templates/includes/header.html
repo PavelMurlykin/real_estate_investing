@@ -1,66 +1,124 @@
 <header>
+  <style>
+    .navbar .dropdown-menu {
+      margin-top: 0.35rem;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .navbar .dropdown:hover > .dropdown-menu {
+        display: block;
+      }
+    }
+  </style>
+
   <nav class="navbar shadow-sm">
     <div class="container d-flex flex-wrap align-items-center justify-content-between gap-3">
       {% with request.resolver_match.view_name as view_name %}
-        <ul class="nav nav-pills">
+        <ul class="nav nav-pills align-items-center gap-1">
           <li class="nav-item">
-            <a class="nav-link {% if view_name == 'homepage:index' %} active {% endif %}"
-              href="{% url 'homepage:index' %}">
+            <a class="nav-link {% if view_name == 'homepage:index' %}active{% endif %}" href="{% url 'homepage:index' %}">
               Главная
             </a>
           </li>
-          <li class="nav-item">
-            <a class="nav-link {% if view_name == 'property:location_catalog' %} active {% endif %}"
-              href="{% url 'property:location_catalog' %}">
-              Локации
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if view_name == 'bank:catalog' %} active {% endif %}"
-              href="{% url 'bank:catalog' %}">
-              Банки
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if view_name == 'property:dictionary_catalog' %} active {% endif %}"
-              href="{% url 'property:dictionary_catalog' %}">
+
+          <li class="nav-item dropdown">
+            <button
+              class="nav-link dropdown-toggle {% if view_name == 'property:location_catalog' or view_name == 'bank:catalog' or view_name == 'property:dictionary_catalog' %}active{% endif %}"
+              type="button"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
               Справочники
-            </a>
+            </button>
+            <ul class="dropdown-menu shadow-sm">
+              <li>
+                <a class="dropdown-item {% if view_name == 'property:location_catalog' %}active{% endif %}" href="{% url 'property:location_catalog' %}">
+                  Локации
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item {% if view_name == 'bank:catalog' %}active{% endif %}" href="{% url 'bank:catalog' %}">
+                  Банки
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item {% if view_name == 'property:dictionary_catalog' %}active{% endif %}" href="{% url 'property:dictionary_catalog' %}">
+                  Справочники
+                </a>
+              </li>
+            </ul>
           </li>
-          <li class="nav-item">
-            <a class="nav-link {% if view_name == 'property:developer_list' or view_name == 'property:developer_create' or view_name == 'property:developer_update' or view_name == 'property:developer_delete' %} active {% endif %}"
-              href="{% url 'property:developer_list' %}">
-              Застройщики
-            </a>
+
+          <li class="nav-item dropdown">
+            <button
+              class="nav-link dropdown-toggle {% if view_name == 'property:developer_list' or view_name == 'property:developer_create' or view_name == 'property:developer_update' or view_name == 'property:developer_delete' or view_name == 'property:complex_list' or view_name == 'property:complex_create' or view_name == 'property:complex_update' or view_name == 'property:complex_delete' or view_name == 'property:list' or view_name == 'property:create' or view_name == 'property:detail' or view_name == 'property:update' or view_name == 'property:delete' %}active{% endif %}"
+              type="button"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              Недвижимость
+            </button>
+            <ul class="dropdown-menu shadow-sm">
+              <li>
+                <a class="dropdown-item {% if view_name == 'property:developer_list' or view_name == 'property:developer_create' or view_name == 'property:developer_update' or view_name == 'property:developer_delete' %}active{% endif %}" href="{% url 'property:developer_list' %}">
+                  Застройщики
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item {% if view_name == 'property:complex_list' or view_name == 'property:complex_create' or view_name == 'property:complex_update' or view_name == 'property:complex_delete' %}active{% endif %}" href="{% url 'property:complex_list' %}">
+                  ЖК
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item {% if view_name == 'property:list' or view_name == 'property:create' or view_name == 'property:detail' or view_name == 'property:update' or view_name == 'property:delete' %}active{% endif %}" href="{% url 'property:list' %}">
+                  Объекты недвижимости
+                </a>
+              </li>
+            </ul>
           </li>
-          <li class="nav-item">
-            <a class="nav-link {% if view_name == 'property:complex_list' or view_name == 'property:complex_create' or view_name == 'property:complex_update' or view_name == 'property:complex_delete' %} active {% endif %}"
-              href="{% url 'property:complex_list' %}">
-              ЖК
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if view_name == 'property:list' or view_name == 'property:create' or view_name == 'property:detail' or view_name == 'property:update' or view_name == 'property:delete' %} active {% endif %}"
-              href="{% url 'property:list' %}">
-              Объекты недвижимости
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if view_name == 'mortgage:mortgage_calculator' %} active {% endif %}"
-              href="{% url 'mortgage:mortgage_calculator' %}">
-              Ипотека
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if view_name == 'trench_mortgage:trench_mortgage_calculator' %} active {% endif %}"
-              href="{% url 'trench_mortgage:trench_mortgage_calculator' %}">
-              Траншевая ипотека
-            </a>
+
+          <li class="nav-item dropdown">
+            <button
+              class="nav-link dropdown-toggle {% if view_name == 'mortgage:mortgage_calculator' or view_name == 'mortgage:calculation_list' or view_name == 'mortgage:calculation_detail' or view_name == 'trench_mortgage:trench_mortgage_calculator' or view_name == 'trench_mortgage:calculate_trench_mortgage' %}active{% endif %}"
+              type="button"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              Расчёт
+            </button>
+            <ul class="dropdown-menu shadow-sm">
+              <li>
+                <a class="dropdown-item {% if view_name == 'mortgage:mortgage_calculator' or view_name == 'mortgage:calculation_list' or view_name == 'mortgage:calculation_detail' %}active{% endif %}" href="{% url 'mortgage:mortgage_calculator' %}">
+                  Ипотека
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item {% if view_name == 'trench_mortgage:trench_mortgage_calculator' or view_name == 'trench_mortgage:calculate_trench_mortgage' %}active{% endif %}" href="{% url 'trench_mortgage:trench_mortgage_calculator' %}">
+                  Траншевая ипотека
+                </a>
+              </li>
+            </ul>
           </li>
         </ul>
       {% endwith %}
 
       <div class="d-flex align-items-center gap-2">
+        {% if request.user.is_authenticated %}
+          <div class="d-flex flex-column align-items-end lh-sm me-1">
+            <span class="small text-muted">{{ request.user.get_full_name|default:request.user.email }}</span>
+            {% if request.user.is_real_estate_agent and request.user.agency_name %}
+              <span class="small text-body-secondary">{{ request.user.agency_name }}</span>
+            {% endif %}
+          </div>
+          <a href="{% url 'users:password_change' %}" class="btn btn-outline-primary btn-sm">Сменить пароль</a>
+          <form method="post" action="{% url 'users:logout' %}" class="mb-0">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-secondary btn-sm">Выйти</button>
+          </form>
+        {% else %}
+          <a href="{% url 'users:login' %}" class="btn btn-outline-primary btn-sm">Войти</a>
+          <a href="{% url 'users:register' %}" class="btn btn-primary btn-sm">Регистрация</a>
+        {% endif %}
         <label class="form-label mb-0 small" for="theme-selector">Тема</label>
         <select id="theme-selector" class="form-select form-select-sm" data-theme-selector style="width: auto;">
           <option value="system">Системная</option>

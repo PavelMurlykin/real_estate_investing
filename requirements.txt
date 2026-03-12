@@ -2,3 +2,4 @@ django-environ
 Django
 openpyxl
 python-dateutil
+python-dotenv

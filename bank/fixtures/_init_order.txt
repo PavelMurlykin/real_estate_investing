@@ -1,3 +1,0 @@
-python manage.py loaddata init_mortgage_program.json
-python manage.py loaddata init_bank.json
-python manage.py loaddata init_bank_program.json
