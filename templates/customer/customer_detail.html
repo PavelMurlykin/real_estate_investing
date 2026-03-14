@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Карточка клиента #{{ customer.id }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Карточка клиента #{{ customer.id }}</h1>
+        <div class="d-flex gap-2">
+            <a href="{% url 'customer:update' customer.pk %}" class="btn btn-warning">Редактировать</a>
+            <a href="{% url 'customer:list' %}" class="btn btn-secondary">К списку</a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Персональные данные</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Имя:</strong> {{ customer.first_name }}</p>
+                            <p><strong>Фамилия:</strong> {{ customer.last_name|default:"-" }}</p>
+                            <p><strong>Телефон:</strong> {{ customer.phone|default:"-" }}</p>
+                            <p><strong>Почта:</strong> {{ customer.email|default:"-" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Возраст:</strong> {{ customer.age|default:"-" }}</p>
+                            <p><strong>Дата рождения:</strong> {{ customer.birth_date|date:"d.m.Y"|default:"-" }}</p>
+                            <p><strong>Год рождения:</strong> {{ customer.birth_year|default:"-" }}</p>
+                            <p><strong>Город проживания:</strong> {{ customer.residence_city|default:"-" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Платежеспособность</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Первый взнос:</strong> {{ customer.initial_payment_amount|default:"-" }}</p>
+                            <p><strong>Максимальный ежемесячный платёж:</strong> {{ customer.max_monthly_payment|default:"-" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Льготные программы:</strong>
+                                {% with programs=customer.preferential_programs.all %}
+                                    {% if programs %}
+                                        {% for program in programs %}
+                                            {{ program.name }}{% if not forloop.last %}, {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                {% endwith %}
+                            </p>
+                            <p><strong>Есть недвижимость в собственности:</strong> {{ customer.has_owned_property|yesno:"Да,Нет,-" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Параметры для подбора объекта недвижимости</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Цель покупки:</strong> {{ customer.get_purchase_goal_display|default:"-" }}</p>
+                            <p><strong>Желаемый город:</strong> {{ customer.desired_city|default:"-" }}</p>
+                            <p><strong>Желаемый район:</strong> {{ customer.desired_district|default:"-" }}</p>
+                            <p><strong>Площадь от:</strong> {{ customer.area_min|default:"-" }}</p>
+                            <p><strong>Площадь до:</strong> {{ customer.area_max|default:"-" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Этаж:</strong> {{ customer.desired_floor|default:"-" }}</p>
+                            <p><strong>Стороны света:</strong> {{ customer.cardinal_directions|default:"-" }}</p>
+                            <p><strong>Комментарий:</strong> {{ customer.comment|default:"-" }}</p>
+                            <p><strong>Планировки:</strong>
+                                {% with layouts=customer.desired_layouts.all %}
+                                    {% if layouts %}
+                                        {% for layout in layouts %}
+                                            {{ layout.name }}{% if not forloop.last %}, {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                {% endwith %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Расчетные поля</h5>
+                </div>
+                <div class="card-body">
+                    <p>
+                        <strong>Максимальный срок ипотеки до 75 лет:</strong>
+                        {{ calculated.max_term_years }} лет
+                    </p>
+                    <p>
+                        <strong>Максимальная стоимость объекта:</strong>
+                        {% if calculated.max_property_cost %}
+                            {{ calculated.max_property_cost }} руб.
+                        {% else %}
+                            -
+                        {% endif %}
+                    </p>
+                    <hr>
+                    <p class="mb-1"><strong>Ставка ЦБ РФ:</strong> {{ calculated.actual_key_rate }}%</p>
+                    <p class="mb-0"><strong>Расчётная ставка:</strong> {{ calculated.annual_rate }}% (ЦБ + 2%)</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Системная информация</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Пользователь:</strong> {{ customer.user }}</p>
+                    <p><strong>Активен:</strong> {{ customer.is_active|yesno:"Да,Нет" }}</p>
+                    <p><strong>Создан:</strong> {{ customer.created_at|date:"d.m.Y H:i" }}</p>
+                    <p><strong>Обновлен:</strong> {{ customer.updated_at|date:"d.m.Y H:i" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

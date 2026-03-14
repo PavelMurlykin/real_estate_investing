@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     'bank.apps.BankConfig',
     'mortgage.apps.CalculatorConfig',
     'trench_mortgage.apps.TrenchMortgageConfig',
+    'customer.apps.CustomerConfig',
 ]
 
 MIDDLEWARE = [

@@ -12,4 +12,5 @@ urlpatterns = [
     path('mortgage/', include('mortgage.urls', namespace='mortgage')),
     path('trench-mortgage/', include('trench_mortgage.urls',
          namespace='trench_mortgage')),
+    path('customers/', include('customer.urls', namespace='customer')),
 ]
