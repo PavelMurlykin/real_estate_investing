@@ -105,12 +105,13 @@
       <div class="d-flex align-items-center gap-2">
         {% if request.user.is_authenticated %}
           <div class="d-flex flex-column align-items-end lh-sm me-1">
-            <span class="small text-muted">{{ request.user.get_full_name|default:request.user.email }}</span>
+            <a href="{% url 'users:profile_edit' %}" class="small text-muted text-decoration-none">
+              {{ request.user.get_full_name|default:request.user.email }}
+            </a>
             {% if request.user.is_real_estate_agent and request.user.agency_name %}
               <span class="small text-body-secondary">{{ request.user.agency_name }}</span>
             {% endif %}
           </div>
-          <a href="{% url 'users:password_change' %}" class="btn btn-outline-primary btn-sm">Сменить пароль</a>
           <form method="post" action="{% url 'users:logout' %}" class="mb-0">
             {% csrf_token %}
             <button type="submit" class="btn btn-outline-secondary btn-sm">Выйти</button>
@@ -129,3 +130,4 @@
     </div>
   </nav>
 </header>
+

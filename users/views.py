@@ -1,9 +1,10 @@
 from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
-from django.views.generic import CreateView
+from django.views.generic import CreateView, UpdateView
 
-from .forms import UserLoginForm, UserRegistrationForm
+from .forms import UserLoginForm, UserProfileForm, UserRegistrationForm
 
 
 class UserRegistrationView(CreateView):
@@ -25,3 +26,12 @@ class UserLoginView(LoginView):
 
 class UserLogoutView(LogoutView):
     next_page = reverse_lazy('homepage:index')
+
+
+class UserProfileUpdateView(LoginRequiredMixin, UpdateView):
+    template_name = 'users/profile_edit.html'
+    form_class = UserProfileForm
+    success_url = reverse_lazy('users:profile_edit')
+
+    def get_object(self, queryset=None):
+        return self.request.user

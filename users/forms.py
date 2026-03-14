@@ -64,6 +64,58 @@ class UserRegistrationForm(UserCreationForm):
         return cleaned_data
 
 
+class UserProfileForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = (
+            'first_name',
+            'last_name',
+            'email',
+            'phone_number',
+            'is_real_estate_agent',
+            'agency_name',
+        )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name in self.fields:
+            existing_class = self.fields[field_name].widget.attrs.get('class', '')
+            combined = f'{existing_class} form-control'.strip()
+            self.fields[field_name].widget.attrs['class'] = ' '.join(combined.split())
+
+        self.fields['first_name'].label = 'Имя'
+        self.fields['last_name'].label = 'Фамилия'
+        self.fields['email'].label = 'Email'
+        self.fields['phone_number'].label = 'Телефон'
+        self.fields['is_real_estate_agent'].label = 'Я агент недвижимости'
+        self.fields['agency_name'].label = 'Название агентства'
+
+        self.fields['is_real_estate_agent'].widget.attrs['class'] = 'form-check-input'
+        self.fields['email'].widget.attrs['autocomplete'] = 'email'
+        self.fields['phone_number'].widget.attrs['autocomplete'] = 'tel'
+
+    def clean_email(self):
+        return self.cleaned_data['email'].strip().lower()
+
+    def clean_phone_number(self):
+        phone_number = normalize_phone_number(self.cleaned_data['phone_number'])
+        if not phone_number:
+            raise ValidationError('Введите корректный номер телефона.')
+        return phone_number
+
+    def clean(self):
+        cleaned_data = super().clean()
+        is_agent = cleaned_data.get('is_real_estate_agent')
+        agency_name = (cleaned_data.get('agency_name') or '').strip()
+
+        if is_agent and not agency_name:
+            self.add_error('agency_name', 'Для агента недвижимости нужно указать название агентства.')
+        if not is_agent:
+            cleaned_data['agency_name'] = ''
+
+        return cleaned_data
+
+
 class UserLoginForm(AuthenticationForm):
     username = forms.CharField(label='Email или телефон')
 
