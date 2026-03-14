@@ -11,6 +11,12 @@ from .models import Bank, BankProgram, KeyRate, MortgageProgram
 
 
 class BankCatalogView(BaseCatalogView):
+    """Описание класса BankCatalogView.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     template_name = 'bank/catalog_form.html'
     section_title = 'Банки'
     url_name = 'bank:catalog'
@@ -41,6 +47,16 @@ class BankCatalogView(BaseCatalogView):
     )
 
     def _safe_decimal(self, value):
+        """Описание метода _safe_decimal.
+
+        Выполняет прикладную операцию текущего модуля.
+
+        Аргументы:
+            value: Входной параметр, влияющий на работу метода.
+
+        Возвращает:
+            Any: Тип результата определяется вызывающим кодом.
+        """
         if value in (None, ''):
             return None
         try:
@@ -49,6 +65,18 @@ class BankCatalogView(BaseCatalogView):
             return None
 
     def build_form(self, config, data=None, instance=None):
+        """Описание метода build_form.
+
+        Выполняет прикладную операцию текущего модуля.
+
+        Аргументы:
+            config: Входной параметр, влияющий на работу метода.
+            data: Входной параметр, влияющий на работу метода.
+            instance: Входной параметр, влияющий на работу метода.
+
+        Возвращает:
+            Any: Тип результата определяется вызывающим кодом.
+        """
         if config.key == 'bank':
             form = BankForm(data=data, instance=instance)
 
@@ -56,13 +84,25 @@ class BankCatalogView(BaseCatalogView):
                 widget = field.widget
                 if hasattr(widget, 'attrs'):
                     existing_class = widget.attrs.get('class', '')
-                    widget.attrs['class'] = f'{existing_class} form-control'.strip()
+                    widget.attrs['class'] = (
+                        f'{existing_class} form-control'.strip()
+                    )
 
             return form
 
         return super().build_form(config, data=data, instance=instance)
 
     def get_sort_field_map(self, config):
+        """Описание метода get_sort_field_map.
+
+        Возвращает подготовленные данные для дальнейшей обработки.
+
+        Аргументы:
+            config: Входной параметр, влияющий на работу метода.
+
+        Возвращает:
+            Any: Тип результата зависит от контекста использования.
+        """
         if config.key == 'bank':
             return {
                 'name': 'name',
@@ -77,6 +117,16 @@ class BankCatalogView(BaseCatalogView):
         return {}
 
     def get_queryset(self, config):
+        """Описание метода get_queryset.
+
+        Возвращает подготовленные данные для дальнейшей обработки.
+
+        Аргументы:
+            config: Входной параметр, влияющий на работу метода.
+
+        Возвращает:
+            Any: Тип результата зависит от контекста использования.
+        """
         queryset = config.model.objects.all()
         if config.select_related:
             queryset = queryset.select_related(*config.select_related)
@@ -94,21 +144,35 @@ class BankCatalogView(BaseCatalogView):
             )
 
             name = (self.request.GET.get('filter_name') or '').strip()
-            interest_rate_from = self._safe_decimal(self.request.GET.get('filter_interest_rate_from'))
-            interest_rate_to = self._safe_decimal(self.request.GET.get('filter_interest_rate_to'))
-            salary_rate_from = self._safe_decimal(self.request.GET.get('filter_salary_rate_from'))
-            salary_rate_to = self._safe_decimal(self.request.GET.get('filter_salary_rate_to'))
+            interest_rate_from = self._safe_decimal(
+                self.request.GET.get('filter_interest_rate_from')
+            )
+            interest_rate_to = self._safe_decimal(
+                self.request.GET.get('filter_interest_rate_to')
+            )
+            salary_rate_from = self._safe_decimal(
+                self.request.GET.get('filter_salary_rate_from')
+            )
+            salary_rate_to = self._safe_decimal(
+                self.request.GET.get('filter_salary_rate_to')
+            )
 
             if name:
                 queryset = queryset.filter(name__icontains=name)
             if interest_rate_from is not None:
-                queryset = queryset.filter(interest_rate__gte=interest_rate_from)
+                queryset = queryset.filter(
+                    interest_rate__gte=interest_rate_from
+                )
             if interest_rate_to is not None:
                 queryset = queryset.filter(interest_rate__lte=interest_rate_to)
             if salary_rate_from is not None:
-                queryset = queryset.filter(salary_client_rate__gte=salary_rate_from)
+                queryset = queryset.filter(
+                    salary_client_rate__gte=salary_rate_from
+                )
             if salary_rate_to is not None:
-                queryset = queryset.filter(salary_client_rate__lte=salary_rate_to)
+                queryset = queryset.filter(
+                    salary_client_rate__lte=salary_rate_to
+                )
 
             sort_field = self.get_sort_field_map(config).get(sort_by)
             if sort_field:
@@ -132,16 +196,39 @@ class BankCatalogView(BaseCatalogView):
         return queryset.order_by(*config.order_by)
 
     def build_columns(self, config):
+        """Описание метода build_columns.
+
+        Выполняет прикладную операцию текущего модуля.
+
+        Аргументы:
+            config: Входной параметр, влияющий на работу метода.
+
+        Возвращает:
+            Any: Тип результата определяется вызывающим кодом.
+        """
         columns = super().build_columns(config)
 
         if config.key == 'bank':
             for column in columns:
                 if column['name'] == 'salary_client_discount':
-                    column['label'] = 'Процентная ставка для зарплатных клиентов, %'
+                    column['label'] = (
+                        'Процентная ставка для зарплатных клиентов, %'
+                    )
 
         return columns
 
     def build_rows(self, config, columns):
+        """Описание метода build_rows.
+
+        Выполняет прикладную операцию текущего модуля.
+
+        Аргументы:
+            config: Входной параметр, влияющий на работу метода.
+            columns: Входной параметр, влияющий на работу метода.
+
+        Возвращает:
+            Any: Тип результата определяется вызывающим кодом.
+        """
         if config.key != 'bank':
             return super().build_rows(config, columns)
 
@@ -174,6 +261,19 @@ class BankCatalogView(BaseCatalogView):
         return rows
 
     def build_context(self, config, form, edit_object=None, delete_error=None):
+        """Описание метода build_context.
+
+        Выполняет прикладную операцию текущего модуля.
+
+        Аргументы:
+            config: Входной параметр, влияющий на работу метода.
+            form: Входной параметр, влияющий на работу метода.
+            edit_object: Входной параметр, влияющий на работу метода.
+            delete_error: Входной параметр, влияющий на работу метода.
+
+        Возвращает:
+            Any: Тип результата определяется вызывающим кодом.
+        """
         context = super().build_context(
             config=config,
             form=form,
@@ -187,15 +287,27 @@ class BankCatalogView(BaseCatalogView):
         if config.key == 'bank':
             context['bank_filters'] = {
                 'name': self.request.GET.get('filter_name', ''),
-                'interest_rate_from': self.request.GET.get('filter_interest_rate_from', ''),
-                'interest_rate_to': self.request.GET.get('filter_interest_rate_to', ''),
-                'salary_rate_from': self.request.GET.get('filter_salary_rate_from', ''),
-                'salary_rate_to': self.request.GET.get('filter_salary_rate_to', ''),
+                'interest_rate_from': self.request.GET.get(
+                    'filter_interest_rate_from', ''
+                ),
+                'interest_rate_to': self.request.GET.get(
+                    'filter_interest_rate_to', ''
+                ),
+                'salary_rate_from': self.request.GET.get(
+                    'filter_salary_rate_from', ''
+                ),
+                'salary_rate_to': self.request.GET.get(
+                    'filter_salary_rate_to', ''
+                ),
             }
 
             bank_program_map = {}
-            for relation in BankProgram.objects.select_related('mortgage_program').order_by('mortgage_program__name'):
-                bank_program_map.setdefault(str(relation.bank_id), []).append(relation.mortgage_program.name)
+            for relation in BankProgram.objects.select_related(
+                'mortgage_program'
+            ).order_by('mortgage_program__name'):
+                bank_program_map.setdefault(str(relation.bank_id), []).append(
+                    relation.mortgage_program.name
+                )
             context['bank_program_map'] = bank_program_map
 
         if config.key == 'bank_program':
@@ -203,7 +315,9 @@ class BankCatalogView(BaseCatalogView):
                 'bank': self.request.GET.get('filter_bank', ''),
                 'program': self.request.GET.get('filter_program', ''),
             }
-            context['programs_for_filter'] = MortgageProgram.objects.order_by('name')
+            context['programs_for_filter'] = MortgageProgram.objects.order_by(
+                'name'
+            )
 
         sortable_fields = set(self.get_sort_field_map(config).keys())
         for column in context['columns']:
@@ -234,9 +348,22 @@ class BankCatalogView(BaseCatalogView):
 
 
 class KeyRateListView(TemplateView):
+    """Описание класса KeyRateListView.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     template_name = 'bank/key_rate_list.html'
 
     def get_queryset(self):
+        """Описание метода get_queryset.
+
+        Возвращает подготовленные данные для дальнейшей обработки.
+
+        Возвращает:
+            Any: Тип результата зависит от контекста использования.
+        """
         return (
             KeyRate.objects.annotate(
                 previous_rate=Window(
@@ -254,12 +381,24 @@ class KeyRateListView(TemplateView):
         )
 
     def get_context_data(self, **kwargs):
+        """Описание метода get_context_data.
+
+        Возвращает подготовленные данные для дальнейшей обработки.
+
+        Аргументы:
+            **kwargs: Входной параметр, влияющий на работу метода.
+
+        Возвращает:
+            Any: Тип результата зависит от контекста использования.
+        """
         context = super().get_context_data(**kwargs)
         rows = list(self.get_queryset())
 
         context['section_title'] = 'Ключевая ставка'
         context['rows'] = rows
         context['last_synced_at'] = (
-            KeyRate.objects.order_by('-updated_at').values_list('updated_at', flat=True).first()
+            KeyRate.objects.order_by('-updated_at')
+            .values_list('updated_at', flat=True)
+            .first()
         )
         return context

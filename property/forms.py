@@ -2,6 +2,7 @@ from django import forms
 from django.forms import BaseInlineFormSet, inlineformset_factory
 
 from location.models import City
+
 from .models import (
     Developer,
     Property,
@@ -11,31 +12,49 @@ from .models import (
 
 
 class PropertyFilterForm(forms.Form):
+    """Описание класса PropertyFilterForm.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     city = forms.ModelChoiceField(
         queryset=City.objects.all(),
         required=False,
-        empty_label="Все города",
+        empty_label='Все города',
         widget=forms.Select(attrs={'class': 'form-control'}),
-        label="Город"
+        label='Город',
     )
     developer = forms.ModelChoiceField(
         queryset=Developer.objects.all(),
         required=False,
-        empty_label="Все застройщики",
+        empty_label='Все застройщики',
         widget=forms.Select(attrs={'class': 'form-control'}),
-        label="Застройщик"
+        label='Застройщик',
     )
     complex = forms.ModelChoiceField(
         queryset=RealEstateComplex.objects.all(),
         required=False,
-        empty_label="Все ЖК",
+        empty_label='Все ЖК',
         widget=forms.Select(attrs={'class': 'form-control'}),
-        label="Жилой комплекс"
+        label='Жилой комплекс',
     )
 
 
 class PropertyForm(forms.ModelForm):
+    """Описание класса PropertyForm.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     class Meta:
+        """Описание служебного класса Meta.
+
+        Определяет метаданные и параметры конфигурации для родительского
+        класса Django.
+        """
+
         model = Property
         fields = [
             'apartment_number',
@@ -47,13 +66,19 @@ class PropertyForm(forms.ModelForm):
             'property_cost',
         ]
         widgets = {
-            'apartment_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'apartment_number': forms.TextInput(
+                attrs={'class': 'form-control'}
+            ),
             'building': forms.Select(attrs={'class': 'form-control'}),
             'decoration': forms.Select(attrs={'class': 'form-control'}),
             'layout': forms.Select(attrs={'class': 'form-control'}),
-            'area': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'area': forms.NumberInput(
+                attrs={'class': 'form-control', 'step': '0.01'}
+            ),
             'floor': forms.NumberInput(attrs={'class': 'form-control'}),
-            'property_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'property_cost': forms.NumberInput(
+                attrs={'class': 'form-control', 'step': '0.01'}
+            ),
         }
         labels = {
             'apartment_number': 'Номер квартиры',
@@ -67,18 +92,46 @@ class PropertyForm(forms.ModelForm):
 
 
 class DeveloperForm(forms.ModelForm):
+    """Описание класса DeveloperForm.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     class Meta:
+        """Описание служебного класса Meta.
+
+        Определяет метаданные и параметры конфигурации для родительского
+        класса Django.
+        """
+
         model = Developer
         fields = ['name', 'description', 'is_active']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'description': forms.Textarea(
+                attrs={'class': 'form-control', 'rows': 3}
+            ),
+            'is_active': forms.CheckboxInput(
+                attrs={'class': 'form-check-input'}
+            ),
         }
 
 
 class RealEstateComplexForm(forms.ModelForm):
+    """Описание класса RealEstateComplexForm.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     class Meta:
+        """Описание служебного класса Meta.
+
+        Определяет метаданные и параметры конфигурации для родительского
+        класса Django.
+        """
+
         model = RealEstateComplex
         fields = [
             'name',
@@ -93,19 +146,39 @@ class RealEstateComplexForm(forms.ModelForm):
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'map_link': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
-            'presentation_link': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'description': forms.Textarea(
+                attrs={'class': 'form-control', 'rows': 3}
+            ),
+            'map_link': forms.Textarea(
+                attrs={'class': 'form-control', 'rows': 2}
+            ),
+            'presentation_link': forms.Textarea(
+                attrs={'class': 'form-control', 'rows': 2}
+            ),
             'developer': forms.Select(attrs={'class': 'form-control'}),
             'district': forms.Select(attrs={'class': 'form-control'}),
             'real_estate_class': forms.Select(attrs={'class': 'form-control'}),
             'real_estate_type': forms.Select(attrs={'class': 'form-control'}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_active': forms.CheckboxInput(
+                attrs={'class': 'form-check-input'}
+            ),
         }
 
 
 class RealEstateComplexBuildingForm(forms.ModelForm):
+    """Описание класса RealEstateComplexBuildingForm.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     class Meta:
+        """Описание служебного класса Meta.
+
+        Определяет метаданные и параметры конфигурации для родительского
+        класса Django.
+        """
+
         model = RealEstateComplexBuilding
         fields = [
             'number',
@@ -117,24 +190,51 @@ class RealEstateComplexBuildingForm(forms.ModelForm):
         widgets = {
             'number': forms.TextInput(attrs={'class': 'form-control'}),
             'address': forms.TextInput(attrs={'class': 'form-control'}),
-            'commissioning_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'key_handover_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'commissioning_date': forms.DateInput(
+                attrs={'class': 'form-control', 'type': 'date'}
+            ),
+            'key_handover_date': forms.DateInput(
+                attrs={'class': 'form-control', 'type': 'date'}
+            ),
+            'is_active': forms.CheckboxInput(
+                attrs={'class': 'form-check-input'}
+            ),
         }
 
 
 class BaseRealEstateComplexBuildingInlineFormSet(BaseInlineFormSet):
+    """Описание класса BaseRealEstateComplexBuildingInlineFormSet.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     def clean(self):
+        """Описание метода clean.
+
+        Валидирует и нормализует входные данные перед сохранением.
+
+        Возвращает:
+            Any: Возвращает очищенные данные или значение поля в зависимости
+        от контекста.
+        """
         super().clean()
 
         for form in self.forms:
             if not hasattr(form, 'cleaned_data'):
                 continue
 
-            if form.cleaned_data.get('DELETE') and form.instance.pk and form.instance.property_set.exists():
+            if (
+                form.cleaned_data.get('DELETE')
+                and form.instance.pk
+                and form.instance.property_set.exists()
+            ):
                 form.add_error(
                     None,
-                    'Нельзя удалить корпус, к которому привязаны объекты недвижимости.',
+                    (
+                        'Нельзя удалить корпус, к которому привязаны '
+                        'объекты недвижимости.'
+                    ),
                 )
 
 
@@ -146,4 +246,3 @@ RealEstateComplexBuildingFormSet = inlineformset_factory(
     extra=1,
     can_delete=True,
 )
-

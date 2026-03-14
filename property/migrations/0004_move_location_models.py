@@ -5,10 +5,18 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    """Описание класса Migration.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
 
     dependencies = [
         ('location', '0001_initial'),
-        ('property', '0003_alter_realestatecomplexbuilding_real_estate_complex'),
+        (
+            'property',
+            '0003_alter_realestatecomplexbuilding_real_estate_complex',
+        ),
     ]
 
     operations = [

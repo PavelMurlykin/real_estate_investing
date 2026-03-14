@@ -7,6 +7,12 @@ from .models import User
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
+    """Описание класса UserAdmin.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     form = UserAdminChangeForm
     add_form = UserAdminCreationForm
 
@@ -20,19 +26,47 @@ class UserAdmin(BaseUserAdmin):
         'is_staff',
         'is_active',
     )
-    list_filter = ('is_real_estate_agent', 'is_staff', 'is_superuser', 'is_active', 'groups')
-    search_fields = ('email', 'phone_number', 'first_name', 'last_name', 'agency_name')
+    list_filter = (
+        'is_real_estate_agent',
+        'is_staff',
+        'is_superuser',
+        'is_active',
+        'groups',
+    )
+    search_fields = (
+        'email',
+        'phone_number',
+        'first_name',
+        'last_name',
+        'agency_name',
+    )
     ordering = ('email',)
 
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
         (
             'Personal info',
-            {'fields': ('first_name', 'last_name', 'phone_number', 'is_real_estate_agent', 'agency_name')},
+            {
+                'fields': (
+                    'first_name',
+                    'last_name',
+                    'phone_number',
+                    'is_real_estate_agent',
+                    'agency_name',
+                )
+            },
         ),
         (
             'Permissions',
-            {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')},
+            {
+                'fields': (
+                    'is_active',
+                    'is_staff',
+                    'is_superuser',
+                    'groups',
+                    'user_permissions',
+                )
+            },
         ),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )

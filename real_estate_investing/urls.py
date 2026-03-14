@@ -1,6 +1,5 @@
 from django.contrib import admin
-from django.urls import path, include
-
+from django.urls import include, path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -10,7 +9,9 @@ urlpatterns = [
     path('bank/', include('bank.urls', namespace='bank')),
     path('api/', include('property.api_urls')),
     path('mortgage/', include('mortgage.urls', namespace='mortgage')),
-    path('trench-mortgage/', include('trench_mortgage.urls',
-         namespace='trench_mortgage')),
+    path(
+        'trench-mortgage/',
+        include('trench_mortgage.urls', namespace='trench_mortgage'),
+    ),
     path('customers/', include('customer.urls', namespace='customer')),
 ]

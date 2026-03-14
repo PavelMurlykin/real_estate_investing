@@ -3,8 +3,8 @@ from decimal import Decimal
 from django.test import TestCase
 from django.urls import reverse
 
-from mortgage.models import MortgageCalculation
 from location.models import City, District, Region
+from mortgage.models import MortgageCalculation
 from property.models import (
     ApartmentDecoration,
     ApartmentLayout,
@@ -18,17 +18,42 @@ from property.models import (
 
 
 class MortgageCalculatorViewTests(TestCase):
+    """Описание класса MortgageCalculatorViewTests.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     def setUp(self):
+        """Описание метода setUp.
+
+        Выполняет прикладную операцию текущего модуля.
+
+        Возвращает:
+            Any: Тип результата определяется вызывающим кодом.
+        """
         self.property = self._create_property(cost=Decimal('5000000.00'))
         self.url = reverse('mortgage:mortgage_calculator')
 
     def _create_property(self, cost: Decimal) -> Property:
+        """Описание метода _create_property.
+
+        Выполняет прикладную операцию текущего модуля.
+
+        Аргументы:
+            cost: Входной параметр, влияющий на работу метода.
+
+        Возвращает:
+            Any: Тип результата определяется вызывающим кодом.
+        """
         region = Region.objects.create(name='Регион 1', code='R1')
         city = City.objects.create(name='Город 1', region=region)
         district = District.objects.create(name='Район 1', city=city)
         developer = Developer.objects.create(name='Застройщик 1')
         estate_type = RealEstateType.objects.create(name='Квартира')
-        estate_class = RealEstateClass.objects.create(name='Комфорт', weight=Decimal('1.00'))
+        estate_class = RealEstateClass.objects.create(
+            name='Комфорт', weight=Decimal('1.00')
+        )
         complex_obj = RealEstateComplex.objects.create(
             name='ЖК Тест',
             developer=developer,
@@ -53,6 +78,13 @@ class MortgageCalculatorViewTests(TestCase):
         )
 
     def _base_payload(self) -> dict:
+        """Описание метода _base_payload.
+
+        Выполняет прикладную операцию текущего модуля.
+
+        Возвращает:
+            Any: Тип результата определяется вызывающим кодом.
+        """
         return {
             'PROPERTY': str(self.property.id),
             'DISCOUNT_MARKUP_TYPE': 'discount',
@@ -68,11 +100,23 @@ class MortgageCalculatorViewTests(TestCase):
         }
 
     def test_calculate_uses_property_cost_when_property_cost_is_empty(self):
+        """Описание метода
+        test_calculate_uses_property_cost_when_property_cost_is_empty.
+
+        Проверяет ожидаемое поведение сценария в рамках автоматического
+        теста.
+
+        Возвращает:
+            None: Тест завершится ошибкой при нарушении ожидаемого
+        поведения.
+        """
         payload = self._base_payload()
-        payload.update({
-            'calculate': '1',
-            'PROPERTY_COST': '',
-        })
+        payload.update(
+            {
+                'calculate': '1',
+                'PROPERTY_COST': '',
+            }
+        )
 
         response = self.client.post(self.url, payload)
 
@@ -80,16 +124,30 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertTrue(MortgageCalculation.objects.exists())
         calculation = MortgageCalculation.objects.latest('id')
         self.assertEqual(calculation.base_property_cost, Decimal('5000000.00'))
-        self.assertEqual(calculation.final_property_cost, Decimal('5000000.00'))
+        self.assertEqual(
+            calculation.final_property_cost, Decimal('5000000.00')
+        )
 
     def test_calculate_keeps_overridden_cost_only_in_calculation(self):
+        """Описание метода
+        test_calculate_keeps_overridden_cost_only_in_calculation.
+
+        Проверяет ожидаемое поведение сценария в рамках автоматического
+        теста.
+
+        Возвращает:
+            None: Тест завершится ошибкой при нарушении ожидаемого
+        поведения.
+        """
         payload = self._base_payload()
-        payload.update({
-            'calculate': '1',
-            'PROPERTY_COST': '6000000',
-            'DISCOUNT_MARKUP_TYPE': 'discount',
-            'DISCOUNT_MARKUP_VALUE': '10',
-        })
+        payload.update(
+            {
+                'calculate': '1',
+                'PROPERTY_COST': '6000000',
+                'DISCOUNT_MARKUP_TYPE': 'discount',
+                'DISCOUNT_MARKUP_VALUE': '10',
+            }
+        )
 
         response = self.client.post(self.url, payload)
 
@@ -102,13 +160,24 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertEqual(self.property.property_cost, Decimal('5000000.00'))
 
     def test_export_returns_excel_file(self):
+        """Описание метода test_export_returns_excel_file.
+
+        Проверяет ожидаемое поведение сценария в рамках автоматического
+        теста.
+
+        Возвращает:
+            None: Тест завершится ошибкой при нарушении ожидаемого
+        поведения.
+        """
         payload = self._base_payload()
-        payload.update({
-            'export': '1',
-            'PROPERTY_COST': '5100000',
-            'DISCOUNT_MARKUP_TYPE': 'markup',
-            'DISCOUNT_MARKUP_VALUE': '5',
-        })
+        payload.update(
+            {
+                'export': '1',
+                'PROPERTY_COST': '5100000',
+                'DISCOUNT_MARKUP_TYPE': 'markup',
+                'DISCOUNT_MARKUP_VALUE': '5',
+            }
+        )
 
         response = self.client.post(self.url, payload)
 
@@ -117,10 +186,24 @@ class MortgageCalculatorViewTests(TestCase):
             response['Content-Type'],
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         )
-        self.assertIn('attachment; filename="mortgage_calculation.xlsx"', response['Content-Disposition'])
+        self.assertIn(
+            'attachment; filename="mortgage_calculation.xlsx"',
+            response['Content-Disposition'],
+        )
 
     def test_property_cost_api_returns_cost_from_database(self):
-        url = reverse('mortgage:property_cost_api', kwargs={'pk': self.property.pk})
+        """Описание метода test_property_cost_api_returns_cost_from_database.
+
+        Проверяет ожидаемое поведение сценария в рамках автоматического
+        теста.
+
+        Возвращает:
+            None: Тест завершится ошибкой при нарушении ожидаемого
+        поведения.
+        """
+        url = reverse(
+            'mortgage:property_cost_api', kwargs={'pk': self.property.pk}
+        )
 
         response = self.client.get(url)
 

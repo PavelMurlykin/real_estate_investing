@@ -5,11 +5,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    """Описание класса Migration.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
 
     initial = True
 
     dependencies = [
-        ('property', '0003_alter_realestatecomplexbuilding_real_estate_complex'),
+        (
+            'property',
+            '0003_alter_realestatecomplexbuilding_real_estate_complex',
+        ),
     ]
 
     operations = [
@@ -19,12 +27,53 @@ class Migration(migrations.Migration):
                 migrations.CreateModel(
                     name='Region',
                     fields=[
-                        ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                        ('is_active', models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно')),
-                        ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')),
-                        ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Дата изменения')),
-                        ('name', models.CharField(max_length=100, unique=True, verbose_name='Регион')),
-                        ('code', models.CharField(max_length=10, unique=True, verbose_name='Код региона')),
+                        (
+                            'id',
+                            models.BigAutoField(
+                                auto_created=True,
+                                primary_key=True,
+                                serialize=False,
+                                verbose_name='ID',
+                            ),
+                        ),
+                        (
+                            'is_active',
+                            models.BooleanField(
+                                default=True,
+                                help_text=(
+                                    'Снимите галочку, чтобы скрыть запись.'
+                                ),
+                                verbose_name='Активно',
+                            ),
+                        ),
+                        (
+                            'created_at',
+                            models.DateTimeField(
+                                auto_now_add=True, verbose_name='Дата создания'
+                            ),
+                        ),
+                        (
+                            'updated_at',
+                            models.DateTimeField(
+                                auto_now=True, verbose_name='Дата изменения'
+                            ),
+                        ),
+                        (
+                            'name',
+                            models.CharField(
+                                max_length=100,
+                                unique=True,
+                                verbose_name='Регион',
+                            ),
+                        ),
+                        (
+                            'code',
+                            models.CharField(
+                                max_length=10,
+                                unique=True,
+                                verbose_name='Код региона',
+                            ),
+                        ),
                     ],
                     options={
                         'verbose_name': 'Регион',
@@ -36,12 +85,51 @@ class Migration(migrations.Migration):
                 migrations.CreateModel(
                     name='City',
                     fields=[
-                        ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                        ('is_active', models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно')),
-                        ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')),
-                        ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Дата изменения')),
-                        ('name', models.CharField(max_length=100, verbose_name='Город')),
-                        ('region', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='location.region', verbose_name='Регион')),
+                        (
+                            'id',
+                            models.BigAutoField(
+                                auto_created=True,
+                                primary_key=True,
+                                serialize=False,
+                                verbose_name='ID',
+                            ),
+                        ),
+                        (
+                            'is_active',
+                            models.BooleanField(
+                                default=True,
+                                help_text=(
+                                    'Снимите галочку, чтобы скрыть запись.'
+                                ),
+                                verbose_name='Активно',
+                            ),
+                        ),
+                        (
+                            'created_at',
+                            models.DateTimeField(
+                                auto_now_add=True, verbose_name='Дата создания'
+                            ),
+                        ),
+                        (
+                            'updated_at',
+                            models.DateTimeField(
+                                auto_now=True, verbose_name='Дата изменения'
+                            ),
+                        ),
+                        (
+                            'name',
+                            models.CharField(
+                                max_length=100, verbose_name='Город'
+                            ),
+                        ),
+                        (
+                            'region',
+                            models.ForeignKey(
+                                on_delete=django.db.models.deletion.PROTECT,
+                                to='location.region',
+                                verbose_name='Регион',
+                            ),
+                        ),
                     ],
                     options={
                         'verbose_name': 'Город',
@@ -54,12 +142,51 @@ class Migration(migrations.Migration):
                 migrations.CreateModel(
                     name='District',
                     fields=[
-                        ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                        ('is_active', models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно')),
-                        ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')),
-                        ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Дата изменения')),
-                        ('name', models.CharField(max_length=100, verbose_name='Район')),
-                        ('city', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='location.city', verbose_name='Город')),
+                        (
+                            'id',
+                            models.BigAutoField(
+                                auto_created=True,
+                                primary_key=True,
+                                serialize=False,
+                                verbose_name='ID',
+                            ),
+                        ),
+                        (
+                            'is_active',
+                            models.BooleanField(
+                                default=True,
+                                help_text=(
+                                    'Снимите галочку, чтобы скрыть запись.'
+                                ),
+                                verbose_name='Активно',
+                            ),
+                        ),
+                        (
+                            'created_at',
+                            models.DateTimeField(
+                                auto_now_add=True, verbose_name='Дата создания'
+                            ),
+                        ),
+                        (
+                            'updated_at',
+                            models.DateTimeField(
+                                auto_now=True, verbose_name='Дата изменения'
+                            ),
+                        ),
+                        (
+                            'name',
+                            models.CharField(
+                                max_length=100, verbose_name='Район'
+                            ),
+                        ),
+                        (
+                            'city',
+                            models.ForeignKey(
+                                on_delete=django.db.models.deletion.PROTECT,
+                                to='location.city',
+                                verbose_name='Город',
+                            ),
+                        ),
                     ],
                     options={
                         'verbose_name': 'Район',

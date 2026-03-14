@@ -6,6 +6,11 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    """Описание класса Migration.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
 
     initial = True
 
@@ -19,32 +24,212 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Customer',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Дата изменения')),
-                ('first_name', models.CharField(max_length=150, verbose_name='Имя')),
-                ('last_name', models.CharField(blank=True, max_length=150, verbose_name='Фамилия')),
-                ('phone', models.CharField(blank=True, max_length=30, verbose_name='Телефон')),
-                ('email', models.EmailField(blank=True, max_length=254, verbose_name='Почта')),
-                ('age', models.PositiveSmallIntegerField(blank=True, null=True, verbose_name='Возраст')),
-                ('birth_date', models.DateField(blank=True, null=True, verbose_name='Дата рождения')),
-                ('birth_year', models.PositiveSmallIntegerField(blank=True, null=True, verbose_name='Год рождения')),
-                ('initial_payment_amount', models.DecimalField(blank=True, decimal_places=2, max_digits=15, null=True, verbose_name='Первый взнос, руб.')),
-                ('max_monthly_payment', models.DecimalField(blank=True, decimal_places=2, max_digits=15, null=True, verbose_name='Максимальный ежемесячный платёж, руб.')),
-                ('preferential_programs', models.TextField(blank=True, verbose_name='Доступность льготных программ')),
-                ('has_owned_property', models.BooleanField(blank=True, choices=[(True, 'Да'), (False, 'Нет')], null=True, verbose_name='Наличие недвижимости в собственности')),
-                ('purchase_goal', models.CharField(blank=True, choices=[('living', 'Для жизни'), ('investment', 'Для инвестиций')], max_length=20, verbose_name='Цель покупки')),
-                ('area_min', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True, verbose_name='Площадь квартиры от, м2')),
-                ('area_max', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True, verbose_name='Площадь квартиры до, м2')),
-                ('desired_floor', models.CharField(blank=True, max_length=100, verbose_name='Этаж')),
-                ('cardinal_directions', models.CharField(blank=True, max_length=255, verbose_name='Стороны света')),
-                ('comment', models.TextField(blank=True, verbose_name='Комментарий')),
-                ('desired_city', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='desired_city_customers', to='location.city', verbose_name='Желаемый город покупки')),
-                ('desired_district', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='desired_district_customers', to='location.district', verbose_name='Желаемый район покупки')),
-                ('desired_layouts', models.ManyToManyField(blank=True, related_name='customers', to='property.apartmentlayout', verbose_name='Планировка')),
-                ('residence_city', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='residence_customers', to='location.city', verbose_name='Город проживания')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='customers', to=settings.AUTH_USER_MODEL, verbose_name='Пользователь')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
+                (
+                    'is_active',
+                    models.BooleanField(
+                        default=True,
+                        help_text='Снимите галочку, чтобы скрыть запись.',
+                        verbose_name='Активно',
+                    ),
+                ),
+                (
+                    'created_at',
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name='Дата создания'
+                    ),
+                ),
+                (
+                    'updated_at',
+                    models.DateTimeField(
+                        auto_now=True, verbose_name='Дата изменения'
+                    ),
+                ),
+                (
+                    'first_name',
+                    models.CharField(max_length=150, verbose_name='Имя'),
+                ),
+                (
+                    'last_name',
+                    models.CharField(
+                        blank=True, max_length=150, verbose_name='Фамилия'
+                    ),
+                ),
+                (
+                    'phone',
+                    models.CharField(
+                        blank=True, max_length=30, verbose_name='Телефон'
+                    ),
+                ),
+                (
+                    'email',
+                    models.EmailField(
+                        blank=True, max_length=254, verbose_name='Почта'
+                    ),
+                ),
+                (
+                    'age',
+                    models.PositiveSmallIntegerField(
+                        blank=True, null=True, verbose_name='Возраст'
+                    ),
+                ),
+                (
+                    'birth_date',
+                    models.DateField(
+                        blank=True, null=True, verbose_name='Дата рождения'
+                    ),
+                ),
+                (
+                    'birth_year',
+                    models.PositiveSmallIntegerField(
+                        blank=True, null=True, verbose_name='Год рождения'
+                    ),
+                ),
+                (
+                    'initial_payment_amount',
+                    models.DecimalField(
+                        blank=True,
+                        decimal_places=2,
+                        max_digits=15,
+                        null=True,
+                        verbose_name='Первый взнос, руб.',
+                    ),
+                ),
+                (
+                    'max_monthly_payment',
+                    models.DecimalField(
+                        blank=True,
+                        decimal_places=2,
+                        max_digits=15,
+                        null=True,
+                        verbose_name='Максимальный ежемесячный платёж, руб.',
+                    ),
+                ),
+                (
+                    'preferential_programs',
+                    models.TextField(
+                        blank=True,
+                        verbose_name='Доступность льготных программ',
+                    ),
+                ),
+                (
+                    'has_owned_property',
+                    models.BooleanField(
+                        blank=True,
+                        choices=[(True, 'Да'), (False, 'Нет')],
+                        null=True,
+                        verbose_name='Наличие недвижимости в собственности',
+                    ),
+                ),
+                (
+                    'purchase_goal',
+                    models.CharField(
+                        blank=True,
+                        choices=[
+                            ('living', 'Для жизни'),
+                            ('investment', 'Для инвестиций'),
+                        ],
+                        max_length=20,
+                        verbose_name='Цель покупки',
+                    ),
+                ),
+                (
+                    'area_min',
+                    models.DecimalField(
+                        blank=True,
+                        decimal_places=2,
+                        max_digits=10,
+                        null=True,
+                        verbose_name='Площадь квартиры от, м2',
+                    ),
+                ),
+                (
+                    'area_max',
+                    models.DecimalField(
+                        blank=True,
+                        decimal_places=2,
+                        max_digits=10,
+                        null=True,
+                        verbose_name='Площадь квартиры до, м2',
+                    ),
+                ),
+                (
+                    'desired_floor',
+                    models.CharField(
+                        blank=True, max_length=100, verbose_name='Этаж'
+                    ),
+                ),
+                (
+                    'cardinal_directions',
+                    models.CharField(
+                        blank=True,
+                        max_length=255,
+                        verbose_name='Стороны света',
+                    ),
+                ),
+                (
+                    'comment',
+                    models.TextField(blank=True, verbose_name='Комментарий'),
+                ),
+                (
+                    'desired_city',
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name='desired_city_customers',
+                        to='location.city',
+                        verbose_name='Желаемый город покупки',
+                    ),
+                ),
+                (
+                    'desired_district',
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name='desired_district_customers',
+                        to='location.district',
+                        verbose_name='Желаемый район покупки',
+                    ),
+                ),
+                (
+                    'desired_layouts',
+                    models.ManyToManyField(
+                        blank=True,
+                        related_name='customers',
+                        to='property.apartmentlayout',
+                        verbose_name='Планировка',
+                    ),
+                ),
+                (
+                    'residence_city',
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name='residence_customers',
+                        to='location.city',
+                        verbose_name='Город проживания',
+                    ),
+                ),
+                (
+                    'user',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='customers',
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name='Пользователь',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Клиент',

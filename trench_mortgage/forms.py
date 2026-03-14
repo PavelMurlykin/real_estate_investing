@@ -6,6 +6,12 @@ from property.models import Property
 
 
 class TrenchMortgageForm(forms.Form):
+    """Описание класса TrenchMortgageForm.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     PROPERTY = forms.ModelChoiceField(
         queryset=Property.objects.all(),
         label='Объект недвижимости',
@@ -35,7 +41,9 @@ class TrenchMortgageForm(forms.Form):
     DISCOUNT_MARKUP_TYPE = forms.ChoiceField(
         choices=[('discount', 'Скидка'), ('markup', 'Удорожание')],
         label='Тип изменения цены',
-        widget=forms.RadioSelect(attrs={'onchange': 'updateFinalPropertyCost()'}),
+        widget=forms.RadioSelect(
+            attrs={'onchange': 'updateFinalPropertyCost()'}
+        ),
         initial='discount',
     )
 
@@ -114,7 +122,9 @@ class TrenchMortgageForm(forms.Form):
         max_digits=5,
         decimal_places=2,
         initial=15,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        widget=forms.NumberInput(
+            attrs={'class': 'form-control', 'step': '0.01'}
+        ),
     )
 
     TRENCH_COUNT = forms.TypedChoiceField(
@@ -123,10 +133,20 @@ class TrenchMortgageForm(forms.Form):
         coerce=int,
         empty_value=1,
         initial=1,
-        widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_TRENCH_COUNT'}),
+        widget=forms.Select(
+            attrs={'class': 'form-select', 'id': 'id_TRENCH_COUNT'}
+        ),
     )
 
     def clean_INITIAL_PAYMENT_DATE(self):
+        """Описание метода clean_INITIAL_PAYMENT_DATE.
+
+        Валидирует и нормализует входные данные перед сохранением.
+
+        Возвращает:
+            Any: Возвращает очищенные данные или значение поля в зависимости
+        от контекста.
+        """
         date_value = self.cleaned_data['INITIAL_PAYMENT_DATE']
         if isinstance(date_value, str):
             try:
@@ -135,10 +155,20 @@ class TrenchMortgageForm(forms.Form):
                 try:
                     return datetime.strptime(date_value, '%Y-%m-%d').date()
                 except ValueError as exc:
-                    raise forms.ValidationError('Неверный формат даты. Используйте ДД.ММ.ГГГГ') from exc
+                    raise forms.ValidationError(
+                        'Неверный формат даты. Используйте ДД.ММ.ГГГГ'
+                    ) from exc
         return date_value
 
     def clean(self):
+        """Описание метода clean.
+
+        Валидирует и нормализует входные данные перед сохранением.
+
+        Возвращает:
+            Any: Возвращает очищенные данные или значение поля в зависимости
+        от контекста.
+        """
         cleaned_data = super().clean()
         if cleaned_data.get('DISCOUNT_MARKUP_VALUE') is None:
             cleaned_data['DISCOUNT_MARKUP_VALUE'] = 0

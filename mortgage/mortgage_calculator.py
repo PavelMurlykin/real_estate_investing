@@ -5,9 +5,43 @@ from dateutil.relativedelta import relativedelta
 
 
 class MortgageCalculator:
-    def __init__(self, property_cost, initial_payment_percent, initial_payment_date,
-                 mortgage_term, annual_rate, has_grace_period=False,
-                 grace_period_term=0, grace_period_rate=0):
+    """Описание класса MortgageCalculator.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
+    def __init__(
+        self,
+        property_cost,
+        initial_payment_percent,
+        initial_payment_date,
+        mortgage_term,
+        annual_rate,
+        has_grace_period=False,
+        grace_period_term=0,
+        grace_period_rate=0,
+    ):
+        """Описание метода __init__.
+
+        Инициализирует экземпляр класса и подготавливает его внутреннее
+        состояние.
+
+        Аргументы:
+            property_cost: Входной параметр, влияющий на работу метода.
+            initial_payment_percent: Входной параметр, влияющий на работу
+        метода.
+            initial_payment_date: Входной параметр, влияющий на работу
+        метода.
+            mortgage_term: Входной параметр, влияющий на работу метода.
+            annual_rate: Входной параметр, влияющий на работу метода.
+            has_grace_period: Входной параметр, влияющий на работу метода.
+            grace_period_term: Входной параметр, влияющий на работу метода.
+            grace_period_rate: Входной параметр, влияющий на работу метода.
+
+        Возвращает:
+            None: Заполняет атрибуты текущего экземпляра.
+        """
         self.property_cost = property_cost
         self.initial_payment_percent = initial_payment_percent
         self.initial_payment_date = initial_payment_date
@@ -25,6 +59,13 @@ class MortgageCalculator:
 
     def calculate(self):
         # Основные параметры
+        """Описание метода calculate.
+
+        Выполняет прикладную операцию текущего модуля.
+
+        Возвращает:
+            Any: Тип результата определяется вызывающим кодом.
+        """
         total_months = self.mortgage_term * 12
 
         if self.has_grace_period and self.grace_period_term > 0:
@@ -33,35 +74,53 @@ class MortgageCalculator:
             monthly_grace_rate = self.grace_period_rate / 100 / 12
 
             # Расчет аннуитетного платежа для льготного периода на полный срок
-            annuity_coefficient_grace = (monthly_grace_rate * pow(1 + monthly_grace_rate, total_months)) / \
-                                        (pow(1 + monthly_grace_rate, total_months) - 1)
-            grace_monthly_payment = self.loan_amount * annuity_coefficient_grace
+            annuity_coefficient_grace = (
+                monthly_grace_rate * pow(1 + monthly_grace_rate, total_months)
+            ) / (pow(1 + monthly_grace_rate, total_months) - 1)
+            grace_monthly_payment = (
+                self.loan_amount * annuity_coefficient_grace
+            )
 
             # Расчет остатка долга после льготного периода
             remaining_debt_after_grace = self._calculate_remaining_debt(
-                self.loan_amount, monthly_grace_rate, grace_monthly_payment, grace_months
+                self.loan_amount,
+                monthly_grace_rate,
+                grace_monthly_payment,
+                grace_months,
             )
 
             # Расчет основного периода
             main_months = total_months - grace_months
             monthly_main_rate = self.annual_rate / 100 / 12
 
-            # Расчет аннуитетного платежа для основного периода на оставшийся срок
+            # Расчет аннуитетного платежа для основного периода
+            # на оставшийся срок
             if main_months > 0:
-                annuity_coefficient_main = (monthly_main_rate * pow(1 + monthly_main_rate, main_months)) / \
-                                           (pow(1 + monthly_main_rate, main_months) - 1)
-                main_monthly_payment = remaining_debt_after_grace * annuity_coefficient_main
+                annuity_coefficient_main = (
+                    monthly_main_rate * pow(1 + monthly_main_rate, main_months)
+                ) / (pow(1 + monthly_main_rate, main_months) - 1)
+                main_monthly_payment = (
+                    remaining_debt_after_grace * annuity_coefficient_main
+                )
             else:
                 main_monthly_payment = 0
 
             # Даты
-            grace_period_end_date = self.initial_payment_date + relativedelta(months=grace_months)
-            mortgage_end_date = self.initial_payment_date + relativedelta(months=total_months)
+            grace_period_end_date = self.initial_payment_date + relativedelta(
+                months=grace_months
+            )
+            mortgage_end_date = self.initial_payment_date + relativedelta(
+                months=total_months
+            )
 
             # Переплата
             total_grace_payments = grace_monthly_payment * grace_months
-            total_main_payments = main_monthly_payment * main_months if main_months > 0 else 0
-            total_overpayment = total_grace_payments + total_main_payments - self.loan_amount
+            total_main_payments = (
+                main_monthly_payment * main_months if main_months > 0 else 0
+            )
+            total_overpayment = (
+                total_grace_payments + total_main_payments - self.loan_amount
+            )
 
             return {
                 'grace_payments_count': grace_months,
@@ -72,17 +131,20 @@ class MortgageCalculator:
                 'mortgage_end_date': mortgage_end_date,
                 'main_monthly_payment': round(main_monthly_payment, 2),
                 'total_loan_amount': round(self.loan_amount, 2),
-                'total_overpayment': round(total_overpayment, 2)
+                'total_overpayment': round(total_overpayment, 2),
             }
         else:
             # Расчет без льготного периода
             monthly_rate = self.annual_rate / 100 / 12
-            annuity_coefficient = (monthly_rate * pow(1 + monthly_rate, total_months)) / \
-                                  (pow(1 + monthly_rate, total_months) - 1)
+            annuity_coefficient = (
+                monthly_rate * pow(1 + monthly_rate, total_months)
+            ) / (pow(1 + monthly_rate, total_months) - 1)
             monthly_payment = self.loan_amount * annuity_coefficient
 
             # Даты
-            mortgage_end_date = self.initial_payment_date + relativedelta(months=total_months)
+            mortgage_end_date = self.initial_payment_date + relativedelta(
+                months=total_months
+            )
 
             # Переплата
             total_payments = monthly_payment * total_months
@@ -97,10 +159,12 @@ class MortgageCalculator:
                 'mortgage_end_date': mortgage_end_date,
                 'main_monthly_payment': round(monthly_payment, 2),
                 'total_loan_amount': round(self.loan_amount, 2),
-                'total_overpayment': round(total_overpayment, 2)
+                'total_overpayment': round(total_overpayment, 2),
             }
 
-    def _calculate_remaining_debt(self, initial_debt, monthly_rate, monthly_payment, months):
+    def _calculate_remaining_debt(
+        self, initial_debt, monthly_rate, monthly_payment, months
+    ):
         """Рассчитывает остаток долга после указанного количества месяцев"""
         debt = initial_debt
         for _ in range(months):
@@ -110,11 +174,25 @@ class MortgageCalculator:
         return max(debt, 0)  # Не может быть отрицательным
 
     def get_payment_schedule(self):
+        """Описание метода get_payment_schedule.
+
+        Возвращает подготовленные данные для дальнейшей обработки.
+
+        Возвращает:
+            Any: Тип результата зависит от контекста использования.
+        """
         if not self.payment_schedule:
             self._generate_payment_schedule()
         return self.payment_schedule
 
     def _generate_payment_schedule(self):
+        """Описание метода _generate_payment_schedule.
+
+        Выполняет прикладную операцию текущего модуля.
+
+        Возвращает:
+            Any: Тип результата определяется вызывающим кодом.
+        """
         total_months = self.mortgage_term * 12
         current_date = self.initial_payment_date
         current_balance = self.loan_amount
@@ -125,8 +203,9 @@ class MortgageCalculator:
             monthly_grace_rate = self.grace_period_rate / 100 / 12
 
             # Расчет аннуитетного платежа для льготного периода на полный срок
-            annuity_coefficient_grace = (monthly_grace_rate * pow(1 + monthly_grace_rate, total_months)) / \
-                                        (pow(1 + monthly_grace_rate, total_months) - 1)
+            annuity_coefficient_grace = (
+                monthly_grace_rate * pow(1 + monthly_grace_rate, total_months)
+            ) / (pow(1 + monthly_grace_rate, total_months) - 1)
             grace_monthly_payment = current_balance * annuity_coefficient_grace
 
             for month in range(1, grace_months + 1):
@@ -135,14 +214,16 @@ class MortgageCalculator:
                 payment_amount = grace_monthly_payment
                 current_balance -= principal
 
-                self.payment_schedule.append({
-                    'payment_number': month,
-                    'payment_date': current_date,
-                    'payment_amount': round(payment_amount, 2),
-                    'interest_amount': round(interest, 2),
-                    'principal_amount': round(principal, 2),
-                    'remaining_debt': round(current_balance, 2)
-                })
+                self.payment_schedule.append(
+                    {
+                        'payment_number': month,
+                        'payment_date': current_date,
+                        'payment_amount': round(payment_amount, 2),
+                        'interest_amount': round(interest, 2),
+                        'principal_amount': round(principal, 2),
+                        'remaining_debt': round(current_balance, 2),
+                    }
+                )
 
                 current_date += relativedelta(months=1)
 
@@ -151,10 +232,14 @@ class MortgageCalculator:
             monthly_main_rate = self.annual_rate / 100 / 12
 
             if main_months > 0:
-                # Расчет аннуитетного платежа для основного периода на оставшийся срок
-                annuity_coefficient_main = (monthly_main_rate * pow(1 + monthly_main_rate, main_months)) / \
-                                           (pow(1 + monthly_main_rate, main_months) - 1)
-                main_monthly_payment = current_balance * annuity_coefficient_main
+                # Расчет аннуитетного платежа для основного периода
+                # на оставшийся срок
+                annuity_coefficient_main = (
+                    monthly_main_rate * pow(1 + monthly_main_rate, main_months)
+                ) / (pow(1 + monthly_main_rate, main_months) - 1)
+                main_monthly_payment = (
+                    current_balance * annuity_coefficient_main
+                )
 
                 for month in range(1, main_months + 1):
                     interest = current_balance * monthly_main_rate
@@ -162,21 +247,26 @@ class MortgageCalculator:
                     payment_amount = main_monthly_payment
                     current_balance -= principal
 
-                    self.payment_schedule.append({
-                        'payment_number': grace_months + month,
-                        'payment_date': current_date,
-                        'payment_amount': round(payment_amount, 2),
-                        'interest_amount': round(interest, 2),
-                        'principal_amount': round(principal, 2),
-                        'remaining_debt': round(current_balance, 2) if current_balance > 0 else 0
-                    })
+                    self.payment_schedule.append(
+                        {
+                            'payment_number': grace_months + month,
+                            'payment_date': current_date,
+                            'payment_amount': round(payment_amount, 2),
+                            'interest_amount': round(interest, 2),
+                            'principal_amount': round(principal, 2),
+                            'remaining_debt': round(current_balance, 2)
+                            if current_balance > 0
+                            else 0,
+                        }
+                    )
 
                     current_date += relativedelta(months=1)
         else:
             # Без льготного периода
             monthly_rate = self.annual_rate / 100 / 12
-            annuity_coefficient = (monthly_rate * pow(1 + monthly_rate, total_months)) / \
-                                  (pow(1 + monthly_rate, total_months) - 1)
+            annuity_coefficient = (
+                monthly_rate * pow(1 + monthly_rate, total_months)
+            ) / (pow(1 + monthly_rate, total_months) - 1)
             monthly_payment = current_balance * annuity_coefficient
 
             for month in range(1, total_months + 1):
@@ -185,13 +275,17 @@ class MortgageCalculator:
                 payment_amount = monthly_payment
                 current_balance -= principal
 
-                self.payment_schedule.append({
-                    'payment_number': month,
-                    'payment_date': current_date,
-                    'payment_amount': round(payment_amount, 2),
-                    'interest_amount': round(interest, 2),
-                    'principal_amount': round(principal, 2),
-                    'remaining_debt': round(current_balance, 2) if current_balance > 0 else 0
-                })
+                self.payment_schedule.append(
+                    {
+                        'payment_number': month,
+                        'payment_date': current_date,
+                        'payment_amount': round(payment_amount, 2),
+                        'interest_amount': round(interest, 2),
+                        'principal_amount': round(principal, 2),
+                        'remaining_debt': round(current_balance, 2)
+                        if current_balance > 0
+                        else 0,
+                    }
+                )
 
                 current_date += relativedelta(months=1)

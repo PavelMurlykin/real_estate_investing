@@ -27,10 +27,27 @@ ROW_PATTERN = re.compile(
 
 
 class KeyRateSyncError(Exception):
+    """Описание класса KeyRateSyncError.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     pass
 
 
 def _build_request_url(from_date: date, to_date: date) -> str:
+    """Описание метода _build_request_url.
+
+    Выполняет прикладную операцию текущего модуля.
+
+    Аргументы:
+        from_date: Входной параметр, влияющий на работу метода.
+        to_date: Входной параметр, влияющий на работу метода.
+
+    Возвращает:
+        Any: Тип результата определяется вызывающим кодом.
+    """
     params = {
         'UniDbQuery.Posted': 'True',
         'UniDbQuery.From': from_date.strftime(CBR_DATE_FORMAT),
@@ -40,11 +57,24 @@ def _build_request_url(from_date: date, to_date: date) -> str:
 
 
 def _download_cbr_payload(from_date: date, to_date: date) -> str:
+    """Описание метода _download_cbr_payload.
+
+    Выполняет прикладную операцию текущего модуля.
+
+    Аргументы:
+        from_date: Входной параметр, влияющий на работу метода.
+        to_date: Входной параметр, влияющий на работу метода.
+
+    Возвращает:
+        Any: Тип результата определяется вызывающим кодом.
+    """
     request_url = _build_request_url(from_date=from_date, to_date=to_date)
     request = Request(
         request_url,
         headers={
-            'User-Agent': 'Mozilla/5.0 (compatible; real-estate-investing/1.0)',
+            'User-Agent': (
+                'Mozilla/5.0 (compatible; real-estate-investing/1.0)'
+            ),
         },
     )
 
@@ -53,30 +83,56 @@ def _download_cbr_payload(from_date: date, to_date: date) -> str:
 
 
 def _parse_daily_rates(raw_html: str) -> list[tuple[date, Decimal]]:
+    """Описание метода _parse_daily_rates.
+
+    Выполняет прикладную операцию текущего модуля.
+
+    Аргументы:
+        raw_html: Входной параметр, влияющий на работу метода.
+
+    Возвращает:
+        Any: Тип результата определяется вызывающим кодом.
+    """
     rows: list[tuple[date, Decimal]] = []
 
     for date_raw, rate_raw in ROW_PATTERN.findall(raw_html):
         try:
             meeting_date = datetime.strptime(
-                date_raw.strip(), CBR_DATE_FORMAT).date()
-            normalized_rate = rate_raw.replace(
-                '\xa0', '').replace(' ', '').replace(',', '.')
+                date_raw.strip(), CBR_DATE_FORMAT
+            ).date()
+            normalized_rate = (
+                rate_raw.replace('\xa0', '').replace(' ', '').replace(',', '.')
+            )
             key_rate = Decimal(normalized_rate)
         except (ValueError, InvalidOperation):
             logger.warning(
-                'CBR key rate row skipped: date=%s rate=%s', date_raw, rate_raw)
+                'CBR key rate row skipped: date=%s rate=%s', date_raw, rate_raw
+            )
             continue
 
         rows.append((meeting_date, key_rate))
 
     if not rows:
         raise KeyRateSyncError(
-            'Не удалось распарсить данные ключевой ставки из ответа ЦБ РФ.')
+            'Не удалось распарсить данные ключевой ставки из ответа ЦБ РФ.'
+        )
 
     return rows
 
 
-def _extract_meeting_rates(daily_rates: Iterable[tuple[date, Decimal]]) -> list[tuple[date, Decimal]]:
+def _extract_meeting_rates(
+    daily_rates: Iterable[tuple[date, Decimal]],
+) -> list[tuple[date, Decimal]]:
+    """Описание метода _extract_meeting_rates.
+
+    Выполняет прикладную операцию текущего модуля.
+
+    Аргументы:
+        daily_rates: Входной параметр, влияющий на работу метода.
+
+    Возвращает:
+        Any: Тип результата определяется вызывающим кодом.
+    """
     rates = list(daily_rates)
     if not rates:
         return []
@@ -94,13 +150,27 @@ def _extract_meeting_rates(daily_rates: Iterable[tuple[date, Decimal]]) -> list[
 
 
 @transaction.atomic
-def sync_key_rates(from_date: date | None = None, to_date: date | None = None) -> dict[str, int]:
+def sync_key_rates(
+    from_date: date | None = None, to_date: date | None = None
+) -> dict[str, int]:
+    """Описание метода sync_key_rates.
+
+    Выполняет прикладную операцию текущего модуля.
+
+    Аргументы:
+        from_date: Входной параметр, влияющий на работу метода.
+        to_date: Входной параметр, влияющий на работу метода.
+
+    Возвращает:
+        Any: Тип результата определяется вызывающим кодом.
+    """
     sync_from = from_date or CBR_START_DATE
     sync_to = to_date or timezone.localdate()
 
     if sync_from > sync_to:
         raise KeyRateSyncError(
-            'Дата начала периода больше даты окончания периода.')
+            'Дата начала периода больше даты окончания периода.'
+        )
 
     raw_html = _download_cbr_payload(from_date=sync_from, to_date=sync_to)
     daily_rates = _parse_daily_rates(raw_html)
@@ -108,7 +178,11 @@ def sync_key_rates(from_date: date | None = None, to_date: date | None = None) -
 
     existing_by_date = {
         item.meeting_date: item.key_rate
-        for item in KeyRate.objects.filter(meeting_date__in=[meeting_date for meeting_date, _ in meeting_rates])
+        for item in KeyRate.objects.filter(
+            meeting_date__in=[
+                meeting_date for meeting_date, _ in meeting_rates
+            ]
+        )
     }
 
     created = 0
@@ -118,13 +192,15 @@ def sync_key_rates(from_date: date | None = None, to_date: date | None = None) -
         stored_rate = existing_by_date.get(meeting_date)
         if stored_rate is None:
             KeyRate.objects.create(
-                meeting_date=meeting_date, key_rate=key_rate)
+                meeting_date=meeting_date, key_rate=key_rate
+            )
             created += 1
             continue
 
         if stored_rate != key_rate:
-            KeyRate.objects.filter(
-                meeting_date=meeting_date).update(key_rate=key_rate)
+            KeyRate.objects.filter(meeting_date=meeting_date).update(
+                key_rate=key_rate
+            )
             updated += 1
 
     return {

@@ -4,6 +4,11 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    """Описание класса Migration.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
 
     dependencies = [
         ('bank', '0002_keyrate'),
@@ -18,6 +23,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='customer',
             name='preferential_programs',
-            field=models.ManyToManyField(blank=True, limit_choices_to={'is_preferential': True}, related_name='customers_with_preferential_access', to='bank.mortgageprogram', verbose_name='Доступные льготные программы'),
+            field=models.ManyToManyField(
+                blank=True,
+                limit_choices_to={'is_preferential': True},
+                related_name='customers_with_preferential_access',
+                to='bank.mortgageprogram',
+                verbose_name='Доступные льготные программы',
+            ),
         ),
     ]

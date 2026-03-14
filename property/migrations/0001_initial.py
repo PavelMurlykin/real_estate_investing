@@ -5,19 +5,41 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    """Описание класса Migration.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
             name='ApartmentDecoration',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100, unique=True, verbose_name='Отделка')),
-                ('description', models.TextField(blank=True, null=True, verbose_name='Описание')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
+                (
+                    'name',
+                    models.CharField(
+                        max_length=100, unique=True, verbose_name='Отделка'
+                    ),
+                ),
+                (
+                    'description',
+                    models.TextField(
+                        blank=True, null=True, verbose_name='Описание'
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Отделка объекта',
@@ -29,9 +51,27 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ApartmentLayout',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100, unique=True, verbose_name='Планировка')),
-                ('description', models.TextField(blank=True, null=True, verbose_name='Описание')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
+                (
+                    'name',
+                    models.CharField(
+                        max_length=100, unique=True, verbose_name='Планировка'
+                    ),
+                ),
+                (
+                    'description',
+                    models.TextField(
+                        blank=True, null=True, verbose_name='Описание'
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Планировка объекта',
@@ -43,8 +83,19 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='City',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100, verbose_name='Город')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
+                (
+                    'name',
+                    models.CharField(max_length=100, verbose_name='Город'),
+                ),
             ],
             options={
                 'verbose_name': 'Город',
@@ -56,9 +107,27 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Developer',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=255, unique=True, verbose_name='Застройщик')),
-                ('description', models.TextField(blank=True, null=True, verbose_name='Описание')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
+                (
+                    'name',
+                    models.CharField(
+                        max_length=255, unique=True, verbose_name='Застройщик'
+                    ),
+                ),
+                (
+                    'description',
+                    models.TextField(
+                        blank=True, null=True, verbose_name='Описание'
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Застройщик',
@@ -70,10 +139,35 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='RealEstateClass',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100, unique=True, verbose_name='Класс ЖК')),
-                ('description', models.TextField(blank=True, null=True, verbose_name='Описание')),
-                ('weight', models.DecimalField(decimal_places=2, max_digits=5, verbose_name='Коэффициент класса')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
+                (
+                    'name',
+                    models.CharField(
+                        max_length=100, unique=True, verbose_name='Класс ЖК'
+                    ),
+                ),
+                (
+                    'description',
+                    models.TextField(
+                        blank=True, null=True, verbose_name='Описание'
+                    ),
+                ),
+                (
+                    'weight',
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=5,
+                        verbose_name='Коэффициент класса',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Класс ЖК',
@@ -85,9 +179,29 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='RealEstateType',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100, unique=True, verbose_name='Тип недвижимости')),
-                ('description', models.TextField(blank=True, null=True, verbose_name='Описание')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
+                (
+                    'name',
+                    models.CharField(
+                        max_length=100,
+                        unique=True,
+                        verbose_name='Тип недвижимости',
+                    ),
+                ),
+                (
+                    'description',
+                    models.TextField(
+                        blank=True, null=True, verbose_name='Описание'
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Тип недвижимости',
@@ -99,9 +213,27 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Region',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100, unique=True, verbose_name='Регион')),
-                ('code', models.CharField(max_length=10, unique=True, verbose_name='Код региона')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
+                (
+                    'name',
+                    models.CharField(
+                        max_length=100, unique=True, verbose_name='Регион'
+                    ),
+                ),
+                (
+                    'code',
+                    models.CharField(
+                        max_length=10, unique=True, verbose_name='Код региона'
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Регион',
@@ -113,9 +245,27 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='District',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100, verbose_name='Район')),
-                ('city', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='property.city', verbose_name='Город')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
+                (
+                    'name',
+                    models.CharField(max_length=100, verbose_name='Район'),
+                ),
+                (
+                    'city',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to='property.city',
+                        verbose_name='Город',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Район',
@@ -128,15 +278,68 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='RealEstateComplex',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
                 ('name', models.CharField(max_length=255, verbose_name='ЖК')),
-                ('description', models.TextField(blank=True, null=True, verbose_name='Описание')),
-                ('map_link', models.TextField(blank=True, null=True, verbose_name='Ссылка на картах')),
-                ('presentation_link', models.TextField(blank=True, null=True, verbose_name='Ссылка на презентацию')),
-                ('developer', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='property.developer', verbose_name='Застройщик')),
-                ('district', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='property.district', verbose_name='Район')),
-                ('real_estate_class', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='property.realestateclass', verbose_name='Класс ЖК')),
-                ('real_estate_type', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='property.realestatetype', verbose_name='Тип недвижимости')),
+                (
+                    'description',
+                    models.TextField(
+                        blank=True, null=True, verbose_name='Описание'
+                    ),
+                ),
+                (
+                    'map_link',
+                    models.TextField(
+                        blank=True, null=True, verbose_name='Ссылка на картах'
+                    ),
+                ),
+                (
+                    'presentation_link',
+                    models.TextField(
+                        blank=True,
+                        null=True,
+                        verbose_name='Ссылка на презентацию',
+                    ),
+                ),
+                (
+                    'developer',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to='property.developer',
+                        verbose_name='Застройщик',
+                    ),
+                ),
+                (
+                    'district',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to='property.district',
+                        verbose_name='Район',
+                    ),
+                ),
+                (
+                    'real_estate_class',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to='property.realestateclass',
+                        verbose_name='Класс ЖК',
+                    ),
+                ),
+                (
+                    'real_estate_type',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to='property.realestatetype',
+                        verbose_name='Тип недвижимости',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'ЖК',
@@ -149,12 +352,45 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='RealEstateComplexBuilding',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('number', models.CharField(max_length=100, verbose_name='Корпус')),
-                ('address', models.CharField(max_length=255, null=True, verbose_name='Адрес')),
-                ('commissioning_date', models.DateField(null=True, verbose_name='Дата ввода в эксплуатацию')),
-                ('key_handover_date', models.DateField(null=True, verbose_name='Дата выдачи ключей')),
-                ('real_estate_complex', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='property.realestatecomplex', verbose_name='ЖК')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
+                (
+                    'number',
+                    models.CharField(max_length=100, verbose_name='Корпус'),
+                ),
+                (
+                    'address',
+                    models.CharField(
+                        max_length=255, null=True, verbose_name='Адрес'
+                    ),
+                ),
+                (
+                    'commissioning_date',
+                    models.DateField(
+                        null=True, verbose_name='Дата ввода в эксплуатацию'
+                    ),
+                ),
+                (
+                    'key_handover_date',
+                    models.DateField(
+                        null=True, verbose_name='Дата выдачи ключей'
+                    ),
+                ),
+                (
+                    'real_estate_complex',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to='property.realestatecomplex',
+                        verbose_name='ЖК',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Корпус ЖК',
@@ -167,16 +403,70 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Property',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('apartment_number', models.CharField(max_length=50, verbose_name='№ квартиры')),
-                ('area', models.DecimalField(decimal_places=2, max_digits=10, verbose_name='Площадь')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
+                (
+                    'apartment_number',
+                    models.CharField(max_length=50, verbose_name='№ квартиры'),
+                ),
+                (
+                    'area',
+                    models.DecimalField(
+                        decimal_places=2, max_digits=10, verbose_name='Площадь'
+                    ),
+                ),
                 ('floor', models.IntegerField(verbose_name='Этаж')),
-                ('property_cost', models.DecimalField(decimal_places=2, max_digits=15, verbose_name='Стоимость объекта, руб.')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Дата обновления')),
-                ('decoration', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='property.apartmentdecoration', verbose_name='Отделка')),
-                ('layout', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='property.apartmentlayout', verbose_name='Планировка')),
-                ('building', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='property.realestatecomplexbuilding', verbose_name='Корпус')),
+                (
+                    'property_cost',
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=15,
+                        verbose_name='Стоимость объекта, руб.',
+                    ),
+                ),
+                (
+                    'created_at',
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name='Дата создания'
+                    ),
+                ),
+                (
+                    'updated_at',
+                    models.DateTimeField(
+                        auto_now=True, verbose_name='Дата обновления'
+                    ),
+                ),
+                (
+                    'decoration',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to='property.apartmentdecoration',
+                        verbose_name='Отделка',
+                    ),
+                ),
+                (
+                    'layout',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to='property.apartmentlayout',
+                        verbose_name='Планировка',
+                    ),
+                ),
+                (
+                    'building',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to='property.realestatecomplexbuilding',
+                        verbose_name='Корпус',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Объект недвижимости',
@@ -188,7 +478,11 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='city',
             name='region',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='property.region', verbose_name='Регион'),
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                to='property.region',
+                verbose_name='Регион',
+            ),
         ),
         migrations.AlterUniqueTogether(
             name='city',

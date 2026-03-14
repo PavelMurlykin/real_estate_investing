@@ -11,19 +11,18 @@ class BaseModel(models.Model):
     is_active = models.BooleanField(
         default=True,
         verbose_name='Активно',
-        help_text='Снимите галочку, чтобы скрыть запись.'
+        help_text='Снимите галочку, чтобы скрыть запись.',
     )
     created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Дата создания'
+        auto_now_add=True, verbose_name='Дата создания'
     )
     updated_at = models.DateTimeField(
-        auto_now=True,
-        verbose_name='Дата изменения'
+        auto_now=True, verbose_name='Дата изменения'
     )
 
     class Meta:
         """
         Метаданные абстрактного класса.
         """
+
         abstract = True

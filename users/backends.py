@@ -6,8 +6,31 @@ from .utils import normalize_phone_number
 
 
 class EmailOrPhoneBackend(ModelBackend):
+    """Описание класса EmailOrPhoneBackend.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     def authenticate(self, request, username=None, password=None, **kwargs):
-        login_value = username or kwargs.get('login') or kwargs.get(get_user_model().USERNAME_FIELD)
+        """Описание метода authenticate.
+
+        Выполняет прикладную операцию текущего модуля.
+
+        Аргументы:
+            request: Входной параметр, влияющий на работу метода.
+            username: Входной параметр, влияющий на работу метода.
+            password: Входной параметр, влияющий на работу метода.
+            **kwargs: Входной параметр, влияющий на работу метода.
+
+        Возвращает:
+            Any: Тип результата определяется вызывающим кодом.
+        """
+        login_value = (
+            username
+            or kwargs.get('login')
+            or kwargs.get(get_user_model().USERNAME_FIELD)
+        )
         if not login_value or password is None:
             return None
 
@@ -26,8 +49,16 @@ class EmailOrPhoneBackend(ModelBackend):
             user_model().set_password(password)
             return None
         except user_model.MultipleObjectsReturned:
-            user = user_model._default_manager.filter(query).order_by('id').first()
+            user = (
+                user_model._default_manager.filter(query)
+                .order_by('id')
+                .first()
+            )
 
-        if user is not None and user.check_password(password) and self.user_can_authenticate(user):
+        if (
+            user is not None
+            and user.check_password(password)
+            and self.user_can_authenticate(user)
+        ):
             return user
         return None

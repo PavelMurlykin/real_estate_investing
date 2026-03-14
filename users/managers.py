@@ -4,9 +4,27 @@ from .utils import normalize_phone_number
 
 
 class UserManager(BaseUserManager):
+    """Описание класса UserManager.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     use_in_migrations = True
 
     def _create_user(self, email, password, **extra_fields):
+        """Описание метода _create_user.
+
+        Выполняет прикладную операцию текущего модуля.
+
+        Аргументы:
+            email: Входной параметр, влияющий на работу метода.
+            password: Входной параметр, влияющий на работу метода.
+            **extra_fields: Входной параметр, влияющий на работу метода.
+
+        Возвращает:
+            Any: Тип результата определяется вызывающим кодом.
+        """
         if not email:
             raise ValueError('The email must be set.')
         if not password:
@@ -24,11 +42,35 @@ class UserManager(BaseUserManager):
         return user
 
     def create_user(self, email, password=None, **extra_fields):
+        """Описание метода create_user.
+
+        Выполняет прикладную операцию текущего модуля.
+
+        Аргументы:
+            email: Входной параметр, влияющий на работу метода.
+            password: Входной параметр, влияющий на работу метода.
+            **extra_fields: Входной параметр, влияющий на работу метода.
+
+        Возвращает:
+            Any: Тип результата определяется вызывающим кодом.
+        """
         extra_fields.setdefault('is_staff', False)
         extra_fields.setdefault('is_superuser', False)
         return self._create_user(email, password, **extra_fields)
 
     def create_superuser(self, email, password, **extra_fields):
+        """Описание метода create_superuser.
+
+        Выполняет прикладную операцию текущего модуля.
+
+        Аргументы:
+            email: Входной параметр, влияющий на работу метода.
+            password: Входной параметр, влияющий на работу метода.
+            **extra_fields: Входной параметр, влияющий на работу метода.
+
+        Возвращает:
+            Any: Тип результата определяется вызывающим кодом.
+        """
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
 
