@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.test import SimpleTestCase
 
 from trench_mortgage.forms import TrenchMortgageForm
-from trench_mortgage.views import _calculate_months_remaining, _parse_trench_inputs
+from trench_mortgage.views import _calculate_months_remaining, _calculate_trench_mortgage, _parse_trench_inputs
 
 
 class TrenchMortgageFormTests(SimpleTestCase):
@@ -14,6 +14,23 @@ class TrenchMortgageFormTests(SimpleTestCase):
 
 
 class TrenchMortgageCalculationTests(SimpleTestCase):
+    def _build_mortgage_data(self):
+        return {
+            "property_obj": None,
+            "property_cost": 1_200_000,
+            "base_property_cost": 1_200_000,
+            "discount_markup_type": "discount",
+            "discount_markup_value": 0,
+            "final_property_cost": 1_200_000,
+            "initial_payment_percent": 16.67,
+            "initial_payment_rubles": 200_000,
+            "initial_payment_date": date(2026, 1, 10),
+            "mortgage_term": 1,
+            "annual_rate": 0,
+            "trench_count": 2,
+            "total_loan_amount": 1_000_000,
+        }
+
     def test_parse_trench_inputs_sets_last_trench_percent_as_remainder(self):
         post_data = {
             "trench_date_1": "2026-01-10",
@@ -72,3 +89,58 @@ class TrenchMortgageCalculationTests(SimpleTestCase):
     def test_months_remaining_depends_on_actual_dates(self):
         self.assertEqual(_calculate_months_remaining(date(2026, 1, 15), date(2027, 1, 15)), 12)
         self.assertEqual(_calculate_months_remaining(date(2026, 1, 16), date(2027, 1, 15)), 11)
+
+    def test_payments_count_is_calculated_until_next_trench(self):
+        mortgage_data = self._build_mortgage_data()
+        trench_entries = [
+            {
+                "number": 1,
+                "trench_date": date(2026, 1, 10),
+                "trench_percent": Decimal("50.00"),
+                "trench_amount": Decimal("500000.00"),
+                "annual_rate": Decimal("0.00"),
+            },
+            {
+                "number": 2,
+                "trench_date": date(2026, 7, 10),
+                "trench_percent": Decimal("50.00"),
+                "trench_amount": Decimal("500000.00"),
+                "annual_rate": Decimal("0.00"),
+            },
+        ]
+
+        calculation, errors = _calculate_trench_mortgage(mortgage_data, trench_entries)
+
+        self.assertEqual(errors, [])
+        self.assertEqual(calculation["trenches"][0]["payments_count"], 6)
+        self.assertEqual(calculation["trenches"][1]["payments_count"], 6)
+
+    def test_payment_schedule_is_generated_for_each_month(self):
+        mortgage_data = self._build_mortgage_data()
+        trench_entries = [
+            {
+                "number": 1,
+                "trench_date": date(2026, 1, 10),
+                "trench_percent": Decimal("50.00"),
+                "trench_amount": Decimal("500000.00"),
+                "annual_rate": Decimal("0.00"),
+            },
+            {
+                "number": 2,
+                "trench_date": date(2026, 7, 10),
+                "trench_percent": Decimal("50.00"),
+                "trench_amount": Decimal("500000.00"),
+                "annual_rate": Decimal("0.00"),
+            },
+        ]
+
+        calculation, errors = _calculate_trench_mortgage(mortgage_data, trench_entries)
+        payment_schedule = calculation["payment_schedule"]
+
+        self.assertEqual(errors, [])
+        self.assertEqual(len(payment_schedule), 12)
+        self.assertEqual(payment_schedule[0]["payment_date"], date(2026, 1, 10))
+        self.assertEqual(payment_schedule[6]["payment_date"], date(2026, 7, 10))
+        self.assertAlmostEqual(payment_schedule[0]["payment_amount"], 41_666.67, places=2)
+        self.assertAlmostEqual(payment_schedule[6]["payment_amount"], 125_000.0, places=2)
+        self.assertAlmostEqual(payment_schedule[-1]["remaining_debt"], 0.0, places=2)

@@ -69,6 +69,7 @@ def trench_mortgage_calculator(request):
 
     _save_trench_calculation(calculation)
     context["result"] = _format_result(calculation)
+    context["payment_schedule"] = _format_payment_schedule(calculation["payment_schedule"])
     return render(request, "trench_mortgage/calculator.html", context)
 
 
@@ -364,7 +365,7 @@ def _calculate_trench_mortgage(mortgage_data, trench_entries):
     total_overpayment = 0.0
     cumulative_amount = 0.0
 
-    for trench in trench_entries:
+    for idx, trench in enumerate(trench_entries):
         trench_date = trench["trench_date"]
         if trench_date < initial_payment_date:
             errors.append(
@@ -391,6 +392,11 @@ def _calculate_trench_mortgage(mortgage_data, trench_entries):
             monthly_payment = trench_amount / months_remaining
 
         overpayment = (monthly_payment * months_remaining) - trench_amount
+        if idx + 1 < len(trench_entries):
+            period_end_date = trench_entries[idx + 1]["trench_date"]
+        else:
+            period_end_date = mortgage_end_date
+        payments_count = _calculate_months_remaining(trench_date, period_end_date)
 
         cumulative_amount += trench_amount
         remaining_debt = max(loan_amount - cumulative_amount, 0)
@@ -404,7 +410,7 @@ def _calculate_trench_mortgage(mortgage_data, trench_entries):
                 "amount": trench_amount,
                 "annual_rate": annual_rate,
                 "monthly_payment": monthly_payment,
-                "payments_count": months_remaining,
+                "payments_count": payments_count,
                 "remaining_debt": remaining_debt,
                 "overpayment": overpayment,
             }
@@ -429,6 +435,7 @@ def _calculate_trench_mortgage(mortgage_data, trench_entries):
         "total_loan_amount": mortgage_data["total_loan_amount"],
         "total_overpayment": total_overpayment,
         "trenches": trenches_result,
+        "payment_schedule": _build_trench_payment_schedule(trenches_result, mortgage_end_date),
     }
 
     return calculation, []
@@ -439,6 +446,74 @@ def _calculate_months_remaining(start_date, end_date):
     if end_date.day < start_date.day:
         months -= 1
     return months
+
+
+def _build_trench_payment_schedule(trenches, mortgage_end_date):
+    if not trenches:
+        return []
+
+    trench_states = []
+    for trench in trenches:
+        months_to_end = _calculate_months_remaining(trench["date"], mortgage_end_date)
+        if months_to_end <= 0:
+            continue
+
+        trench_states.append(
+            {
+                "start_date": trench["date"],
+                "months_left": months_to_end,
+                "monthly_rate": trench["annual_rate"] / 100 / 12,
+                "monthly_payment": trench["monthly_payment"],
+                "balance": trench["amount"],
+            }
+        )
+
+    if not trench_states:
+        return []
+
+    first_payment_date = min(state["start_date"] for state in trench_states)
+    total_schedule_months = _calculate_months_remaining(first_payment_date, mortgage_end_date)
+    payment_schedule = []
+
+    for month_index in range(total_schedule_months):
+        payment_date = first_payment_date + relativedelta(months=month_index)
+        payment_amount = 0.0
+        interest_amount = 0.0
+        principal_amount = 0.0
+
+        for state in trench_states:
+            if payment_date < state["start_date"] or state["months_left"] <= 0:
+                continue
+
+            trench_interest = state["balance"] * state["monthly_rate"] if state["monthly_rate"] > 0 else 0.0
+            trench_principal = max(state["monthly_payment"] - trench_interest, 0.0)
+
+            if state["months_left"] == 1 or trench_principal >= state["balance"]:
+                trench_principal = state["balance"]
+
+            trench_payment = trench_interest + trench_principal
+            state["balance"] = max(state["balance"] - trench_principal, 0.0)
+            state["months_left"] -= 1
+
+            payment_amount += trench_payment
+            interest_amount += trench_interest
+            principal_amount += trench_principal
+
+        remaining_debt = sum(
+            max(state["balance"], 0.0) for state in trench_states if state["start_date"] <= payment_date
+        )
+        payment_schedule.append(
+            {
+                "payment_number": month_index + 1,
+                "payment_date": payment_date,
+                "payment_amount": round(payment_amount, 2),
+                "interest_amount": round(interest_amount, 2),
+                "principal_amount": round(principal_amount, 2),
+                "remaining_debt": round(remaining_debt, 2),
+            }
+        )
+
+    return payment_schedule
 
 
 def _format_result(calculation):
@@ -467,6 +542,23 @@ def _format_result(calculation):
         )
 
     return formatted
+
+
+def _format_payment_schedule(payment_schedule):
+    formatted_schedule = []
+    for payment in payment_schedule:
+        formatted_schedule.append(
+            {
+                "payment_number": payment["payment_number"],
+                "payment_date": payment["payment_date"].strftime("%d.%m.%Y"),
+                "payment_amount": format_currency(payment["payment_amount"]),
+                "interest_amount": format_currency(payment["interest_amount"]),
+                "principal_amount": format_currency(payment["principal_amount"]),
+                "remaining_debt": format_currency(payment["remaining_debt"]),
+            }
+        )
+
+    return formatted_schedule
 
 
 def _save_trench_calculation(calculation):
@@ -643,6 +735,43 @@ def _export_trench_excel(calculation):
         cell.style = number_style
         cell.alignment = Alignment(horizontal="center")
         row += 1
+
+    if calculation["payment_schedule"]:
+        row += 1
+        ws[f"A{row}"] = "График платежей"
+        ws[f"A{row}"].font = Font(bold=True)
+        row += 1
+
+        schedule_headers = [
+            "№",
+            "Дата платежа",
+            "Сумма платежа, руб.",
+            "Проценты, руб.",
+            "Погашение основного долга, руб.",
+            "Остаток долга, руб.",
+        ]
+        for col, header in enumerate(schedule_headers, start=1):
+            cell = ws.cell(row=row, column=col, value=header)
+            cell.font = Font(bold=True)
+            cell.alignment = Alignment(horizontal="center")
+
+        row += 1
+        for payment in calculation["payment_schedule"]:
+            ws.cell(row=row, column=1, value=payment["payment_number"]).style = integer_style
+            ws.cell(row=row, column=2, value=payment["payment_date"].strftime("%d.%m.%Y"))
+
+            schedule_values = [
+                payment["payment_amount"],
+                payment["interest_amount"],
+                payment["principal_amount"],
+                payment["remaining_debt"],
+            ]
+            for col_offset, value in enumerate(schedule_values, start=3):
+                cell = ws.cell(row=row, column=col_offset, value=float(value))
+                cell.style = number_style
+                cell.alignment = Alignment(horizontal="center")
+
+            row += 1
 
     for column in ws.columns:
         max_length = 0

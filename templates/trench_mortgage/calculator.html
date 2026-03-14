@@ -261,6 +261,36 @@
                         </tbody>
                     </table>
                 </div>
+
+                {% if payment_schedule %}
+                    <h5 class="mt-4">График платежей</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>№</th>
+                                    <th>Дата платежа</th>
+                                    <th>Сумма платежа, руб.</th>
+                                    <th>Проценты, руб.</th>
+                                    <th>Погашение основного долга, руб.</th>
+                                    <th>Остаток долга, руб.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in payment_schedule %}
+                                    <tr>
+                                        <td>{{ payment.payment_number }}</td>
+                                        <td>{{ payment.payment_date }}</td>
+                                        <td>{{ payment.payment_amount }}</td>
+                                        <td>{{ payment.interest_amount }}</td>
+                                        <td>{{ payment.principal_amount }}</td>
+                                        <td>{{ payment.remaining_debt }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
             </div>
         </div>
     {% endif %}
