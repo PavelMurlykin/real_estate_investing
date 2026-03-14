@@ -3,7 +3,6 @@ from django.shortcuts import render
 from location.models import City
 from property.models import RealEstateComplex
 
-
 CITY_PREPOSITIONAL_CASE = {
     'Санкт-Петербург': 'Санкт-Петербурге',
     'Москва': 'Москве',
@@ -12,6 +11,16 @@ CITY_PREPOSITIONAL_CASE = {
 
 
 def index(request):
+    """Описание метода index.
+
+    Выполняет прикладную операцию текущего модуля.
+
+    Аргументы:
+        request: Входной параметр, влияющий на работу метода.
+
+    Возвращает:
+        Any: Тип результата определяется вызывающим кодом.
+    """
     cities = City.objects.filter(is_active=True).order_by('name')
     selected_city = None
 
@@ -20,13 +29,14 @@ def index(request):
         selected_city = cities.filter(pk=int(city_id)).first()
 
     if selected_city is None:
-        selected_city = cities.filter(name='Санкт-Петербург').first() or cities.first()
+        selected_city = (
+            cities.filter(name='Санкт-Петербург').first() or cities.first()
+        )
 
     complexes = RealEstateComplex.objects.none()
     if selected_city:
         complexes = (
-            RealEstateComplex.objects
-            .filter(
+            RealEstateComplex.objects.filter(
                 is_active=True,
                 district__is_active=True,
                 district__city=selected_city,
@@ -52,8 +62,8 @@ def index(request):
         'complexes_map_data': complexes_map_data,
         'headline_city': (
             CITY_PREPOSITIONAL_CASE.get(selected_city.name, selected_city.name)
-            if selected_city else 'выбранном городе'
+            if selected_city
+            else 'выбранном городе'
         ),
     }
     return render(request, template, context)
-

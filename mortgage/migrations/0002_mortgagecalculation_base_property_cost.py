@@ -4,6 +4,11 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    """Описание класса Migration.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
 
     dependencies = [
         ('mortgage', '0001_initial'),
@@ -13,7 +18,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='mortgagecalculation',
             name='base_property_cost',
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=15, verbose_name='Базовая стоимость объекта, руб.'),
+            field=models.DecimalField(
+                decimal_places=2,
+                default=0,
+                max_digits=15,
+                verbose_name='Базовая стоимость объекта, руб.',
+            ),
             preserve_default=False,
         ),
     ]

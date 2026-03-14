@@ -5,6 +5,11 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    """Описание класса Migration.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
 
     dependencies = [
         ('property', '0002_apartmentdecoration_created_at_and_more'),
@@ -14,6 +19,10 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='realestatecomplexbuilding',
             name='real_estate_complex',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='property.realestatecomplex', verbose_name='ЖК'),
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                to='property.realestatecomplex',
+                verbose_name='ЖК',
+            ),
         ),
     ]

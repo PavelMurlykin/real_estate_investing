@@ -5,23 +5,74 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    """Описание класса Migration.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
             name='Bank',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Дата изменения')),
-                ('name', models.CharField(max_length=255, unique=True, verbose_name='Название')),
-                ('interest_rate', models.DecimalField(decimal_places=2, max_digits=5, verbose_name='Процентная ставка, %')),
-                ('salary_client_discount', models.DecimalField(decimal_places=2, default=0, max_digits=4, verbose_name='Дисконт по ставке для зарплатных клиентов, п.п.')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
+                (
+                    'is_active',
+                    models.BooleanField(
+                        default=True,
+                        help_text='Снимите галочку, чтобы скрыть запись.',
+                        verbose_name='Активно',
+                    ),
+                ),
+                (
+                    'created_at',
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name='Дата создания'
+                    ),
+                ),
+                (
+                    'updated_at',
+                    models.DateTimeField(
+                        auto_now=True, verbose_name='Дата изменения'
+                    ),
+                ),
+                (
+                    'name',
+                    models.CharField(
+                        max_length=255, unique=True, verbose_name='Название'
+                    ),
+                ),
+                (
+                    'interest_rate',
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=5,
+                        verbose_name='Процентная ставка, %',
+                    ),
+                ),
+                (
+                    'salary_client_discount',
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=0,
+                        max_digits=4,
+                        verbose_name=(
+                            'Дисконт по ставке для зарплатных клиентов, п.п.'
+                        ),
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Банк',
@@ -34,13 +85,48 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='MortgageProgram',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Дата изменения')),
-                ('name', models.CharField(max_length=255, unique=True, verbose_name='Название')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
+                (
+                    'is_active',
+                    models.BooleanField(
+                        default=True,
+                        help_text='Снимите галочку, чтобы скрыть запись.',
+                        verbose_name='Активно',
+                    ),
+                ),
+                (
+                    'created_at',
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name='Дата создания'
+                    ),
+                ),
+                (
+                    'updated_at',
+                    models.DateTimeField(
+                        auto_now=True, verbose_name='Дата изменения'
+                    ),
+                ),
+                (
+                    'name',
+                    models.CharField(
+                        max_length=255, unique=True, verbose_name='Название'
+                    ),
+                ),
                 ('condition', models.TextField(verbose_name='Условие')),
-                ('is_preferential', models.BooleanField(default=False, verbose_name='Льготная программа')),
+                (
+                    'is_preferential',
+                    models.BooleanField(
+                        default=False, verbose_name='Льготная программа'
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Ипотечная программа',
@@ -53,12 +139,51 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='BankProgram',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Дата изменения')),
-                ('bank', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='bank.bank', verbose_name='Банк')),
-                ('mortgage_program', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='bank.mortgageprogram', verbose_name='Ипотечная программа')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
+                (
+                    'is_active',
+                    models.BooleanField(
+                        default=True,
+                        help_text='Снимите галочку, чтобы скрыть запись.',
+                        verbose_name='Активно',
+                    ),
+                ),
+                (
+                    'created_at',
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name='Дата создания'
+                    ),
+                ),
+                (
+                    'updated_at',
+                    models.DateTimeField(
+                        auto_now=True, verbose_name='Дата изменения'
+                    ),
+                ),
+                (
+                    'bank',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to='bank.bank',
+                        verbose_name='Банк',
+                    ),
+                ),
+                (
+                    'mortgage_program',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to='bank.mortgageprogram',
+                        verbose_name='Ипотечная программа',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Программа банка',
@@ -72,6 +197,11 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='bank',
             name='mortgage_programs',
-            field=models.ManyToManyField(related_name='banks', through='bank.BankProgram', to='bank.mortgageprogram', verbose_name='Ипотечные программы'),
+            field=models.ManyToManyField(
+                related_name='banks',
+                through='bank.BankProgram',
+                to='bank.mortgageprogram',
+                verbose_name='Ипотечные программы',
+            ),
         ),
     ]

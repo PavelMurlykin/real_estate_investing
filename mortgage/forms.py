@@ -38,7 +38,9 @@ class MortgageForm(forms.Form):
     DISCOUNT_MARKUP_TYPE = forms.ChoiceField(
         label='Тип изменения цены',
         choices=[('discount', 'Скидка'), ('markup', 'Удорожание')],
-        widget=forms.RadioSelect(attrs={'onchange': 'updateFinalPropertyCost()'}),
+        widget=forms.RadioSelect(
+            attrs={'onchange': 'updateFinalPropertyCost()'}
+        ),
         initial='discount',
     )
 
@@ -117,7 +119,9 @@ class MortgageForm(forms.Form):
         max_digits=5,
         decimal_places=2,
         initial=15,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        widget=forms.NumberInput(
+            attrs={'class': 'form-control', 'step': '0.01'}
+        ),
     )
 
     HAS_GRACE_PERIOD = forms.ChoiceField(
@@ -141,10 +145,20 @@ class MortgageForm(forms.Form):
         max_digits=5,
         decimal_places=2,
         required=False,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        widget=forms.NumberInput(
+            attrs={'class': 'form-control', 'step': '0.01'}
+        ),
     )
 
     def clean_INITIAL_PAYMENT_DATE(self):
+        """Описание метода clean_INITIAL_PAYMENT_DATE.
+
+        Валидирует и нормализует входные данные перед сохранением.
+
+        Возвращает:
+            Any: Возвращает очищенные данные или значение поля в зависимости
+        от контекста.
+        """
         date_value = self.cleaned_data['INITIAL_PAYMENT_DATE']
         if isinstance(date_value, str):
             try:
@@ -153,10 +167,20 @@ class MortgageForm(forms.Form):
                 try:
                     return datetime.strptime(date_value, '%Y-%m-%d').date()
                 except ValueError as exc:
-                    raise forms.ValidationError('Неверный формат даты. Используйте ДД.ММ.ГГГГ') from exc
+                    raise forms.ValidationError(
+                        'Неверный формат даты. Используйте ДД.ММ.ГГГГ'
+                    ) from exc
         return date_value
 
     def clean(self):
+        """Описание метода clean.
+
+        Валидирует и нормализует входные данные перед сохранением.
+
+        Возвращает:
+            Any: Возвращает очищенные данные или значение поля в зависимости
+        от контекста.
+        """
         cleaned_data = super().clean()
         has_grace_period = cleaned_data.get('HAS_GRACE_PERIOD')
         grace_period_term = cleaned_data.get('GRACE_PERIOD_TERM')
@@ -165,11 +189,27 @@ class MortgageForm(forms.Form):
 
         if has_grace_period == 'yes':
             if grace_period_term is None:
-                self.add_error('GRACE_PERIOD_TERM', 'Это поле обязательно при наличии льготного периода')
+                self.add_error(
+                    'GRACE_PERIOD_TERM',
+                    'Это поле обязательно при наличии льготного периода',
+                )
             if grace_period_rate is None:
-                self.add_error('GRACE_PERIOD_RATE', 'Это поле обязательно при наличии льготного периода')
+                self.add_error(
+                    'GRACE_PERIOD_RATE',
+                    'Это поле обязательно при наличии льготного периода',
+                )
 
-            if grace_period_term and mortgage_term and grace_period_term >= mortgage_term:
-                self.add_error('GRACE_PERIOD_TERM', 'Срок льготного периода должен быть меньше общего срока ипотеки')
+            if (
+                grace_period_term
+                and mortgage_term
+                and grace_period_term >= mortgage_term
+            ):
+                self.add_error(
+                    'GRACE_PERIOD_TERM',
+                    (
+                        'Срок льготного периода должен быть меньше общего '
+                        'срока ипотеки'
+                    ),
+                )
 
         return cleaned_data

@@ -5,6 +5,11 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    """Описание класса Migration.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
 
     initial = True
 
@@ -16,28 +21,149 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='MortgageCalculation',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('initial_payment_percent', models.DecimalField(decimal_places=2, max_digits=5, verbose_name='Первоначальный взнос, %')),
-                ('initial_payment_date', models.DateField(verbose_name='Дата первоначального взноса')),
-                ('mortgage_term', models.IntegerField(verbose_name='Срок ипотеки, годы')),
-                ('annual_rate', models.DecimalField(decimal_places=2, max_digits=5, verbose_name='Годовая ставка, %')),
-                ('has_grace_period', models.BooleanField(verbose_name='Наличие льготного периода')),
-                ('grace_period_term', models.IntegerField(blank=True, null=True, verbose_name='Срок льготного периода, годы')),
-                ('grace_period_rate', models.DecimalField(blank=True, decimal_places=2, max_digits=5, null=True, verbose_name='Годовая ставка на срок действия льготного периода, %')),
-                ('discount_markup_type', models.CharField(choices=[('discount', 'Скидка'), ('markup', 'Удорожание')], default='discount', max_length=10, verbose_name='Тип изменения цены')),
-                ('discount_markup_value', models.DecimalField(decimal_places=2, default=0, max_digits=5, verbose_name='Значение, %')),
-                ('final_property_cost', models.DecimalField(decimal_places=2, max_digits=15, verbose_name='Итоговая стоимость объекта, руб.')),
-                ('grace_payments_count', models.IntegerField(blank=True, null=True)),
-                ('grace_period_end_date', models.DateField(blank=True, null=True)),
-                ('grace_monthly_payment', models.DecimalField(blank=True, decimal_places=2, max_digits=15, null=True)),
-                ('loan_after_grace', models.DecimalField(blank=True, decimal_places=2, max_digits=15, null=True)),
-                ('main_payments_count', models.IntegerField(blank=True, null=True)),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
+                (
+                    'initial_payment_percent',
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=5,
+                        verbose_name='Первоначальный взнос, %',
+                    ),
+                ),
+                (
+                    'initial_payment_date',
+                    models.DateField(
+                        verbose_name='Дата первоначального взноса'
+                    ),
+                ),
+                (
+                    'mortgage_term',
+                    models.IntegerField(verbose_name='Срок ипотеки, годы'),
+                ),
+                (
+                    'annual_rate',
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=5,
+                        verbose_name='Годовая ставка, %',
+                    ),
+                ),
+                (
+                    'has_grace_period',
+                    models.BooleanField(
+                        verbose_name='Наличие льготного периода'
+                    ),
+                ),
+                (
+                    'grace_period_term',
+                    models.IntegerField(
+                        blank=True,
+                        null=True,
+                        verbose_name='Срок льготного периода, годы',
+                    ),
+                ),
+                (
+                    'grace_period_rate',
+                    models.DecimalField(
+                        blank=True,
+                        decimal_places=2,
+                        max_digits=5,
+                        null=True,
+                        verbose_name=(
+                            'Годовая ставка на срок действия льготного '
+                            'периода, %'
+                        ),
+                    ),
+                ),
+                (
+                    'discount_markup_type',
+                    models.CharField(
+                        choices=[
+                            ('discount', 'Скидка'),
+                            ('markup', 'Удорожание'),
+                        ],
+                        default='discount',
+                        max_length=10,
+                        verbose_name='Тип изменения цены',
+                    ),
+                ),
+                (
+                    'discount_markup_value',
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=0,
+                        max_digits=5,
+                        verbose_name='Значение, %',
+                    ),
+                ),
+                (
+                    'final_property_cost',
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=15,
+                        verbose_name='Итоговая стоимость объекта, руб.',
+                    ),
+                ),
+                (
+                    'grace_payments_count',
+                    models.IntegerField(blank=True, null=True),
+                ),
+                (
+                    'grace_period_end_date',
+                    models.DateField(blank=True, null=True),
+                ),
+                (
+                    'grace_monthly_payment',
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=15, null=True
+                    ),
+                ),
+                (
+                    'loan_after_grace',
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=15, null=True
+                    ),
+                ),
+                (
+                    'main_payments_count',
+                    models.IntegerField(blank=True, null=True),
+                ),
                 ('mortgage_end_date', models.DateField(blank=True, null=True)),
-                ('main_monthly_payment', models.DecimalField(blank=True, decimal_places=2, max_digits=15, null=True)),
-                ('total_loan_amount', models.DecimalField(blank=True, decimal_places=2, max_digits=15, null=True)),
-                ('total_overpayment', models.DecimalField(blank=True, decimal_places=2, max_digits=15, null=True)),
+                (
+                    'main_monthly_payment',
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=15, null=True
+                    ),
+                ),
+                (
+                    'total_loan_amount',
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=15, null=True
+                    ),
+                ),
+                (
+                    'total_overpayment',
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=15, null=True
+                    ),
+                ),
                 ('timestamp', models.DateTimeField(auto_now_add=True)),
-                ('property', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='property.property', verbose_name='Объект')),
+                (
+                    'property',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to='property.property',
+                        verbose_name='Объект',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Расчет ипотеки',

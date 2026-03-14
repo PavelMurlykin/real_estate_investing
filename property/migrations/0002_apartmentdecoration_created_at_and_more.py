@@ -5,6 +5,11 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    """Описание класса Migration.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
 
     dependencies = [
         ('property', '0001_initial'),
@@ -14,171 +19,277 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='apartmentdecoration',
             name='created_at',
-            field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now, verbose_name='Дата создания'),
+            field=models.DateTimeField(
+                auto_now_add=True,
+                default=django.utils.timezone.now,
+                verbose_name='Дата создания',
+            ),
             preserve_default=False,
         ),
         migrations.AddField(
             model_name='apartmentdecoration',
             name='is_active',
-            field=models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно'),
+            field=models.BooleanField(
+                default=True,
+                help_text='Снимите галочку, чтобы скрыть запись.',
+                verbose_name='Активно',
+            ),
         ),
         migrations.AddField(
             model_name='apartmentdecoration',
             name='updated_at',
-            field=models.DateTimeField(auto_now=True, verbose_name='Дата изменения'),
+            field=models.DateTimeField(
+                auto_now=True, verbose_name='Дата изменения'
+            ),
         ),
         migrations.AddField(
             model_name='apartmentlayout',
             name='created_at',
-            field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now, verbose_name='Дата создания'),
+            field=models.DateTimeField(
+                auto_now_add=True,
+                default=django.utils.timezone.now,
+                verbose_name='Дата создания',
+            ),
             preserve_default=False,
         ),
         migrations.AddField(
             model_name='apartmentlayout',
             name='is_active',
-            field=models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно'),
+            field=models.BooleanField(
+                default=True,
+                help_text='Снимите галочку, чтобы скрыть запись.',
+                verbose_name='Активно',
+            ),
         ),
         migrations.AddField(
             model_name='apartmentlayout',
             name='updated_at',
-            field=models.DateTimeField(auto_now=True, verbose_name='Дата изменения'),
+            field=models.DateTimeField(
+                auto_now=True, verbose_name='Дата изменения'
+            ),
         ),
         migrations.AddField(
             model_name='city',
             name='created_at',
-            field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now, verbose_name='Дата создания'),
+            field=models.DateTimeField(
+                auto_now_add=True,
+                default=django.utils.timezone.now,
+                verbose_name='Дата создания',
+            ),
             preserve_default=False,
         ),
         migrations.AddField(
             model_name='city',
             name='is_active',
-            field=models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно'),
+            field=models.BooleanField(
+                default=True,
+                help_text='Снимите галочку, чтобы скрыть запись.',
+                verbose_name='Активно',
+            ),
         ),
         migrations.AddField(
             model_name='city',
             name='updated_at',
-            field=models.DateTimeField(auto_now=True, verbose_name='Дата изменения'),
+            field=models.DateTimeField(
+                auto_now=True, verbose_name='Дата изменения'
+            ),
         ),
         migrations.AddField(
             model_name='developer',
             name='created_at',
-            field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now, verbose_name='Дата создания'),
+            field=models.DateTimeField(
+                auto_now_add=True,
+                default=django.utils.timezone.now,
+                verbose_name='Дата создания',
+            ),
             preserve_default=False,
         ),
         migrations.AddField(
             model_name='developer',
             name='is_active',
-            field=models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно'),
+            field=models.BooleanField(
+                default=True,
+                help_text='Снимите галочку, чтобы скрыть запись.',
+                verbose_name='Активно',
+            ),
         ),
         migrations.AddField(
             model_name='developer',
             name='updated_at',
-            field=models.DateTimeField(auto_now=True, verbose_name='Дата изменения'),
+            field=models.DateTimeField(
+                auto_now=True, verbose_name='Дата изменения'
+            ),
         ),
         migrations.AddField(
             model_name='district',
             name='created_at',
-            field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now, verbose_name='Дата создания'),
+            field=models.DateTimeField(
+                auto_now_add=True,
+                default=django.utils.timezone.now,
+                verbose_name='Дата создания',
+            ),
             preserve_default=False,
         ),
         migrations.AddField(
             model_name='district',
             name='is_active',
-            field=models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно'),
+            field=models.BooleanField(
+                default=True,
+                help_text='Снимите галочку, чтобы скрыть запись.',
+                verbose_name='Активно',
+            ),
         ),
         migrations.AddField(
             model_name='district',
             name='updated_at',
-            field=models.DateTimeField(auto_now=True, verbose_name='Дата изменения'),
+            field=models.DateTimeField(
+                auto_now=True, verbose_name='Дата изменения'
+            ),
         ),
         migrations.AddField(
             model_name='property',
             name='is_active',
-            field=models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно'),
+            field=models.BooleanField(
+                default=True,
+                help_text='Снимите галочку, чтобы скрыть запись.',
+                verbose_name='Активно',
+            ),
         ),
         migrations.AddField(
             model_name='realestateclass',
             name='created_at',
-            field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now, verbose_name='Дата создания'),
+            field=models.DateTimeField(
+                auto_now_add=True,
+                default=django.utils.timezone.now,
+                verbose_name='Дата создания',
+            ),
             preserve_default=False,
         ),
         migrations.AddField(
             model_name='realestateclass',
             name='is_active',
-            field=models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно'),
+            field=models.BooleanField(
+                default=True,
+                help_text='Снимите галочку, чтобы скрыть запись.',
+                verbose_name='Активно',
+            ),
         ),
         migrations.AddField(
             model_name='realestateclass',
             name='updated_at',
-            field=models.DateTimeField(auto_now=True, verbose_name='Дата изменения'),
+            field=models.DateTimeField(
+                auto_now=True, verbose_name='Дата изменения'
+            ),
         ),
         migrations.AddField(
             model_name='realestatecomplex',
             name='created_at',
-            field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now, verbose_name='Дата создания'),
+            field=models.DateTimeField(
+                auto_now_add=True,
+                default=django.utils.timezone.now,
+                verbose_name='Дата создания',
+            ),
             preserve_default=False,
         ),
         migrations.AddField(
             model_name='realestatecomplex',
             name='is_active',
-            field=models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно'),
+            field=models.BooleanField(
+                default=True,
+                help_text='Снимите галочку, чтобы скрыть запись.',
+                verbose_name='Активно',
+            ),
         ),
         migrations.AddField(
             model_name='realestatecomplex',
             name='updated_at',
-            field=models.DateTimeField(auto_now=True, verbose_name='Дата изменения'),
+            field=models.DateTimeField(
+                auto_now=True, verbose_name='Дата изменения'
+            ),
         ),
         migrations.AddField(
             model_name='realestatecomplexbuilding',
             name='created_at',
-            field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now, verbose_name='Дата создания'),
+            field=models.DateTimeField(
+                auto_now_add=True,
+                default=django.utils.timezone.now,
+                verbose_name='Дата создания',
+            ),
             preserve_default=False,
         ),
         migrations.AddField(
             model_name='realestatecomplexbuilding',
             name='is_active',
-            field=models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно'),
+            field=models.BooleanField(
+                default=True,
+                help_text='Снимите галочку, чтобы скрыть запись.',
+                verbose_name='Активно',
+            ),
         ),
         migrations.AddField(
             model_name='realestatecomplexbuilding',
             name='updated_at',
-            field=models.DateTimeField(auto_now=True, verbose_name='Дата изменения'),
+            field=models.DateTimeField(
+                auto_now=True, verbose_name='Дата изменения'
+            ),
         ),
         migrations.AddField(
             model_name='realestatetype',
             name='created_at',
-            field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now, verbose_name='Дата создания'),
+            field=models.DateTimeField(
+                auto_now_add=True,
+                default=django.utils.timezone.now,
+                verbose_name='Дата создания',
+            ),
             preserve_default=False,
         ),
         migrations.AddField(
             model_name='realestatetype',
             name='is_active',
-            field=models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно'),
+            field=models.BooleanField(
+                default=True,
+                help_text='Снимите галочку, чтобы скрыть запись.',
+                verbose_name='Активно',
+            ),
         ),
         migrations.AddField(
             model_name='realestatetype',
             name='updated_at',
-            field=models.DateTimeField(auto_now=True, verbose_name='Дата изменения'),
+            field=models.DateTimeField(
+                auto_now=True, verbose_name='Дата изменения'
+            ),
         ),
         migrations.AddField(
             model_name='region',
             name='created_at',
-            field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now, verbose_name='Дата создания'),
+            field=models.DateTimeField(
+                auto_now_add=True,
+                default=django.utils.timezone.now,
+                verbose_name='Дата создания',
+            ),
             preserve_default=False,
         ),
         migrations.AddField(
             model_name='region',
             name='is_active',
-            field=models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно'),
+            field=models.BooleanField(
+                default=True,
+                help_text='Снимите галочку, чтобы скрыть запись.',
+                verbose_name='Активно',
+            ),
         ),
         migrations.AddField(
             model_name='region',
             name='updated_at',
-            field=models.DateTimeField(auto_now=True, verbose_name='Дата изменения'),
+            field=models.DateTimeField(
+                auto_now=True, verbose_name='Дата изменения'
+            ),
         ),
         migrations.AlterField(
             model_name='property',
             name='updated_at',
-            field=models.DateTimeField(auto_now=True, verbose_name='Дата изменения'),
+            field=models.DateTimeField(
+                auto_now=True, verbose_name='Дата изменения'
+            ),
         ),
     ]

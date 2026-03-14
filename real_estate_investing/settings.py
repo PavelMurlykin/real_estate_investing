@@ -1,12 +1,17 @@
 import os
 from pathlib import Path
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
-DEBUG = os.getenv('DEBUG', 'False').strip().lower() in ('1', 'true', 'yes', 'on')
+DEBUG = os.getenv('DEBUG', 'False').strip().lower() in (
+    '1',
+    'true',
+    'yes',
+    'on',
+)
 SECRET_KEY = os.getenv('SECRET_KEY', '')
 
 ALLOWED_HOSTS = ['*']
@@ -19,7 +24,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_bootstrap5',
-
     'users.apps.UsersConfig',
     'homepage.apps.HomepageConfig',
     'location.apps.LocationConfig',

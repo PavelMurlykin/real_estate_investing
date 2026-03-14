@@ -22,18 +22,43 @@ _stop_event = Event()
 
 
 def _get_timezone() -> ZoneInfo:
+    """Описание метода _get_timezone.
+
+    Выполняет прикладную операцию текущего модуля.
+
+    Возвращает:
+        Any: Тип результата определяется вызывающим кодом.
+    """
     return ZoneInfo(getattr(settings, 'TIME_ZONE', 'Europe/Moscow'))
 
 
 def _seconds_until_next_run(now: datetime) -> float:
+    """Описание метода _seconds_until_next_run.
+
+    Выполняет прикладную операцию текущего модуля.
+
+    Аргументы:
+        now: Входной параметр, влияющий на работу метода.
+
+    Возвращает:
+        Any: Тип результата определяется вызывающим кодом.
+    """
     next_run = now.replace(
-        hour=SCHEDULE_HOUR, minute=SCHEDULE_MINUTE, second=0, microsecond=0)
+        hour=SCHEDULE_HOUR, minute=SCHEDULE_MINUTE, second=0, microsecond=0
+    )
     if now >= next_run:
         next_run += timedelta(days=1)
     return max((next_run - now).total_seconds(), 0.0)
 
 
 def _run_sync_job() -> None:
+    """Описание метода _run_sync_job.
+
+    Выполняет прикладную операцию текущего модуля.
+
+    Возвращает:
+        Any: Тип результата определяется вызывающим кодом.
+    """
     try:
         result = sync_key_rates()
         logger.info(
@@ -49,15 +74,30 @@ def _run_sync_job() -> None:
 
 
 def _sync_if_empty() -> None:
+    """Описание метода _sync_if_empty.
+
+    Выполняет прикладную операцию текущего модуля.
+
+    Возвращает:
+        Any: Тип результата определяется вызывающим кодом.
+    """
     try:
         if not KeyRate.objects.exists():
             _run_sync_job()
     except (OperationalError, ProgrammingError):
         logger.debug(
-            'Skipping initial key rate sync: database table is not ready yet.')
+            'Skipping initial key rate sync: database table is not ready yet.'
+        )
 
 
 def _scheduler_loop() -> None:
+    """Описание метода _scheduler_loop.
+
+    Выполняет прикладную операцию текущего модуля.
+
+    Возвращает:
+        Any: Тип результата определяется вызывающим кодом.
+    """
     timezone_info = _get_timezone()
     _sync_if_empty()
 
@@ -70,6 +110,13 @@ def _scheduler_loop() -> None:
 
 
 def start_key_rate_scheduler() -> None:
+    """Описание метода start_key_rate_scheduler.
+
+    Выполняет прикладную операцию текущего модуля.
+
+    Возвращает:
+        Any: Тип результата определяется вызывающим кодом.
+    """
     global _scheduler_thread
 
     with _scheduler_lock:

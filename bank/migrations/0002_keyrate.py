@@ -4,6 +4,11 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    """Описание класса Migration.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
 
     dependencies = [
         ('bank', '0001_initial'),
@@ -13,12 +18,49 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='KeyRate',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, help_text='Снимите галочку, чтобы скрыть запись.', verbose_name='Активно')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Дата изменения')),
-                ('meeting_date', models.DateField(unique=True, verbose_name='Дата заседания')),
-                ('key_rate', models.DecimalField(decimal_places=2, max_digits=5, verbose_name='Ключевая ставка, %')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
+                (
+                    'is_active',
+                    models.BooleanField(
+                        default=True,
+                        help_text='Снимите галочку, чтобы скрыть запись.',
+                        verbose_name='Активно',
+                    ),
+                ),
+                (
+                    'created_at',
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name='Дата создания'
+                    ),
+                ),
+                (
+                    'updated_at',
+                    models.DateTimeField(
+                        auto_now=True, verbose_name='Дата изменения'
+                    ),
+                ),
+                (
+                    'meeting_date',
+                    models.DateField(
+                        unique=True, verbose_name='Дата заседания'
+                    ),
+                ),
+                (
+                    'key_rate',
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=5,
+                        verbose_name='Ключевая ставка, %',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Ключевая ставка',

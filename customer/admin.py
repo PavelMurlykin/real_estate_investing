@@ -5,6 +5,12 @@ from .models import Customer
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
+    """Описание класса CustomerAdmin.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     list_display = (
         'id',
         'first_name',
@@ -16,8 +22,20 @@ class CustomerAdmin(admin.ModelAdmin):
         'created_at',
         'is_active',
     )
-    list_filter = ('is_active', 'purchase_goal', 'has_owned_property', 'residence_city', 'desired_city')
-    search_fields = ('first_name', 'last_name', 'phone', 'email', 'user__email')
+    list_filter = (
+        'is_active',
+        'purchase_goal',
+        'has_owned_property',
+        'residence_city',
+        'desired_city',
+    )
+    search_fields = (
+        'first_name',
+        'last_name',
+        'phone',
+        'email',
+        'user__email',
+    )
     autocomplete_fields = (
         'user',
         'residence_city',

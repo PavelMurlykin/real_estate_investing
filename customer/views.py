@@ -10,21 +10,49 @@ from .models import Customer
 
 
 class CustomerOwnedQuerysetMixin(LoginRequiredMixin):
+    """Описание класса CustomerOwnedQuerysetMixin.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     def get_queryset(self):
+        """Описание метода get_queryset.
+
+        Возвращает подготовленные данные для дальнейшей обработки.
+
+        Возвращает:
+            Any: Тип результата зависит от контекста использования.
+        """
         return (
             Customer.objects.filter(user=self.request.user)
-            .select_related('residence_city', 'desired_city', 'desired_district')
+            .select_related(
+                'residence_city', 'desired_city', 'desired_district'
+            )
             .prefetch_related('desired_layouts', 'preferential_programs')
         )
 
 
 class CustomerListView(CustomerOwnedQuerysetMixin, ListView):
+    """Описание класса CustomerListView.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     model = Customer
     template_name = 'customer/customer_list.html'
     context_object_name = 'customers'
     paginate_by = 20
 
     def get_queryset(self):
+        """Описание метода get_queryset.
+
+        Возвращает подготовленные данные для дальнейшей обработки.
+
+        Возвращает:
+            Any: Тип результата зависит от контекста использования.
+        """
         queryset = super().get_queryset().order_by('-created_at')
         search = (self.request.GET.get('q') or '').strip()
         if search:
@@ -37,30 +65,79 @@ class CustomerListView(CustomerOwnedQuerysetMixin, ListView):
         return queryset
 
     def get_context_data(self, **kwargs):
+        """Описание метода get_context_data.
+
+        Возвращает подготовленные данные для дальнейшей обработки.
+
+        Аргументы:
+            **kwargs: Входной параметр, влияющий на работу метода.
+
+        Возвращает:
+            Any: Тип результата зависит от контекста использования.
+        """
         context = super().get_context_data(**kwargs)
         context['search_query'] = (self.request.GET.get('q') or '').strip()
         return context
 
 
 class CustomerCreateView(LoginRequiredMixin, CreateView):
+    """Описание класса CustomerCreateView.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     model = Customer
     form_class = CustomerForm
     template_name = 'customer/customer_form.html'
 
     def form_valid(self, form):
+        """Описание метода form_valid.
+
+        Выполняет прикладную операцию текущего модуля.
+
+        Аргументы:
+            form: Входной параметр, влияющий на работу метода.
+
+        Возвращает:
+            Any: Тип результата определяется вызывающим кодом.
+        """
         form.instance.user = self.request.user
         return super().form_valid(form)
 
     def get_success_url(self):
+        """Описание метода get_success_url.
+
+        Возвращает подготовленные данные для дальнейшей обработки.
+
+        Возвращает:
+            Any: Тип результата зависит от контекста использования.
+        """
         return reverse_lazy('customer:detail', kwargs={'pk': self.object.pk})
 
 
 class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
+    """Описание класса CustomerDetailView.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     model = Customer
     template_name = 'customer/customer_detail.html'
     context_object_name = 'customer'
 
     def get_context_data(self, **kwargs):
+        """Описание метода get_context_data.
+
+        Возвращает подготовленные данные для дальнейшей обработки.
+
+        Аргументы:
+            **kwargs: Входной параметр, влияющий на работу метода.
+
+        Возвращает:
+            Any: Тип результата зависит от контекста использования.
+        """
         context = super().get_context_data(**kwargs)
 
         customer = self.object
@@ -76,15 +153,30 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
             'max_term_years': max_term_years,
             'actual_key_rate': f'{key_rate:.2f}',
             'annual_rate': f'{annual_rate:.2f}',
-            'max_property_cost': format_currency(max_property_cost) if max_property_cost is not None else '',
+            'max_property_cost': format_currency(max_property_cost)
+            if max_property_cost is not None
+            else '',
         }
         return context
 
 
 class CustomerUpdateView(CustomerOwnedQuerysetMixin, UpdateView):
+    """Описание класса CustomerUpdateView.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
     model = Customer
     form_class = CustomerForm
     template_name = 'customer/customer_form.html'
 
     def get_success_url(self):
+        """Описание метода get_success_url.
+
+        Возвращает подготовленные данные для дальнейшей обработки.
+
+        Возвращает:
+            Any: Тип результата зависит от контекста использования.
+        """
         return reverse_lazy('customer:detail', kwargs={'pk': self.object.pk})
