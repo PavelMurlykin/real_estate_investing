@@ -84,6 +84,29 @@
 
           <li class="nav-item dropdown">
             <button
+              class="nav-link dropdown-toggle {% if view_name == 'customer:create' or view_name == 'customer:list' or view_name == 'customer:detail' or view_name == 'customer:update' %}active{% endif %}"
+              type="button"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              Клиенты
+            </button>
+            <ul class="dropdown-menu shadow-sm">
+              <li>
+                <a class="dropdown-item {% if view_name == 'customer:create' %}active{% endif %}" href="{% url 'customer:create' %}">
+                  Добавить нового клиента
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item {% if view_name == 'customer:list' or view_name == 'customer:detail' or view_name == 'customer:update' %}active{% endif %}" href="{% url 'customer:list' %}">
+                  Список клиентов
+                </a>
+              </li>
+            </ul>
+          </li>
+
+          <li class="nav-item dropdown">
+            <button
               class="nav-link dropdown-toggle {% if view_name == 'mortgage:mortgage_calculator' or view_name == 'mortgage:calculation_list' or view_name == 'mortgage:calculation_detail' or view_name == 'trench_mortgage:trench_mortgage_calculator' or view_name == 'trench_mortgage:calculate_trench_mortgage' %}active{% endif %}"
               type="button"
               data-bs-toggle="dropdown"

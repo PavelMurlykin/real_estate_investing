@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}{% if object %}Редактирование клиента{% else %}Новый клиент{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{% if object %}Редактирование клиента{% else %}Добавление нового клиента{% endif %}</h1>
+        <a href="{% url 'customer:list' %}" class="btn btn-secondary">К списку клиентов</a>
+    </div>
+
+    <div class="alert alert-light border">
+        Обязательное поле только одно: <strong>Имя</strong>. Остальные вопросы можно пропустить.
+    </div>
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+            {{ form.non_field_errors }}
+        </div>
+        {% endif %}
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Персональные данные</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label" for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }}</label>
+                        {{ form.first_name }}
+                        <div class="text-danger small">{{ form.first_name.errors }}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="{{ form.last_name.id_for_label }}">{{ form.last_name.label }}</label>
+                        {{ form.last_name }}
+                        <div class="text-danger small">{{ form.last_name.errors }}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>
+                        {{ form.phone }}
+                        <div class="text-danger small">{{ form.phone.errors }}</div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label" for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+                        {{ form.email }}
+                        <div class="text-danger small">{{ form.email.errors }}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="{{ form.age.id_for_label }}">{{ form.age.label }}</label>
+                        {{ form.age }}
+                        <div class="form-text">{{ form.age.help_text }}</div>
+                        <div class="text-danger small">{{ form.age.errors }}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="{{ form.birth_date.id_for_label }}">{{ form.birth_date.label }}</label>
+                        {{ form.birth_date }}
+                        <div class="text-danger small">{{ form.birth_date.errors }}</div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label" for="{{ form.birth_year.id_for_label }}">{{ form.birth_year.label }}</label>
+                        {{ form.birth_year }}
+                        <div class="text-danger small">{{ form.birth_year.errors }}</div>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label" for="{{ form.residence_city.id_for_label }}">{{ form.residence_city.label }}</label>
+                        {{ form.residence_city }}
+                        <div class="text-danger small">{{ form.residence_city.errors }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Платежеспособность</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ form.initial_payment_amount.id_for_label }}">{{ form.initial_payment_amount.label }}</label>
+                        {{ form.initial_payment_amount }}
+                        <div class="text-danger small">{{ form.initial_payment_amount.errors }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ form.max_monthly_payment.id_for_label }}">{{ form.max_monthly_payment.label }}</label>
+                        {{ form.max_monthly_payment }}
+                        <div class="text-danger small">{{ form.max_monthly_payment.errors }}</div>
+                    </div>
+
+                    <div class="col-md-8">
+                        <label class="form-label" for="{{ form.preferential_programs.id_for_label }}">{{ form.preferential_programs.label }}</label>
+                        {{ form.preferential_programs }}
+                        <div class="form-text">{{ form.preferential_programs.help_text }}</div>
+                        <div class="text-danger small">{{ form.preferential_programs.errors }}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="{{ form.has_owned_property.id_for_label }}">{{ form.has_owned_property.label }}</label>
+                        {{ form.has_owned_property }}
+                        <div class="text-danger small">{{ form.has_owned_property.errors }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Параметры для подбора объекта недвижимости</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ form.purchase_goal.id_for_label }}">{{ form.purchase_goal.label }}</label>
+                        {{ form.purchase_goal }}
+                        <div class="text-danger small">{{ form.purchase_goal.errors }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ form.desired_city.id_for_label }}">{{ form.desired_city.label }}</label>
+                        {{ form.desired_city }}
+                        <div class="text-danger small">{{ form.desired_city.errors }}</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ form.desired_district.id_for_label }}">{{ form.desired_district.label }}</label>
+                        {{ form.desired_district }}
+                        <div class="text-danger small">{{ form.desired_district.errors }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ form.desired_layouts.id_for_label }}">{{ form.desired_layouts.label }}</label>
+                        {{ form.desired_layouts }}
+                        <div class="text-danger small">{{ form.desired_layouts.errors }}</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ form.area_min.id_for_label }}">{{ form.area_min.label }}</label>
+                        {{ form.area_min }}
+                        <div class="text-danger small">{{ form.area_min.errors }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ form.area_max.id_for_label }}">{{ form.area_max.label }}</label>
+                        {{ form.area_max }}
+                        <div class="text-danger small">{{ form.area_max.errors }}</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ form.desired_floor.id_for_label }}">{{ form.desired_floor.label }}</label>
+                        {{ form.desired_floor }}
+                        <div class="text-danger small">{{ form.desired_floor.errors }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ form.cardinal_directions.id_for_label }}">{{ form.cardinal_directions.label }}</label>
+                        {{ form.cardinal_directions }}
+                        <div class="text-danger small">{{ form.cardinal_directions.errors }}</div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label" for="{{ form.comment.id_for_label }}">{{ form.comment.label }}</label>
+                        {{ form.comment }}
+                        <div class="text-danger small">{{ form.comment.errors }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Статус записи</h5>
+            </div>
+            <div class="card-body">
+                <div class="form-check">
+                    {{ form.is_active }}
+                    <label class="form-check-label" for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label>
+                </div>
+                <div class="text-danger small">{{ form.is_active.errors }}</div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <a href="{% if object %}{% url 'customer:detail' object.pk %}{% else %}{% url 'customer:list' %}{% endif %}" class="btn btn-outline-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
