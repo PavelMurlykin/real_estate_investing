@@ -4,8 +4,10 @@ from core.models import BaseModel
 
 
 class Bank(BaseModel):
-    name = models.CharField(max_length=255, unique=True, verbose_name='Название')
-    interest_rate = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='Процентная ставка, %')
+    name = models.CharField(max_length=255, unique=True,
+                            verbose_name='Название')
+    interest_rate = models.DecimalField(
+        max_digits=5, decimal_places=2, verbose_name='Процентная ставка, %')
     salary_client_discount = models.DecimalField(
         max_digits=4,
         decimal_places=2,
@@ -30,9 +32,11 @@ class Bank(BaseModel):
 
 
 class MortgageProgram(BaseModel):
-    name = models.CharField(max_length=255, unique=True, verbose_name='Название')
+    name = models.CharField(max_length=255, unique=True,
+                            verbose_name='Название')
     condition = models.TextField(verbose_name='Условие')
-    is_preferential = models.BooleanField(default=False, verbose_name='Льготная программа')
+    is_preferential = models.BooleanField(
+        default=False, verbose_name='Льготная программа')
 
     class Meta(BaseModel.Meta):
         db_table = 'mortgage_program'
@@ -45,7 +49,8 @@ class MortgageProgram(BaseModel):
 
 
 class BankProgram(BaseModel):
-    bank = models.ForeignKey(Bank, on_delete=models.PROTECT, verbose_name='Банк')
+    bank = models.ForeignKey(
+        Bank, on_delete=models.PROTECT, verbose_name='Банк')
     mortgage_program = models.ForeignKey(
         MortgageProgram,
         on_delete=models.PROTECT,
@@ -61,3 +66,18 @@ class BankProgram(BaseModel):
 
     def __str__(self):
         return f'{self.bank} - {self.mortgage_program}'
+
+
+class KeyRate(BaseModel):
+    meeting_date = models.DateField(unique=True, verbose_name='Дата заседания')
+    key_rate = models.DecimalField(
+        max_digits=5, decimal_places=2, verbose_name='Ключевая ставка, %')
+
+    class Meta(BaseModel.Meta):
+        db_table = 'key_rate'
+        verbose_name = 'Ключевая ставка'
+        verbose_name_plural = 'Ключевые ставки'
+        ordering = ['-meeting_date']
+
+    def __str__(self):
+        return f'{self.meeting_date}: {self.key_rate}%'
