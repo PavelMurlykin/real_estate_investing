@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}{{ section_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h1 class="mb-0">{{ section_title }}</h1>
+        {% if last_synced_at %}
+        <span class="text-body-secondary small">
+            Обновлено: {{ last_synced_at|date:"d.m.Y H:i" }}
+        </span>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="card-header">Данные ЦБ РФ</div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Дата заседания</th>
+                            <th>Ключевая ставка, %</th>
+                            <th>Изменение ставки</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                        <tr>
+                            <td>{{ row.meeting_date|date:"d.m.Y" }}</td>
+                            <td>{{ row.key_rate|floatformat:2 }}</td>
+                            <td>
+                                {% if row.rate_change is None %}
+                                <span class="text-body-secondary">-</span>
+                                {% elif row.rate_change > 0 %}
+                                <span class="text-danger fw-semibold">&#8593; {{ row.rate_change|floatformat:2 }}</span>
+                                {% elif row.rate_change < 0 %}
+                                <span class="text-success fw-semibold">&#8595; {{ row.rate_change|floatformat:2 }}</span>
+                                {% else %}
+                                <span class="text-body-secondary">{{ row.rate_change|floatformat:2 }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center">Данных пока нет</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

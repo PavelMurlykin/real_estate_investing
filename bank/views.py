@@ -1,11 +1,13 @@
 from decimal import Decimal, InvalidOperation
 
-from django.db.models import DecimalField, ExpressionWrapper, F
+from django.db.models import DecimalField, ExpressionWrapper, F, Window
+from django.db.models.functions import Lead
+from django.views.generic import TemplateView
 
 from property.views import BaseCatalogView, CatalogModelConfig
 
 from .forms import BankForm
-from .models import Bank, BankProgram, MortgageProgram
+from .models import Bank, BankProgram, KeyRate, MortgageProgram
 
 
 class BankCatalogView(BaseCatalogView):
@@ -228,4 +230,36 @@ class BankCatalogView(BaseCatalogView):
             params.pop('edit', None)
             column['sort_url'] = f'?{params.urlencode()}'
 
+        return context
+
+
+class KeyRateListView(TemplateView):
+    template_name = 'bank/key_rate_list.html'
+
+    def get_queryset(self):
+        return (
+            KeyRate.objects.annotate(
+                previous_rate=Window(
+                    expression=Lead('key_rate'),
+                    order_by=F('meeting_date').desc(),
+                ),
+            )
+            .annotate(
+                rate_change=ExpressionWrapper(
+                    F('key_rate') - F('previous_rate'),
+                    output_field=DecimalField(max_digits=5, decimal_places=2),
+                ),
+            )
+            .order_by('-meeting_date')
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rows = list(self.get_queryset())
+
+        context['section_title'] = 'Ключевая ставка'
+        context['rows'] = rows
+        context['last_synced_at'] = (
+            KeyRate.objects.order_by('-updated_at').values_list('updated_at', flat=True).first()
+        )
         return context
