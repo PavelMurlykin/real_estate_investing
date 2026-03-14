@@ -26,7 +26,8 @@ def _get_timezone() -> ZoneInfo:
 
 
 def _seconds_until_next_run(now: datetime) -> float:
-    next_run = now.replace(hour=SCHEDULE_HOUR, minute=SCHEDULE_MINUTE, second=0, microsecond=0)
+    next_run = now.replace(
+        hour=SCHEDULE_HOUR, minute=SCHEDULE_MINUTE, second=0, microsecond=0)
     if now >= next_run:
         next_run += timedelta(days=1)
     return max((next_run - now).total_seconds(), 0.0)
@@ -52,7 +53,8 @@ def _sync_if_empty() -> None:
         if not KeyRate.objects.exists():
             _run_sync_job()
     except (OperationalError, ProgrammingError):
-        logger.debug('Skipping initial key rate sync: database table is not ready yet.')
+        logger.debug(
+            'Skipping initial key rate sync: database table is not ready yet.')
 
 
 def _scheduler_loop() -> None:

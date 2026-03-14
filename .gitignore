@@ -203,3 +203,7 @@ python_base_prompt.md
 # Django fixtures (all apps)
 **/fixtures/*
 !**/fixtures/.gitkeep
+
+# Local task notes
+ToDo.txt
+todo.txt
