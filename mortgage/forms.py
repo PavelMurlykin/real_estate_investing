@@ -30,22 +30,22 @@ class MortgageForm(forms.Form):
                 'class': 'form-control',
                 'step': '0.01',
                 'id': 'property_cost_input',
-                'oninput': 'updateFinalPropertyCost()',
+                'oninput': 'handlePropertyCostChange()',
             }
         ),
     )
 
     DISCOUNT_MARKUP_TYPE = forms.ChoiceField(
-        label='Тип изменения цены',
+        label='Корректировка цены',
         choices=[('discount', 'Скидка'), ('markup', 'Удорожание')],
         widget=forms.RadioSelect(
-            attrs={'onchange': 'updateFinalPropertyCost()'}
+            attrs={'onchange': 'handleDiscountMarkupTypeChange()'}
         ),
         initial='discount',
     )
 
     DISCOUNT_MARKUP_VALUE = forms.DecimalField(
-        label='Значение, %',
+        label='Скидка, %',
         min_value=0,
         max_digits=5,
         decimal_places=2,
@@ -55,9 +55,34 @@ class MortgageForm(forms.Form):
             attrs={
                 'class': 'form-control',
                 'step': '0.01',
-                'oninput': 'updateFinalPropertyCost()',
+                'id': 'discount_markup_percent',
+                'oninput': 'handleDiscountMarkupPercentInput()',
             }
         ),
+    )
+
+    DISCOUNT_MARKUP_RUBLES = forms.DecimalField(
+        label='Скидка, руб.',
+        min_value=0,
+        max_digits=15,
+        decimal_places=2,
+        required=False,
+        initial=0,
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'id': 'discount_markup_rubles',
+                'oninput': 'handleDiscountMarkupRublesInput()',
+            }
+        ),
+    )
+
+    DISCOUNT_MARKUP_SOURCE = forms.ChoiceField(
+        choices=[('percent', 'percent'), ('rubles', 'rubles')],
+        initial='percent',
+        required=False,
+        widget=forms.HiddenInput(attrs={'id': 'discount_markup_source'}),
     )
 
     INITIAL_PAYMENT_PERCENT = forms.DecimalField(

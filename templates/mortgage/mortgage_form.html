@@ -40,6 +40,8 @@
                             {% endfor %}
                         </div>
 
+                        {{ mortgage_form.DISCOUNT_MARKUP_SOURCE }}
+
                         <div class="mb-3">
                             <label class="form-label d-block">{{ mortgage_form.DISCOUNT_MARKUP_TYPE.label }}</label>
                             {{ mortgage_form.DISCOUNT_MARKUP_TYPE }}
@@ -48,12 +50,25 @@
                             {% endfor %}
                         </div>
 
-                        <div class="mb-3">
-                            <label for="{{ mortgage_form.DISCOUNT_MARKUP_VALUE.id_for_label }}" class="form-label">{{ mortgage_form.DISCOUNT_MARKUP_VALUE.label }}</label>
-                            {{ mortgage_form.DISCOUNT_MARKUP_VALUE }}
-                            {% for error in mortgage_form.DISCOUNT_MARKUP_VALUE.errors %}
-                                <div class="invalid-feedback d-block">{{ error }}</div>
-                            {% endfor %}
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <label id="discount_markup_percent_label" for="{{ mortgage_form.DISCOUNT_MARKUP_VALUE.id_for_label }}" class="form-label">
+                                    {% if mortgage_form.DISCOUNT_MARKUP_TYPE.value == 'markup' %}Удорожание, %{% else %}Скидка, %{% endif %}
+                                </label>
+                                {{ mortgage_form.DISCOUNT_MARKUP_VALUE }}
+                                {% for error in mortgage_form.DISCOUNT_MARKUP_VALUE.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-6">
+                                <label id="discount_markup_rubles_label" for="{{ mortgage_form.DISCOUNT_MARKUP_RUBLES.id_for_label }}" class="form-label">
+                                    {% if mortgage_form.DISCOUNT_MARKUP_TYPE.value == 'markup' %}Удорожание, руб.{% else %}Скидка, руб.{% endif %}
+                                </label>
+                                {{ mortgage_form.DISCOUNT_MARKUP_RUBLES }}
+                                {% for error in mortgage_form.DISCOUNT_MARKUP_RUBLES.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
                         </div>
 
                         <div class="mb-0">
@@ -262,19 +277,94 @@ function getSelectedDiscountType() {
     return checked ? checked.value : 'discount';
 }
 
-function getFinalPropertyCostNumber() {
-    const propertyCostInput = document.getElementById('property_cost_input');
-    const discountMarkupValueInput = document.getElementById('id_DISCOUNT_MARKUP_VALUE');
+function getDiscountMarkupSourceInput() {
+    return document.getElementById('discount_markup_source');
+}
 
-    const propertyCost = parseNumber(propertyCostInput ? propertyCostInput.value : 0);
-    const discountMarkupValue = parseNumber(discountMarkupValueInput ? discountMarkupValueInput.value : 0);
+function getDiscountMarkupSource() {
+    const input = getDiscountMarkupSourceInput();
+    return input && input.value === 'rubles' ? 'rubles' : 'percent';
+}
+
+function setDiscountMarkupSource(source) {
+    const input = getDiscountMarkupSourceInput();
+    if (input) {
+        input.value = source === 'rubles' ? 'rubles' : 'percent';
+    }
+}
+
+function getPropertyCostNumber() {
+    const propertyCostInput = document.getElementById('property_cost_input');
+    return parseNumber(propertyCostInput ? propertyCostInput.value : 0);
+}
+
+function getDiscountMarkupPercentInput() {
+    return document.getElementById('discount_markup_percent');
+}
+
+function getDiscountMarkupRublesInput() {
+    return document.getElementById('discount_markup_rubles');
+}
+
+function updateDiscountMarkupLabels() {
+    const percentLabel = document.getElementById('discount_markup_percent_label');
+    const rublesLabel = document.getElementById('discount_markup_rubles_label');
+    const prefix = getSelectedDiscountType() === 'discount'
+        ? 'Скидка'
+        : 'Удорожание';
+
+    if (percentLabel) {
+        percentLabel.textContent = `${prefix}, %`;
+    }
+
+    if (rublesLabel) {
+        rublesLabel.textContent = `${prefix}, руб.`;
+    }
+}
+
+function syncDiscountMarkupValues() {
+    const propertyCost = getPropertyCostNumber();
+    const percentInput = getDiscountMarkupPercentInput();
+    const rublesInput = getDiscountMarkupRublesInput();
+
+    if (!percentInput || !rublesInput) {
+        return;
+    }
+
+    if (getDiscountMarkupSource() === 'rubles') {
+        const rubles = parseNumber(rublesInput.value);
+        percentInput.value = propertyCost > 0
+            ? (rubles / propertyCost * 100).toFixed(2)
+            : '0.00';
+        return;
+    }
+
+    const percent = parseNumber(percentInput.value);
+    rublesInput.value = (propertyCost * percent / 100).toFixed(2);
+}
+
+function getDiscountMarkupRublesNumber() {
+    const propertyCost = getPropertyCostNumber();
+    const percentInput = getDiscountMarkupPercentInput();
+    const rublesInput = getDiscountMarkupRublesInput();
+
+    if (getDiscountMarkupSource() === 'rubles') {
+        return parseNumber(rublesInput ? rublesInput.value : 0);
+    }
+
+    return propertyCost * parseNumber(percentInput ? percentInput.value : 0) / 100;
+}
+
+function getFinalPropertyCostNumber() {
+    const propertyCost = getPropertyCostNumber();
+    const discountMarkupRubles = getDiscountMarkupRublesNumber();
     const discountType = getSelectedDiscountType();
 
     if (discountType === 'discount') {
-        return propertyCost * (1 - discountMarkupValue / 100);
+        return propertyCost - discountMarkupRubles;
     }
 
-    return propertyCost * (1 + discountMarkupValue / 100);
+    return propertyCost + discountMarkupRubles;
 }
 
 function updateFinalPropertyCost() {
@@ -286,6 +376,28 @@ function updateFinalPropertyCost() {
     const finalCost = getFinalPropertyCostNumber();
     finalField.value = formatMoney(finalCost);
     updateInitialPaymentRubles();
+}
+
+function handlePropertyCostChange() {
+    syncDiscountMarkupValues();
+    updateFinalPropertyCost();
+}
+
+function handleDiscountMarkupPercentInput() {
+    setDiscountMarkupSource('percent');
+    syncDiscountMarkupValues();
+    updateFinalPropertyCost();
+}
+
+function handleDiscountMarkupRublesInput() {
+    setDiscountMarkupSource('rubles');
+    syncDiscountMarkupValues();
+    updateFinalPropertyCost();
+}
+
+function handleDiscountMarkupTypeChange() {
+    updateDiscountMarkupLabels();
+    updateFinalPropertyCost();
 }
 
 function updateInitialPaymentRubles() {
@@ -343,7 +455,7 @@ function updatePropertyCost() {
     const propertyId = selector.value;
     if (!propertyId) {
         costInput.value = '';
-        updateFinalPropertyCost();
+        handlePropertyCostChange();
         return;
     }
 
@@ -360,7 +472,7 @@ function updatePropertyCost() {
             }
 
             costInput.value = data.property_cost;
-            updateFinalPropertyCost();
+            handlePropertyCostChange();
         })
         .catch(() => {
             // Do nothing on network errors, user can still edit values manually.
@@ -368,12 +480,18 @@ function updatePropertyCost() {
 }
 
 window.updateFinalPropertyCost = updateFinalPropertyCost;
+window.handlePropertyCostChange = handlePropertyCostChange;
+window.handleDiscountMarkupPercentInput = handleDiscountMarkupPercentInput;
+window.handleDiscountMarkupRublesInput = handleDiscountMarkupRublesInput;
+window.handleDiscountMarkupTypeChange = handleDiscountMarkupTypeChange;
 window.updateInitialPaymentRubles = updateInitialPaymentRubles;
 window.updateInitialPaymentPercent = updateInitialPaymentPercent;
 window.toggleGracePeriod = toggleGracePeriod;
 window.updatePropertyCost = updatePropertyCost;
 
 document.addEventListener('DOMContentLoaded', function () {
+    updateDiscountMarkupLabels();
+    syncDiscountMarkupValues();
     updateFinalPropertyCost();
     toggleGracePeriod();
 });
