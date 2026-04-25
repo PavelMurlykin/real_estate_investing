@@ -93,6 +93,7 @@ class MortgageCalculatorViewTests(TestCase):
             'DISCOUNT_MARKUP_SOURCE': 'percent',
             'INITIAL_PAYMENT_PERCENT': '20',
             'INITIAL_PAYMENT_RUBLES': '0',
+            'INITIAL_PAYMENT_SOURCE': 'percent',
             'INITIAL_PAYMENT_DATE': '01.01.2026',
             'MORTGAGE_TERM': '20',
             'ANNUAL_RATE': '12',
@@ -108,6 +109,9 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, 'Корректировка цены')
         self.assertContains(response, 'Скидка, %')
         self.assertContains(response, 'Скидка, руб.')
+        self.assertContains(response, 'initial_payment_source')
+        self.assertContains(response, 'discount_markup_percent_lock')
+        self.assertContains(response, 'initial_payment_percent_lock')
 
     def test_calculate_uses_property_cost_when_property_cost_is_empty(self):
         """Описание метода
@@ -188,6 +192,24 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertEqual(calculation.discount_markup_value, Decimal('10'))
         self.assertEqual(calculation.final_property_cost, Decimal('4500000'))
         self.assertContains(response, 'Скидка, руб.')
+
+    def test_calculate_supports_initial_payment_locked_in_rubles(self):
+        payload = self._base_payload()
+        payload.update(
+            {
+                'calculate': '1',
+                'PROPERTY_COST': '5000000',
+                'INITIAL_PAYMENT_PERCENT': '20',
+                'INITIAL_PAYMENT_RUBLES': '1500000',
+                'INITIAL_PAYMENT_SOURCE': 'rubles',
+            }
+        )
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, 200)
+        calculation = MortgageCalculation.objects.latest('id')
+        self.assertEqual(calculation.initial_payment_percent, Decimal('30'))
 
     def test_export_returns_excel_file(self):
         """Описание метода test_export_returns_excel_file.

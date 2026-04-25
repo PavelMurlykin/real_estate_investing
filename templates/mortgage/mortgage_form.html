@@ -4,6 +4,52 @@
     Ипотечный калькулятор
 {% endblock %}
 
+{% block extra_css %}
+<style>
+    .value-lock-button {
+        align-items: center;
+        display: inline-flex;
+        height: 1.875rem;
+        justify-content: center;
+        padding: 0;
+        width: 1.875rem;
+    }
+
+    .lock-icon {
+        border: 2px solid currentColor;
+        border-radius: 0.1875rem;
+        display: inline-block;
+        height: 0.625rem;
+        position: relative;
+        width: 0.875rem;
+    }
+
+    .lock-icon::before {
+        border: 2px solid currentColor;
+        border-bottom: 0;
+        border-radius: 0.5rem 0.5rem 0 0;
+        content: "";
+        height: 0.625rem;
+        left: 0.0625rem;
+        position: absolute;
+        top: -0.6875rem;
+        width: 0.5rem;
+    }
+
+    .value-lock-button:not(.is-locked) .lock-icon::before {
+        left: 0.25rem;
+        transform: rotate(25deg);
+        transform-origin: left bottom;
+    }
+
+    .value-lock-button.is-locked {
+        background-color: var(--bs-primary);
+        border-color: var(--bs-primary);
+        color: var(--bs-white);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4 mb-5">
     <h2 class="mb-4">Ипотечный калькулятор</h2>
@@ -41,6 +87,7 @@
                         </div>
 
                         {{ mortgage_form.DISCOUNT_MARKUP_SOURCE }}
+                        {{ mortgage_form.INITIAL_PAYMENT_SOURCE }}
 
                         <div class="mb-3">
                             <label class="form-label d-block">{{ mortgage_form.DISCOUNT_MARKUP_TYPE.label }}</label>
@@ -52,18 +99,50 @@
 
                         <div class="row g-3 mb-3">
                             <div class="col-6">
-                                <label id="discount_markup_percent_label" for="{{ mortgage_form.DISCOUNT_MARKUP_VALUE.id_for_label }}" class="form-label">
-                                    {% if mortgage_form.DISCOUNT_MARKUP_TYPE.value == 'markup' %}Удорожание, %{% else %}Скидка, %{% endif %}
-                                </label>
+                                <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                                    <label id="discount_markup_percent_label" for="{{ mortgage_form.DISCOUNT_MARKUP_VALUE.id_for_label }}" class="form-label mb-0">
+                                        {% if mortgage_form.DISCOUNT_MARKUP_TYPE.value == 'markup' %}Удорожание, %{% else %}Скидка, %{% endif %}
+                                    </label>
+                                    <button
+                                        type="button"
+                                        id="discount_markup_percent_lock"
+                                        class="btn btn-outline-secondary value-lock-button"
+                                        data-lock-group="discount_markup"
+                                        data-lock-source="percent"
+                                        data-lock-label="процентах"
+                                        aria-pressed="false"
+                                        title="Зафиксировать значение в процентах"
+                                        onclick="setDiscountMarkupLock('percent')"
+                                    >
+                                        <span class="lock-icon" aria-hidden="true"></span>
+                                        <span class="visually-hidden">Зафиксировать значение в процентах</span>
+                                    </button>
+                                </div>
                                 {{ mortgage_form.DISCOUNT_MARKUP_VALUE }}
                                 {% for error in mortgage_form.DISCOUNT_MARKUP_VALUE.errors %}
                                     <div class="invalid-feedback d-block">{{ error }}</div>
                                 {% endfor %}
                             </div>
                             <div class="col-6">
-                                <label id="discount_markup_rubles_label" for="{{ mortgage_form.DISCOUNT_MARKUP_RUBLES.id_for_label }}" class="form-label">
-                                    {% if mortgage_form.DISCOUNT_MARKUP_TYPE.value == 'markup' %}Удорожание, руб.{% else %}Скидка, руб.{% endif %}
-                                </label>
+                                <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                                    <label id="discount_markup_rubles_label" for="{{ mortgage_form.DISCOUNT_MARKUP_RUBLES.id_for_label }}" class="form-label mb-0">
+                                        {% if mortgage_form.DISCOUNT_MARKUP_TYPE.value == 'markup' %}Удорожание, руб.{% else %}Скидка, руб.{% endif %}
+                                    </label>
+                                    <button
+                                        type="button"
+                                        id="discount_markup_rubles_lock"
+                                        class="btn btn-outline-secondary value-lock-button"
+                                        data-lock-group="discount_markup"
+                                        data-lock-source="rubles"
+                                        data-lock-label="рублях"
+                                        aria-pressed="false"
+                                        title="Зафиксировать значение в рублях"
+                                        onclick="setDiscountMarkupLock('rubles')"
+                                    >
+                                        <span class="lock-icon" aria-hidden="true"></span>
+                                        <span class="visually-hidden">Зафиксировать значение в рублях</span>
+                                    </button>
+                                </div>
                                 {{ mortgage_form.DISCOUNT_MARKUP_RUBLES }}
                                 {% for error in mortgage_form.DISCOUNT_MARKUP_RUBLES.errors %}
                                     <div class="invalid-feedback d-block">{{ error }}</div>
@@ -91,14 +170,46 @@
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-6">
-                                <label for="{{ mortgage_form.INITIAL_PAYMENT_PERCENT.id_for_label }}" class="form-label">{{ mortgage_form.INITIAL_PAYMENT_PERCENT.label }}</label>
+                                <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                                    <label for="{{ mortgage_form.INITIAL_PAYMENT_PERCENT.id_for_label }}" class="form-label mb-0">{{ mortgage_form.INITIAL_PAYMENT_PERCENT.label }}</label>
+                                    <button
+                                        type="button"
+                                        id="initial_payment_percent_lock"
+                                        class="btn btn-outline-secondary value-lock-button"
+                                        data-lock-group="initial_payment"
+                                        data-lock-source="percent"
+                                        data-lock-label="процентах"
+                                        aria-pressed="false"
+                                        title="Зафиксировать значение в процентах"
+                                        onclick="setInitialPaymentLock('percent')"
+                                    >
+                                        <span class="lock-icon" aria-hidden="true"></span>
+                                        <span class="visually-hidden">Зафиксировать значение в процентах</span>
+                                    </button>
+                                </div>
                                 {{ mortgage_form.INITIAL_PAYMENT_PERCENT }}
                                 {% for error in mortgage_form.INITIAL_PAYMENT_PERCENT.errors %}
                                     <div class="invalid-feedback d-block">{{ error }}</div>
                                 {% endfor %}
                             </div>
                             <div class="col-6">
-                                <label for="{{ mortgage_form.INITIAL_PAYMENT_RUBLES.id_for_label }}" class="form-label">{{ mortgage_form.INITIAL_PAYMENT_RUBLES.label }}</label>
+                                <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                                    <label for="{{ mortgage_form.INITIAL_PAYMENT_RUBLES.id_for_label }}" class="form-label mb-0">{{ mortgage_form.INITIAL_PAYMENT_RUBLES.label }}</label>
+                                    <button
+                                        type="button"
+                                        id="initial_payment_rubles_lock"
+                                        class="btn btn-outline-secondary value-lock-button"
+                                        data-lock-group="initial_payment"
+                                        data-lock-source="rubles"
+                                        data-lock-label="рублях"
+                                        aria-pressed="false"
+                                        title="Зафиксировать значение в рублях"
+                                        onclick="setInitialPaymentLock('rubles')"
+                                    >
+                                        <span class="lock-icon" aria-hidden="true"></span>
+                                        <span class="visually-hidden">Зафиксировать значение в рублях</span>
+                                    </button>
+                                </div>
                                 {{ mortgage_form.INITIAL_PAYMENT_RUBLES }}
                                 {% for error in mortgage_form.INITIAL_PAYMENT_RUBLES.errors %}
                                     <div class="invalid-feedback d-block">{{ error }}</div>
@@ -291,6 +402,36 @@ function setDiscountMarkupSource(source) {
     if (input) {
         input.value = source === 'rubles' ? 'rubles' : 'percent';
     }
+    updateLockButtons('discount_markup', getDiscountMarkupSource());
+}
+
+function getInitialPaymentSourceInput() {
+    return document.getElementById('initial_payment_source');
+}
+
+function getInitialPaymentSource() {
+    const input = getInitialPaymentSourceInput();
+    return input && input.value === 'rubles' ? 'rubles' : 'percent';
+}
+
+function setInitialPaymentSource(source) {
+    const input = getInitialPaymentSourceInput();
+    if (input) {
+        input.value = source === 'rubles' ? 'rubles' : 'percent';
+    }
+    updateLockButtons('initial_payment', getInitialPaymentSource());
+}
+
+function updateLockButtons(group, source) {
+    document.querySelectorAll(`[data-lock-group="${group}"]`).forEach((button) => {
+        const locked = button.dataset.lockSource === source;
+        const label = button.dataset.lockLabel || '';
+        button.classList.toggle('is-locked', locked);
+        button.setAttribute('aria-pressed', locked ? 'true' : 'false');
+        button.title = locked
+            ? `Значение зафиксировано в ${label}`
+            : `Зафиксировать значение в ${label}`;
+    });
 }
 
 function getPropertyCostNumber() {
@@ -375,7 +516,7 @@ function updateFinalPropertyCost() {
 
     const finalCost = getFinalPropertyCostNumber();
     finalField.value = formatMoney(finalCost);
-    updateInitialPaymentRubles();
+    syncInitialPaymentValues();
 }
 
 function handlePropertyCostChange() {
@@ -395,9 +536,24 @@ function handleDiscountMarkupRublesInput() {
     updateFinalPropertyCost();
 }
 
+function setDiscountMarkupLock(source) {
+    setDiscountMarkupSource(source);
+    syncDiscountMarkupValues();
+    updateFinalPropertyCost();
+}
+
 function handleDiscountMarkupTypeChange() {
     updateDiscountMarkupLabels();
     updateFinalPropertyCost();
+}
+
+function syncInitialPaymentValues() {
+    if (getInitialPaymentSource() === 'rubles') {
+        updateInitialPaymentPercent();
+        return;
+    }
+
+    updateInitialPaymentRubles();
 }
 
 function updateInitialPaymentRubles() {
@@ -430,6 +586,21 @@ function updateInitialPaymentPercent() {
     }
 
     percentInput.value = (rubles / finalCost * 100).toFixed(2);
+}
+
+function handleInitialPaymentPercentInput() {
+    setInitialPaymentSource('percent');
+    updateInitialPaymentRubles();
+}
+
+function handleInitialPaymentRublesInput() {
+    setInitialPaymentSource('rubles');
+    updateInitialPaymentPercent();
+}
+
+function setInitialPaymentLock(source) {
+    setInitialPaymentSource(source);
+    syncInitialPaymentValues();
 }
 
 function toggleGracePeriod() {
@@ -484,12 +655,18 @@ window.handlePropertyCostChange = handlePropertyCostChange;
 window.handleDiscountMarkupPercentInput = handleDiscountMarkupPercentInput;
 window.handleDiscountMarkupRublesInput = handleDiscountMarkupRublesInput;
 window.handleDiscountMarkupTypeChange = handleDiscountMarkupTypeChange;
+window.setDiscountMarkupLock = setDiscountMarkupLock;
 window.updateInitialPaymentRubles = updateInitialPaymentRubles;
 window.updateInitialPaymentPercent = updateInitialPaymentPercent;
+window.handleInitialPaymentPercentInput = handleInitialPaymentPercentInput;
+window.handleInitialPaymentRublesInput = handleInitialPaymentRublesInput;
+window.setInitialPaymentLock = setInitialPaymentLock;
 window.toggleGracePeriod = toggleGracePeriod;
 window.updatePropertyCost = updatePropertyCost;
 
 document.addEventListener('DOMContentLoaded', function () {
+    updateLockButtons('discount_markup', getDiscountMarkupSource());
+    updateLockButtons('initial_payment', getInitialPaymentSource());
     updateDiscountMarkupLabels();
     syncDiscountMarkupValues();
     updateFinalPropertyCost();

@@ -97,7 +97,7 @@ class MortgageForm(forms.Form):
                 'class': 'form-control',
                 'step': '0.01',
                 'id': 'initial_payment_percent',
-                'oninput': 'updateInitialPaymentRubles()',
+                'oninput': 'handleInitialPaymentPercentInput()',
             }
         ),
     )
@@ -112,9 +112,16 @@ class MortgageForm(forms.Form):
                 'class': 'form-control',
                 'step': '0.01',
                 'id': 'initial_payment_rubles',
-                'oninput': 'updateInitialPaymentPercent()',
+                'oninput': 'handleInitialPaymentRublesInput()',
             }
         ),
+    )
+
+    INITIAL_PAYMENT_SOURCE = forms.ChoiceField(
+        choices=[('percent', 'percent'), ('rubles', 'rubles')],
+        initial='percent',
+        required=False,
+        widget=forms.HiddenInput(attrs={'id': 'initial_payment_source'}),
     )
 
     INITIAL_PAYMENT_DATE = forms.DateField(

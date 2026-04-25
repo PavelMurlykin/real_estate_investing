@@ -58,26 +58,15 @@ def _normalize_initial_payment_values(cleaned_data, final_property_cost):
     initial_payment_rubles = float(
         cleaned_data.get('INITIAL_PAYMENT_RUBLES', 0) or 0
     )
+    initial_payment_source = cleaned_data.get('INITIAL_PAYMENT_SOURCE')
 
-    if (
-        initial_payment_rubles
-        and not initial_payment_percent
-        and final_property_cost > 0
-    ):
+    if initial_payment_source == 'rubles':
         initial_payment_percent = (
-            initial_payment_rubles / final_property_cost
-        ) * 100
-
-    if (
-        initial_payment_percent
-        and not initial_payment_rubles
-        and final_property_cost > 0
-    ):
-        initial_payment_rubles = (
-            final_property_cost * initial_payment_percent / 100
+            initial_payment_rubles / final_property_cost * 100
+            if final_property_cost > 0
+            else 0
         )
-
-    if initial_payment_percent and initial_payment_rubles:
+    else:
         initial_payment_rubles = (
             final_property_cost * initial_payment_percent / 100
         )
