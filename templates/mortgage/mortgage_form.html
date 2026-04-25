@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}
     Ипотечный калькулятор
@@ -9,43 +10,33 @@
     .value-lock-button {
         align-items: center;
         display: inline-flex;
-        height: 1.875rem;
         justify-content: center;
         padding: 0;
-        width: 1.875rem;
-    }
-
-    .lock-icon {
-        border: 2px solid currentColor;
-        border-radius: 0.1875rem;
-        display: inline-block;
-        height: 0.625rem;
-        position: relative;
-        width: 0.875rem;
-    }
-
-    .lock-icon::before {
-        border: 2px solid currentColor;
-        border-bottom: 0;
-        border-radius: 0.5rem 0.5rem 0 0;
-        content: "";
-        height: 0.625rem;
-        left: 0.0625rem;
-        position: absolute;
-        top: -0.6875rem;
-        width: 0.5rem;
-    }
-
-    .value-lock-button:not(.is-locked) .lock-icon::before {
-        left: 0.25rem;
-        transform: rotate(25deg);
-        transform-origin: left bottom;
+        width: 2.75rem;
     }
 
     .value-lock-button.is-locked {
         background-color: var(--bs-primary);
         border-color: var(--bs-primary);
         color: var(--bs-white);
+    }
+
+    .lock-icon-img {
+        height: 1.125rem;
+        object-fit: contain;
+        width: 1.125rem;
+    }
+
+    .lock-icon-img-locked {
+        display: none;
+    }
+
+    .value-lock-button.is-locked .lock-icon-img-locked {
+        display: inline-block;
+    }
+
+    .value-lock-button.is-locked .lock-icon-img-unlocked {
+        display: none;
     }
 </style>
 {% endblock %}
@@ -99,10 +90,11 @@
 
                         <div class="row g-3 mb-3">
                             <div class="col-6">
-                                <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
-                                    <label id="discount_markup_percent_label" for="{{ mortgage_form.DISCOUNT_MARKUP_VALUE.id_for_label }}" class="form-label mb-0">
-                                        {% if mortgage_form.DISCOUNT_MARKUP_TYPE.value == 'markup' %}Удорожание, %{% else %}Скидка, %{% endif %}
-                                    </label>
+                                <label id="discount_markup_percent_label" for="{{ mortgage_form.DISCOUNT_MARKUP_VALUE.id_for_label }}" class="form-label">
+                                    {% if mortgage_form.DISCOUNT_MARKUP_TYPE.value == 'markup' %}Удорожание, %{% else %}Скидка, %{% endif %}
+                                </label>
+                                <div class="input-group">
+                                    {{ mortgage_form.DISCOUNT_MARKUP_VALUE }}
                                     <button
                                         type="button"
                                         id="discount_markup_percent_lock"
@@ -114,20 +106,21 @@
                                         title="Зафиксировать значение в процентах"
                                         onclick="setDiscountMarkupLock('percent')"
                                     >
-                                        <span class="lock-icon" aria-hidden="true"></span>
+                                        <img class="lock-icon-img lock-icon-img-unlocked" src="{% static 'img/unlock.png' %}" alt="" aria-hidden="true">
+                                        <img class="lock-icon-img lock-icon-img-locked" src="{% static 'img/lock.png' %}" alt="" aria-hidden="true">
                                         <span class="visually-hidden">Зафиксировать значение в процентах</span>
                                     </button>
                                 </div>
-                                {{ mortgage_form.DISCOUNT_MARKUP_VALUE }}
                                 {% for error in mortgage_form.DISCOUNT_MARKUP_VALUE.errors %}
                                     <div class="invalid-feedback d-block">{{ error }}</div>
                                 {% endfor %}
                             </div>
                             <div class="col-6">
-                                <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
-                                    <label id="discount_markup_rubles_label" for="{{ mortgage_form.DISCOUNT_MARKUP_RUBLES.id_for_label }}" class="form-label mb-0">
-                                        {% if mortgage_form.DISCOUNT_MARKUP_TYPE.value == 'markup' %}Удорожание, руб.{% else %}Скидка, руб.{% endif %}
-                                    </label>
+                                <label id="discount_markup_rubles_label" for="{{ mortgage_form.DISCOUNT_MARKUP_RUBLES.id_for_label }}" class="form-label">
+                                    {% if mortgage_form.DISCOUNT_MARKUP_TYPE.value == 'markup' %}Удорожание, руб.{% else %}Скидка, руб.{% endif %}
+                                </label>
+                                <div class="input-group">
+                                    {{ mortgage_form.DISCOUNT_MARKUP_RUBLES }}
                                     <button
                                         type="button"
                                         id="discount_markup_rubles_lock"
@@ -139,11 +132,11 @@
                                         title="Зафиксировать значение в рублях"
                                         onclick="setDiscountMarkupLock('rubles')"
                                     >
-                                        <span class="lock-icon" aria-hidden="true"></span>
+                                        <img class="lock-icon-img lock-icon-img-unlocked" src="{% static 'img/unlock.png' %}" alt="" aria-hidden="true">
+                                        <img class="lock-icon-img lock-icon-img-locked" src="{% static 'img/lock.png' %}" alt="" aria-hidden="true">
                                         <span class="visually-hidden">Зафиксировать значение в рублях</span>
                                     </button>
                                 </div>
-                                {{ mortgage_form.DISCOUNT_MARKUP_RUBLES }}
                                 {% for error in mortgage_form.DISCOUNT_MARKUP_RUBLES.errors %}
                                     <div class="invalid-feedback d-block">{{ error }}</div>
                                 {% endfor %}
@@ -170,8 +163,9 @@
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-6">
-                                <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
-                                    <label for="{{ mortgage_form.INITIAL_PAYMENT_PERCENT.id_for_label }}" class="form-label mb-0">{{ mortgage_form.INITIAL_PAYMENT_PERCENT.label }}</label>
+                                <label for="{{ mortgage_form.INITIAL_PAYMENT_PERCENT.id_for_label }}" class="form-label">{{ mortgage_form.INITIAL_PAYMENT_PERCENT.label }}</label>
+                                <div class="input-group">
+                                    {{ mortgage_form.INITIAL_PAYMENT_PERCENT }}
                                     <button
                                         type="button"
                                         id="initial_payment_percent_lock"
@@ -183,18 +177,19 @@
                                         title="Зафиксировать значение в процентах"
                                         onclick="setInitialPaymentLock('percent')"
                                     >
-                                        <span class="lock-icon" aria-hidden="true"></span>
+                                        <img class="lock-icon-img lock-icon-img-unlocked" src="{% static 'img/unlock.png' %}" alt="" aria-hidden="true">
+                                        <img class="lock-icon-img lock-icon-img-locked" src="{% static 'img/lock.png' %}" alt="" aria-hidden="true">
                                         <span class="visually-hidden">Зафиксировать значение в процентах</span>
                                     </button>
                                 </div>
-                                {{ mortgage_form.INITIAL_PAYMENT_PERCENT }}
                                 {% for error in mortgage_form.INITIAL_PAYMENT_PERCENT.errors %}
                                     <div class="invalid-feedback d-block">{{ error }}</div>
                                 {% endfor %}
                             </div>
                             <div class="col-6">
-                                <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
-                                    <label for="{{ mortgage_form.INITIAL_PAYMENT_RUBLES.id_for_label }}" class="form-label mb-0">{{ mortgage_form.INITIAL_PAYMENT_RUBLES.label }}</label>
+                                <label for="{{ mortgage_form.INITIAL_PAYMENT_RUBLES.id_for_label }}" class="form-label">{{ mortgage_form.INITIAL_PAYMENT_RUBLES.label }}</label>
+                                <div class="input-group">
+                                    {{ mortgage_form.INITIAL_PAYMENT_RUBLES }}
                                     <button
                                         type="button"
                                         id="initial_payment_rubles_lock"
@@ -206,11 +201,11 @@
                                         title="Зафиксировать значение в рублях"
                                         onclick="setInitialPaymentLock('rubles')"
                                     >
-                                        <span class="lock-icon" aria-hidden="true"></span>
+                                        <img class="lock-icon-img lock-icon-img-unlocked" src="{% static 'img/unlock.png' %}" alt="" aria-hidden="true">
+                                        <img class="lock-icon-img lock-icon-img-locked" src="{% static 'img/lock.png' %}" alt="" aria-hidden="true">
                                         <span class="visually-hidden">Зафиксировать значение в рублях</span>
                                     </button>
                                 </div>
-                                {{ mortgage_form.INITIAL_PAYMENT_RUBLES }}
                                 {% for error in mortgage_form.INITIAL_PAYMENT_RUBLES.errors %}
                                     <div class="invalid-feedback d-block">{{ error }}</div>
                                 {% endfor %}
