@@ -32,7 +32,7 @@
                                 <td>{{ calculation.property.building.real_estate_complex.name }}, кв. {{ calculation.property.apartment_number }}</td>
                                 <td>{{ calculation.final_property_cost|floatformat:2 }} руб.</td>
                                 <td>{{ calculation.initial_payment_percent }}%</td>
-                                <td>{{ calculation.mortgage_term }} лет</td>
+                                <td>{{ calculation.mortgage_term }} мес.</td>
                                 <td>{{ calculation.annual_rate }}%</td>
                                 <td>
                                     <a href="{% url 'mortgage:calculation_detail' calculation.pk %}" class="btn btn-sm btn-outline-primary">

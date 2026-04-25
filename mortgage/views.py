@@ -415,6 +415,10 @@ def mortgage_calculator(request):
                     ],
                     [
                         'Срок ипотеки, годы',
+                        int(mortgage_data['MORTGAGE_TERM_YEARS']),
+                    ],
+                    [
+                        'Срок ипотеки, мес.',
                         int(mortgage_data['MORTGAGE_TERM']),
                     ],
                     ['Годовая ставка, %', float(mortgage_data['ANNUAL_RATE'])],
@@ -431,7 +435,14 @@ def mortgage_calculator(request):
                         [
                             [
                                 'Срок льготного периода, годы',
-                                int(mortgage_data['GRACE_PERIOD_TERM']),
+                                int(
+                                    mortgage_data['GRACE_PERIOD_TERM_YEARS']
+                                    or 0
+                                ),
+                            ],
+                            [
+                                'Срок льготного периода, мес.',
+                                int(mortgage_data['GRACE_PERIOD_TERM'] or 0),
                             ],
                             [
                                 'Годовая ставка в льготный период, %',
@@ -450,7 +461,9 @@ def mortgage_calculator(request):
                     if isinstance(value, (int, float)):
                         if param in [
                             'Срок ипотеки, годы',
+                            'Срок ипотеки, мес.',
                             'Срок льготного периода, годы',
+                            'Срок льготного периода, мес.',
                         ]:
                             cell.value = int(value)
                             cell.style = integer_style

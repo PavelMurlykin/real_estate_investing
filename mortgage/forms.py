@@ -137,12 +137,33 @@ class MortgageForm(forms.Form):
         initial=date.today,
     )
 
-    MORTGAGE_TERM = forms.IntegerField(
+    MORTGAGE_TERM_YEARS = forms.IntegerField(
         label='Срок ипотеки, годы',
-        min_value=1,
+        min_value=0,
         max_value=50,
         initial=30,
-        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+        required=False,
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'id': 'mortgage_term_years',
+                'oninput': 'handleMortgageTermYearsInput()',
+            }
+        ),
+    )
+
+    MORTGAGE_TERM = forms.IntegerField(
+        label='Срок ипотеки, мес.',
+        min_value=1,
+        max_value=600,
+        initial=360,
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'id': 'mortgage_term_months',
+                'oninput': 'handleMortgageTermMonthsInput()',
+            }
+        ),
     )
 
     ANNUAL_RATE = forms.DecimalField(
@@ -163,12 +184,32 @@ class MortgageForm(forms.Form):
         initial='no',
     )
 
-    GRACE_PERIOD_TERM = forms.IntegerField(
+    GRACE_PERIOD_TERM_YEARS = forms.IntegerField(
         label='Срок льготного периода, годы',
         min_value=0,
         max_value=50,
         required=False,
-        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'id': 'grace_period_term_years',
+                'oninput': 'handleGracePeriodTermYearsInput()',
+            }
+        ),
+    )
+
+    GRACE_PERIOD_TERM = forms.IntegerField(
+        label='Срок льготного периода, мес.',
+        min_value=0,
+        max_value=600,
+        required=False,
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'id': 'grace_period_term_months',
+                'oninput': 'handleGracePeriodTermMonthsInput()',
+            }
+        ),
     )
 
     GRACE_PERIOD_RATE = forms.DecimalField(
@@ -216,8 +257,24 @@ class MortgageForm(forms.Form):
         cleaned_data = super().clean()
         has_grace_period = cleaned_data.get('HAS_GRACE_PERIOD')
         grace_period_term = cleaned_data.get('GRACE_PERIOD_TERM')
+        grace_period_term_years = cleaned_data.get('GRACE_PERIOD_TERM_YEARS')
         grace_period_rate = cleaned_data.get('GRACE_PERIOD_RATE')
         mortgage_term = cleaned_data.get('MORTGAGE_TERM')
+        mortgage_term_years = cleaned_data.get('MORTGAGE_TERM_YEARS')
+
+        if mortgage_term is not None:
+            cleaned_data['MORTGAGE_TERM_YEARS'] = mortgage_term // 12
+        elif mortgage_term_years is not None:
+            cleaned_data['MORTGAGE_TERM'] = mortgage_term_years * 12
+            mortgage_term = cleaned_data['MORTGAGE_TERM']
+
+        if grace_period_term is not None:
+            cleaned_data['GRACE_PERIOD_TERM_YEARS'] = (
+                grace_period_term // 12
+            )
+        elif grace_period_term_years is not None:
+            cleaned_data['GRACE_PERIOD_TERM'] = grace_period_term_years * 12
+            grace_period_term = cleaned_data['GRACE_PERIOD_TERM']
 
         if has_grace_period == 'yes':
             if grace_period_term is None:
