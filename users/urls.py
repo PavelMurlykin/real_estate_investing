@@ -38,6 +38,7 @@ urlpatterns = [
             template_name='users/password_reset_form.html',
             email_template_name='users/password_reset_email.html',
             subject_template_name='users/password_reset_subject.txt',
+            success_url=reverse_lazy('users:password_reset_done'),
         ),
         name='password_reset',
     ),
@@ -52,6 +53,7 @@ urlpatterns = [
         'password/reset/<uidb64>/<token>/',
         auth_views.PasswordResetConfirmView.as_view(
             template_name='users/password_reset_confirm.html',
+            success_url=reverse_lazy('users:password_reset_complete'),
         ),
         name='password_reset_confirm',
     ),
