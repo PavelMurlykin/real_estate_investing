@@ -6,6 +6,7 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 from mortgage.utils import (
     apply_calculation_filters,
     apply_calculation_sort,
+    annotate_calculation_table_values,
     build_calculation_table_headers,
     format_currency,
     get_calculation_filters,
@@ -178,7 +179,10 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
             )
         )
         customer_calculations = apply_calculation_filters(
-            customer_calculations,
+            annotate_calculation_table_values(
+                customer_calculations,
+                prefix='calculation__',
+            ),
             calculation_filters,
             prefix='calculation__',
         )

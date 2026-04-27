@@ -1,14 +1,14 @@
 # mortgage/utils.py
 from decimal import Decimal, InvalidOperation
 
-from django.db.models import Q
+from django.db.models import DecimalField, ExpressionWrapper, F, Q, Value
 
 
 CALCULATION_SORT_FIELDS = {
     'timestamp': 'timestamp',
     'object': 'property__building__real_estate_complex__name',
     'cost': 'final_property_cost',
-    'initial_payment': 'initial_payment_percent',
+    'initial_payment': 'table_initial_payment_amount',
     'monthly_payment': 'main_monthly_payment',
     'term': 'mortgage_term',
     'rate': 'annual_rate',
@@ -26,7 +26,20 @@ CALCULATION_TABLE_HEADERS = (
 
 
 def _prefixed(field, prefix):
+    if field == 'table_initial_payment_amount':
+        return field
     return f'{prefix}{field}' if prefix else field
+
+
+def annotate_calculation_table_values(queryset, prefix=''):
+    return queryset.annotate(
+        table_initial_payment_amount=ExpressionWrapper(
+            F(_prefixed('final_property_cost', prefix))
+            * F(_prefixed('initial_payment_percent', prefix))
+            / Value(Decimal('100')),
+            output_field=DecimalField(max_digits=15, decimal_places=2),
+        )
+    )
 
 
 def _parse_decimal(value):
@@ -78,6 +91,22 @@ def _apply_decimal_range(queryset, filters, prefix, field, filter_name):
     return queryset
 
 
+def _apply_years_range(queryset, filters, prefix, field, filter_name):
+    from_value = _parse_decimal(filters.get(f'{filter_name}_from'))
+    if from_value is not None:
+        queryset = queryset.filter(
+            **{f'{_prefixed(field, prefix)}__gte': from_value * 12}
+        )
+
+    to_value = _parse_decimal(filters.get(f'{filter_name}_to'))
+    if to_value is not None:
+        queryset = queryset.filter(
+            **{f'{_prefixed(field, prefix)}__lte': to_value * 12}
+        )
+
+    return queryset
+
+
 def apply_calculation_filters(queryset, filters, prefix=''):
     search = filters.get('q')
     if search:
@@ -107,13 +136,13 @@ def apply_calculation_filters(queryset, filters, prefix=''):
         queryset,
         filters,
         prefix,
-        'initial_payment_percent',
+        'table_initial_payment_amount',
         'initial_payment',
     )
     queryset = _apply_decimal_range(
         queryset, filters, prefix, 'main_monthly_payment', 'monthly_payment'
     )
-    queryset = _apply_decimal_range(
+    queryset = _apply_years_range(
         queryset, filters, prefix, 'mortgage_term', 'term'
     )
     queryset = _apply_decimal_range(
@@ -201,3 +230,23 @@ def format_integer(value):
         return f'{num:,}'.replace(',', ' ')
     except (ValueError, TypeError):
         return str(value)
+
+
+def format_years_label(value):
+    try:
+        years = int(value)
+    except (TypeError, ValueError):
+        return ''
+
+    remainder_100 = years % 100
+    remainder_10 = years % 10
+    if 11 <= remainder_100 <= 14:
+        label = 'лет'
+    elif remainder_10 == 1:
+        label = 'год'
+    elif 2 <= remainder_10 <= 4:
+        label = 'года'
+    else:
+        label = 'лет'
+
+    return f'{years} {label}'

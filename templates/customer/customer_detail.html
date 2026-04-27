@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load mortgage_filters %}
 
 {% block title %}Карточка клиента #{{ customer.id }}{% endblock %}
 
@@ -187,7 +188,7 @@
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">
-                    <label class="form-label">Первоначальный взнос, %</label>
+                    <label class="form-label">Первоначальный взнос</label>
                     <div class="input-group">
                         <input
                             type="number"
@@ -233,7 +234,7 @@
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">
-                    <label class="form-label">Срок, мес.</label>
+                    <label class="form-label">Срок, лет</label>
                     <div class="input-group">
                         <input
                             type="number"
@@ -305,10 +306,10 @@
                                     <tr>
                                         <td>{{ calculation.timestamp|date:"d.m.Y H:i" }}</td>
                                         <td>{{ calculation.property.building.real_estate_complex.name }}, кв. {{ calculation.property.apartment_number }}</td>
-                                        <td>{{ calculation.final_property_cost|floatformat:2 }} руб.</td>
-                                        <td>{{ calculation.initial_payment_percent }}%</td>
-                                        <td>{{ calculation.main_monthly_payment|floatformat:2 }} руб.</td>
-                                        <td>{{ calculation.mortgage_term }} мес.</td>
+                                        <td>{{ calculation.final_property_cost|currency }} руб.</td>
+                                        <td>{{ customer_calculation.table_initial_payment_amount|currency }} руб.</td>
+                                        <td>{{ calculation.main_monthly_payment|currency }} руб.</td>
+                                        <td>{{ calculation.mortgage_term|years_label_from_months }}</td>
                                         <td>{{ calculation.annual_rate }}%</td>
                                         <td>
                                             <a href="{% url 'mortgage:calculation_detail' calculation.pk %}" class="btn btn-sm btn-outline-primary">

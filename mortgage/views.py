@@ -17,6 +17,7 @@ from .mortgage_calculator import MortgageCalculator
 from .utils import (
     apply_calculation_filters,
     apply_calculation_sort,
+    annotate_calculation_table_values,
     build_calculation_table_headers,
     format_currency,
     get_calculation_filters,
@@ -733,7 +734,7 @@ def calculation_list(request):
         .all()
     )
     calculations = apply_calculation_filters(
-        calculations, calculation_filters
+        annotate_calculation_table_values(calculations), calculation_filters
     )
     calculations = apply_calculation_sort(
         calculations, calculation_sort, calculation_order
