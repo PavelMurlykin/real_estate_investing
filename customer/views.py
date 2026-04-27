@@ -6,7 +6,7 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 from mortgage.utils import format_currency
 
 from .forms import CustomerForm
-from .models import Customer
+from .models import Customer, CustomerCalculation
 
 
 class CustomerOwnedQuerysetMixin(LoginRequiredMixin):
@@ -157,6 +157,16 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
             if max_property_cost is not None
             else '',
         }
+        context['customer_calculations'] = (
+            CustomerCalculation.objects.filter(customer=customer)
+            .select_related(
+                'calculation',
+                'calculation__property',
+                'calculation__property__building',
+                'calculation__property__building__real_estate_complex',
+            )
+            .order_by('-calculation__timestamp')
+        )
         return context
 
 
