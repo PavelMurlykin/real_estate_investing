@@ -250,3 +250,41 @@ def format_years_label(value):
         label = 'лет'
 
     return f'{years} {label}'
+
+
+def format_months_label(value):
+    try:
+        months = int(value)
+    except (TypeError, ValueError):
+        return ''
+
+    remainder_100 = months % 100
+    remainder_10 = months % 10
+    if 11 <= remainder_100 <= 14:
+        label = 'месяцев'
+    elif remainder_10 == 1:
+        label = 'месяц'
+    elif 2 <= remainder_10 <= 4:
+        label = 'месяца'
+    else:
+        label = 'месяцев'
+
+    return f'{months} {label}'
+
+
+def format_term_from_months(value):
+    try:
+        total_months = int(value)
+    except (TypeError, ValueError):
+        return ''
+
+    years = total_months // 12
+    months = total_months % 12
+    parts = []
+
+    if years:
+        parts.append(format_years_label(years))
+    if months:
+        parts.append(format_months_label(months))
+
+    return ' '.join(parts) if parts else format_months_label(0)

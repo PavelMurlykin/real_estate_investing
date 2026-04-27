@@ -1,6 +1,10 @@
 from django import template
 
-from mortgage.utils import format_currency, format_years_label
+from mortgage.utils import (
+    format_currency,
+    format_term_from_months,
+    format_years_label,
+)
 
 register = template.Library()
 
@@ -18,3 +22,8 @@ def years_label_from_months(value):
         return ''
 
     return format_years_label(months // 12)
+
+
+@register.filter
+def term_from_months(value):
+    return format_term_from_months(value)
