@@ -2,6 +2,7 @@
 import decimal
 
 import openpyxl
+from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -14,6 +15,28 @@ from .forms import MortgageForm
 from .models import MortgageCalculation
 from .mortgage_calculator import MortgageCalculator
 from .utils import format_currency
+
+
+def _get_target_customer(request):
+    customer_id = request.POST.get('customer') or request.GET.get('customer')
+    if not customer_id or not request.user.is_authenticated:
+        return None
+
+    from customer.models import Customer
+
+    return get_object_or_404(Customer, pk=customer_id, user=request.user)
+
+
+def _attach_calculation_to_customer(customer, calculation):
+    if customer is None:
+        return
+
+    from customer.models import CustomerCalculation
+
+    CustomerCalculation.objects.get_or_create(
+        customer=customer,
+        calculation=calculation,
+    )
 
 
 def _normalize_discount_markup_values(cleaned_data):
@@ -95,6 +118,8 @@ def mortgage_calculator(request):
     Возвращает:
         Any: Тип результата определяется вызывающим кодом.
     """
+    target_customer = _get_target_customer(request)
+
     if request.method == 'POST':
         form_data = request.POST.copy()
         selected_id = form_data.get('PROPERTY')
@@ -111,6 +136,7 @@ def mortgage_calculator(request):
 
     context = {
         'mortgage_form': mortgage_form,
+        'target_customer': target_customer,
     }
 
     if request.method == 'POST':
@@ -228,6 +254,12 @@ def mortgage_calculator(request):
                     ),
                 )
                 calculation.save()
+                _attach_calculation_to_customer(target_customer, calculation)
+                if target_customer is not None:
+                    messages.success(
+                        request,
+                        'Расчет сохранен и привязан к клиенту.',
+                    )
 
                 # Сохраняем расчет в контекст
                 context['result'] = formatted_result
@@ -665,13 +697,47 @@ def property_cost_api(request, pk):
 
 def calculation_list(request):
     """Список всех расчетов"""
+    target_customer = _get_target_customer(request)
+
+    if request.method == 'POST' and target_customer is not None:
+        selected_ids = request.POST.getlist('calculations')
+        calculations = MortgageCalculation.objects.filter(pk__in=selected_ids)
+
+        for calculation in calculations:
+            _attach_calculation_to_customer(target_customer, calculation)
+
+        if selected_ids:
+            messages.success(
+                request,
+                'Выбранные расчеты добавлены в карточку клиента.',
+            )
+        else:
+            messages.info(request, 'Расчеты для добавления не выбраны.')
+        return redirect('customer:detail', pk=target_customer.pk)
+
     calculations = (
-        MortgageCalculation.objects.select_related('property')
+        MortgageCalculation.objects.select_related(
+            'property',
+            'property__building',
+            'property__building__real_estate_complex',
+        )
         .all()
         .order_by('-timestamp')
     )
+    linked_calculation_ids = []
+    if target_customer is not None:
+        linked_calculation_ids = list(
+            target_customer.saved_calculations.values_list('pk', flat=True)
+        )
+
     return render(
-        request, 'mortgage/mortgage_list.html', {'calculations': calculations}
+        request,
+        'mortgage/mortgage_list.html',
+        {
+            'calculations': calculations,
+            'target_customer': target_customer,
+            'linked_calculation_ids': linked_calculation_ids,
+        },
     )
 
 
