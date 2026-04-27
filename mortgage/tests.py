@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 
 from django.test import TestCase
@@ -77,6 +78,23 @@ class MortgageCalculatorViewTests(TestCase):
             property_cost=cost,
         )
 
+    def _create_calculation(self) -> MortgageCalculation:
+        return MortgageCalculation.objects.create(
+            property=self.property,
+            base_property_cost=Decimal('5000000.00'),
+            initial_payment_percent=Decimal('20.00'),
+            initial_payment_date=date(2026, 1, 1),
+            mortgage_term=240,
+            annual_rate=Decimal('12.00'),
+            has_grace_period=False,
+            final_property_cost=Decimal('5000000.00'),
+            main_payments_count=240,
+            mortgage_end_date=date(2046, 1, 1),
+            main_monthly_payment=Decimal('55054.31'),
+            total_loan_amount=Decimal('4000000.00'),
+            total_overpayment=Decimal('9213034.40'),
+        )
+
     def _base_payload(self) -> dict:
         """Описание метода _base_payload.
 
@@ -116,6 +134,41 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, 'initial_payment_percent_lock')
         self.assertContains(response, 'Срок ипотеки, мес.')
         self.assertContains(response, 'Срок льготного периода, мес.')
+
+    def test_calculation_list_is_available_from_calculation_menu(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Сохраненные расчеты ипотеки')
+        self.assertContains(response, reverse('mortgage:calculation_list'))
+
+    def test_calculation_list_shows_delete_button(self):
+        calculation = self._create_calculation()
+
+        response = self.client.get(reverse('mortgage:calculation_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Удалить')
+        self.assertContains(
+            response,
+            reverse(
+                'mortgage:calculation_delete', kwargs={'pk': calculation.pk}
+            ),
+        )
+
+    def test_calculation_delete_removes_saved_calculation(self):
+        calculation = self._create_calculation()
+
+        response = self.client.post(
+            reverse(
+                'mortgage:calculation_delete', kwargs={'pk': calculation.pk}
+            )
+        )
+
+        self.assertRedirects(response, reverse('mortgage:calculation_list'))
+        self.assertFalse(
+            MortgageCalculation.objects.filter(pk=calculation.pk).exists()
+        )
 
     def test_calculate_uses_property_cost_when_property_cost_is_empty(self):
         """Описание метода

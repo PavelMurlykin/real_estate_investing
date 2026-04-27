@@ -116,8 +116,13 @@
             </button>
             <ul class="dropdown-menu shadow-sm">
               <li>
-                <a class="dropdown-item {% if view_name == 'mortgage:mortgage_calculator' or view_name == 'mortgage:calculation_list' or view_name == 'mortgage:calculation_detail' %}active{% endif %}" href="{% url 'mortgage:mortgage_calculator' %}">
+                <a class="dropdown-item {% if view_name == 'mortgage:mortgage_calculator' %}active{% endif %}" href="{% url 'mortgage:mortgage_calculator' %}">
                   Ипотека
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item {% if view_name == 'mortgage:calculation_list' or view_name == 'mortgage:calculation_detail' %}active{% endif %}" href="{% url 'mortgage:calculation_list' %}">
+                  Сохраненные расчеты ипотеки
                 </a>
               </li>
               <li>

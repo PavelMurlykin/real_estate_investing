@@ -14,6 +14,11 @@ urlpatterns = [
     ),
     path('calculations/', views.calculation_list, name='calculation_list'),
     path(
+        'calculations/<int:pk>/delete/',
+        views.calculation_delete,
+        name='calculation_delete',
+    ),
+    path(
         'calculations/<int:pk>/',
         views.calculation_detail,
         name='calculation_detail',

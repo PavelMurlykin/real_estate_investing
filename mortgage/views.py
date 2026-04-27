@@ -3,7 +3,8 @@ import decimal
 
 import openpyxl
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 from openpyxl.styles import Alignment, Font, NamedStyle
 from openpyxl.utils import get_column_letter
 
@@ -672,6 +673,14 @@ def calculation_list(request):
     return render(
         request, 'mortgage/mortgage_list.html', {'calculations': calculations}
     )
+
+
+@require_POST
+def calculation_delete(request, pk):
+    """Удаление сохраненного ипотечного расчета."""
+    calculation = get_object_or_404(MortgageCalculation, pk=pk)
+    calculation.delete()
+    return redirect('mortgage:calculation_list')
 
 
 def calculation_detail(request, pk):

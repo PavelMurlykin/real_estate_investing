@@ -35,9 +35,17 @@
                                 <td>{{ calculation.mortgage_term }} мес.</td>
                                 <td>{{ calculation.annual_rate }}%</td>
                                 <td>
+                                    <div class="d-flex gap-2">
                                     <a href="{% url 'mortgage:calculation_detail' calculation.pk %}" class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-eye"></i> Подробнее
                                     </a>
+                                    <form method="post" action="{% url 'mortgage:calculation_delete' calculation.pk %}" onsubmit="return confirm('Удалить расчет?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i> Удалить
+                                        </button>
+                                    </form>
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}
