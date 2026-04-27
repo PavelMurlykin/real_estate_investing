@@ -14,7 +14,14 @@ from property.models import Property
 from .forms import MortgageForm
 from .models import MortgageCalculation
 from .mortgage_calculator import MortgageCalculator
-from .utils import format_currency
+from .utils import (
+    apply_calculation_filters,
+    apply_calculation_sort,
+    build_calculation_table_headers,
+    format_currency,
+    get_calculation_filters,
+    get_calculation_sort,
+)
 
 
 def _get_target_customer(request):
@@ -715,6 +722,8 @@ def calculation_list(request):
             messages.info(request, 'Расчеты для добавления не выбраны.')
         return redirect('customer:detail', pk=target_customer.pk)
 
+    calculation_filters = get_calculation_filters(request)
+    calculation_sort, calculation_order = get_calculation_sort(request)
     calculations = (
         MortgageCalculation.objects.select_related(
             'property',
@@ -722,7 +731,12 @@ def calculation_list(request):
             'property__building__real_estate_complex',
         )
         .all()
-        .order_by('-timestamp')
+    )
+    calculations = apply_calculation_filters(
+        calculations, calculation_filters
+    )
+    calculations = apply_calculation_sort(
+        calculations, calculation_sort, calculation_order
     )
     linked_calculation_ids = []
     if target_customer is not None:
@@ -737,6 +751,12 @@ def calculation_list(request):
             'calculations': calculations,
             'target_customer': target_customer,
             'linked_calculation_ids': linked_calculation_ids,
+            'calculation_filters': calculation_filters,
+            'calculation_sort': calculation_sort,
+            'calculation_order': calculation_order,
+            'calculation_table_headers': build_calculation_table_headers(
+                request
+            ),
         },
     )
 

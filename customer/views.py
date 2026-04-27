@@ -3,7 +3,14 @@ from django.db.models import Q
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
-from mortgage.utils import format_currency
+from mortgage.utils import (
+    apply_calculation_filters,
+    apply_calculation_sort,
+    build_calculation_table_headers,
+    format_currency,
+    get_calculation_filters,
+    get_calculation_sort,
+)
 
 from .forms import CustomerForm
 from .models import Customer, CustomerCalculation
@@ -157,7 +164,11 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
             if max_property_cost is not None
             else '',
         }
-        context['customer_calculations'] = (
+        calculation_filters = get_calculation_filters(self.request)
+        calculation_sort, calculation_order = get_calculation_sort(
+            self.request
+        )
+        customer_calculations = (
             CustomerCalculation.objects.filter(customer=customer)
             .select_related(
                 'calculation',
@@ -165,7 +176,25 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
                 'calculation__property__building',
                 'calculation__property__building__real_estate_complex',
             )
-            .order_by('-calculation__timestamp')
+        )
+        customer_calculations = apply_calculation_filters(
+            customer_calculations,
+            calculation_filters,
+            prefix='calculation__',
+        )
+        customer_calculations = apply_calculation_sort(
+            customer_calculations,
+            calculation_sort,
+            calculation_order,
+            prefix='calculation__',
+        )
+
+        context['customer_calculations'] = customer_calculations
+        context['calculation_filters'] = calculation_filters
+        context['calculation_sort'] = calculation_sort
+        context['calculation_order'] = calculation_order
+        context['calculation_table_headers'] = (
+            build_calculation_table_headers(self.request)
         )
         return context
 

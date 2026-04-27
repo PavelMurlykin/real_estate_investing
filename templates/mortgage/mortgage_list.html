@@ -25,6 +25,68 @@
 
     <div class="card">
         <div class="card-body">
+            <form method="get" class="row g-3 align-items-end mb-4">
+                {% if target_customer %}
+                    <input type="hidden" name="customer" value="{{ target_customer.pk }}">
+                {% endif %}
+                <input type="hidden" name="sort" value="{{ calculation_sort }}">
+                <input type="hidden" name="order" value="{{ calculation_order }}">
+                <div class="col-lg-3 col-md-6">
+                    <label for="mortgage_calculation_q" class="form-label">Объект</label>
+                    <input
+                        type="search"
+                        id="mortgage_calculation_q"
+                        name="q"
+                        value="{{ calculation_filters.q }}"
+                        class="form-control"
+                        placeholder="ЖК или квартира"
+                    >
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label">Стоимость объекта</label>
+                    <div class="input-group">
+                        <input type="number" name="cost_from" value="{{ calculation_filters.cost_from }}" class="form-control" min="0" step="0.01" placeholder="от">
+                        <input type="number" name="cost_to" value="{{ calculation_filters.cost_to }}" class="form-control" min="0" step="0.01" placeholder="до">
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label">Первоначальный взнос, %</label>
+                    <div class="input-group">
+                        <input type="number" name="initial_payment_from" value="{{ calculation_filters.initial_payment_from }}" class="form-control" min="0" step="0.01" placeholder="от">
+                        <input type="number" name="initial_payment_to" value="{{ calculation_filters.initial_payment_to }}" class="form-control" min="0" step="0.01" placeholder="до">
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label">Ежемесячный платеж</label>
+                    <div class="input-group">
+                        <input type="number" name="monthly_payment_from" value="{{ calculation_filters.monthly_payment_from }}" class="form-control" min="0" step="0.01" placeholder="от">
+                        <input type="number" name="monthly_payment_to" value="{{ calculation_filters.monthly_payment_to }}" class="form-control" min="0" step="0.01" placeholder="до">
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label">Срок, мес.</label>
+                    <div class="input-group">
+                        <input type="number" name="term_from" value="{{ calculation_filters.term_from }}" class="form-control" min="0" step="1" placeholder="от">
+                        <input type="number" name="term_to" value="{{ calculation_filters.term_to }}" class="form-control" min="0" step="1" placeholder="до">
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label">Ставка, %</label>
+                    <div class="input-group">
+                        <input type="number" name="rate_from" value="{{ calculation_filters.rate_from }}" class="form-control" min="0" step="0.01" placeholder="от">
+                        <input type="number" name="rate_to" value="{{ calculation_filters.rate_to }}" class="form-control" min="0" step="0.01" placeholder="до">
+                    </div>
+                </div>
+                <div class="col-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-outline-primary">Фильтровать</button>
+                    {% if target_customer %}
+                        <a href="{% url 'mortgage:calculation_list' %}?customer={{ target_customer.pk }}" class="btn btn-outline-secondary">Сбросить</a>
+                    {% else %}
+                        <a href="{% url 'mortgage:calculation_list' %}" class="btn btn-outline-secondary">Сбросить</a>
+                    {% endif %}
+                </div>
+            </form>
+
             {% if calculations %}
                 {% if target_customer %}
                     <form method="post">
@@ -38,12 +100,13 @@
                                 {% if target_customer %}
                                     <th style="width: 48px;"></th>
                                 {% endif %}
-                                <th>Дата расчета</th>
-                                <th>Объект</th>
-                                <th>Стоимость объекта</th>
-                                <th>Первоначальный взнос</th>
-                                <th>Срок</th>
-                                <th>Ставка</th>
+                                {% for header in calculation_table_headers %}
+                                    <th>
+                                        <a href="{{ header.url }}" class="text-body text-decoration-none">
+                                            {{ header.label }}{% if header.indicator %} {{ header.indicator }}{% endif %}
+                                        </a>
+                                    </th>
+                                {% endfor %}
                                 <th>Действия</th>
                             </tr>
                         </thead>
@@ -66,6 +129,7 @@
                                 <td>{{ calculation.property.building.real_estate_complex.name }}, кв. {{ calculation.property.apartment_number }}</td>
                                 <td>{{ calculation.final_property_cost|floatformat:2 }} руб.</td>
                                 <td>{{ calculation.initial_payment_percent }}%</td>
+                                <td>{{ calculation.main_monthly_payment|floatformat:2 }} руб.</td>
                                 <td>{{ calculation.mortgage_term }} мес.</td>
                                 <td>{{ calculation.annual_rate }}%</td>
                                 <td>
