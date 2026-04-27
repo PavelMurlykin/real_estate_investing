@@ -15,6 +15,73 @@ from .mortgage_calculator import MortgageCalculator
 from .utils import format_currency
 
 
+def _normalize_discount_markup_values(cleaned_data):
+    """Возвращает процент, рубли и итоговую стоимость после корректировки."""
+    property_cost = float(cleaned_data['PROPERTY_COST'])
+    discount_markup_percent = float(
+        cleaned_data.get('DISCOUNT_MARKUP_VALUE', 0) or 0
+    )
+    discount_markup_rubles = float(
+        cleaned_data.get('DISCOUNT_MARKUP_RUBLES', 0) or 0
+    )
+    discount_markup_source = cleaned_data.get('DISCOUNT_MARKUP_SOURCE')
+
+    if discount_markup_source == 'rubles':
+        if property_cost > 0:
+            discount_markup_percent = (
+                discount_markup_rubles / property_cost
+            ) * 100
+        else:
+            discount_markup_percent = 0
+    else:
+        discount_markup_rubles = (
+            property_cost * discount_markup_percent / 100
+        )
+
+    if cleaned_data['DISCOUNT_MARKUP_TYPE'] == 'discount':
+        final_property_cost = property_cost - discount_markup_rubles
+    else:
+        final_property_cost = property_cost + discount_markup_rubles
+
+    return (
+        discount_markup_percent,
+        discount_markup_rubles,
+        final_property_cost,
+    )
+
+
+def _normalize_initial_payment_values(cleaned_data, final_property_cost):
+    """Возвращает согласованные значения первоначального взноса."""
+    initial_payment_percent = float(
+        cleaned_data.get('INITIAL_PAYMENT_PERCENT', 0) or 0
+    )
+    initial_payment_rubles = float(
+        cleaned_data.get('INITIAL_PAYMENT_RUBLES', 0) or 0
+    )
+    initial_payment_source = cleaned_data.get('INITIAL_PAYMENT_SOURCE')
+
+    if initial_payment_source == 'rubles':
+        initial_payment_percent = (
+            initial_payment_rubles / final_property_cost * 100
+            if final_property_cost > 0
+            else 0
+        )
+    else:
+        initial_payment_rubles = (
+            final_property_cost * initial_payment_percent / 100
+        )
+
+    return initial_payment_percent, initial_payment_rubles
+
+
+def _get_discount_markup_labels(discount_markup_type):
+    """Возвращает подписи для корректировки цены в процентах и рублях."""
+    if discount_markup_type == 'discount':
+        return 'Скидка, %', 'Скидка, руб.'
+
+    return 'Удорожание, %', 'Удорожание, руб.'
+
+
 def mortgage_calculator(request):
     # Инициализация формы
     """Описание метода mortgage_calculator.
@@ -60,56 +127,17 @@ def mortgage_calculator(request):
                 # Получаем базовую стоимость из скрытого поля
                 base_property_cost = float(data['PROPERTY_COST'])
 
-                # Получаем значения первоначального взноса
-                # и преобразуем в float.
-                initial_payment_percent = float(
-                    data.get('INITIAL_PAYMENT_PERCENT', 0) or 0
+                (
+                    discount_markup_value,
+                    discount_markup_rubles,
+                    final_property_cost,
+                ) = _normalize_discount_markup_values(data)
+                (
+                    initial_payment_percent,
+                    initial_payment_rubles,
+                ) = _normalize_initial_payment_values(
+                    data, final_property_cost
                 )
-                initial_payment_rubles = float(
-                    data.get('INITIAL_PAYMENT_RUBLES', 0) or 0
-                )
-
-                # Рассчитываем итоговую стоимость объекта
-                discount_markup_value = float(
-                    data.get('DISCOUNT_MARKUP_VALUE', 0) or 0
-                )
-
-                if data['DISCOUNT_MARKUP_TYPE'] == 'discount':
-                    final_property_cost = property_cost * (
-                        1 - discount_markup_value / 100
-                    )
-                else:
-                    final_property_cost = property_cost * (
-                        1 + discount_markup_value / 100
-                    )
-
-                # Если введены рубли, но не проценты, рассчитываем проценты
-                if (
-                    initial_payment_rubles
-                    and not initial_payment_percent
-                    and final_property_cost > 0
-                ):
-                    initial_payment_percent = (
-                        initial_payment_rubles / final_property_cost
-                    ) * 100
-
-                # Если введены проценты, но не рубли, рассчитываем рубли
-                if (
-                    initial_payment_percent
-                    and not initial_payment_rubles
-                    and final_property_cost > 0
-                ):
-                    initial_payment_rubles = (
-                        final_property_cost * initial_payment_percent / 100
-                    )
-
-                # Если оба поля заполнены, используем проценты
-                # как основной источник.
-                if initial_payment_percent and initial_payment_rubles:
-                    # Пересчитываем рубли на основе процентов для consistency
-                    initial_payment_rubles = (
-                        final_property_cost * initial_payment_percent / 100
-                    )
 
                 # Создаем экземпляр калькулятора.
                 # Все значения преобразуем к float.
@@ -209,6 +237,7 @@ def mortgage_calculator(request):
                 )
                 context['discount_markup_type'] = data['DISCOUNT_MARKUP_TYPE']
                 context['discount_markup_value'] = discount_markup_value
+                context['discount_markup_rubles'] = discount_markup_rubles
                 context['selected_property'] = property_obj
                 context['initial_payment_percent'] = initial_payment_percent
                 context['initial_payment_rubles'] = initial_payment_rubles
@@ -228,56 +257,17 @@ def mortgage_calculator(request):
                 # Получаем стоимость из формы и преобразуем в float
                 property_cost = float(mortgage_data['PROPERTY_COST'])
 
-                # Получаем значения первоначального взноса
-                # и преобразуем в float.
-                initial_payment_percent = float(
-                    mortgage_data.get('INITIAL_PAYMENT_PERCENT', 0) or 0
+                (
+                    discount_markup_value,
+                    discount_markup_rubles,
+                    final_property_cost,
+                ) = _normalize_discount_markup_values(mortgage_data)
+                (
+                    initial_payment_percent,
+                    initial_payment_rubles,
+                ) = _normalize_initial_payment_values(
+                    mortgage_data, final_property_cost
                 )
-                initial_payment_rubles = float(
-                    mortgage_data.get('INITIAL_PAYMENT_RUBLES', 0) or 0
-                )
-
-                # Рассчитываем итоговую стоимость объекта
-                discount_markup_value = float(
-                    mortgage_data.get('DISCOUNT_MARKUP_VALUE', 0) or 0
-                )
-
-                if mortgage_data['DISCOUNT_MARKUP_TYPE'] == 'discount':
-                    final_property_cost = property_cost * (
-                        1 - discount_markup_value / 100
-                    )
-                else:
-                    final_property_cost = property_cost * (
-                        1 + discount_markup_value / 100
-                    )
-
-                # Если введены рубли, но не проценты, рассчитываем проценты
-                if (
-                    initial_payment_rubles
-                    and not initial_payment_percent
-                    and final_property_cost > 0
-                ):
-                    initial_payment_percent = (
-                        initial_payment_rubles / final_property_cost
-                    ) * 100
-
-                # Если введены проценты, но не рубли, рассчитываем рубли
-                if (
-                    initial_payment_percent
-                    and not initial_payment_rubles
-                    and final_property_cost > 0
-                ):
-                    initial_payment_rubles = (
-                        final_property_cost * initial_payment_percent / 100
-                    )
-
-                # Если оба поля заполнены, используем проценты
-                # как основной источник.
-                if initial_payment_percent and initial_payment_rubles:
-                    # Пересчитываем рубли на основе процентов для consistency
-                    initial_payment_rubles = (
-                        final_property_cost * initial_payment_percent / 100
-                    )
 
                 # Создаем экземпляр калькулятора.
                 # Все значения преобразуем к float.
@@ -333,6 +323,13 @@ def mortgage_calculator(request):
                 ws['A3'] = 'Данные объекта:'
                 ws['A3'].font = Font(bold=True)
 
+                (
+                    discount_markup_percent_label,
+                    discount_markup_rubles_label,
+                ) = _get_discount_markup_labels(
+                    mortgage_data['DISCOUNT_MARKUP_TYPE']
+                )
+
                 property_data_list = [
                     [
                         'Застройщик',
@@ -357,12 +354,13 @@ def mortgage_calculator(request):
                     ['Этаж', property_obj.floor],
                     ['Стоимость объекта, руб.', property_cost],
                     [
-                        'Тип изменения цены',
+                        'Корректировка цены',
                         'Скидка'
                         if mortgage_data['DISCOUNT_MARKUP_TYPE'] == 'discount'
                         else 'Удорожание',
                     ],
-                    ['Значение, %', discount_markup_value],
+                    [discount_markup_percent_label, discount_markup_value],
+                    [discount_markup_rubles_label, discount_markup_rubles],
                     ['Итоговая стоимость объекта, руб.', final_property_cost],
                 ]
 
@@ -377,7 +375,11 @@ def mortgage_calculator(request):
                         if param == 'Этаж':
                             cell.value = int(value)
                             cell.style = integer_style
-                        elif param in ['Площадь', 'Значение, %']:
+                        elif param in [
+                            'Площадь',
+                            discount_markup_percent_label,
+                            discount_markup_rubles_label,
+                        ]:
                             cell.value = value
                             cell.style = number_style
                         elif param in [
@@ -413,6 +415,10 @@ def mortgage_calculator(request):
                     ],
                     [
                         'Срок ипотеки, годы',
+                        int(mortgage_data['MORTGAGE_TERM_YEARS']),
+                    ],
+                    [
+                        'Срок ипотеки, мес.',
                         int(mortgage_data['MORTGAGE_TERM']),
                     ],
                     ['Годовая ставка, %', float(mortgage_data['ANNUAL_RATE'])],
@@ -429,7 +435,14 @@ def mortgage_calculator(request):
                         [
                             [
                                 'Срок льготного периода, годы',
-                                int(mortgage_data['GRACE_PERIOD_TERM']),
+                                int(
+                                    mortgage_data['GRACE_PERIOD_TERM_YEARS']
+                                    or 0
+                                ),
+                            ],
+                            [
+                                'Срок льготного периода, мес.',
+                                int(mortgage_data['GRACE_PERIOD_TERM'] or 0),
                             ],
                             [
                                 'Годовая ставка в льготный период, %',
@@ -448,7 +461,9 @@ def mortgage_calculator(request):
                     if isinstance(value, (int, float)):
                         if param in [
                             'Срок ипотеки, годы',
+                            'Срок ипотеки, мес.',
                             'Срок льготного периода, годы',
+                            'Срок льготного периода, мес.',
                         ]:
                             cell.value = int(value)
                             cell.style = integer_style

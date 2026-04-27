@@ -30,22 +30,22 @@ class MortgageForm(forms.Form):
                 'class': 'form-control',
                 'step': '0.01',
                 'id': 'property_cost_input',
-                'oninput': 'updateFinalPropertyCost()',
+                'oninput': 'handlePropertyCostChange()',
             }
         ),
     )
 
     DISCOUNT_MARKUP_TYPE = forms.ChoiceField(
-        label='Тип изменения цены',
+        label='Корректировка цены',
         choices=[('discount', 'Скидка'), ('markup', 'Удорожание')],
         widget=forms.RadioSelect(
-            attrs={'onchange': 'updateFinalPropertyCost()'}
+            attrs={'onchange': 'handleDiscountMarkupTypeChange()'}
         ),
         initial='discount',
     )
 
     DISCOUNT_MARKUP_VALUE = forms.DecimalField(
-        label='Значение, %',
+        label='Скидка, %',
         min_value=0,
         max_digits=5,
         decimal_places=2,
@@ -55,9 +55,34 @@ class MortgageForm(forms.Form):
             attrs={
                 'class': 'form-control',
                 'step': '0.01',
-                'oninput': 'updateFinalPropertyCost()',
+                'id': 'discount_markup_percent',
+                'oninput': 'handleDiscountMarkupPercentInput()',
             }
         ),
+    )
+
+    DISCOUNT_MARKUP_RUBLES = forms.DecimalField(
+        label='Скидка, руб.',
+        min_value=0,
+        max_digits=15,
+        decimal_places=2,
+        required=False,
+        initial=0,
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'id': 'discount_markup_rubles',
+                'oninput': 'handleDiscountMarkupRublesInput()',
+            }
+        ),
+    )
+
+    DISCOUNT_MARKUP_SOURCE = forms.ChoiceField(
+        choices=[('percent', 'percent'), ('rubles', 'rubles')],
+        initial='percent',
+        required=False,
+        widget=forms.HiddenInput(attrs={'id': 'discount_markup_source'}),
     )
 
     INITIAL_PAYMENT_PERCENT = forms.DecimalField(
@@ -72,7 +97,7 @@ class MortgageForm(forms.Form):
                 'class': 'form-control',
                 'step': '0.01',
                 'id': 'initial_payment_percent',
-                'oninput': 'updateInitialPaymentRubles()',
+                'oninput': 'handleInitialPaymentPercentInput()',
             }
         ),
     )
@@ -87,9 +112,16 @@ class MortgageForm(forms.Form):
                 'class': 'form-control',
                 'step': '0.01',
                 'id': 'initial_payment_rubles',
-                'oninput': 'updateInitialPaymentPercent()',
+                'oninput': 'handleInitialPaymentRublesInput()',
             }
         ),
+    )
+
+    INITIAL_PAYMENT_SOURCE = forms.ChoiceField(
+        choices=[('percent', 'percent'), ('rubles', 'rubles')],
+        initial='percent',
+        required=False,
+        widget=forms.HiddenInput(attrs={'id': 'initial_payment_source'}),
     )
 
     INITIAL_PAYMENT_DATE = forms.DateField(
@@ -105,12 +137,33 @@ class MortgageForm(forms.Form):
         initial=date.today,
     )
 
-    MORTGAGE_TERM = forms.IntegerField(
+    MORTGAGE_TERM_YEARS = forms.IntegerField(
         label='Срок ипотеки, годы',
-        min_value=1,
+        min_value=0,
         max_value=50,
         initial=30,
-        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+        required=False,
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'id': 'mortgage_term_years',
+                'oninput': 'handleMortgageTermYearsInput()',
+            }
+        ),
+    )
+
+    MORTGAGE_TERM = forms.IntegerField(
+        label='Срок ипотеки, мес.',
+        min_value=1,
+        max_value=600,
+        initial=360,
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'id': 'mortgage_term_months',
+                'oninput': 'handleMortgageTermMonthsInput()',
+            }
+        ),
     )
 
     ANNUAL_RATE = forms.DecimalField(
@@ -131,12 +184,32 @@ class MortgageForm(forms.Form):
         initial='no',
     )
 
-    GRACE_PERIOD_TERM = forms.IntegerField(
+    GRACE_PERIOD_TERM_YEARS = forms.IntegerField(
         label='Срок льготного периода, годы',
         min_value=0,
         max_value=50,
         required=False,
-        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'id': 'grace_period_term_years',
+                'oninput': 'handleGracePeriodTermYearsInput()',
+            }
+        ),
+    )
+
+    GRACE_PERIOD_TERM = forms.IntegerField(
+        label='Срок льготного периода, мес.',
+        min_value=0,
+        max_value=600,
+        required=False,
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'id': 'grace_period_term_months',
+                'oninput': 'handleGracePeriodTermMonthsInput()',
+            }
+        ),
     )
 
     GRACE_PERIOD_RATE = forms.DecimalField(
@@ -184,8 +257,24 @@ class MortgageForm(forms.Form):
         cleaned_data = super().clean()
         has_grace_period = cleaned_data.get('HAS_GRACE_PERIOD')
         grace_period_term = cleaned_data.get('GRACE_PERIOD_TERM')
+        grace_period_term_years = cleaned_data.get('GRACE_PERIOD_TERM_YEARS')
         grace_period_rate = cleaned_data.get('GRACE_PERIOD_RATE')
         mortgage_term = cleaned_data.get('MORTGAGE_TERM')
+        mortgage_term_years = cleaned_data.get('MORTGAGE_TERM_YEARS')
+
+        if mortgage_term is not None:
+            cleaned_data['MORTGAGE_TERM_YEARS'] = mortgage_term // 12
+        elif mortgage_term_years is not None:
+            cleaned_data['MORTGAGE_TERM'] = mortgage_term_years * 12
+            mortgage_term = cleaned_data['MORTGAGE_TERM']
+
+        if grace_period_term is not None:
+            cleaned_data['GRACE_PERIOD_TERM_YEARS'] = (
+                grace_period_term // 12
+            )
+        elif grace_period_term_years is not None:
+            cleaned_data['GRACE_PERIOD_TERM'] = grace_period_term_years * 12
+            grace_period_term = cleaned_data['GRACE_PERIOD_TERM']
 
         if has_grace_period == 'yes':
             if grace_period_term is None:

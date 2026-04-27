@@ -25,11 +25,11 @@
                     <p><strong>Дата первоначального взноса:</strong> {{ calculation.initial_payment_date|date:"d.m.Y" }}</p>
                 </div>
                 <div class="col-md-6">
-                    <p><strong>Срок ипотеки:</strong> {{ calculation.mortgage_term }} лет</p>
+                    <p><strong>Срок ипотеки:</strong> {{ calculation.mortgage_term }} мес.</p>
                     <p><strong>Годовая ставка:</strong> {{ calculation.annual_rate }}%</p>
                     <p><strong>Льготный период:</strong> {{ calculation.has_grace_period|yesno:"Да,Нет" }}</p>
                     {% if calculation.has_grace_period %}
-                    <p><strong>Срок льготного периода:</strong> {{ calculation.grace_period_term }} лет</p>
+                    <p><strong>Срок льготного периода:</strong> {{ calculation.grace_period_term }} мес.</p>
                     <p><strong>Ставка в льготный период:</strong> {{ calculation.grace_period_rate }}%</p>
                     {% endif %}
                 </div>

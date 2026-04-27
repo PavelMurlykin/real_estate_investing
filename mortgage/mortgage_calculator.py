@@ -66,11 +66,11 @@ class MortgageCalculator:
         Возвращает:
             Any: Тип результата определяется вызывающим кодом.
         """
-        total_months = self.mortgage_term * 12
+        total_months = self.mortgage_term
 
         if self.has_grace_period and self.grace_period_term > 0:
             # Расчет льготного периода
-            grace_months = self.grace_period_term * 12
+            grace_months = self.grace_period_term
             monthly_grace_rate = self.grace_period_rate / 100 / 12
 
             # Расчет аннуитетного платежа для льготного периода на полный срок
@@ -193,13 +193,13 @@ class MortgageCalculator:
         Возвращает:
             Any: Тип результата определяется вызывающим кодом.
         """
-        total_months = self.mortgage_term * 12
+        total_months = self.mortgage_term
         current_date = self.initial_payment_date
         current_balance = self.loan_amount
 
         if self.has_grace_period and self.grace_period_term > 0:
             # Льготный период
-            grace_months = self.grace_period_term * 12
+            grace_months = self.grace_period_term
             monthly_grace_rate = self.grace_period_rate / 100 / 12
 
             # Расчет аннуитетного платежа для льготного периода на полный срок

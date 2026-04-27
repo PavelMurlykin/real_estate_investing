@@ -89,15 +89,33 @@ class MortgageCalculatorViewTests(TestCase):
             'PROPERTY': str(self.property.id),
             'DISCOUNT_MARKUP_TYPE': 'discount',
             'DISCOUNT_MARKUP_VALUE': '0',
+            'DISCOUNT_MARKUP_RUBLES': '0',
+            'DISCOUNT_MARKUP_SOURCE': 'percent',
             'INITIAL_PAYMENT_PERCENT': '20',
             'INITIAL_PAYMENT_RUBLES': '0',
+            'INITIAL_PAYMENT_SOURCE': 'percent',
             'INITIAL_PAYMENT_DATE': '01.01.2026',
-            'MORTGAGE_TERM': '20',
+            'MORTGAGE_TERM_YEARS': '20',
+            'MORTGAGE_TERM': '240',
             'ANNUAL_RATE': '12',
             'HAS_GRACE_PERIOD': 'no',
+            'GRACE_PERIOD_TERM_YEARS': '',
             'GRACE_PERIOD_TERM': '',
             'GRACE_PERIOD_RATE': '',
         }
+
+    def test_get_renders_updated_discount_labels(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Корректировка цены')
+        self.assertContains(response, 'Скидка, %')
+        self.assertContains(response, 'Скидка, руб.')
+        self.assertContains(response, 'initial_payment_source')
+        self.assertContains(response, 'discount_markup_percent_lock')
+        self.assertContains(response, 'initial_payment_percent_lock')
+        self.assertContains(response, 'Срок ипотеки, мес.')
+        self.assertContains(response, 'Срок льготного периода, мес.')
 
     def test_calculate_uses_property_cost_when_property_cost_is_empty(self):
         """Описание метода
@@ -158,6 +176,68 @@ class MortgageCalculatorViewTests(TestCase):
 
         self.property.refresh_from_db()
         self.assertEqual(self.property.property_cost, Decimal('5000000.00'))
+
+    def test_calculate_supports_discount_markup_in_rubles(self):
+        payload = self._base_payload()
+        payload.update(
+            {
+                'calculate': '1',
+                'PROPERTY_COST': '5000000',
+                'DISCOUNT_MARKUP_VALUE': '0',
+                'DISCOUNT_MARKUP_RUBLES': '500000',
+                'DISCOUNT_MARKUP_SOURCE': 'rubles',
+            }
+        )
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, 200)
+        calculation = MortgageCalculation.objects.latest('id')
+        self.assertEqual(calculation.discount_markup_value, Decimal('10'))
+        self.assertEqual(calculation.final_property_cost, Decimal('4500000'))
+        self.assertContains(response, 'Скидка, руб.')
+
+    def test_calculate_supports_initial_payment_locked_in_rubles(self):
+        payload = self._base_payload()
+        payload.update(
+            {
+                'calculate': '1',
+                'PROPERTY_COST': '5000000',
+                'INITIAL_PAYMENT_PERCENT': '20',
+                'INITIAL_PAYMENT_RUBLES': '1500000',
+                'INITIAL_PAYMENT_SOURCE': 'rubles',
+            }
+        )
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, 200)
+        calculation = MortgageCalculation.objects.latest('id')
+        self.assertEqual(calculation.initial_payment_percent, Decimal('30'))
+
+    def test_calculate_saves_mortgage_and_grace_terms_in_months(self):
+        payload = self._base_payload()
+        payload.update(
+            {
+                'calculate': '1',
+                'PROPERTY_COST': '5000000',
+                'MORTGAGE_TERM_YEARS': '2',
+                'MORTGAGE_TERM': '30',
+                'HAS_GRACE_PERIOD': 'yes',
+                'GRACE_PERIOD_TERM_YEARS': '1',
+                'GRACE_PERIOD_TERM': '14',
+                'GRACE_PERIOD_RATE': '6',
+            }
+        )
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, 200)
+        calculation = MortgageCalculation.objects.latest('id')
+        self.assertEqual(calculation.mortgage_term, 30)
+        self.assertEqual(calculation.grace_period_term, 14)
+        self.assertEqual(calculation.grace_payments_count, 14)
+        self.assertEqual(calculation.main_payments_count, 16)
 
     def test_export_returns_excel_file(self):
         """Описание метода test_export_returns_excel_file.
