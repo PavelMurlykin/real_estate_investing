@@ -1,12 +1,15 @@
 from decimal import Decimal, InvalidOperation
 
+from django.contrib import messages
 from django.db.models import DecimalField, ExpressionWrapper, F, Window
 from django.db.models.functions import Lead
+from django.shortcuts import redirect
 from django.views.generic import TemplateView
 
 from property.views import BaseCatalogView, CatalogModelConfig
 
 from .forms import BankForm
+from .key_rate_sync import KeyRateSyncError, sync_key_rates
 from .models import Bank, BankProgram, KeyRate, MortgageProgram
 
 
@@ -355,6 +358,28 @@ class KeyRateListView(TemplateView):
     """
 
     template_name = 'bank/key_rate_list.html'
+
+    def post(self, request, *args, **kwargs):
+        """Запускает ручное обновление данных ключевой ставки."""
+        try:
+            result = sync_key_rates()
+        except KeyRateSyncError as error:
+            messages.error(
+                request,
+                f'Не удалось обновить данные ключевой ставки: {error}',
+            )
+        else:
+            messages.success(
+                request,
+                (
+                    'Обновление данных ключевой ставки завершено: '
+                    f'создано={result["created"]}, '
+                    f'обновлено={result["updated"]}, '
+                    f'обработано={result["processed"]}.'
+                ),
+            )
+
+        return redirect('bank:key_rate_list')
 
     def get_queryset(self):
         """Описание метода get_queryset.

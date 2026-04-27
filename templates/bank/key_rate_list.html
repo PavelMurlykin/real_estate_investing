@@ -6,12 +6,30 @@
 <div class="container mt-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 class="mb-0">{{ section_title }}</h1>
-        {% if last_synced_at %}
-        <span class="text-body-secondary small">
-            Обновлено: {{ last_synced_at|date:"d.m.Y H:i" }}
-        </span>
-        {% endif %}
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            {% if last_synced_at %}
+            <span class="text-body-secondary small">
+                Обновлено: {{ last_synced_at|date:"d.m.Y H:i" }}
+            </span>
+            {% endif %}
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-primary">
+                    Обновить из ЦБ РФ
+                </button>
+            </form>
+        </div>
     </div>
+
+    {% if messages %}
+    <div class="mb-3">
+        {% for message in messages %}
+        <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-{{ message.tags|default:'info' }}{% endif %} mb-2" role="alert">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     <div class="card">
         <div class="card-header">Данные ЦБ РФ</div>
