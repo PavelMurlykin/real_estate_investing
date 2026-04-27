@@ -14,6 +14,12 @@ class CustomerForm(forms.ModelForm):
     в данном модуле.
     """
 
+    has_owned_property = forms.NullBooleanField(
+        required=False,
+        label=Customer._meta.get_field('has_owned_property').verbose_name,
+        widget=forms.NullBooleanSelect(attrs={'class': 'form-select'}),
+    )
+
     class Meta:
         """Описание служебного класса Meta.
 
@@ -44,7 +50,6 @@ class CustomerForm(forms.ModelForm):
             'desired_floor',
             'cardinal_directions',
             'comment',
-            'is_active',
         ]
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
@@ -89,9 +94,6 @@ class CustomerForm(forms.ModelForm):
             ),
             'comment': forms.Textarea(
                 attrs={'class': 'form-control', 'rows': 4}
-            ),
-            'is_active': forms.CheckboxInput(
-                attrs={'class': 'form-check-input'}
             ),
         }
         help_texts = {
@@ -138,7 +140,7 @@ class CustomerForm(forms.ModelForm):
             purchase_goal_choices[0] = ('', 'Не указана')
             self.fields['purchase_goal'].choices = purchase_goal_choices
 
-        self.fields['has_owned_property'].choices = [
+        self.fields['has_owned_property'].widget.choices = [
             ('unknown', 'Не указано'),
             ('true', 'Да'),
             ('false', 'Нет'),
