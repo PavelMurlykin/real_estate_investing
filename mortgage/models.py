@@ -1,7 +1,10 @@
 # mortgage/models.py
+import builtins
+
 from django.db import models
 
 from property.models import Property  # импортируем из нового приложения
+from .utils import format_years_label
 
 DISCOUNT_MARKUP_CHOICES = [
     ('discount', 'Скидка'),
@@ -94,6 +97,14 @@ class MortgageCalculation(models.Model):
         """
         formatted_timestamp = self.timestamp.strftime('%d.%m.%Y %H:%M')
         return f'Расчет от {formatted_timestamp}'
+
+    @builtins.property
+    def initial_payment_amount(self):
+        return self.final_property_cost * self.initial_payment_percent / 100
+
+    @builtins.property
+    def mortgage_term_years_label(self):
+        return format_years_label(self.mortgage_term // 12)
 
     class Meta:
         """

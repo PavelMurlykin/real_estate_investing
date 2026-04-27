@@ -110,7 +110,9 @@ class RealEstateComplexDeleteViewTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertContains(
-            response, 'Нельзя удалить ЖК: есть связанные объекты недвижимости.'
+            response,
+            'Нельзя удалить ЖК: есть связанные объекты недвижимости.',
+            status_code=400,
         )
         self.assertTrue(
             RealEstateComplex.objects.filter(pk=complex_obj.pk).exists()

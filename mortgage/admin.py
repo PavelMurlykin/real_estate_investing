@@ -23,7 +23,10 @@ class MortgageCalculationAdmin(admin.ModelAdmin):
     )
     list_filter = ('timestamp', 'has_grace_period', 'discount_markup_type')
     readonly_fields = ('timestamp',)
-    search_fields = ('property__complex_name', 'property__apartment_number')
+    search_fields = (
+        'property__building__real_estate_complex__name',
+        'property__apartment_number',
+    )
 
     def get_property(self, obj):
         """Описание метода get_property.
@@ -36,9 +39,7 @@ class MortgageCalculationAdmin(admin.ModelAdmin):
         Возвращает:
             Any: Тип результата зависит от контекста использования.
         """
-        return (
-            f'{obj.property.complex_name}, кв. {obj.property.apartment_number}'
-        )
+        return str(obj.property)
 
     get_property.short_description = 'Объект'
 
@@ -53,4 +54,8 @@ class MortgageCalculationAdmin(admin.ModelAdmin):
         Возвращает:
             Any: Тип результата зависит от контекста использования.
         """
-        return super().get_queryset(request).select_related('property')
+        return super().get_queryset(request).select_related(
+            'property',
+            'property__building',
+            'property__building__real_estate_complex',
+        )

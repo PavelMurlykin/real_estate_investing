@@ -35,6 +35,13 @@ class Customer(BaseModel):
         related_name='customers',
         verbose_name='Пользователь',
     )
+    saved_calculations = models.ManyToManyField(
+        'mortgage.MortgageCalculation',
+        through='CustomerCalculation',
+        blank=True,
+        related_name='saved_for_customers',
+        verbose_name='Сохраненные расчеты',
+    )
 
     # Персональные данные
     first_name = models.CharField(max_length=150, verbose_name='Имя')
@@ -389,3 +396,38 @@ class Customer(BaseModel):
         return total_property_cost.quantize(
             Decimal('0.01'), rounding=ROUND_HALF_UP
         )
+
+
+class CustomerCalculation(models.Model):
+    """Связь клиента и сохраненного ипотечного расчета."""
+
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name='calculation_links',
+        verbose_name='Клиент',
+    )
+    calculation = models.ForeignKey(
+        'mortgage.MortgageCalculation',
+        on_delete=models.CASCADE,
+        related_name='customer_links',
+        verbose_name='Расчет',
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True, verbose_name='Дата сохранения'
+    )
+
+    class Meta:
+        db_table = 'customer_calculation'
+        verbose_name = 'Расчет клиента'
+        verbose_name_plural = 'Расчеты клиентов'
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['customer', 'calculation'],
+                name='unique_customer_calculation',
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.customer} - {self.calculation}'
