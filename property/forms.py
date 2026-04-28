@@ -1,7 +1,7 @@
 from django import forms
 from django.forms import BaseInlineFormSet, inlineformset_factory
 
-from location.models import City
+from location.models import City, District, Region
 
 from .models import (
     Developer,
@@ -125,6 +125,21 @@ class RealEstateComplexForm(forms.ModelForm):
     в данном модуле.
     """
 
+    region = forms.ModelChoiceField(
+        queryset=Region.objects.none(),
+        required=False,
+        empty_label='Все регионы',
+        label='Регион',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+    city = forms.ModelChoiceField(
+        queryset=City.objects.none(),
+        required=False,
+        empty_label='Все города',
+        label='Город',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+
     class Meta:
         """Описание служебного класса Meta.
 
@@ -136,10 +151,12 @@ class RealEstateComplexForm(forms.ModelForm):
         fields = [
             'name',
             'description',
+            'developer',
+            'region',
+            'city',
+            'district',
             'map_link',
             'presentation_link',
-            'developer',
-            'district',
             'real_estate_class',
             'real_estate_type',
             'is_active',
@@ -163,6 +180,63 @@ class RealEstateComplexForm(forms.ModelForm):
                 attrs={'class': 'form-check-input'}
             ),
         }
+
+    def __init__(self, *args, **kwargs):
+        """Prepare location helper fields from the selected district."""
+        super().__init__(*args, **kwargs)
+
+        self.fields['region'].queryset = Region.objects.order_by('name')
+        self.fields['city'].queryset = City.objects.select_related(
+            'region'
+        ).order_by('name')
+        self.fields['district'].queryset = District.objects.select_related(
+            'city__region'
+        ).order_by('name')
+        self.fields['district'].empty_label = 'Выберите район'
+
+        district = getattr(self.instance, 'district', None)
+        if district:
+            self.fields['city'].initial = district.city_id
+            self.fields['region'].initial = district.city.region_id
+
+    def clean(self):
+        """Keep region, city, and district hierarchy consistent."""
+        cleaned_data = super().clean()
+        region = cleaned_data.get('region')
+        city = cleaned_data.get('city')
+        district = cleaned_data.get('district')
+
+        if district:
+            district_city = district.city
+            district_region = district_city.region
+
+            if city and district.city_id != city.pk:
+                self.add_error(
+                    'district',
+                    'Выбранный район не относится к выбранному городу.',
+                )
+            else:
+                cleaned_data['city'] = district_city
+
+            if region and district_region.pk != region.pk:
+                self.add_error(
+                    'district',
+                    'Выбранный район не относится к выбранному региону.',
+                )
+            else:
+                cleaned_data['region'] = district_region
+
+        elif city:
+            city_region = city.region
+            if region and city_region.pk != region.pk:
+                self.add_error(
+                    'city',
+                    'Выбранный город не относится к выбранному региону.',
+                )
+            else:
+                cleaned_data['region'] = city_region
+
+        return cleaned_data
 
 
 class RealEstateComplexBuildingForm(forms.ModelForm):

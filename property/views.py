@@ -680,6 +680,14 @@ class RealEstateComplexFormsetMixin:
         """
         context = super().get_context_data(**kwargs)
         context.setdefault('building_formset', self.get_formset())
+        context['location_cities'] = list(
+            City.objects.order_by('name').values('id', 'name', 'region_id')
+        )
+        context['location_districts'] = list(
+            District.objects.select_related('city__region')
+            .order_by('name')
+            .values('id', 'name', 'city_id', 'city__region_id')
+        )
         return context
 
     def form_valid(self, form):

@@ -47,16 +47,6 @@
                 <div class="row">
                     <div class="col-md-6">
                         <div class="mb-3">
-                            <label for="{{ form.district.id_for_label }}" class="form-label">{{ form.district.label }}</label>
-                            {{ form.district }}
-                            {% for error in form.district.errors %}
-                                <div class="text-danger">{{ error }}</div>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <div class="col-md-3">
-                        <div class="mb-3">
                             <label for="{{ form.real_estate_class.id_for_label }}" class="form-label">{{ form.real_estate_class.label }}</label>
                             {{ form.real_estate_class }}
                             {% for error in form.real_estate_class.errors %}
@@ -65,7 +55,7 @@
                         </div>
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="col-md-6">
                         <div class="mb-3">
                             <label for="{{ form.real_estate_type.id_for_label }}" class="form-label">{{ form.real_estate_type.label }}</label>
                             {{ form.real_estate_type }}
@@ -84,31 +74,63 @@
                     {% endfor %}
                 </div>
 
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="{{ form.map_link.id_for_label }}" class="form-label">{{ form.map_link.label }}</label>
-                            {{ form.map_link }}
-                            {% for error in form.map_link.errors %}
-                                <div class="text-danger">{{ error }}</div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="{{ form.presentation_link.id_for_label }}" class="form-label">{{ form.presentation_link.label }}</label>
-                            {{ form.presentation_link }}
-                            {% for error in form.presentation_link.errors %}
-                                <div class="text-danger">{{ error }}</div>
-                            {% endfor %}
-                        </div>
-                    </div>
+                <div class="mb-3">
+                    <label for="{{ form.presentation_link.id_for_label }}" class="form-label">{{ form.presentation_link.label }}</label>
+                    {{ form.presentation_link }}
+                    {% for error in form.presentation_link.errors %}
+                        <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
                 </div>
 
                 <div class="form-check">
                     {{ form.is_active }}
                     <label class="form-check-label" for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label>
                     {% for error in form.is_active.errors %}
+                        <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Локация</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="{{ form.region.id_for_label }}" class="form-label">{{ form.region.label }}</label>
+                            {{ form.region }}
+                            {% for error in form.region.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="{{ form.city.id_for_label }}" class="form-label">{{ form.city.label }}</label>
+                            {{ form.city }}
+                            {% for error in form.city.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="{{ form.district.id_for_label }}" class="form-label">{{ form.district.label }}</label>
+                            {{ form.district }}
+                            {% for error in form.district.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.map_link.id_for_label }}" class="form-label">{{ form.map_link.label }}</label>
+                    {{ form.map_link }}
+                    {% for error in form.map_link.errors %}
                         <div class="text-danger">{{ error }}</div>
                     {% endfor %}
                 </div>
@@ -209,4 +231,196 @@
         </div>
     </form>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ location_cities|json_script:"location-cities-data" }}
+{{ location_districts|json_script:"location-districts-data" }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const regionSelect = document.getElementById('id_region');
+    const citySelect = document.getElementById('id_city');
+    const districtSelect = document.getElementById('id_district');
+    const citiesData = document.getElementById('location-cities-data');
+    const districtsData = document.getElementById('location-districts-data');
+
+    if (!regionSelect || !citySelect || !districtSelect || !citiesData || !districtsData) {
+        return;
+    }
+
+    const cities = JSON.parse(citiesData.textContent);
+    const districts = JSON.parse(districtsData.textContent).map(function (district) {
+        return {
+            id: district.id,
+            name: district.name,
+            city_id: district.city_id,
+            region_id: district.city__region_id,
+        };
+    });
+
+    function sameId(left, right) {
+        return String(left || '') === String(right || '');
+    }
+
+    function findCity(cityId) {
+        return cities.find(function (city) {
+            return sameId(city.id, cityId);
+        });
+    }
+
+    function findDistrict(districtId) {
+        return districts.find(function (district) {
+            return sameId(district.id, districtId);
+        });
+    }
+
+    function setOptions(select, items, emptyLabel, selectedValue) {
+        select.innerHTML = '';
+
+        const emptyOption = document.createElement('option');
+        emptyOption.value = '';
+        emptyOption.textContent = emptyLabel;
+        select.appendChild(emptyOption);
+
+        items.forEach(function (item) {
+            const option = document.createElement('option');
+            option.value = item.id;
+            option.textContent = item.name;
+            select.appendChild(option);
+        });
+
+        select.value = selectedValue || '';
+    }
+
+    function getFilteredCities() {
+        const regionId = regionSelect.value;
+        if (!regionId) {
+            return cities;
+        }
+        return cities.filter(function (city) {
+            return sameId(city.region_id, regionId);
+        });
+    }
+
+    function getFilteredDistricts() {
+        const cityId = citySelect.value;
+        const regionId = regionSelect.value;
+
+        if (cityId) {
+            return districts.filter(function (district) {
+                return sameId(district.city_id, cityId);
+            });
+        }
+
+        if (regionId) {
+            return districts.filter(function (district) {
+                return sameId(district.region_id, regionId);
+            });
+        }
+
+        return districts;
+    }
+
+    function refreshCities(selectedCityId) {
+        setOptions(citySelect, getFilteredCities(), 'Все города', selectedCityId);
+        if (selectedCityId && !citySelect.value) {
+            citySelect.value = '';
+        }
+    }
+
+    function refreshDistricts(selectedDistrictId) {
+        setOptions(
+            districtSelect,
+            getFilteredDistricts(),
+            'Выберите район',
+            selectedDistrictId
+        );
+        if (selectedDistrictId && !districtSelect.value) {
+            districtSelect.value = '';
+        }
+    }
+
+    function applyCity(cityId) {
+        const city = findCity(cityId);
+        if (!city) {
+            refreshDistricts('');
+            return;
+        }
+
+        regionSelect.value = city.region_id;
+        refreshCities(city.id);
+        citySelect.value = city.id;
+
+        const selectedDistrict = findDistrict(districtSelect.value);
+        const districtId = selectedDistrict && sameId(selectedDistrict.city_id, city.id)
+            ? selectedDistrict.id
+            : '';
+        refreshDistricts(districtId);
+    }
+
+    function applyDistrict(districtId) {
+        const district = findDistrict(districtId);
+        if (!district) {
+            return;
+        }
+
+        const city = findCity(district.city_id);
+        if (!city) {
+            return;
+        }
+
+        regionSelect.value = city.region_id;
+        refreshCities(city.id);
+        citySelect.value = city.id;
+        refreshDistricts(district.id);
+        districtSelect.value = district.id;
+    }
+
+    regionSelect.addEventListener('change', function () {
+        const regionId = regionSelect.value;
+
+        if (!regionId) {
+            refreshCities('');
+            refreshDistricts('');
+            return;
+        }
+
+        const selectedCity = findCity(citySelect.value);
+        const cityId = selectedCity && sameId(selectedCity.region_id, regionId)
+            ? selectedCity.id
+            : '';
+
+        refreshCities(cityId);
+
+        const selectedDistrict = findDistrict(districtSelect.value);
+        const districtId = selectedDistrict && sameId(selectedDistrict.region_id, regionId)
+            ? selectedDistrict.id
+            : '';
+        refreshDistricts(districtId);
+    });
+
+    citySelect.addEventListener('change', function () {
+        if (citySelect.value) {
+            applyCity(citySelect.value);
+            return;
+        }
+        refreshDistricts('');
+    });
+
+    districtSelect.addEventListener('change', function () {
+        if (districtSelect.value) {
+            applyDistrict(districtSelect.value);
+        }
+    });
+
+    if (districtSelect.value) {
+        applyDistrict(districtSelect.value);
+    } else if (citySelect.value) {
+        applyCity(citySelect.value);
+    } else {
+        refreshCities('');
+        refreshDistricts('');
+    }
+});
+</script>
 {% endblock %}

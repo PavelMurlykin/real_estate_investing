@@ -5,6 +5,7 @@ from django.urls import reverse
 
 from location.models import City, District, Region
 
+from .forms import RealEstateComplexForm
 from .models import (
     ApartmentDecoration,
     ApartmentLayout,
@@ -15,6 +16,64 @@ from .models import (
     RealEstateComplexBuilding,
     RealEstateType,
 )
+
+
+class RealEstateComplexFormLocationTests(TestCase):
+    def setUp(self):
+        self.region = Region.objects.create(name='Region 1', code='R1')
+        self.other_region = Region.objects.create(name='Region 2', code='R2')
+        self.city = City.objects.create(name='City 1', region=self.region)
+        self.other_city = City.objects.create(
+            name='City 2', region=self.other_region
+        )
+        self.district = District.objects.create(
+            name='District 1', city=self.city
+        )
+        self.developer = Developer.objects.create(name='Developer 1')
+        self.estate_type = RealEstateType.objects.create(name='Apartment')
+        self.estate_class = RealEstateClass.objects.create(
+            name='Comfort', weight=Decimal('1.00')
+        )
+
+    def _form_data(self, **overrides):
+        data = {
+            'name': 'Complex 1',
+            'description': '',
+            'map_link': '',
+            'presentation_link': '',
+            'developer': self.developer.pk,
+            'region': '',
+            'city': '',
+            'district': self.district.pk,
+            'real_estate_class': self.estate_class.pk,
+            'real_estate_type': self.estate_type.pk,
+            'is_active': 'on',
+        }
+        data.update(overrides)
+        return data
+
+    def test_district_selection_fills_city_and_region(self):
+        form = RealEstateComplexForm(data=self._form_data())
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['city'], self.city)
+        self.assertEqual(form.cleaned_data['region'], self.region)
+
+    def test_mismatched_city_and_district_is_invalid(self):
+        form = RealEstateComplexForm(
+            data=self._form_data(city=self.other_city.pk)
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('district', form.errors)
+
+    def test_create_view_renders_location_controls(self):
+        response = self.client.get(reverse('property:complex_create'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id_region')
+        self.assertContains(response, 'id_city')
+        self.assertContains(response, 'location-cities-data')
 
 
 class RealEstateComplexDeleteViewTests(TestCase):
