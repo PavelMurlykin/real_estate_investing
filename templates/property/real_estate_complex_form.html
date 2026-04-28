@@ -44,6 +44,10 @@
                     </div>
                 </div>
 
+                <div id="duplicate-complex-warning" class="alert alert-warning d-none" role="alert">
+                    ЖК с таким названием у выбранного застройщика уже существует.
+                </div>
+
                 <div class="row">
                     <div class="col-md-6">
                         <div class="mb-3">
@@ -311,19 +315,25 @@
 {{ location_cities|json_script:"location-cities-data" }}
 {{ location_districts|json_script:"location-districts-data" }}
 {{ location_metro_stations|json_script:"location-metro-stations-data" }}
+{{ existing_complexes|json_script:"existing-complexes-data" }}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const complexNameInput = document.getElementById('id_name');
+    const developerSelect = document.getElementById('id_developer');
+    const duplicateWarning = document.getElementById('duplicate-complex-warning');
     const regionSelect = document.getElementById('id_region');
     const citySelect = document.getElementById('id_city');
     const districtSelect = document.getElementById('id_district');
+    const existingComplexesData = document.getElementById('existing-complexes-data');
     const citiesData = document.getElementById('location-cities-data');
     const districtsData = document.getElementById('location-districts-data');
     const metroStationsData = document.getElementById('location-metro-stations-data');
 
-    if (!regionSelect || !citySelect || !districtSelect || !citiesData || !districtsData || !metroStationsData) {
+    if (!complexNameInput || !developerSelect || !duplicateWarning || !existingComplexesData || !regionSelect || !citySelect || !districtSelect || !citiesData || !districtsData || !metroStationsData) {
         return;
     }
 
+    const existingComplexes = JSON.parse(existingComplexesData.textContent);
     const cities = JSON.parse(citiesData.textContent);
     const districts = JSON.parse(districtsData.textContent).map(function (district) {
         return {
@@ -343,6 +353,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function sameId(left, right) {
         return String(left || '') === String(right || '');
+    }
+
+    function normalizeComplexName(value) {
+        return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    }
+
+    function syncDuplicateComplexWarning() {
+        const normalizedName = normalizeComplexName(complexNameInput.value);
+        const developerId = developerSelect.value;
+
+        const hasDuplicate = Boolean(normalizedName && developerId)
+            && existingComplexes.some(function (complexItem) {
+                return (
+                    sameId(complexItem.developer_id, developerId)
+                    && normalizeComplexName(complexItem.name) === normalizedName
+                );
+            });
+
+        duplicateWarning.classList.toggle('d-none', !hasDuplicate);
     }
 
     function findCity(cityId) {
@@ -527,6 +556,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    complexNameInput.addEventListener('input', syncDuplicateComplexWarning);
+    developerSelect.addEventListener('change', syncDuplicateComplexWarning);
+
     if (districtSelect.value) {
         applyDistrict(districtSelect.value);
     } else if (citySelect.value) {
@@ -536,6 +568,7 @@ document.addEventListener('DOMContentLoaded', function () {
         refreshDistricts('');
         refreshMetroStations();
     }
+    syncDuplicateComplexWarning();
 });
 </script>
 {% endblock %}

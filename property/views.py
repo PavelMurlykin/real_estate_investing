@@ -792,6 +792,19 @@ class RealEstateComplexFormsetMixin:
                 'metro_line__city_id',
             )
         )
+        existing_complexes = RealEstateComplex.objects.all()
+        current_object = getattr(self, 'object', None)
+        if current_object and current_object.pk:
+            existing_complexes = existing_complexes.exclude(
+                pk=current_object.pk
+            )
+        context['existing_complexes'] = list(
+            existing_complexes.order_by('developer_id', 'name').values(
+                'id',
+                'name',
+                'developer_id',
+            )
+        )
         return context
 
     def form_valid(self, form):

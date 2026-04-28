@@ -86,6 +86,47 @@ class RealEstateComplexFormLocationTests(TestCase):
         self.assertContains(response, 'location-cities-data')
         self.assertContains(response, 'metro-0-metro')
         self.assertContains(response, 'location-metro-stations-data')
+        self.assertContains(response, 'duplicate-complex-warning')
+        self.assertContains(response, 'existing-complexes-data')
+
+    def test_create_view_passes_existing_complexes_for_duplicate_warning(self):
+        complex_obj = RealEstateComplex.objects.create(
+            name='Complex 1',
+            developer=self.developer,
+            district=self.district,
+            real_estate_class=self.estate_class,
+            real_estate_type=self.estate_type,
+        )
+
+        response = self.client.get(reverse('property:complex_create'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context['existing_complexes'],
+            [
+                {
+                    'id': complex_obj.pk,
+                    'name': 'Complex 1',
+                    'developer_id': self.developer.pk,
+                }
+            ],
+        )
+
+    def test_update_view_excludes_current_complex_from_duplicate_warning(self):
+        complex_obj = RealEstateComplex.objects.create(
+            name='Complex 1',
+            developer=self.developer,
+            district=self.district,
+            real_estate_class=self.estate_class,
+            real_estate_type=self.estate_type,
+        )
+
+        response = self.client.get(
+            reverse('property:complex_update', kwargs={'pk': complex_obj.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['existing_complexes'], [])
 
     def _complex_create_post_data(self, **overrides):
         data = self._form_data(
