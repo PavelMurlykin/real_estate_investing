@@ -4,7 +4,7 @@ from django.db import models
 from django.urls import reverse
 
 from core.models import BaseModel
-from location.models import District
+from location.models import District, Metro
 
 User = get_user_model()
 
@@ -162,6 +162,45 @@ class RealEstateComplex(BaseModel):
             str: Человекочитаемое представление текущего объекта.
         """
         return self.name
+
+
+class RealEstateComplexMetroAvailability(BaseModel):
+    """
+    Доступность метро относительно ЖК.
+    """
+
+    real_estate_complex = models.ForeignKey(
+        RealEstateComplex,
+        on_delete=models.CASCADE,
+        related_name='metro_availability',
+        verbose_name='ЖК',
+    )
+    metro = models.ForeignKey(
+        Metro,
+        on_delete=models.PROTECT,
+        verbose_name='Станция метро',
+    )
+    walking_time_minutes = models.PositiveSmallIntegerField(
+        verbose_name='Время до метро, мин. пешком'
+    )
+
+    class Meta(BaseModel.Meta):
+        """
+        Метаданные таблицы.
+        """
+
+        db_table = 'real_estate_complex_metro_availability'
+        verbose_name = 'Доступность метро ЖК'
+        verbose_name_plural = 'Доступность метро ЖК'
+        unique_together = ('real_estate_complex', 'metro')
+        ordering = ['walking_time_minutes', 'metro__station']
+
+    def __str__(self):
+        """Возвращает строковое представление доступности метро."""
+        return (
+            f'{self.real_estate_complex}: {self.metro} '
+            f'({self.walking_time_minutes} мин.)'
+        )
 
 
 class RealEstateComplexBuilding(BaseModel):

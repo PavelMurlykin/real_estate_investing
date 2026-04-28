@@ -1,13 +1,14 @@
 from django import forms
 from django.forms import BaseInlineFormSet, inlineformset_factory
 
-from location.models import City
+from location.models import City, District, Metro, Region
 
 from .models import (
     Developer,
     Property,
     RealEstateComplex,
     RealEstateComplexBuilding,
+    RealEstateComplexMetroAvailability,
 )
 
 
@@ -125,6 +126,21 @@ class RealEstateComplexForm(forms.ModelForm):
     в данном модуле.
     """
 
+    region = forms.ModelChoiceField(
+        queryset=Region.objects.none(),
+        required=False,
+        empty_label='Все регионы',
+        label='Регион',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+    city = forms.ModelChoiceField(
+        queryset=City.objects.none(),
+        required=False,
+        empty_label='Все города',
+        label='Город',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+
     class Meta:
         """Описание служебного класса Meta.
 
@@ -136,10 +152,12 @@ class RealEstateComplexForm(forms.ModelForm):
         fields = [
             'name',
             'description',
+            'developer',
+            'region',
+            'city',
+            'district',
             'map_link',
             'presentation_link',
-            'developer',
-            'district',
             'real_estate_class',
             'real_estate_type',
             'is_active',
@@ -163,6 +181,63 @@ class RealEstateComplexForm(forms.ModelForm):
                 attrs={'class': 'form-check-input'}
             ),
         }
+
+    def __init__(self, *args, **kwargs):
+        """Prepare location helper fields from the selected district."""
+        super().__init__(*args, **kwargs)
+
+        self.fields['region'].queryset = Region.objects.order_by('name')
+        self.fields['city'].queryset = City.objects.select_related(
+            'region'
+        ).order_by('name')
+        self.fields['district'].queryset = District.objects.select_related(
+            'city__region'
+        ).order_by('name')
+        self.fields['district'].empty_label = 'Выберите район'
+
+        district = getattr(self.instance, 'district', None)
+        if district:
+            self.fields['city'].initial = district.city_id
+            self.fields['region'].initial = district.city.region_id
+
+    def clean(self):
+        """Keep region, city, and district hierarchy consistent."""
+        cleaned_data = super().clean()
+        region = cleaned_data.get('region')
+        city = cleaned_data.get('city')
+        district = cleaned_data.get('district')
+
+        if district:
+            district_city = district.city
+            district_region = district_city.region
+
+            if city and district.city_id != city.pk:
+                self.add_error(
+                    'district',
+                    'Выбранный район не относится к выбранному городу.',
+                )
+            else:
+                cleaned_data['city'] = district_city
+
+            if region and district_region.pk != region.pk:
+                self.add_error(
+                    'district',
+                    'Выбранный район не относится к выбранному региону.',
+                )
+            else:
+                cleaned_data['region'] = district_region
+
+        elif city:
+            city_region = city.region
+            if region and city_region.pk != region.pk:
+                self.add_error(
+                    'city',
+                    'Выбранный город не относится к выбранному региону.',
+                )
+            else:
+                cleaned_data['region'] = city_region
+
+        return cleaned_data
 
 
 class RealEstateComplexBuildingForm(forms.ModelForm):
@@ -200,6 +275,81 @@ class RealEstateComplexBuildingForm(forms.ModelForm):
                 attrs={'class': 'form-check-input'}
             ),
         }
+
+
+class RealEstateComplexMetroAvailabilityForm(forms.ModelForm):
+    """Form for metro availability rows on the complex form."""
+
+    class Meta:
+        model = RealEstateComplexMetroAvailability
+        fields = [
+            'metro',
+            'walking_time_minutes',
+            'is_active',
+        ]
+        widgets = {
+            'metro': forms.Select(attrs={'class': 'form-control'}),
+            'walking_time_minutes': forms.NumberInput(
+                attrs={'class': 'form-control', 'min': 1}
+            ),
+            'is_active': forms.CheckboxInput(
+                attrs={'class': 'form-check-input'}
+            ),
+        }
+        labels = {
+            'metro': 'Станция метро',
+            'walking_time_minutes': 'Пешком, мин.',
+            'is_active': 'Активен',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['metro'].queryset = Metro.objects.select_related(
+            'metro_line__city'
+        ).order_by('metro_line__city__name', 'metro_line__line', 'station')
+        self.fields['metro'].empty_label = 'Выберите станцию'
+
+
+class BaseRealEstateComplexMetroAvailabilityInlineFormSet(BaseInlineFormSet):
+    """Validation for metro availability inline rows."""
+
+    def clean(self):
+        super().clean()
+
+        seen_metro_ids = set()
+        for form in self.forms:
+            if not hasattr(form, 'cleaned_data'):
+                continue
+            if form.cleaned_data.get('DELETE'):
+                continue
+
+            metro = form.cleaned_data.get('metro')
+            walking_time = form.cleaned_data.get('walking_time_minutes')
+            has_any_data = bool(metro or walking_time)
+
+            if not has_any_data:
+                continue
+
+            if not metro:
+                form.add_error('metro', 'Выберите станцию метро.')
+            if walking_time in (None, ''):
+                form.add_error(
+                    'walking_time_minutes',
+                    'Укажите время до метро.',
+                )
+            elif walking_time <= 0:
+                form.add_error(
+                    'walking_time_minutes',
+                    'Время должно быть больше 0.',
+                )
+
+            if metro:
+                if metro.pk in seen_metro_ids:
+                    form.add_error(
+                        'metro',
+                        'Эта станция уже добавлена для ЖК.',
+                    )
+                seen_metro_ids.add(metro.pk)
 
 
 class BaseRealEstateComplexBuildingInlineFormSet(BaseInlineFormSet):
@@ -244,5 +394,15 @@ RealEstateComplexBuildingFormSet = inlineformset_factory(
     form=RealEstateComplexBuildingForm,
     formset=BaseRealEstateComplexBuildingInlineFormSet,
     extra=1,
+    can_delete=True,
+)
+
+
+RealEstateComplexMetroAvailabilityFormSet = inlineformset_factory(
+    RealEstateComplex,
+    RealEstateComplexMetroAvailability,
+    form=RealEstateComplexMetroAvailabilityForm,
+    formset=BaseRealEstateComplexMetroAvailabilityInlineFormSet,
+    extra=3,
     can_delete=True,
 )

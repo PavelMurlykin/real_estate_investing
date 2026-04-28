@@ -3,8 +3,9 @@ from decimal import Decimal
 from django.test import TestCase
 from django.urls import reverse
 
-from location.models import City, District, Region
+from location.models import City, District, Metro, MetroLine, Region
 
+from .forms import RealEstateComplexForm
 from .models import (
     ApartmentDecoration,
     ApartmentLayout,
@@ -13,8 +14,279 @@ from .models import (
     RealEstateClass,
     RealEstateComplex,
     RealEstateComplexBuilding,
+    RealEstateComplexMetroAvailability,
     RealEstateType,
 )
+
+
+class RealEstateComplexFormLocationTests(TestCase):
+    def setUp(self):
+        self.region = Region.objects.create(name='Region 1', code='R1')
+        self.other_region = Region.objects.create(name='Region 2', code='R2')
+        self.city = City.objects.create(name='City 1', region=self.region)
+        self.other_city = City.objects.create(
+            name='City 2', region=self.other_region
+        )
+        self.district = District.objects.create(
+            name='District 1', city=self.city
+        )
+        self.developer = Developer.objects.create(name='Developer 1')
+        self.estate_type = RealEstateType.objects.create(name='Apartment')
+        self.estate_class = RealEstateClass.objects.create(
+            name='Comfort', weight=Decimal('1.00')
+        )
+        self.metro_line = MetroLine.objects.create(
+            line='Line 1',
+            line_color='#FF0000',
+            city=self.city,
+        )
+        self.metro = Metro.objects.create(
+            station='Station 1',
+            metro_line=self.metro_line,
+        )
+
+    def _form_data(self, **overrides):
+        data = {
+            'name': 'Complex 1',
+            'description': '',
+            'map_link': '',
+            'presentation_link': '',
+            'developer': self.developer.pk,
+            'region': '',
+            'city': '',
+            'district': self.district.pk,
+            'real_estate_class': self.estate_class.pk,
+            'real_estate_type': self.estate_type.pk,
+            'is_active': 'on',
+        }
+        data.update(overrides)
+        return data
+
+    def test_district_selection_fills_city_and_region(self):
+        form = RealEstateComplexForm(data=self._form_data())
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['city'], self.city)
+        self.assertEqual(form.cleaned_data['region'], self.region)
+
+    def test_mismatched_city_and_district_is_invalid(self):
+        form = RealEstateComplexForm(
+            data=self._form_data(city=self.other_city.pk)
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('district', form.errors)
+
+    def test_create_view_renders_location_controls(self):
+        response = self.client.get(reverse('property:complex_create'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id_region')
+        self.assertContains(response, 'id_city')
+        self.assertContains(response, 'location-cities-data')
+        self.assertContains(response, 'metro-0-metro')
+        self.assertContains(response, 'location-metro-stations-data')
+        self.assertContains(response, 'duplicate-complex-warning')
+        self.assertContains(response, 'existing-complexes-data')
+
+    def test_create_view_passes_existing_complexes_for_duplicate_warning(self):
+        complex_obj = RealEstateComplex.objects.create(
+            name='Complex 1',
+            developer=self.developer,
+            district=self.district,
+            real_estate_class=self.estate_class,
+            real_estate_type=self.estate_type,
+        )
+
+        response = self.client.get(reverse('property:complex_create'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context['existing_complexes'],
+            [
+                {
+                    'id': complex_obj.pk,
+                    'name': 'Complex 1',
+                    'developer_id': self.developer.pk,
+                }
+            ],
+        )
+
+    def test_update_view_excludes_current_complex_from_duplicate_warning(self):
+        complex_obj = RealEstateComplex.objects.create(
+            name='Complex 1',
+            developer=self.developer,
+            district=self.district,
+            real_estate_class=self.estate_class,
+            real_estate_type=self.estate_type,
+        )
+
+        response = self.client.get(
+            reverse('property:complex_update', kwargs={'pk': complex_obj.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['existing_complexes'], [])
+
+    def _complex_create_post_data(self, **overrides):
+        data = self._form_data(
+            city=self.city.pk,
+            region=self.region.pk,
+            district=self.district.pk,
+        )
+        data.update(
+            {
+                'buildings-TOTAL_FORMS': '0',
+                'buildings-INITIAL_FORMS': '0',
+                'buildings-MIN_NUM_FORMS': '0',
+                'buildings-MAX_NUM_FORMS': '1000',
+                'metro-TOTAL_FORMS': '1',
+                'metro-INITIAL_FORMS': '0',
+                'metro-MIN_NUM_FORMS': '0',
+                'metro-MAX_NUM_FORMS': '1000',
+                'metro-0-metro': self.metro.pk,
+                'metro-0-walking_time_minutes': '12',
+                'metro-0-is_active': 'on',
+            }
+        )
+        data.update(overrides)
+        return data
+
+    def test_create_view_saves_metro_availability(self):
+        response = self.client.post(
+            reverse('property:complex_create'),
+            self._complex_create_post_data(),
+        )
+
+        self.assertRedirects(response, reverse('property:complex_list'))
+        complex_obj = RealEstateComplex.objects.get(name='Complex 1')
+        availability = RealEstateComplexMetroAvailability.objects.get(
+            real_estate_complex=complex_obj
+        )
+        self.assertEqual(availability.metro, self.metro)
+        self.assertEqual(availability.walking_time_minutes, 12)
+
+    def test_create_view_rejects_metro_station_from_another_city(self):
+        other_line = MetroLine.objects.create(
+            line='Other line',
+            line_color='#00FF00',
+            city=self.other_city,
+        )
+        other_metro = Metro.objects.create(
+            station='Other station',
+            metro_line=other_line,
+        )
+
+        response = self.client.post(
+            reverse('property:complex_create'),
+            self._complex_create_post_data(**{'metro-0-metro': other_metro.pk}),
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(RealEstateComplex.objects.filter(name='Complex 1').exists())
+
+
+class LocationCatalogMetroTests(TestCase):
+    def setUp(self):
+        self.region = Region.objects.create(name='Region 1', code='R1')
+        self.city = City.objects.create(name='City 1', region=self.region)
+        self.metro_line = MetroLine.objects.create(
+            line='Line 1',
+            line_color='#FF0000',
+            city=self.city,
+        )
+
+    def test_location_catalog_renders_metro_line_dictionary(self):
+        response = self.client.get(
+            reverse('property:location_catalog'), {'model': 'metro_line'}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="model" value="metro_line"')
+        self.assertContains(response, 'name="line"')
+        self.assertContains(response, 'name="line_color"')
+        self.assertContains(response, 'name="city"')
+
+    def test_location_catalog_renders_metro_dictionary(self):
+        response = self.client.get(
+            reverse('property:location_catalog'), {'model': 'metro'}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="model" value="metro"')
+        self.assertContains(response, 'name="station"')
+        self.assertContains(response, 'name="metro_line"')
+        self.assertContains(response, 'catalog-line-select-swatch')
+        self.assertNotContains(response, 'name="line_color"')
+
+    def test_location_catalog_creates_updates_and_deletes_metro(self):
+        other_line = MetroLine.objects.create(
+            line='Line 2',
+            line_color='#00FF00',
+            city=self.city,
+        )
+        create_response = self.client.post(
+            reverse('property:location_catalog'),
+            {
+                'action': 'save',
+                'model': 'metro',
+                'station': 'Station 1',
+                'metro_line': self.metro_line.pk,
+                'is_active': 'on',
+            },
+        )
+
+        self.assertRedirects(
+            create_response,
+            f"{reverse('property:location_catalog')}?model=metro",
+        )
+        metro = Metro.objects.get(station='Station 1')
+
+        update_response = self.client.post(
+            reverse('property:location_catalog'),
+            {
+                'action': 'save',
+                'model': 'metro',
+                'object_id': metro.pk,
+                'station': 'Station 2',
+                'metro_line': other_line.pk,
+            },
+        )
+
+        self.assertRedirects(
+            update_response,
+            f"{reverse('property:location_catalog')}?model=metro",
+        )
+        metro.refresh_from_db()
+        self.assertEqual(metro.station, 'Station 2')
+        self.assertEqual(metro.metro_line, other_line)
+        self.assertFalse(metro.is_active)
+
+        delete_response = self.client.post(
+            reverse('property:location_catalog'),
+            {
+                'action': 'delete',
+                'model': 'metro',
+                'object_id': metro.pk,
+            },
+        )
+
+        self.assertRedirects(
+            delete_response,
+            f"{reverse('property:location_catalog')}?model=metro",
+        )
+        self.assertFalse(Metro.objects.filter(pk=metro.pk).exists())
+
+    def test_location_catalog_renders_metro_line_color_in_station_table(self):
+        Metro.objects.create(station='Station 1', metro_line=self.metro_line)
+
+        response = self.client.get(
+            reverse('property:location_catalog'), {'model': 'metro'}
+        )
+
+        self.assertContains(response, 'catalog-line-color-strip')
+        self.assertContains(response, '#FF0000')
+        self.assertContains(response, 'Line 1')
 
 
 class RealEstateComplexDeleteViewTests(TestCase):

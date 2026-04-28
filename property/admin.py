@@ -9,6 +9,7 @@ from .models import (
     RealEstateClass,
     RealEstateComplex,
     RealEstateComplexBuilding,
+    RealEstateComplexMetroAvailability,
     RealEstateType,
 )
 
@@ -77,6 +78,15 @@ class RealEstateComplexBuildingInline(admin.TabularInline):
     show_change_link = True
 
 
+class RealEstateComplexMetroAvailabilityInline(admin.TabularInline):
+    """Inline for metro availability near a complex."""
+
+    model = RealEstateComplexMetroAvailability
+    extra = 1
+    fields = ('metro', 'walking_time_minutes', 'is_active')
+    show_change_link = True
+
+
 @admin.register(RealEstateComplex)
 class RealEstateComplexAdmin(admin.ModelAdmin):
     """Описание класса RealEstateComplexAdmin.
@@ -110,7 +120,10 @@ class RealEstateComplexAdmin(admin.ModelAdmin):
     )
     list_editable = ('is_active',)
     ordering = ('name',)
-    inlines = (RealEstateComplexBuildingInline,)
+    inlines = (
+        RealEstateComplexBuildingInline,
+        RealEstateComplexMetroAvailabilityInline,
+    )
 
     def get_queryset(self, request):
         """Описание метода get_queryset.
@@ -175,6 +188,45 @@ class RealEstateComplexBuildingAdmin(admin.ModelAdmin):
         """
         return (
             super().get_queryset(request).select_related('real_estate_complex')
+        )
+
+
+@admin.register(RealEstateComplexMetroAvailability)
+class RealEstateComplexMetroAvailabilityAdmin(admin.ModelAdmin):
+    """Admin for metro availability near complexes."""
+
+    list_display = (
+        'real_estate_complex',
+        'metro',
+        'walking_time_minutes',
+        'is_active',
+    )
+    list_filter = (
+        'is_active',
+        'metro__metro_line__city',
+        'metro__metro_line',
+        'created_at',
+    )
+    search_fields = (
+        'real_estate_complex__name',
+        'metro__station',
+        'metro__metro_line__line',
+    )
+    list_editable = ('is_active',)
+    ordering = (
+        'real_estate_complex__name',
+        'walking_time_minutes',
+        'metro__station',
+    )
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .select_related(
+                'real_estate_complex',
+                'metro__metro_line__city',
+            )
         )
 
 
