@@ -15,8 +15,8 @@
                 <table class="table table-striped table-hover">
                     <thead>
                         <tr>
-                            <th>Застройщик</th>
                             <th>ЖК</th>
+                            <th>Застройщик</th>
                             <th>Район</th>
                             <th>Класс</th>
                             <th>Тип</th>
@@ -28,8 +28,8 @@
                     <tbody>
                         {% for complex in complexes %}
                         <tr>
-                            <td>{{ complex.developer.name }}</td>
                             <td>{{ complex.name }}</td>
+                            <td>{{ complex.developer.name }}</td>
                             <td>{{ complex.district.name }}</td>
                             <td>{{ complex.real_estate_class.name }}</td>
                             <td>{{ complex.real_estate_type.name }}</td>
