@@ -2,6 +2,45 @@
 
 {% block title %}{{ section_title }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    .catalog-line-color {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-width: 0;
+    }
+
+    .catalog-line-color-strip {
+        display: inline-block;
+        width: 1.25rem;
+        height: 0.35rem;
+        border-radius: 999px;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        flex: 0 0 auto;
+    }
+
+    .catalog-line-select {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .catalog-line-select .form-control {
+        min-width: 0;
+    }
+
+    .catalog-line-select-swatch {
+        width: 1.35rem;
+        height: 0.45rem;
+        border-radius: 999px;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        background: transparent;
+        flex: 0 0 auto;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -42,10 +81,17 @@
                                 <tr>
                                     {% for cell in row.cells %}
                                     <td>
-                                        {% if cell.is_long_text %}
-                                            {{ cell.value|truncatechars:100 }}
+                                        {% if cell.color %}
+                                            <span class="catalog-line-color">
+                                                <span class="catalog-line-color-strip" style="background-color: {{ cell.color }};"></span>
+                                                <span>{{ cell.value }}</span>
+                                            </span>
                                         {% else %}
-                                            {{ cell.value }}
+                                            {% if cell.is_long_text %}
+                                                {{ cell.value|truncatechars:100 }}
+                                            {% else %}
+                                                {{ cell.value }}
+                                            {% endif %}
                                         {% endif %}
                                     </td>
                                     {% endfor %}
@@ -108,7 +154,14 @@
                             {% else %}
                             <div class="mb-3">
                                 <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                {{ field }}
+                                {% if field.name == 'metro_line' %}
+                                <div class="catalog-line-select">
+                                    <span class="catalog-line-select-swatch" data-metro-line-select-swatch aria-hidden="true"></span>
+                                    {{ field }}
+                                </div>
+                                {% else %}
+                                    {{ field }}
+                                {% endif %}
                                 {% for error in field.errors %}
                                 <div class="text-danger">{{ error }}</div>
                                 {% endfor %}
@@ -128,4 +181,33 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ metro_line_options|json_script:"metro-line-options-data" }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const select = document.getElementById('id_metro_line');
+    const swatch = document.querySelector('[data-metro-line-select-swatch]');
+    const dataElement = document.getElementById('metro-line-options-data');
+
+    if (!select || !swatch || !dataElement) {
+        return;
+    }
+
+    const lineColors = new Map(
+        JSON.parse(dataElement.textContent).map(function (item) {
+            return [String(item.id), item.color];
+        })
+    );
+
+    function syncLineColor() {
+        const color = lineColors.get(String(select.value)) || 'transparent';
+        swatch.style.backgroundColor = color;
+    }
+
+    select.addEventListener('change', syncLineColor);
+    syncLineColor();
+});
+</script>
 {% endblock %}

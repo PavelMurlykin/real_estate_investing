@@ -1,0 +1,326 @@
+[
+  {
+    "model": "location.metroline",
+    "pk": 1014,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Кировско-Выборгская",
+      "line_color": "#D6083B",
+      "city": 1
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 1170,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Красносельско-Калининская",
+      "line_color": "#8C5646",
+      "city": 1
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 1017,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Лахтинско-Правобережная",
+      "line_color": "#EA7125",
+      "city": 1
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 1015,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Московско-Петроградская",
+      "line_color": "#0078C9",
+      "city": 1
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 1016,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Невско-Василеостровская",
+      "line_color": "#009A49",
+      "city": 1
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 1018,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Фрунзенско-Приморская",
+      "line_color": "#702785",
+      "city": 1
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2003,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Арбатско-Покровская",
+      "line_color": "#0072BA",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2097,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Большая кольцевая линия",
+      "line_color": "#88CDCF",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2012,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Бутовская",
+      "line_color": "#BAC8E8",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2002,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Замоскворецкая",
+      "line_color": "#4FB04F",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2008,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Калининская",
+      "line_color": "#FFCD1C",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2006,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Калужско-Рижская",
+      "line_color": "#F07E24",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2011,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Каховская",
+      "line_color": "#88CDCF",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2005,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Кольцевая",
+      "line_color": "#915133",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2010,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Люблинско-Дмитровская",
+      "line_color": "#BED12C",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2131,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "МЦД-1",
+      "line_color": "#F5A528",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2132,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "МЦД-2",
+      "line_color": "#E74683",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2135,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "МЦД-3",
+      "line_color": "#EA5B04",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2136,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "МЦД-4",
+      "line_color": "#00CC66",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2095,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "МЦК",
+      "line_color": "#CC4C6E",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2098,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Некрасовская",
+      "line_color": "#CC0066",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2009,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Серпуховско-Тимирязевская",
+      "line_color": "#ADACAC",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2001,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Сокольническая",
+      "line_color": "#E42313",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2133,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Солнцевская",
+      "line_color": "#FFCD1C",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2007,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Таганско-Краснопресненская",
+      "line_color": "#943E90",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2137,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Троицкая",
+      "line_color": "#03795F",
+      "city": 2
+    }
+  },
+  {
+    "model": "location.metroline",
+    "pk": 2004,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "line": "Филевская",
+      "line_color": "#1EBCEF",
+      "city": 2
+    }
+  }
+]

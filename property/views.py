@@ -18,7 +18,7 @@ from django.views.generic import (
     UpdateView,
 )
 
-from location.models import City, District, Region
+from location.models import City, District, Metro, MetroLine, Region
 
 from .forms import (
     DeveloperForm,
@@ -26,6 +26,7 @@ from .forms import (
     PropertyForm,
     RealEstateComplexBuildingFormSet,
     RealEstateComplexForm,
+    RealEstateComplexMetroAvailabilityFormSet,
 )
 from .models import (
     ApartmentDecoration,
@@ -178,6 +179,19 @@ class BaseCatalogView(TemplateView):
 
         return form
 
+    def get_metro_line_option_data(self, form):
+        """Build color data for metro line selects."""
+        if 'metro_line' not in form.fields:
+            return []
+
+        return [
+            {
+                'id': metro_line.pk,
+                'color': metro_line.line_color,
+            }
+            for metro_line in form.fields['metro_line'].queryset
+        ]
+
     def format_cell_value(self, value):
         """Описание метода format_cell_value.
 
@@ -194,6 +208,20 @@ class BaseCatalogView(TemplateView):
         if value in (None, ''):
             return '-'
         return str(value)
+
+    def build_cell(self, value):
+        """Prepare a table cell for the catalog template."""
+        cell = {
+            'value': self.format_cell_value(value),
+            'is_long_text': False,
+            'color': '',
+        }
+
+        if isinstance(value, MetroLine):
+            cell['value'] = value.line
+            cell['color'] = value.line_color
+
+        return cell
 
     def build_columns(self, config):
         """Описание метода build_columns.
@@ -237,12 +265,9 @@ class BaseCatalogView(TemplateView):
             cells = []
             for column in columns:
                 raw_value = getattr(obj, column['name'])
-                cells.append(
-                    {
-                        'value': self.format_cell_value(raw_value),
-                        'is_long_text': column['is_long_text'],
-                    }
-                )
+                cell = self.build_cell(raw_value)
+                cell['is_long_text'] = column['is_long_text']
+                cells.append(cell)
             rows.append(
                 {
                     'pk': obj.pk,
@@ -304,6 +329,7 @@ class BaseCatalogView(TemplateView):
             'form_action_url': reverse(self.url_name),
             'cancel_url': self.get_model_url(current_model_key),
             'delete_error': delete_error,
+            'metro_line_options': self.get_metro_line_option_data(form),
         }
 
     def get_edit_object(self, config):
@@ -459,6 +485,22 @@ class LocationCatalogView(BaseCatalogView):
             table_fields=('name', 'city', 'is_active'),
             order_by=('name',),
             select_related=('city',),
+        ),
+        CatalogModelConfig(
+            key='metro_line',
+            model=MetroLine,
+            form_fields=('line', 'line_color', 'city', 'is_active'),
+            table_fields=('line', 'line_color', 'city', 'is_active'),
+            order_by=('city__name', 'line'),
+            select_related=('city',),
+        ),
+        CatalogModelConfig(
+            key='metro',
+            model=Metro,
+            form_fields=('station', 'metro_line', 'is_active'),
+            table_fields=('station', 'metro_line', 'is_active'),
+            order_by=('metro_line__city__name', 'metro_line__line', 'station'),
+            select_related=('metro_line__city',),
         ),
     )
 
@@ -667,6 +709,49 @@ class RealEstateComplexFormsetMixin:
             instance=instance, prefix='buildings'
         )
 
+    def get_metro_availability_formset(self):
+        instance = (
+            self.object
+            if getattr(self, 'object', None)
+            else RealEstateComplex()
+        )
+        if self.request.method == 'POST':
+            return RealEstateComplexMetroAvailabilityFormSet(
+                self.request.POST, instance=instance, prefix='metro'
+            )
+        return RealEstateComplexMetroAvailabilityFormSet(
+            instance=instance, prefix='metro'
+        )
+
+    def validate_metro_availability_city(self, form, metro_formset):
+        selected_city = form.cleaned_data.get('city')
+        if not selected_city:
+            district = form.cleaned_data.get('district')
+            selected_city = district.city if district else None
+
+        if not selected_city:
+            return True
+
+        is_valid = True
+        for metro_form in metro_formset.forms:
+            if not hasattr(metro_form, 'cleaned_data'):
+                continue
+            if metro_form.cleaned_data.get('DELETE'):
+                continue
+
+            metro = metro_form.cleaned_data.get('metro')
+            if not metro:
+                continue
+
+            if metro.metro_line.city_id != selected_city.pk:
+                metro_form.add_error(
+                    'metro',
+                    'Станция метро не относится к выбранному городу.',
+                )
+                is_valid = False
+
+        return is_valid
+
     def get_context_data(self, **kwargs):
         """Описание метода get_context_data.
 
@@ -680,6 +765,10 @@ class RealEstateComplexFormsetMixin:
         """
         context = super().get_context_data(**kwargs)
         context.setdefault('building_formset', self.get_formset())
+        context.setdefault(
+            'metro_availability_formset',
+            self.get_metro_availability_formset(),
+        )
         context['location_cities'] = list(
             City.objects.order_by('name').values('id', 'name', 'region_id')
         )
@@ -687,6 +776,21 @@ class RealEstateComplexFormsetMixin:
             District.objects.select_related('city__region')
             .order_by('name')
             .values('id', 'name', 'city_id', 'city__region_id')
+        )
+        context['location_metro_stations'] = list(
+            Metro.objects.select_related('metro_line__city')
+            .order_by(
+                'metro_line__city__name',
+                'metro_line__line',
+                'station',
+            )
+            .values(
+                'id',
+                'station',
+                'metro_line__line',
+                'metro_line__line_color',
+                'metro_line__city_id',
+            )
         )
         return context
 
@@ -703,14 +807,20 @@ class RealEstateComplexFormsetMixin:
         """
         context = self.get_context_data(form=form)
         building_formset = context['building_formset']
+        metro_formset = context['metro_availability_formset']
 
-        if not building_formset.is_valid():
-            return self.form_invalid(form)
+        if not building_formset.is_valid() or not metro_formset.is_valid():
+            return self.render_to_response(context, status=400)
+
+        if not self.validate_metro_availability_city(form, metro_formset):
+            return self.render_to_response(context, status=400)
 
         with transaction.atomic():
             self.object = form.save()
             building_formset.instance = self.object
             building_formset.save()
+            metro_formset.instance = self.object
+            metro_formset.save()
 
         return HttpResponseRedirect(self.get_success_url())
 

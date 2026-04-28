@@ -1,0 +1,5799 @@
+[
+  {
+    "model": "location.metro",
+    "pk": 1000000,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Девяткино",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000001,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Гражданский проспект",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000002,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Академическая",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000003,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Политехническая",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000004,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Площадь Мужества",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000005,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Лесная",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000006,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Выборгская",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000007,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Площадь Ленина",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000008,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Чернышевская",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000009,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Площадь Восстания",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000010,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Владимирская",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000011,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Пушкинская",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000012,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Технологический институт 1",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000013,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Балтийская",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000014,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Нарвская",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000015,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кировский завод",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000016,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Автово",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000017,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Ленинский проспект",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000018,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Проспект Ветеранов",
+      "metro_line": 1014
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000019,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Парнас",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000020,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Проспект Просвещения",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000021,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Озерки",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000022,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Удельная",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000023,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Пионерская",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000024,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Чёрная речка",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000025,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Петроградская",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000026,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Горьковская",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000027,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Невский проспект",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000028,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Сенная площадь",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000029,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Технологический институт 2",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000030,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Фрунзенская",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000031,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Московские ворота",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000032,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Электросила",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000033,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Парк Победы",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000034,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Московская",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000035,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Звёздная",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000036,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Купчино",
+      "metro_line": 1015
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000037,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Беговая",
+      "metro_line": 1016
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000038,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Приморская",
+      "metro_line": 1016
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000039,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Василеостровская",
+      "metro_line": 1016
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000040,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Гостиный двор",
+      "metro_line": 1016
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000041,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Маяковская",
+      "metro_line": 1016
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000042,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Площадь Александра Невского 1",
+      "metro_line": 1016
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000043,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Елизаровская",
+      "metro_line": 1016
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000044,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Ломоносовская",
+      "metro_line": 1016
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000045,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Пролетарская",
+      "metro_line": 1016
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000046,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Обухово",
+      "metro_line": 1016
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000047,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Рыбацкое",
+      "metro_line": 1016
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000048,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Зенит",
+      "metro_line": 1016
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000049,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Горный институт",
+      "metro_line": 1017
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000050,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Спасская",
+      "metro_line": 1017
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000051,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Достоевская",
+      "metro_line": 1017
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000052,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Лиговский проспект",
+      "metro_line": 1017
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000053,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Площадь Александра Невского 2",
+      "metro_line": 1017
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000054,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новочеркасская",
+      "metro_line": 1017
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000055,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Ладожская",
+      "metro_line": 1017
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000056,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Проспект Большевиков",
+      "metro_line": 1017
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000057,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Улица Дыбенко",
+      "metro_line": 1017
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000058,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Комендантский проспект",
+      "metro_line": 1018
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000059,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Старая Деревня",
+      "metro_line": 1018
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000060,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Крестовский остров",
+      "metro_line": 1018
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000061,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Чкаловская",
+      "metro_line": 1018
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000062,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Спортивная",
+      "metro_line": 1018
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000063,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Адмиралтейская",
+      "metro_line": 1018
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000064,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Садовая",
+      "metro_line": 1018
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000065,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Звенигородская",
+      "metro_line": 1018
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000066,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Обводный Канал",
+      "metro_line": 1018
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000067,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Волковская",
+      "metro_line": 1018
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000068,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Бухарестская",
+      "metro_line": 1018
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000069,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Международная",
+      "metro_line": 1018
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000070,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Дунайская",
+      "metro_line": 1018
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000071,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Проспект Славы",
+      "metro_line": 1018
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000072,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Шушары",
+      "metro_line": 1018
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000073,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Юго-западная",
+      "metro_line": 1170
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000074,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Путиловская",
+      "metro_line": 1170
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000131,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Бульвар Рокоссовского",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000132,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Черкизовская",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000133,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Преображенская площадь",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000134,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Сокольники",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000135,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Красносельская",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000136,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Комсомольская",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000137,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Красные ворота",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000138,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Чистые пруды",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000139,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Лубянка",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000140,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Охотный ряд",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000141,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Библиотека им.Ленина",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000142,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кропоткинская",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000143,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Парк культуры",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000144,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Фрунзенская",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000145,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Спортивная",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000146,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Воробьевы горы",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000147,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Университет",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000148,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Проспект Вернадского",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000149,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Юго-Западная",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000150,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Тропарево",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000151,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Румянцево",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000152,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Саларьево",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000153,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Филатов луг",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000154,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Прокшино",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000155,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Ольховая",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000156,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новомосковская (Коммунарка)",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000157,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Потапово",
+      "metro_line": 2001
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000083,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Ховрино",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000084,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Беломорская",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000085,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Речной вокзал",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000086,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Водный стадион",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000087,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Войковская",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000088,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Сокол",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000089,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Аэропорт",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000090,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Динамо",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000091,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Белорусская",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000092,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Маяковская",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000093,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Тверская",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000094,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Театральная",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000095,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новокузнецкая",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000096,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Павелецкая",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000097,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Автозаводская",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000098,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Технопарк",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000099,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Коломенская",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000100,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Каширская",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000101,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кантемировская",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000102,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Царицыно",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000103,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Орехово",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000104,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Домодедовская",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000105,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Красногвардейская",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000106,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Алма-Атинская",
+      "metro_line": 2002
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000158,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Щелковская",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000159,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Первомайская",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000160,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Измайловская",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000161,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Партизанская",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000162,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Семеновская",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000163,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Электрозаводская",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000164,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Бауманская",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000165,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Курская",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000166,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Площадь Революции",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000167,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Арбатская",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000168,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Смоленская",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000169,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Киевская",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000170,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Парк Победы",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000171,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Славянский бульвар",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000172,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кунцевская",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000173,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Молодежная",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000174,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Крылатское",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000175,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Строгино",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000176,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Мякинино",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000177,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Волоколамская",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000178,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Митино",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000179,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Пятницкое шоссе",
+      "metro_line": 2003
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000180,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кунцевская",
+      "metro_line": 2004
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000181,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Пионерская",
+      "metro_line": 2004
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000182,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Филевский парк",
+      "metro_line": 2004
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000183,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Багратионовская",
+      "metro_line": 2004
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000184,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Фили",
+      "metro_line": 2004
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000185,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кутузовская",
+      "metro_line": 2004
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000186,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Студенческая",
+      "metro_line": 2004
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000187,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Киевская",
+      "metro_line": 2004
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000188,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Смоленская",
+      "metro_line": 2004
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000189,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Арбатская",
+      "metro_line": 2004
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000190,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Александровский сад",
+      "metro_line": 2004
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000191,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Деловой центр (Выставочная)",
+      "metro_line": 2004
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000192,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Москва-Сити",
+      "metro_line": 2004
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000241,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новослободская",
+      "metro_line": 2005
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000242,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Проспект Мира",
+      "metro_line": 2005
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000243,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Комсомольская",
+      "metro_line": 2005
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000244,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Курская",
+      "metro_line": 2005
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000245,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Таганская",
+      "metro_line": 2005
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000246,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Павелецкая",
+      "metro_line": 2005
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000247,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Добрынинская",
+      "metro_line": 2005
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000248,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Октябрьская",
+      "metro_line": 2005
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000249,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Парк культуры",
+      "metro_line": 2005
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000250,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Киевская",
+      "metro_line": 2005
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000251,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Краснопресненская",
+      "metro_line": 2005
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000252,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Белорусская",
+      "metro_line": 2005
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000107,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Медведково",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000108,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Бабушкинская",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000109,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Свиблово",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000110,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Ботанический сад",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000111,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "ВДНХ",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000112,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Алексеевская",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000113,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Рижская",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000114,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Проспект Мира",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000115,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Сухаревская",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000116,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Тургеневская",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000117,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Китай-город",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000118,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Третьяковская",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000119,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Октябрьская",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000120,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Шаболовская",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000121,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Ленинский проспект",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000122,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Академическая",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000123,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Профсоюзная",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000124,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новые Черемушки",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000125,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Калужская",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000126,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Беляево",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000127,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Коньково",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000128,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Теплый Стан",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000129,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Ясенево",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000130,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новоясеневская",
+      "metro_line": 2006
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000218,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Планерная",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000219,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Сходненская",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000220,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Тушинская",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000221,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Спартак",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000222,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Щукинская",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000223,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Октябрьское поле",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000224,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Полежаевская",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000225,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Беговая",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000226,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Улица 1905 года",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000227,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Баррикадная",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000228,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Пушкинская",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000229,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кузнецкий мост",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000230,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Китай-город",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000231,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Таганская",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000232,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Пролетарская",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000233,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Волгоградский проспект",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000234,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Текстильщики",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000235,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кузьминки",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000236,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Рязанский проспект",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000237,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Выхино",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000238,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Лермонтовский проспект",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000239,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Жулебино",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000240,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Котельники",
+      "metro_line": 2007
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000075,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новокосино",
+      "metro_line": 2008
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000076,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новогиреево",
+      "metro_line": 2008
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000077,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Перово",
+      "metro_line": 2008
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000078,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Шоссе Энтузиастов",
+      "metro_line": 2008
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000079,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Авиамоторная",
+      "metro_line": 2008
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000080,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Площадь Ильича",
+      "metro_line": 2008
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000081,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Марксистская",
+      "metro_line": 2008
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000082,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Третьяковская",
+      "metro_line": 2008
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000193,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Алтуфьево",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000194,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Бибирево",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000195,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Отрадное",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000196,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Владыкино",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000197,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Петровско-Разумовская",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000198,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Тимирязевская",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000199,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Дмитровская",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000200,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Савёловская",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000201,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Менделеевская",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000202,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Цветной бульвар",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000203,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Чеховская",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000204,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Боровицкая",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000205,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Полянка",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000206,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Серпуховская",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000207,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Тульская",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000208,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Нагатинская",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000209,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Нагорная",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000210,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Нахимовский проспект",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000211,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Севастопольская",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000212,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Чертановская",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000213,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Южная",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000214,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Пражская",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000215,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Улица Академика Янгеля",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000216,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Аннино",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000217,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Бульвар Дмитрия Донского",
+      "metro_line": 2009
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000253,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Физтех",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000254,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Лианозово",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000255,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Яхромская",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000256,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Селигерская",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000257,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Верхние Лихоборы",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000258,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Окружная",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000259,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Петровско-Разумовская",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000260,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Фонвизинская",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000261,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Бутырская ",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000262,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Марьина Роща",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000263,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Достоевская",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000264,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Трубная",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000265,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Сретенский бульвар",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000266,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Чкаловская",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000267,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Римская",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000268,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Крестьянская застава",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000269,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Дубровка",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000270,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кожуховская",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000271,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Печатники",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000272,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Волжская",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000273,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Люблино",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000274,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Братиславская",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000275,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Марьино",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000276,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Борисово",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000277,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Шипиловская",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000278,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Зябликово",
+      "metro_line": 2010
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000279,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Каширская",
+      "metro_line": 2011
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000280,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Варшавская",
+      "metro_line": 2011
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000281,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Каховская",
+      "metro_line": 2011
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000282,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Бунинская аллея",
+      "metro_line": 2012
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000283,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Улица Горчакова",
+      "metro_line": 2012
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000284,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Бульвар Адмирала Ушакова",
+      "metro_line": 2012
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000285,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Улица Скобелевская",
+      "metro_line": 2012
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000286,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Улица Старокачаловская",
+      "metro_line": 2012
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000287,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Лесопарковая",
+      "metro_line": 2012
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000288,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Битцевский Парк",
+      "metro_line": 2012
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000303,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Окружная",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000304,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Владыкино",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000305,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Ботанический сад",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000306,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Ростокино",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000307,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Белокаменная",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000308,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Бульвар Рокоссовского",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000309,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Локомотив",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000310,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Измайлово",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000311,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Соколиная Гора",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000312,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Шоссе Энтузиастов",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000313,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Андроновка",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000314,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Нижегородская",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000315,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новохохловская",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000316,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Угрешская",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000317,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Дубровка",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000318,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Автозаводская",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000319,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "ЗИЛ",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000320,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Верхние Котлы",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000321,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Крымская",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000322,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Площадь Гагарина",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000323,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Лужники",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000324,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кутузовская",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000325,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Деловой центр",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000326,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Шелепиха",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000327,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Хорошево",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000328,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Зорге",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000329,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Панфиловская",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000330,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Стрешнево",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000331,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Балтийская",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000332,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Коптево",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000333,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Лихоборы",
+      "metro_line": 2095
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000334,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Мичуринский проспект",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000335,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Проспект Вернадского",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000336,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новаторская",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000337,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Воронцовская",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000338,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Зюзино",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000339,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Каховская",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000340,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Варшавская",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000341,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Каширская",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000342,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кленовый бульвар",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000343,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Нагатинский Затон",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000344,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Печатники",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000345,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Текстильщики",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000346,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Нижегородская",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000347,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Авиамоторная",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000348,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Лефортово",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000349,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Электрозаводская",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000350,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Сокольники",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000351,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Рижская",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000352,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Марьина Роща",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000353,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Савёловская",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000354,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Петровский парк",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000355,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "ЦСКА",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000356,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Хорошевская",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000357,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Шелепиха",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000358,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Деловой центр",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000359,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Народное Ополчение",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000360,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Мнёвники",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000361,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Терехово",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000362,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кунцевская",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000363,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Давыдково",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000364,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Аминьевская",
+      "metro_line": 2097
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000365,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Косино",
+      "metro_line": 2098
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000366,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Улица Дмитриевского",
+      "metro_line": 2098
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000367,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Лухмановская",
+      "metro_line": 2098
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000368,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Некрасовка",
+      "metro_line": 2098
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000369,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Юго-Восточная",
+      "metro_line": 2098
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000370,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Окская",
+      "metro_line": 2098
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000371,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Стахановская",
+      "metro_line": 2098
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000372,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Нижегородская",
+      "metro_line": 2098
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000373,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Лефортово",
+      "metro_line": 2098
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000374,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Электрозаводская",
+      "metro_line": 2098
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000375,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Авиамоторная",
+      "metro_line": 2098
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000376,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Лобня",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000377,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Шереметьевская",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000378,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Хлебниково",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000379,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Водники",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000380,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Долгопрудная",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000381,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новодачная",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000382,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Марк",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000383,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Лианозово",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000384,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Бескудниково",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000385,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Дегунино",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000386,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Окружная",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000387,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Тимирязевская",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000388,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Савёловская",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000389,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Белорусская",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000390,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Беговая",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000391,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Тестовская",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000392,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Фили",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000393,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Славянский бульвар",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000394,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кунцевская",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000395,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Рабочий Посёлок",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000396,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Сетунь",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000397,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Немчиновка",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000398,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Сколково",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000399,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Баковка",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000400,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Одинцово",
+      "metro_line": 2131
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000401,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Нахабино",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000402,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Аникеевка",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000403,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Опалиха",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000404,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Красногорская",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000405,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Павшино",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000406,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Пенягино",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000407,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Волоколамская",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000408,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Трикотажная",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000409,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Тушинская",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000410,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Покровское-Стрешнево",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000411,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Стрешнево",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000412,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Красный Балтиец",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000413,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Гражданская",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000414,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Дмитровская",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000415,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Рижская",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000416,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Площадь трёх вокзалов",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000417,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Курская",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000418,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Москва Товарная",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000419,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Калитники",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000420,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новохохловская",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000421,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Текстильщики",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000422,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Люблино",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000423,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Депо",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000424,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Перерва",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000425,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Курьяново",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000426,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Москворечье",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000427,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Царицыно",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000428,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Покровское",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000429,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Красный строитель",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000430,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Битца",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000431,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Бутово",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000432,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Щербинка",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000433,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Остафьево",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000434,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Силикатная",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000435,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Подольск",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000436,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Марьина Роща",
+      "metro_line": 2132
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000289,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Деловой центр",
+      "metro_line": 2133
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000290,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Пыхтино",
+      "metro_line": 2133
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000291,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Парк Победы",
+      "metro_line": 2133
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000292,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Минская",
+      "metro_line": 2133
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000293,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Ломоносовский проспект",
+      "metro_line": 2133
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000294,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Раменки",
+      "metro_line": 2133
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000295,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Мичуринский проспект",
+      "metro_line": 2133
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000296,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Озёрная",
+      "metro_line": 2133
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000297,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Говорово",
+      "metro_line": 2133
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000298,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Солнцево",
+      "metro_line": 2133
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000299,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Боровское шоссе",
+      "metro_line": 2133
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000300,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новопеределкино",
+      "metro_line": 2133
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000301,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Рассказовка",
+      "metro_line": 2133
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000302,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Аэропорт Внуково",
+      "metro_line": 2133
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000437,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Крюково",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000438,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Малино",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000439,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Фирсановская",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000440,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Сходня",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000441,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Подрезково",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000442,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новоподрезково",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000443,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Молжаниново",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000444,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Химки",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000445,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Левобережная",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000446,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Ховрино",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000447,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Грачёвская",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000448,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Моссельмаш",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000449,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Лихоборы",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000450,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Петровско-Разумовская",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000451,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Останкино",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000452,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Рижская",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000453,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Митьково",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000454,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Электрозаводская",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000455,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Сортировочная",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000456,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Авиамоторная",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000457,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Андроновка",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000458,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Перово",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000459,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Плющево",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000460,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Вешняки",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000461,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Выхино",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000462,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Косино",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000463,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Ухтомская",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000464,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Люберцы I",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000465,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Панки",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000466,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Томилино",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000467,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Красково",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000468,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Малаховка",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000469,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Удельная",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000470,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Быково",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000471,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Ильинская",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000472,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Отдых",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000473,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кратово",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000474,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Есенинская",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000475,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Фабричная",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000476,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Раменское",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000477,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Ипподром",
+      "metro_line": 2135
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000478,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Железнодорожная",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000479,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Ольгино",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000480,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кучино",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000481,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Салтыковская",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000482,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Никольское",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000483,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Реутов",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000484,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новогиреево",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000485,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кусково",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000486,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Чухлинка",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000487,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Нижегородская",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000488,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Серп и Молот",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000489,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Курская",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000490,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Площадь трёх вокзалов",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000491,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Рижская",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000492,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Марьина Роща",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000493,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Савёловская",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000494,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Белорусская",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000495,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Ермакова Роща",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000496,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Тестовская",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000497,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кутузовская",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000498,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Поклонная",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000499,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Минская",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000500,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Матвеевское",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000501,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Аминьевская",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000502,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Очаково I",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000503,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Мещерская",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000504,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Солнечная",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000505,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новопеределкино",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000506,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Переделкино",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000507,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Мичуринец",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000508,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Внуково",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000509,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Лесной Городок",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000510,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Толстопальцево",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000511,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Кокошкино",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000512,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Санино",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000513,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Крёкшино",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000514,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Победа",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000515,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Апрелевка",
+      "metro_line": 2136
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000516,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "ЗИЛ",
+      "metro_line": 2137
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000517,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Крымская",
+      "metro_line": 2137
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000518,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Академическая",
+      "metro_line": 2137
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000519,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Вавиловская",
+      "metro_line": 2137
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000520,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новаторская",
+      "metro_line": 2137
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000521,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Университет дружбы народов",
+      "metro_line": 2137
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000522,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Генерала Тюленева",
+      "metro_line": 2137
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000523,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Тютчевская",
+      "metro_line": 2137
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000524,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Корниловская",
+      "metro_line": 2137
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000525,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Коммунарка",
+      "metro_line": 2137
+    }
+  },
+  {
+    "model": "location.metro",
+    "pk": 1000526,
+    "fields": {
+      "is_active": true,
+      "created_at": "2026-04-29T00:00:00Z",
+      "updated_at": "2026-04-29T00:00:00Z",
+      "station": "Новомосковская",
+      "metro_line": 2137
+    }
+  }
+]

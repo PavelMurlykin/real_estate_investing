@@ -134,6 +134,80 @@
                         <div class="text-danger">{{ error }}</div>
                     {% endfor %}
                 </div>
+
+                <hr>
+
+                <div class="mb-3">
+                    <h2 class="h5 mb-3">Метро рядом с ЖК</h2>
+                    {{ metro_availability_formset.management_form }}
+
+                    {% if metro_availability_formset.non_form_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in metro_availability_formset.non_form_errors %}
+                                <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle mb-2">
+                            <thead>
+                                <tr>
+                                    <th>Станция метро</th>
+                                    <th style="width: 180px;">Пешком, мин.</th>
+                                    <th style="width: 110px;">Активен</th>
+                                    <th style="width: 110px;">Удалить</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for metro_form in metro_availability_formset %}
+                                <tr>
+                                    {% for hidden in metro_form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
+                                    <td>
+                                        {{ metro_form.metro }}
+                                        {% for error in metro_form.metro.errors %}
+                                            <div class="text-danger">{{ error }}</div>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {{ metro_form.walking_time_minutes }}
+                                        {% for error in metro_form.walking_time_minutes.errors %}
+                                            <div class="text-danger">{{ error }}</div>
+                                        {% endfor %}
+                                    </td>
+                                    <td class="text-center">
+                                        {{ metro_form.is_active }}
+                                        {% for error in metro_form.is_active.errors %}
+                                            <div class="text-danger">{{ error }}</div>
+                                        {% endfor %}
+                                    </td>
+                                    <td class="text-center">
+                                        {{ metro_form.DELETE }}
+                                        {% for error in metro_form.DELETE.errors %}
+                                            <div class="text-danger">{{ error }}</div>
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                                {% if metro_form.non_field_errors %}
+                                <tr>
+                                    <td colspan="4">
+                                        {% for error in metro_form.non_field_errors %}
+                                            <div class="text-danger">{{ error }}</div>
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="form-text">
+                        Чтобы добавить станцию метро, заполните пустую строку и укажите время пешком в минутах.
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -236,6 +310,7 @@
 {% block extra_scripts %}
 {{ location_cities|json_script:"location-cities-data" }}
 {{ location_districts|json_script:"location-districts-data" }}
+{{ location_metro_stations|json_script:"location-metro-stations-data" }}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const regionSelect = document.getElementById('id_region');
@@ -243,8 +318,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const districtSelect = document.getElementById('id_district');
     const citiesData = document.getElementById('location-cities-data');
     const districtsData = document.getElementById('location-districts-data');
+    const metroStationsData = document.getElementById('location-metro-stations-data');
 
-    if (!regionSelect || !citySelect || !districtSelect || !citiesData || !districtsData) {
+    if (!regionSelect || !citySelect || !districtSelect || !citiesData || !districtsData || !metroStationsData) {
         return;
     }
 
@@ -255,6 +331,13 @@ document.addEventListener('DOMContentLoaded', function () {
             name: district.name,
             city_id: district.city_id,
             region_id: district.city__region_id,
+        };
+    });
+    const metroStations = JSON.parse(metroStationsData.textContent).map(function (station) {
+        return {
+            id: station.id,
+            name: `${station.station} (${station.metro_line__line})`,
+            city_id: station.metro_line__city_id,
         };
     });
 
@@ -321,6 +404,17 @@ document.addEventListener('DOMContentLoaded', function () {
         return districts;
     }
 
+    function getFilteredMetroStations() {
+        const cityId = citySelect.value;
+        if (!cityId) {
+            return metroStations;
+        }
+
+        return metroStations.filter(function (station) {
+            return sameId(station.city_id, cityId);
+        });
+    }
+
     function refreshCities(selectedCityId) {
         setOptions(citySelect, getFilteredCities(), 'Все города', selectedCityId);
         if (selectedCityId && !citySelect.value) {
@@ -340,6 +434,21 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function refreshMetroStations() {
+        document.querySelectorAll('select[name^="metro-"][name$="-metro"]').forEach(function (select) {
+            const selectedValue = select.value;
+            setOptions(
+                select,
+                getFilteredMetroStations(),
+                'Выберите станцию',
+                selectedValue
+            );
+            if (selectedValue && !select.value) {
+                select.value = '';
+            }
+        });
+    }
+
     function applyCity(cityId) {
         const city = findCity(cityId);
         if (!city) {
@@ -356,6 +465,7 @@ document.addEventListener('DOMContentLoaded', function () {
             ? selectedDistrict.id
             : '';
         refreshDistricts(districtId);
+        refreshMetroStations();
     }
 
     function applyDistrict(districtId) {
@@ -374,6 +484,7 @@ document.addEventListener('DOMContentLoaded', function () {
         citySelect.value = city.id;
         refreshDistricts(district.id);
         districtSelect.value = district.id;
+        refreshMetroStations();
     }
 
     regionSelect.addEventListener('change', function () {
@@ -382,6 +493,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!regionId) {
             refreshCities('');
             refreshDistricts('');
+            refreshMetroStations();
             return;
         }
 
@@ -397,6 +509,7 @@ document.addEventListener('DOMContentLoaded', function () {
             ? selectedDistrict.id
             : '';
         refreshDistricts(districtId);
+        refreshMetroStations();
     });
 
     citySelect.addEventListener('change', function () {
@@ -405,6 +518,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         refreshDistricts('');
+        refreshMetroStations();
     });
 
     districtSelect.addEventListener('change', function () {
@@ -420,6 +534,7 @@ document.addEventListener('DOMContentLoaded', function () {
     } else {
         refreshCities('');
         refreshDistricts('');
+        refreshMetroStations();
     }
 });
 </script>

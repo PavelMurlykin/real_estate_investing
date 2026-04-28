@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import City, District, Region
+from .models import City, District, Metro, MetroLine, Region
 
 
 @admin.register(Region)
@@ -46,3 +46,45 @@ class DistrictAdmin(admin.ModelAdmin):
     search_fields = ('name', 'city__name')
     list_editable = ('is_active',)
     ordering = ('name',)
+
+
+@admin.register(Metro)
+class MetroAdmin(admin.ModelAdmin):
+    """Администрирование справочника станций метро."""
+
+    list_display = (
+        'station',
+        'metro_line',
+        'is_active',
+        'created_at',
+    )
+    list_filter = (
+        'is_active',
+        'metro_line__city',
+        'metro_line__line',
+        'created_at',
+    )
+    search_fields = (
+        'station',
+        'metro_line__line',
+        'metro_line__city__name',
+    )
+    list_editable = ('is_active',)
+    ordering = ('metro_line__city__name', 'metro_line__line', 'station')
+
+
+@admin.register(MetroLine)
+class MetroLineAdmin(admin.ModelAdmin):
+    """Администрирование справочника линий метро."""
+
+    list_display = (
+        'line',
+        'line_color',
+        'city',
+        'is_active',
+        'created_at',
+    )
+    list_filter = ('is_active', 'city', 'created_at')
+    search_fields = ('line', 'city__name')
+    list_editable = ('is_active',)
+    ordering = ('city__name', 'line')

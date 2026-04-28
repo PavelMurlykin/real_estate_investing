@@ -1,13 +1,14 @@
 from django import forms
 from django.forms import BaseInlineFormSet, inlineformset_factory
 
-from location.models import City, District, Region
+from location.models import City, District, Metro, Region
 
 from .models import (
     Developer,
     Property,
     RealEstateComplex,
     RealEstateComplexBuilding,
+    RealEstateComplexMetroAvailability,
 )
 
 
@@ -276,6 +277,81 @@ class RealEstateComplexBuildingForm(forms.ModelForm):
         }
 
 
+class RealEstateComplexMetroAvailabilityForm(forms.ModelForm):
+    """Form for metro availability rows on the complex form."""
+
+    class Meta:
+        model = RealEstateComplexMetroAvailability
+        fields = [
+            'metro',
+            'walking_time_minutes',
+            'is_active',
+        ]
+        widgets = {
+            'metro': forms.Select(attrs={'class': 'form-control'}),
+            'walking_time_minutes': forms.NumberInput(
+                attrs={'class': 'form-control', 'min': 1}
+            ),
+            'is_active': forms.CheckboxInput(
+                attrs={'class': 'form-check-input'}
+            ),
+        }
+        labels = {
+            'metro': 'Станция метро',
+            'walking_time_minutes': 'Пешком, мин.',
+            'is_active': 'Активен',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['metro'].queryset = Metro.objects.select_related(
+            'metro_line__city'
+        ).order_by('metro_line__city__name', 'metro_line__line', 'station')
+        self.fields['metro'].empty_label = 'Выберите станцию'
+
+
+class BaseRealEstateComplexMetroAvailabilityInlineFormSet(BaseInlineFormSet):
+    """Validation for metro availability inline rows."""
+
+    def clean(self):
+        super().clean()
+
+        seen_metro_ids = set()
+        for form in self.forms:
+            if not hasattr(form, 'cleaned_data'):
+                continue
+            if form.cleaned_data.get('DELETE'):
+                continue
+
+            metro = form.cleaned_data.get('metro')
+            walking_time = form.cleaned_data.get('walking_time_minutes')
+            has_any_data = bool(metro or walking_time)
+
+            if not has_any_data:
+                continue
+
+            if not metro:
+                form.add_error('metro', 'Выберите станцию метро.')
+            if walking_time in (None, ''):
+                form.add_error(
+                    'walking_time_minutes',
+                    'Укажите время до метро.',
+                )
+            elif walking_time <= 0:
+                form.add_error(
+                    'walking_time_minutes',
+                    'Время должно быть больше 0.',
+                )
+
+            if metro:
+                if metro.pk in seen_metro_ids:
+                    form.add_error(
+                        'metro',
+                        'Эта станция уже добавлена для ЖК.',
+                    )
+                seen_metro_ids.add(metro.pk)
+
+
 class BaseRealEstateComplexBuildingInlineFormSet(BaseInlineFormSet):
     """Описание класса BaseRealEstateComplexBuildingInlineFormSet.
 
@@ -318,5 +394,15 @@ RealEstateComplexBuildingFormSet = inlineformset_factory(
     form=RealEstateComplexBuildingForm,
     formset=BaseRealEstateComplexBuildingInlineFormSet,
     extra=1,
+    can_delete=True,
+)
+
+
+RealEstateComplexMetroAvailabilityFormSet = inlineformset_factory(
+    RealEstateComplex,
+    RealEstateComplexMetroAvailability,
+    form=RealEstateComplexMetroAvailabilityForm,
+    formset=BaseRealEstateComplexMetroAvailabilityInlineFormSet,
+    extra=3,
     can_delete=True,
 )
