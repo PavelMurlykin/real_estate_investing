@@ -23,7 +23,7 @@
 
           <li class="nav-item dropdown">
             <button
-              class="nav-link dropdown-toggle {% if view_name == 'property:location_catalog' or view_name == 'bank:catalog' or view_name == 'bank:key_rate_list' or view_name == 'property:dictionary_catalog' %}active{% endif %}"
+              class="nav-link dropdown-toggle {% if view_name == 'location:location_catalog' or view_name == 'bank:catalog' or view_name == 'bank:key_rate_list' or view_name == 'property:dictionary_catalog' %}active{% endif %}"
               type="button"
               data-bs-toggle="dropdown"
               aria-expanded="false"
@@ -32,7 +32,7 @@
             </button>
             <ul class="dropdown-menu shadow-sm">
               <li>
-                <a class="dropdown-item {% if view_name == 'property:location_catalog' %}active{% endif %}" href="{% url 'property:location_catalog' %}">
+                <a class="dropdown-item {% if view_name == 'location:location_catalog' %}active{% endif %}" href="{% url 'location:location_catalog' %}">
                   Локации
                 </a>
               </li>

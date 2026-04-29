@@ -198,7 +198,7 @@ class LocationCatalogMetroTests(TestCase):
 
     def test_location_catalog_renders_metro_line_dictionary(self):
         response = self.client.get(
-            reverse('property:location_catalog'), {'model': 'metro_line'}
+            reverse('location:location_catalog'), {'model': 'metro_line'}
         )
 
         self.assertEqual(response.status_code, 200)
@@ -209,7 +209,7 @@ class LocationCatalogMetroTests(TestCase):
 
     def test_location_catalog_renders_metro_dictionary(self):
         response = self.client.get(
-            reverse('property:location_catalog'), {'model': 'metro'}
+            reverse('location:location_catalog'), {'model': 'metro'}
         )
 
         self.assertEqual(response.status_code, 200)
@@ -226,7 +226,7 @@ class LocationCatalogMetroTests(TestCase):
             city=self.city,
         )
         create_response = self.client.post(
-            reverse('property:location_catalog'),
+            reverse('location:location_catalog'),
             {
                 'action': 'save',
                 'model': 'metro',
@@ -238,12 +238,12 @@ class LocationCatalogMetroTests(TestCase):
 
         self.assertRedirects(
             create_response,
-            f"{reverse('property:location_catalog')}?model=metro",
+            f"{reverse('location:location_catalog')}?model=metro",
         )
         metro = Metro.objects.get(station='Station 1')
 
         update_response = self.client.post(
-            reverse('property:location_catalog'),
+            reverse('location:location_catalog'),
             {
                 'action': 'save',
                 'model': 'metro',
@@ -255,7 +255,7 @@ class LocationCatalogMetroTests(TestCase):
 
         self.assertRedirects(
             update_response,
-            f"{reverse('property:location_catalog')}?model=metro",
+            f"{reverse('location:location_catalog')}?model=metro",
         )
         metro.refresh_from_db()
         self.assertEqual(metro.station, 'Station 2')
@@ -263,7 +263,7 @@ class LocationCatalogMetroTests(TestCase):
         self.assertFalse(metro.is_active)
 
         delete_response = self.client.post(
-            reverse('property:location_catalog'),
+            reverse('location:location_catalog'),
             {
                 'action': 'delete',
                 'model': 'metro',
@@ -273,7 +273,7 @@ class LocationCatalogMetroTests(TestCase):
 
         self.assertRedirects(
             delete_response,
-            f"{reverse('property:location_catalog')}?model=metro",
+            f"{reverse('location:location_catalog')}?model=metro",
         )
         self.assertFalse(Metro.objects.filter(pk=metro.pk).exists())
 
@@ -281,7 +281,7 @@ class LocationCatalogMetroTests(TestCase):
         Metro.objects.create(station='Station 1', metro_line=self.metro_line)
 
         response = self.client.get(
-            reverse('property:location_catalog'), {'model': 'metro'}
+            reverse('location:location_catalog'), {'model': 'metro'}
         )
 
         self.assertContains(response, 'catalog-line-color-strip')

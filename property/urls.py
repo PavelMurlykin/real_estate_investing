@@ -6,11 +6,6 @@ app_name = 'property'
 
 urlpatterns = [
     path(
-        'locations/',
-        views.LocationCatalogView.as_view(),
-        name='location_catalog',
-    ),
-    path(
         'dictionaries/',
         views.DictionaryCatalogView.as_view(),
         name='dictionary_catalog',

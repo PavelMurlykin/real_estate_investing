@@ -460,7 +460,7 @@ class LocationCatalogView(BaseCatalogView):
     """
 
     section_title = 'Локации'
-    url_name = 'property:location_catalog'
+    url_name = 'location:location_catalog'
     default_model_key = 'region'
     model_configs = (
         CatalogModelConfig(
