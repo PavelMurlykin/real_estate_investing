@@ -142,7 +142,10 @@
                 <hr>
 
                 <div class="mb-3">
-                    <h2 class="h5 mb-3">Метро рядом с ЖК</h2>
+                    <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+                        <h2 class="h5 mb-0">Доступность метро</h2>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-add-metro-row>+</button>
+                    </div>
                     {{ metro_availability_formset.management_form }}
 
                     {% if metro_availability_formset.non_form_errors %}
@@ -163,9 +166,9 @@
                                     <th style="width: 110px;">Удалить</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody data-metro-formset-body>
                                 {% for metro_form in metro_availability_formset %}
-                                <tr>
+                                <tr data-metro-form-row>
                                     {% for hidden in metro_form.hidden_fields %}
                                         {{ hidden }}
                                     {% endfor %}
@@ -188,7 +191,8 @@
                                         {% endfor %}
                                     </td>
                                     <td class="text-center">
-                                        {{ metro_form.DELETE }}
+                                        <span class="d-none">{{ metro_form.DELETE }}</span>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" data-remove-metro-row>-</button>
                                         {% for error in metro_form.DELETE.errors %}
                                             <div class="text-danger">{{ error }}</div>
                                         {% endfor %}
@@ -206,10 +210,6 @@
                                 {% endfor %}
                             </tbody>
                         </table>
-                    </div>
-
-                    <div class="form-text">
-                        Чтобы добавить станцию метро, заполните пустую строку и укажите время пешком в минутах.
                     </div>
                 </div>
             </div>
@@ -309,6 +309,41 @@
         </div>
     </form>
 </div>
+
+<template id="metro-availability-empty-form-template">
+    <tr data-metro-form-row>
+        {% with metro_form=metro_availability_formset.empty_form %}
+            {% for hidden in metro_form.hidden_fields %}
+                {{ hidden }}
+            {% endfor %}
+            <td>
+                {{ metro_form.metro }}
+                {% for error in metro_form.metro.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </td>
+            <td>
+                {{ metro_form.walking_time_minutes }}
+                {% for error in metro_form.walking_time_minutes.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </td>
+            <td class="text-center">
+                {{ metro_form.is_active }}
+                {% for error in metro_form.is_active.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </td>
+            <td class="text-center">
+                <span class="d-none">{{ metro_form.DELETE }}</span>
+                <button type="button" class="btn btn-sm btn-outline-danger" data-remove-metro-row>-</button>
+                {% for error in metro_form.DELETE.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </td>
+        {% endwith %}
+    </tr>
+</template>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -324,12 +359,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const regionSelect = document.getElementById('id_region');
     const citySelect = document.getElementById('id_city');
     const districtSelect = document.getElementById('id_district');
+    const metroFormsetBody = document.querySelector('[data-metro-formset-body]');
+    const addMetroRowButton = document.querySelector('[data-add-metro-row]');
+    const metroEmptyFormTemplate = document.getElementById('metro-availability-empty-form-template');
+    const metroTotalFormsInput = document.getElementById('id_metro-TOTAL_FORMS');
     const existingComplexesData = document.getElementById('existing-complexes-data');
     const citiesData = document.getElementById('location-cities-data');
     const districtsData = document.getElementById('location-districts-data');
     const metroStationsData = document.getElementById('location-metro-stations-data');
 
-    if (!complexNameInput || !developerSelect || !duplicateWarning || !existingComplexesData || !regionSelect || !citySelect || !districtSelect || !citiesData || !districtsData || !metroStationsData) {
+    if (!complexNameInput || !developerSelect || !duplicateWarning || !existingComplexesData || !regionSelect || !citySelect || !districtSelect || !metroFormsetBody || !addMetroRowButton || !metroEmptyFormTemplate || !metroTotalFormsInput || !citiesData || !districtsData || !metroStationsData) {
         return;
     }
 
@@ -478,6 +517,32 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function bindMetroRow(row) {
+        const removeButton = row.querySelector('[data-remove-metro-row]');
+        const deleteInput = row.querySelector('input[name$="-DELETE"]');
+
+        if (!removeButton || !deleteInput) {
+            return;
+        }
+
+        removeButton.addEventListener('click', function () {
+            deleteInput.checked = true;
+            row.classList.add('d-none');
+        });
+    }
+
+    function addMetroRow() {
+        const formIndex = Number(metroTotalFormsInput.value);
+        const rowHtml = metroEmptyFormTemplate.innerHTML.replace(/__prefix__/g, String(formIndex));
+
+        metroFormsetBody.insertAdjacentHTML('beforeend', rowHtml);
+        metroTotalFormsInput.value = String(formIndex + 1);
+
+        const row = metroFormsetBody.querySelector('tr[data-metro-form-row]:last-child');
+        bindMetroRow(row);
+        refreshMetroStations();
+    }
+
     function applyCity(cityId) {
         const city = findCity(cityId);
         if (!city) {
@@ -558,6 +623,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     complexNameInput.addEventListener('input', syncDuplicateComplexWarning);
     developerSelect.addEventListener('change', syncDuplicateComplexWarning);
+    addMetroRowButton.addEventListener('click', addMetroRow);
+    metroFormsetBody.querySelectorAll('[data-metro-form-row]').forEach(bindMetroRow);
 
     if (districtSelect.value) {
         applyDistrict(districtSelect.value);
