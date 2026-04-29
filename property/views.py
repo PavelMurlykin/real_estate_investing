@@ -666,6 +666,22 @@ class RealEstateComplexListView(ListView):
     template_name = 'property/real_estate_complex_list.html'
     context_object_name = 'complexes'
     paginate_by = 20
+    sort_fields = {
+        'name': 'name',
+        'developer': 'developer__name',
+        'city': 'district__city__name',
+        'real_estate_class': 'real_estate_class__name',
+        'real_estate_type': 'real_estate_type__name',
+        'buildings_count': 'buildings_count',
+    }
+    table_columns = (
+        {'key': 'name', 'label': 'ЖК'},
+        {'key': 'developer', 'label': 'Застройщик'},
+        {'key': 'city', 'label': 'Город'},
+        {'key': 'real_estate_class', 'label': 'Класс'},
+        {'key': 'real_estate_type', 'label': 'Тип'},
+        {'key': 'buildings_count', 'label': 'Корпусов'},
+    )
 
     def get_queryset(self):
         """Описание метода get_queryset.
@@ -675,7 +691,7 @@ class RealEstateComplexListView(ListView):
         Возвращает:
             Any: Тип результата зависит от контекста использования.
         """
-        return (
+        queryset = (
             RealEstateComplex.objects.annotate(
                 buildings_count=Count('realestatecomplexbuilding')
             )
@@ -685,8 +701,105 @@ class RealEstateComplexListView(ListView):
                 'real_estate_class',
                 'real_estate_type',
             )
-            .order_by('developer__name', 'name')
         )
+
+        filters = self.get_filters()
+        if filters['name']:
+            queryset = queryset.filter(name__icontains=filters['name'])
+        if filters['developer']:
+            queryset = queryset.filter(developer_id=filters['developer'])
+        if filters['city']:
+            queryset = queryset.filter(district__city_id=filters['city'])
+        if filters['real_estate_class']:
+            queryset = queryset.filter(
+                real_estate_class_id=filters['real_estate_class']
+            )
+        if filters['real_estate_type']:
+            queryset = queryset.filter(
+                real_estate_type_id=filters['real_estate_type']
+            )
+        if filters['buildings_count'].isdigit():
+            queryset = queryset.filter(
+                buildings_count=filters['buildings_count']
+            )
+
+        sort_by = self.request.GET.get('sort_by', '')
+        sort_dir = self.request.GET.get('sort_dir', 'asc')
+        sort_field = self.sort_fields.get(sort_by)
+        if sort_field:
+            sort_prefix = '-' if sort_dir == 'desc' else ''
+            return queryset.order_by(f'{sort_prefix}{sort_field}', 'name')
+
+        return queryset.order_by('developer__name', 'name')
+
+    def get_filters(self):
+        return {
+            'name': self.request.GET.get('filter_name', '').strip(),
+            'developer': self.request.GET.get('filter_developer', ''),
+            'city': self.request.GET.get('filter_city', ''),
+            'real_estate_class': self.request.GET.get(
+                'filter_real_estate_class', ''
+            ),
+            'real_estate_type': self.request.GET.get(
+                'filter_real_estate_type', ''
+            ),
+            'buildings_count': self.request.GET.get(
+                'filter_buildings_count', ''
+            ),
+        }
+
+    def build_querystring(self, **overrides):
+        params = self.request.GET.copy()
+        params.pop('page', None)
+        for key, value in overrides.items():
+            if value in (None, ''):
+                params.pop(key, None)
+                continue
+            params[key] = value
+        return params.urlencode()
+
+    def build_table_columns(self):
+        sort_by = self.request.GET.get('sort_by', '')
+        sort_dir = self.request.GET.get('sort_dir', 'asc')
+        columns = []
+
+        for column in self.table_columns:
+            key = column['key']
+            next_sort_dir = 'asc'
+            is_sorted = sort_by == key
+            if is_sorted and sort_dir != 'desc':
+                next_sort_dir = 'desc'
+
+            columns.append(
+                {
+                    **column,
+                    'is_sorted': is_sorted,
+                    'sort_direction': sort_dir if is_sorted else '',
+                    'sort_url': (
+                        '?'
+                        + self.build_querystring(
+                            sort_by=key, sort_dir=next_sort_dir
+                        )
+                    ),
+                }
+            )
+
+        return columns
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filters'] = self.get_filters()
+        context['sort_by'] = self.request.GET.get('sort_by', '')
+        context['sort_dir'] = self.request.GET.get('sort_dir', 'asc')
+        context['columns'] = self.build_table_columns()
+        context['developers_for_filter'] = Developer.objects.order_by('name')
+        context['cities_for_filter'] = City.objects.order_by('name')
+        context['classes_for_filter'] = RealEstateClass.objects.order_by(
+            'weight', 'name'
+        )
+        context['types_for_filter'] = RealEstateType.objects.order_by('name')
+        context['pagination_querystring'] = self.build_querystring()
+        return context
 
 
 class RealEstateComplexFormsetMixin:

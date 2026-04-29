@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}{{ section_title }}{% endblock %}
 
@@ -67,14 +68,14 @@
                 <div class="card-header">{{ current_model_title|capfirst }}</div>
                 <div class="card-body">
                     {% if model_key == 'metro' %}
-                    <form method="get" class="row g-2 mb-4" data-metro-filter-form>
+                    <form method="get" class="row g-2 mb-4" data-catalog-filter-form data-catalog-results-target="#catalog-results">
                         <input type="hidden" name="model" value="metro">
                         <input type="hidden" name="sort_by" value="{{ sort_by }}">
                         <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
 
                         <div class="col-md-6">
                             <label class="form-label">Город</label>
-                            <select name="filter_city" class="form-select" data-metro-filter-city>
+                            <select name="filter_city" class="form-select" data-metro-filter-city data-catalog-filter-control>
                                 <option value="">Все города</option>
                                 {% for city in cities_for_filter %}
                                 <option value="{{ city.id }}" {% if metro_filters.city == city.id|stringformat:'s' %}selected{% endif %}>
@@ -86,7 +87,7 @@
 
                         <div class="col-md-6">
                             <label class="form-label">Линия метро</label>
-                            <select name="filter_metro_line" class="form-select" data-metro-filter-line>
+                            <select name="filter_metro_line" class="form-select" data-metro-filter-line data-catalog-filter-control data-dependent-source="[data-metro-filter-city]" data-dependent-option-attribute="city-id">
                                 <option value="">Все линии</option>
                                 {% for metro_line in metro_lines_for_filter %}
                                 <option value="{{ metro_line.id }}" data-city-id="{{ metro_line.city_id }}" {% if metro_filters.metro_line == metro_line.id|stringformat:'s' %}selected{% endif %}>
@@ -202,7 +203,15 @@
                                 <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
                                 {% if field.name == 'metro_line' %}
                                 <div class="catalog-line-select">
-                                    <span class="catalog-line-select-swatch" data-metro-line-select-swatch aria-hidden="true"></span>
+                                    <span
+                                        class="catalog-line-select-swatch"
+                                        data-select-swatch
+                                        data-select-swatch-select="#id_metro_line"
+                                        data-select-swatch-data="#metro-line-options-data"
+                                        data-select-swatch-value-key="id"
+                                        data-select-swatch-color-key="color"
+                                        aria-hidden="true"
+                                    ></span>
                                     {{ field }}
                                 </div>
                                 {% else %}
@@ -231,91 +240,5 @@
 
 {% block extra_scripts %}
 {{ metro_line_options|json_script:"metro-line-options-data" }}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const select = document.getElementById('id_metro_line');
-    const swatch = document.querySelector('[data-metro-line-select-swatch]');
-    const dataElement = document.getElementById('metro-line-options-data');
-
-    if (!select || !swatch || !dataElement) {
-        return;
-    }
-
-    const lineColors = new Map(
-        JSON.parse(dataElement.textContent).map(function (item) {
-            return [String(item.id), item.color];
-        })
-    );
-
-    function syncLineColor() {
-        const color = lineColors.get(String(select.value)) || 'transparent';
-        swatch.style.backgroundColor = color;
-    }
-
-    select.addEventListener('change', syncLineColor);
-    syncLineColor();
-});
-</script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const filterForm = document.querySelector('[data-metro-filter-form]');
-
-    if (!filterForm) {
-        return;
-    }
-
-    const citySelect = filterForm.querySelector('[data-metro-filter-city]');
-    const lineSelect = filterForm.querySelector('[data-metro-filter-line]');
-    const lineOptions = Array.from(lineSelect.options);
-
-    function syncLineOptions() {
-        const cityId = citySelect.value;
-
-        lineOptions.forEach(function (option) {
-            const optionCityId = option.dataset.cityId || '';
-            const isVisible = !option.value || !cityId || optionCityId === cityId;
-            option.hidden = !isVisible;
-            option.disabled = !isVisible;
-        });
-
-        const selectedOption = lineSelect.selectedOptions[0];
-        if (selectedOption && selectedOption.disabled) {
-            lineSelect.value = '';
-        }
-    }
-
-    function updateResults() {
-        syncLineOptions();
-
-        const params = new URLSearchParams(new FormData(filterForm));
-        const url = new URL(window.location.href);
-        url.search = params.toString();
-
-        fetch(url.toString(), {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-            .then(function (response) {
-                return response.text();
-            })
-            .then(function (html) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const newResults = doc.querySelector('#catalog-results');
-                const currentResults = document.querySelector('#catalog-results');
-
-                if (newResults && currentResults) {
-                    currentResults.innerHTML = newResults.innerHTML;
-                }
-
-                window.history.replaceState({}, '', url.toString());
-            });
-    }
-
-    citySelect.addEventListener('change', updateResults);
-    lineSelect.addEventListener('change', updateResults);
-    syncLineOptions();
-});
-</script>
+<script src="{% static 'js/catalog.js' %}"></script>
 {% endblock %}
