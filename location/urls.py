@@ -1,6 +1,6 @@
 from django.urls import path
 
-from property.views import LocationCatalogView
+from .views import LocationCatalogView
 
 app_name = 'location'
 

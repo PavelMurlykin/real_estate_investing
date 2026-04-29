@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 {% load mortgage_filters %}
 
 {% block content %}
@@ -24,14 +25,15 @@
         </div>
     </div>
 
-    <div class="card">
+    <div class="card mb-4">
         <div class="card-body">
-            <form method="get" class="row g-3 align-items-end mb-4">
+            <form method="get" class="row g-2" data-catalog-filter-form data-catalog-results-target="#catalog-results">
                 {% if target_customer %}
                     <input type="hidden" name="customer" value="{{ target_customer.pk }}">
                 {% endif %}
                 <input type="hidden" name="sort" value="{{ calculation_sort }}">
                 <input type="hidden" name="order" value="{{ calculation_order }}">
+
                 <div class="col-lg-3 col-md-6">
                     <label for="mortgage_calculation_q" class="form-label">Объект</label>
                     <input
@@ -41,45 +43,45 @@
                         value="{{ calculation_filters.q }}"
                         class="form-control"
                         placeholder="ЖК или квартира"
+                        data-catalog-filter-control
                     >
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <label class="form-label">Стоимость объекта</label>
                     <div class="input-group">
-                        <input type="number" name="cost_from" value="{{ calculation_filters.cost_from }}" class="form-control" min="0" step="0.01" placeholder="от">
-                        <input type="number" name="cost_to" value="{{ calculation_filters.cost_to }}" class="form-control" min="0" step="0.01" placeholder="до">
+                        <input type="number" name="cost_from" value="{{ calculation_filters.cost_from }}" class="form-control" min="0" step="0.01" placeholder="от" data-catalog-filter-control>
+                        <input type="number" name="cost_to" value="{{ calculation_filters.cost_to }}" class="form-control" min="0" step="0.01" placeholder="до" data-catalog-filter-control>
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <label class="form-label">Первоначальный взнос</label>
                     <div class="input-group">
-                        <input type="number" name="initial_payment_from" value="{{ calculation_filters.initial_payment_from }}" class="form-control" min="0" step="0.01" placeholder="от">
-                        <input type="number" name="initial_payment_to" value="{{ calculation_filters.initial_payment_to }}" class="form-control" min="0" step="0.01" placeholder="до">
+                        <input type="number" name="initial_payment_from" value="{{ calculation_filters.initial_payment_from }}" class="form-control" min="0" step="0.01" placeholder="от" data-catalog-filter-control>
+                        <input type="number" name="initial_payment_to" value="{{ calculation_filters.initial_payment_to }}" class="form-control" min="0" step="0.01" placeholder="до" data-catalog-filter-control>
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <label class="form-label">Ежемесячный платеж</label>
                     <div class="input-group">
-                        <input type="number" name="monthly_payment_from" value="{{ calculation_filters.monthly_payment_from }}" class="form-control" min="0" step="0.01" placeholder="от">
-                        <input type="number" name="monthly_payment_to" value="{{ calculation_filters.monthly_payment_to }}" class="form-control" min="0" step="0.01" placeholder="до">
+                        <input type="number" name="monthly_payment_from" value="{{ calculation_filters.monthly_payment_from }}" class="form-control" min="0" step="0.01" placeholder="от" data-catalog-filter-control>
+                        <input type="number" name="monthly_payment_to" value="{{ calculation_filters.monthly_payment_to }}" class="form-control" min="0" step="0.01" placeholder="до" data-catalog-filter-control>
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <label class="form-label">Срок, лет</label>
                     <div class="input-group">
-                        <input type="number" name="term_from" value="{{ calculation_filters.term_from }}" class="form-control" min="0" step="1" placeholder="от">
-                        <input type="number" name="term_to" value="{{ calculation_filters.term_to }}" class="form-control" min="0" step="1" placeholder="до">
+                        <input type="number" name="term_from" value="{{ calculation_filters.term_from }}" class="form-control" min="0" step="1" placeholder="от" data-catalog-filter-control>
+                        <input type="number" name="term_to" value="{{ calculation_filters.term_to }}" class="form-control" min="0" step="1" placeholder="до" data-catalog-filter-control>
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <label class="form-label">Ставка, %</label>
                     <div class="input-group">
-                        <input type="number" name="rate_from" value="{{ calculation_filters.rate_from }}" class="form-control" min="0" step="0.01" placeholder="от">
-                        <input type="number" name="rate_to" value="{{ calculation_filters.rate_to }}" class="form-control" min="0" step="0.01" placeholder="до">
+                        <input type="number" name="rate_from" value="{{ calculation_filters.rate_from }}" class="form-control" min="0" step="0.01" placeholder="от" data-catalog-filter-control>
+                        <input type="number" name="rate_to" value="{{ calculation_filters.rate_to }}" class="form-control" min="0" step="0.01" placeholder="до" data-catalog-filter-control>
                     </div>
                 </div>
-                <div class="col-12 d-flex gap-2">
-                    <button type="submit" class="btn btn-outline-primary">Фильтровать</button>
+                <div class="col-12">
                     {% if target_customer %}
                         <a href="{% url 'mortgage:calculation_list' %}?customer={{ target_customer.pk }}" class="btn btn-outline-secondary">Сбросить</a>
                     {% else %}
@@ -87,91 +89,101 @@
                     {% endif %}
                 </div>
             </form>
+        </div>
+    </div>
 
-            {% if calculations %}
-                {% if target_customer %}
-                    <form method="post">
-                        {% csrf_token %}
-                        <input type="hidden" name="customer" value="{{ target_customer.pk }}">
-                {% endif %}
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                {% if target_customer %}
-                                    <th style="width: 48px;"></th>
-                                {% endif %}
-                                {% for header in calculation_table_headers %}
-                                    <th>
-                                        <a href="{{ header.url }}" class="text-body text-decoration-none">
-                                            {{ header.label }}{% if header.indicator %} {{ header.indicator }}{% endif %}
-                                        </a>
-                                    </th>
-                                {% endfor %}
-                                <th>Действия</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for calculation in calculations %}
-                            <tr>
-                                {% if target_customer %}
-                                    <td>
-                                        <input
-                                            class="form-check-input"
-                                            type="checkbox"
-                                            name="calculations"
-                                            value="{{ calculation.pk }}"
-                                            {% if calculation.pk in linked_calculation_ids %}checked disabled{% endif %}
-                                            aria-label="Выбрать расчет от {{ calculation.timestamp|date:'d.m.Y H:i' }}"
-                                        >
-                                    </td>
-                                {% endif %}
-                                <td>{{ calculation.timestamp|date:"d.m.Y H:i" }}</td>
-                                <td>{{ calculation.property.building.real_estate_complex.name }}, кв. {{ calculation.property.apartment_number }}</td>
-                                <td>{{ calculation.final_property_cost|currency }} руб.</td>
-                                <td>{{ calculation.table_initial_payment_amount|currency }} руб.</td>
-                                <td>{{ calculation.main_monthly_payment|currency }} руб.</td>
-                                <td>{{ calculation.mortgage_term|years_label_from_months }}</td>
-                                <td>{{ calculation.annual_rate }}%</td>
-                                <td>
-                                    <div class="d-flex gap-2">
-                                    <a href="{% url 'mortgage:calculation_detail' calculation.pk %}" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i> Подробнее
-                                    </a>
-                                    {% if not target_customer %}
-                                        <form method="post" action="{% url 'mortgage:calculation_delete' calculation.pk %}" onsubmit="return confirm('Удалить расчет?');">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                <i class="bi bi-trash"></i> Удалить
-                                            </button>
-                                        </form>
-                                    {% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% if target_customer %}
-                    <div class="mt-3 d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">Добавить</button>
-                        <a href="{% url 'customer:detail' target_customer.pk %}" class="btn btn-outline-secondary">Отмена</a>
-                    </div>
-                    <div class="form-text mt-2">Уже привязанные расчеты отмечены и недоступны для повторного выбора.</div>
-                    </form>
-                {% endif %}
-            {% else %}
-                <div class="text-center py-4">
-                    <p class="text-muted">Нет сохраненных расчетов</p>
+    <div class="card">
+        <div class="card-body">
+            <div id="catalog-results">
+                {% if calculations %}
                     {% if target_customer %}
-                        <a href="{% url 'mortgage:mortgage_calculator' %}?customer={{ target_customer.pk }}" class="btn btn-primary">Создать первый расчет</a>
-                    {% else %}
-                        <a href="{% url 'mortgage:mortgage_calculator' %}" class="btn btn-primary">Создать первый расчет</a>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="customer" value="{{ target_customer.pk }}">
                     {% endif %}
-                </div>
-            {% endif %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    {% if target_customer %}
+                                        <th style="width: 48px;"></th>
+                                    {% endif %}
+                                    {% for header in calculation_table_headers %}
+                                        <th>
+                                            <a href="{{ header.url }}" class="text-body text-decoration-none fw-semibold">
+                                                {{ header.label }}{% if header.indicator %} {{ header.indicator }}{% endif %}
+                                            </a>
+                                        </th>
+                                    {% endfor %}
+                                    <th class="text-nowrap">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for calculation in calculations %}
+                                <tr>
+                                    {% if target_customer %}
+                                        <td>
+                                            <input
+                                                class="form-check-input"
+                                                type="checkbox"
+                                                name="calculations"
+                                                value="{{ calculation.pk }}"
+                                                {% if calculation.pk in linked_calculation_ids %}checked disabled{% endif %}
+                                                aria-label="Выбрать расчет от {{ calculation.timestamp|date:'d.m.Y H:i' }}"
+                                            >
+                                        </td>
+                                    {% endif %}
+                                    <td>{{ calculation.timestamp|date:"d.m.Y H:i" }}</td>
+                                    <td>{{ calculation.property.building.real_estate_complex.name }}, кв. {{ calculation.property.apartment_number }}</td>
+                                    <td>{{ calculation.final_property_cost|currency }} руб.</td>
+                                    <td>{{ calculation.table_initial_payment_amount|currency }} руб.</td>
+                                    <td>{{ calculation.main_monthly_payment|currency }} руб.</td>
+                                    <td>{{ calculation.mortgage_term|years_label_from_months }}</td>
+                                    <td>{{ calculation.annual_rate }}%</td>
+                                    <td class="text-nowrap">
+                                        <div class="d-flex gap-2">
+                                            <a href="{% url 'mortgage:calculation_detail' calculation.pk %}" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye"></i> Подробнее
+                                            </a>
+                                            {% if not target_customer %}
+                                                <form method="post" action="{% url 'mortgage:calculation_delete' calculation.pk %}" onsubmit="return confirm('Удалить расчет?');">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="bi bi-trash"></i> Удалить
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if target_customer %}
+                        <div class="mt-3 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">Добавить</button>
+                            <a href="{% url 'customer:detail' target_customer.pk %}" class="btn btn-outline-secondary">Отмена</a>
+                        </div>
+                        <div class="form-text mt-2">Уже привязанные расчеты отмечены и недоступны для повторного выбора.</div>
+                        </form>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-muted">Нет сохраненных расчетов</p>
+                        {% if target_customer %}
+                            <a href="{% url 'mortgage:mortgage_calculator' %}?customer={{ target_customer.pk }}" class="btn btn-primary">Создать первый расчет</a>
+                        {% else %}
+                            <a href="{% url 'mortgage:mortgage_calculator' %}" class="btn btn-primary">Создать первый расчет</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/catalog.js' %}"></script>
 {% endblock %}

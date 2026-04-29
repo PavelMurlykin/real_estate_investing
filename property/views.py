@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 
 from django import forms
 from django.db import models as django_models
@@ -22,7 +23,6 @@ from location.models import City, District, Metro, MetroLine, Region
 
 from .forms import (
     DeveloperForm,
-    PropertyFilterForm,
     PropertyForm,
     RealEstateComplexBuildingFormSet,
     RealEstateComplexForm,
@@ -518,106 +518,6 @@ class BaseCatalogView(TemplateView):
             return self.render_to_response(context, status=400)
 
 
-class LocationCatalogView(BaseCatalogView):
-    """Описание класса LocationCatalogView.
-
-    Инкапсулирует данные и поведение, необходимые для работы компонента
-    в данном модуле.
-    """
-
-    section_title = 'Локации'
-    url_name = 'location:location_catalog'
-    default_model_key = 'region'
-    model_configs = (
-        CatalogModelConfig(
-            key='region',
-            model=Region,
-            form_fields=('name', 'code', 'is_active'),
-            table_fields=('name', 'code', 'is_active'),
-            order_by=('name',),
-        ),
-        CatalogModelConfig(
-            key='city',
-            model=City,
-            form_fields=('name', 'region', 'is_active'),
-            table_fields=('name', 'region', 'is_active'),
-            order_by=('name',),
-            select_related=('region',),
-        ),
-        CatalogModelConfig(
-            key='district',
-            model=District,
-            form_fields=('name', 'city', 'is_active'),
-            table_fields=('name', 'city', 'is_active'),
-            order_by=('name',),
-            select_related=('city',),
-        ),
-        CatalogModelConfig(
-            key='metro',
-            model=Metro,
-            form_fields=('station', 'metro_line', 'is_active'),
-            table_fields=('station', 'metro_line', 'metro_line__city'),
-            order_by=('metro_line__city__name', 'metro_line__line', 'station'),
-            select_related=('metro_line__city',),
-        ),
-    )
-
-    def get_current_model_key(self):
-        """Route the removed metro-line tab to the metro catalog."""
-        requested_key = self.request.POST.get('model') or self.request.GET.get(
-            'model'
-        )
-        if requested_key == 'metro_line':
-            return 'metro'
-        return super().get_current_model_key()
-
-    def get_sort_field_map(self, config):
-        """Return sortable columns for location catalogs."""
-        if config.key == 'metro':
-            return {
-                'station': 'station',
-                'metro_line': 'metro_line__line',
-                'metro_line__city': 'metro_line__city__name',
-            }
-        return super().get_sort_field_map(config)
-
-    def filter_queryset(self, config, queryset):
-        """Apply metro filters from the catalog page."""
-        if config.key != 'metro':
-            return queryset
-
-        city_id = self.request.GET.get('filter_city')
-        metro_line_id = self.request.GET.get('filter_metro_line')
-
-        if city_id:
-            queryset = queryset.filter(metro_line__city_id=city_id)
-        if metro_line_id:
-            queryset = queryset.filter(metro_line_id=metro_line_id)
-
-        return queryset
-
-    def build_context(self, config, form, edit_object=None, delete_error=None):
-        """Add metro filter controls to the location catalog context."""
-        context = super().build_context(
-            config=config,
-            form=form,
-            edit_object=edit_object,
-            delete_error=delete_error,
-        )
-
-        if config.key == 'metro':
-            context['metro_filters'] = {
-                'city': self.request.GET.get('filter_city', ''),
-                'metro_line': self.request.GET.get('filter_metro_line', ''),
-            }
-            context['cities_for_filter'] = City.objects.order_by('name')
-            context['metro_lines_for_filter'] = MetroLine.objects.select_related(
-                'city'
-            ).order_by('city__name', 'line')
-
-        return context
-
-
 class DictionaryCatalogView(BaseCatalogView):
     """Описание класса DictionaryCatalogView.
 
@@ -766,6 +666,22 @@ class RealEstateComplexListView(ListView):
     template_name = 'property/real_estate_complex_list.html'
     context_object_name = 'complexes'
     paginate_by = 20
+    sort_fields = {
+        'name': 'name',
+        'developer': 'developer__name',
+        'city': 'district__city__name',
+        'real_estate_class': 'real_estate_class__name',
+        'real_estate_type': 'real_estate_type__name',
+        'buildings_count': 'buildings_count',
+    }
+    table_columns = (
+        {'key': 'name', 'label': 'ЖК'},
+        {'key': 'developer', 'label': 'Застройщик'},
+        {'key': 'city', 'label': 'Город'},
+        {'key': 'real_estate_class', 'label': 'Класс'},
+        {'key': 'real_estate_type', 'label': 'Тип'},
+        {'key': 'buildings_count', 'label': 'Корпусов'},
+    )
 
     def get_queryset(self):
         """Описание метода get_queryset.
@@ -775,7 +691,7 @@ class RealEstateComplexListView(ListView):
         Возвращает:
             Any: Тип результата зависит от контекста использования.
         """
-        return (
+        queryset = (
             RealEstateComplex.objects.annotate(
                 buildings_count=Count('realestatecomplexbuilding')
             )
@@ -785,8 +701,105 @@ class RealEstateComplexListView(ListView):
                 'real_estate_class',
                 'real_estate_type',
             )
-            .order_by('developer__name', 'name')
         )
+
+        filters = self.get_filters()
+        if filters['name']:
+            queryset = queryset.filter(name__icontains=filters['name'])
+        if filters['developer']:
+            queryset = queryset.filter(developer_id=filters['developer'])
+        if filters['city']:
+            queryset = queryset.filter(district__city_id=filters['city'])
+        if filters['real_estate_class']:
+            queryset = queryset.filter(
+                real_estate_class_id=filters['real_estate_class']
+            )
+        if filters['real_estate_type']:
+            queryset = queryset.filter(
+                real_estate_type_id=filters['real_estate_type']
+            )
+        if filters['buildings_count'].isdigit():
+            queryset = queryset.filter(
+                buildings_count=filters['buildings_count']
+            )
+
+        sort_by = self.request.GET.get('sort_by', '')
+        sort_dir = self.request.GET.get('sort_dir', 'asc')
+        sort_field = self.sort_fields.get(sort_by)
+        if sort_field:
+            sort_prefix = '-' if sort_dir == 'desc' else ''
+            return queryset.order_by(f'{sort_prefix}{sort_field}', 'name')
+
+        return queryset.order_by('developer__name', 'name')
+
+    def get_filters(self):
+        return {
+            'name': self.request.GET.get('filter_name', '').strip(),
+            'developer': self.request.GET.get('filter_developer', ''),
+            'city': self.request.GET.get('filter_city', ''),
+            'real_estate_class': self.request.GET.get(
+                'filter_real_estate_class', ''
+            ),
+            'real_estate_type': self.request.GET.get(
+                'filter_real_estate_type', ''
+            ),
+            'buildings_count': self.request.GET.get(
+                'filter_buildings_count', ''
+            ),
+        }
+
+    def build_querystring(self, **overrides):
+        params = self.request.GET.copy()
+        params.pop('page', None)
+        for key, value in overrides.items():
+            if value in (None, ''):
+                params.pop(key, None)
+                continue
+            params[key] = value
+        return params.urlencode()
+
+    def build_table_columns(self):
+        sort_by = self.request.GET.get('sort_by', '')
+        sort_dir = self.request.GET.get('sort_dir', 'asc')
+        columns = []
+
+        for column in self.table_columns:
+            key = column['key']
+            next_sort_dir = 'asc'
+            is_sorted = sort_by == key
+            if is_sorted and sort_dir != 'desc':
+                next_sort_dir = 'desc'
+
+            columns.append(
+                {
+                    **column,
+                    'is_sorted': is_sorted,
+                    'sort_direction': sort_dir if is_sorted else '',
+                    'sort_url': (
+                        '?'
+                        + self.build_querystring(
+                            sort_by=key, sort_dir=next_sort_dir
+                        )
+                    ),
+                }
+            )
+
+        return columns
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filters'] = self.get_filters()
+        context['sort_by'] = self.request.GET.get('sort_by', '')
+        context['sort_dir'] = self.request.GET.get('sort_dir', 'asc')
+        context['columns'] = self.build_table_columns()
+        context['developers_for_filter'] = Developer.objects.order_by('name')
+        context['cities_for_filter'] = City.objects.order_by('name')
+        context['classes_for_filter'] = RealEstateClass.objects.order_by(
+            'weight', 'name'
+        )
+        context['types_for_filter'] = RealEstateType.objects.order_by('name')
+        context['pagination_querystring'] = self.build_querystring()
+        return context
 
 
 class RealEstateComplexFormsetMixin:
@@ -997,6 +1010,26 @@ class PropertyListView(ListView):
     template_name = 'property/property_list.html'
     context_object_name = 'properties'
     paginate_by = 20
+    sort_fields = {
+        'city': 'building__real_estate_complex__district__city__name',
+        'developer': 'building__real_estate_complex__developer__name',
+        'complex': 'building__real_estate_complex__name',
+        'building': 'building__number',
+        'apartment_number': 'apartment_number',
+        'layout': 'layout__name',
+        'area': 'area',
+        'property_cost': 'property_cost',
+    }
+    table_columns = (
+        {'key': 'city', 'label': 'Город'},
+        {'key': 'developer', 'label': 'Застройщик'},
+        {'key': 'complex', 'label': 'ЖК'},
+        {'key': 'building', 'label': 'Корпус'},
+        {'key': 'apartment_number', 'label': 'Квартира'},
+        {'key': 'layout', 'label': 'Планировка'},
+        {'key': 'area', 'label': 'Площадь, м2'},
+        {'key': 'property_cost', 'label': 'Цена, руб.'},
+    )
 
     def get_queryset(self):
         """Описание метода get_queryset.
@@ -1013,31 +1046,119 @@ class PropertyListView(ListView):
             'building',
             'layout',
             'decoration',
-        ).order_by(
+        )
+
+        filters = self.get_filters()
+
+        if filters['city']:
+            queryset = queryset.filter(
+                building__real_estate_complex__district__city_id=filters[
+                    'city'
+                ]
+            )
+        if filters['developer']:
+            queryset = queryset.filter(
+                building__real_estate_complex__developer_id=filters[
+                    'developer'
+                ]
+            )
+        if filters['complex']:
+            queryset = queryset.filter(
+                building__real_estate_complex_id=filters['complex']
+            )
+        if filters['building']:
+            queryset = queryset.filter(building_id=filters['building'])
+        if filters['apartment_number']:
+            queryset = queryset.filter(
+                apartment_number__icontains=filters['apartment_number']
+            )
+        if filters['layout']:
+            queryset = queryset.filter(layout_id=filters['layout'])
+        if filters['area']:
+            area = self.parse_decimal(filters['area'])
+            if area is not None:
+                queryset = queryset.filter(area=area)
+        if filters['property_cost']:
+            property_cost = self.parse_decimal(filters['property_cost'])
+            if property_cost is not None:
+                queryset = queryset.filter(property_cost=property_cost)
+
+        sort_by = self.request.GET.get('sort_by', '')
+        sort_dir = self.request.GET.get('sort_dir', 'asc')
+        sort_field = self.sort_fields.get(sort_by)
+        if sort_field:
+            sort_prefix = '-' if sort_dir == 'desc' else ''
+            return queryset.order_by(
+                f'{sort_prefix}{sort_field}', 'apartment_number'
+            )
+
+        return queryset.order_by(
+            'building__real_estate_complex__district__city__name',
             'building__real_estate_complex__developer__name',
             'building__real_estate_complex__name',
             'building__number',
             'apartment_number',
         )
 
-        city = self.request.GET.get('city')
-        developer = self.request.GET.get('developer')
-        complex_id = self.request.GET.get('complex')
+    def get_filters(self):
+        return {
+            'city': self.request.GET.get('filter_city', ''),
+            'developer': self.request.GET.get('filter_developer', ''),
+            'complex': self.request.GET.get('filter_complex', ''),
+            'building': self.request.GET.get('filter_building', ''),
+            'apartment_number': self.request.GET.get(
+                'filter_apartment_number', ''
+            ).strip(),
+            'layout': self.request.GET.get('filter_layout', ''),
+            'area': self.request.GET.get('filter_area', '').strip(),
+            'property_cost': self.request.GET.get(
+                'filter_property_cost', ''
+            ).strip(),
+        }
 
-        if city:
-            queryset = queryset.filter(
-                building__real_estate_complex__district__city_id=city
-            )
-        if developer:
-            queryset = queryset.filter(
-                building__real_estate_complex__developer_id=developer
-            )
-        if complex_id:
-            queryset = queryset.filter(
-                building__real_estate_complex_id=complex_id
+    def parse_decimal(self, value):
+        try:
+            return Decimal(value.replace(',', '.'))
+        except (InvalidOperation, ValueError):
+            return None
+
+    def build_querystring(self, **overrides):
+        params = self.request.GET.copy()
+        params.pop('page', None)
+        for key, value in overrides.items():
+            if value in (None, ''):
+                params.pop(key, None)
+                continue
+            params[key] = value
+        return params.urlencode()
+
+    def build_table_columns(self):
+        sort_by = self.request.GET.get('sort_by', '')
+        sort_dir = self.request.GET.get('sort_dir', 'asc')
+        columns = []
+
+        for column in self.table_columns:
+            key = column['key']
+            next_sort_dir = 'asc'
+            is_sorted = sort_by == key
+            if is_sorted and sort_dir != 'desc':
+                next_sort_dir = 'desc'
+
+            columns.append(
+                {
+                    **column,
+                    'is_sorted': is_sorted,
+                    'sort_direction': sort_dir if is_sorted else '',
+                    'sort_url': (
+                        '?'
+                        + self.build_querystring(
+                            sort_by=key, sort_dir=next_sort_dir
+                        )
+                    ),
+                }
             )
 
-        return queryset
+        return columns
 
     def get_context_data(self, **kwargs):
         """Описание метода get_context_data.
@@ -1051,7 +1172,22 @@ class PropertyListView(ListView):
             Any: Тип результата зависит от контекста использования.
         """
         context = super().get_context_data(**kwargs)
-        context['filter_form'] = PropertyFilterForm(self.request.GET)
+        context['filters'] = self.get_filters()
+        context['sort_by'] = self.request.GET.get('sort_by', '')
+        context['sort_dir'] = self.request.GET.get('sort_dir', 'asc')
+        context['columns'] = self.build_table_columns()
+        context['cities_for_filter'] = City.objects.order_by('name')
+        context['developers_for_filter'] = Developer.objects.order_by('name')
+        context['complexes_for_filter'] = RealEstateComplex.objects.select_related(
+            'developer', 'district__city'
+        ).order_by('name')
+        context['buildings_for_filter'] = (
+            RealEstateComplexBuilding.objects.select_related(
+                'real_estate_complex'
+            ).order_by('real_estate_complex__name', 'number')
+        )
+        context['layouts_for_filter'] = ApartmentLayout.objects.order_by('name')
+        context['pagination_querystring'] = self.build_querystring()
         return context
 
 

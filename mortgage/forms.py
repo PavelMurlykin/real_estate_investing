@@ -16,7 +16,6 @@ class MortgageForm(forms.Form):
             attrs={
                 'class': 'form-select',
                 'id': 'id_PROPERTY',
-                'onchange': 'updatePropertyCost()',
             }
         ),
     )
@@ -30,7 +29,6 @@ class MortgageForm(forms.Form):
                 'class': 'form-control',
                 'step': '0.01',
                 'id': 'property_cost_input',
-                'oninput': 'handlePropertyCostChange()',
             }
         ),
     )
@@ -38,9 +36,7 @@ class MortgageForm(forms.Form):
     DISCOUNT_MARKUP_TYPE = forms.ChoiceField(
         label='Корректировка цены',
         choices=[('discount', 'Скидка'), ('markup', 'Удорожание')],
-        widget=forms.RadioSelect(
-            attrs={'onchange': 'handleDiscountMarkupTypeChange()'}
-        ),
+        widget=forms.RadioSelect(),
         initial='discount',
     )
 
@@ -56,7 +52,6 @@ class MortgageForm(forms.Form):
                 'class': 'form-control',
                 'step': '0.01',
                 'id': 'discount_markup_percent',
-                'oninput': 'handleDiscountMarkupPercentInput()',
             }
         ),
     )
@@ -73,7 +68,6 @@ class MortgageForm(forms.Form):
                 'class': 'form-control',
                 'step': '0.01',
                 'id': 'discount_markup_rubles',
-                'oninput': 'handleDiscountMarkupRublesInput()',
             }
         ),
     )
@@ -97,7 +91,6 @@ class MortgageForm(forms.Form):
                 'class': 'form-control',
                 'step': '0.01',
                 'id': 'initial_payment_percent',
-                'oninput': 'handleInitialPaymentPercentInput()',
             }
         ),
     )
@@ -112,7 +105,6 @@ class MortgageForm(forms.Form):
                 'class': 'form-control',
                 'step': '0.01',
                 'id': 'initial_payment_rubles',
-                'oninput': 'handleInitialPaymentRublesInput()',
             }
         ),
     )
@@ -147,7 +139,6 @@ class MortgageForm(forms.Form):
             attrs={
                 'class': 'form-control',
                 'id': 'mortgage_term_years',
-                'oninput': 'handleMortgageTermYearsInput()',
             }
         ),
     )
@@ -161,7 +152,6 @@ class MortgageForm(forms.Form):
             attrs={
                 'class': 'form-control',
                 'id': 'mortgage_term_months',
-                'oninput': 'handleMortgageTermMonthsInput()',
             }
         ),
     )
@@ -180,7 +170,7 @@ class MortgageForm(forms.Form):
     HAS_GRACE_PERIOD = forms.ChoiceField(
         label='Наличие льготного периода',
         choices=[('no', 'Нет'), ('yes', 'Да')],
-        widget=forms.RadioSelect(attrs={'onchange': 'toggleGracePeriod()'}),
+        widget=forms.RadioSelect(),
         initial='no',
     )
 
@@ -193,7 +183,6 @@ class MortgageForm(forms.Form):
             attrs={
                 'class': 'form-control',
                 'id': 'grace_period_term_years',
-                'oninput': 'handleGracePeriodTermYearsInput()',
             }
         ),
     )
@@ -207,7 +196,6 @@ class MortgageForm(forms.Form):
             attrs={
                 'class': 'form-control',
                 'id': 'grace_period_term_months',
-                'oninput': 'handleGracePeriodTermMonthsInput()',
             }
         ),
     )
