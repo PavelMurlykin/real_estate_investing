@@ -80,6 +80,10 @@ class BaseCatalogView(TemplateView):
     default_model_key = ''
     model_configs: tuple[CatalogModelConfig, ...] = ()
 
+    def get_sort_field_map(self, config):
+        """Return table columns that can be used for queryset sorting."""
+        return {field_name: field_name for field_name in config.table_fields}
+
     def get_config_map(self):
         """Описание метода get_config_map.
 
@@ -135,6 +139,10 @@ class BaseCatalogView(TemplateView):
             url = f'{url}&edit={edit_id}'
         return url
 
+    def filter_queryset(self, config, queryset):
+        """Apply request filters to the catalog queryset."""
+        return queryset
+
     def get_queryset(self, config):
         """Описание метода get_queryset.
 
@@ -149,6 +157,15 @@ class BaseCatalogView(TemplateView):
         queryset = config.model.objects.all()
         if config.select_related:
             queryset = queryset.select_related(*config.select_related)
+        queryset = self.filter_queryset(config, queryset)
+
+        sort_by = self.request.GET.get('sort_by')
+        sort_dir = self.request.GET.get('sort_dir', 'asc')
+        sort_prefix = '-' if sort_dir == 'desc' else ''
+        sort_field = self.get_sort_field_map(config).get(sort_by)
+
+        if sort_field:
+            return queryset.order_by(f'{sort_prefix}{sort_field}')
         return queryset.order_by(*config.order_by)
 
     def build_form(self, config, data=None, instance=None):
@@ -223,6 +240,25 @@ class BaseCatalogView(TemplateView):
 
         return cell
 
+    def get_field_by_path(self, model, field_path):
+        """Resolve a Django model field by a direct or related field path."""
+        current_model = model
+        model_field = None
+        for field_name in field_path.split('__'):
+            model_field = current_model._meta.get_field(field_name)
+            if getattr(model_field, 'remote_field', None):
+                current_model = model_field.remote_field.model
+        return model_field
+
+    def get_value_by_path(self, obj, field_path):
+        """Read an object value by a direct or related field path."""
+        value = obj
+        for field_name in field_path.split('__'):
+            value = getattr(value, field_name, None)
+            if value is None:
+                break
+        return value
+
     def build_columns(self, config):
         """Описание метода build_columns.
 
@@ -236,7 +272,7 @@ class BaseCatalogView(TemplateView):
         """
         columns = []
         for field_name in config.table_fields:
-            model_field = config.model._meta.get_field(field_name)
+            model_field = self.get_field_by_path(config.model, field_name)
             columns.append(
                 {
                     'name': field_name,
@@ -264,7 +300,7 @@ class BaseCatalogView(TemplateView):
         for obj in queryset:
             cells = []
             for column in columns:
-                raw_value = getattr(obj, column['name'])
+                raw_value = self.get_value_by_path(obj, column['name'])
                 cell = self.build_cell(raw_value)
                 cell['is_long_text'] = column['is_long_text']
                 cells.append(cell)
@@ -316,7 +352,7 @@ class BaseCatalogView(TemplateView):
         """
         columns = self.build_columns(config)
         current_model_key = config.key
-        return {
+        context = {
             'section_title': self.section_title,
             'model_tabs': self.build_nav_models(current_model_key),
             'current_model_title': config.title,
@@ -331,6 +367,36 @@ class BaseCatalogView(TemplateView):
             'delete_error': delete_error,
             'metro_line_options': self.get_metro_line_option_data(form),
         }
+
+        context['sort_by'] = self.request.GET.get('sort_by', '')
+        context['sort_dir'] = self.request.GET.get('sort_dir', 'asc')
+
+        sortable_fields = set(self.get_sort_field_map(config).keys())
+        for column in context['columns']:
+            column_name = column['name']
+            column['is_sortable'] = column_name in sortable_fields
+            column['is_sorted'] = False
+            column['sort_direction'] = ''
+            column['sort_url'] = ''
+
+            if not column['is_sortable']:
+                continue
+
+            next_sort_dir = 'asc'
+            if context['sort_by'] == column_name:
+                column['is_sorted'] = True
+                column['sort_direction'] = context['sort_dir']
+                if context['sort_dir'] != 'desc':
+                    next_sort_dir = 'desc'
+
+            params = self.request.GET.copy()
+            params['model'] = config.key
+            params['sort_by'] = column_name
+            params['sort_dir'] = next_sort_dir
+            params.pop('edit', None)
+            column['sort_url'] = f'?{params.urlencode()}'
+
+        return context
 
     def get_edit_object(self, config):
         """Описание метода get_edit_object.
@@ -487,22 +553,69 @@ class LocationCatalogView(BaseCatalogView):
             select_related=('city',),
         ),
         CatalogModelConfig(
-            key='metro_line',
-            model=MetroLine,
-            form_fields=('line', 'line_color', 'city', 'is_active'),
-            table_fields=('line', 'line_color', 'city', 'is_active'),
-            order_by=('city__name', 'line'),
-            select_related=('city',),
-        ),
-        CatalogModelConfig(
             key='metro',
             model=Metro,
             form_fields=('station', 'metro_line', 'is_active'),
-            table_fields=('station', 'metro_line', 'is_active'),
+            table_fields=('station', 'metro_line', 'metro_line__city'),
             order_by=('metro_line__city__name', 'metro_line__line', 'station'),
             select_related=('metro_line__city',),
         ),
     )
+
+    def get_current_model_key(self):
+        """Route the removed metro-line tab to the metro catalog."""
+        requested_key = self.request.POST.get('model') or self.request.GET.get(
+            'model'
+        )
+        if requested_key == 'metro_line':
+            return 'metro'
+        return super().get_current_model_key()
+
+    def get_sort_field_map(self, config):
+        """Return sortable columns for location catalogs."""
+        if config.key == 'metro':
+            return {
+                'station': 'station',
+                'metro_line': 'metro_line__line',
+                'metro_line__city': 'metro_line__city__name',
+            }
+        return super().get_sort_field_map(config)
+
+    def filter_queryset(self, config, queryset):
+        """Apply metro filters from the catalog page."""
+        if config.key != 'metro':
+            return queryset
+
+        city_id = self.request.GET.get('filter_city')
+        metro_line_id = self.request.GET.get('filter_metro_line')
+
+        if city_id:
+            queryset = queryset.filter(metro_line__city_id=city_id)
+        if metro_line_id:
+            queryset = queryset.filter(metro_line_id=metro_line_id)
+
+        return queryset
+
+    def build_context(self, config, form, edit_object=None, delete_error=None):
+        """Add metro filter controls to the location catalog context."""
+        context = super().build_context(
+            config=config,
+            form=form,
+            edit_object=edit_object,
+            delete_error=delete_error,
+        )
+
+        if config.key == 'metro':
+            context['metro_filters'] = {
+                'city': self.request.GET.get('filter_city', ''),
+                'metro_line': self.request.GET.get('filter_metro_line', ''),
+            }
+            context['cities_for_filter'] = City.objects.order_by('name')
+            context['metro_lines_for_filter'] = MetroLine.objects.select_related(
+                'city'
+            ).order_by('city__name', 'line')
+
+        return context
 
 
 class DictionaryCatalogView(BaseCatalogView):

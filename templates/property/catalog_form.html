@@ -66,12 +66,57 @@
             <div class="card">
                 <div class="card-header">{{ current_model_title|capfirst }}</div>
                 <div class="card-body">
+                    {% if model_key == 'metro' %}
+                    <form method="get" class="row g-2 mb-4" data-metro-filter-form>
+                        <input type="hidden" name="model" value="metro">
+                        <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                        <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+
+                        <div class="col-md-6">
+                            <label class="form-label">Город</label>
+                            <select name="filter_city" class="form-select" data-metro-filter-city>
+                                <option value="">Все города</option>
+                                {% for city in cities_for_filter %}
+                                <option value="{{ city.id }}" {% if metro_filters.city == city.id|stringformat:'s' %}selected{% endif %}>
+                                    {{ city.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Линия метро</label>
+                            <select name="filter_metro_line" class="form-select" data-metro-filter-line>
+                                <option value="">Все линии</option>
+                                {% for metro_line in metro_lines_for_filter %}
+                                <option value="{{ metro_line.id }}" data-city-id="{{ metro_line.city_id }}" {% if metro_filters.metro_line == metro_line.id|stringformat:'s' %}selected{% endif %}>
+                                    {{ metro_line }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                    </form>
+                    {% endif %}
+
+                    <div id="catalog-results">
                     <div class="table-responsive">
                         <table class="table table-striped table-hover align-middle">
                             <thead>
                                 <tr>
                                     {% for column in columns %}
-                                    <th>{{ column.label|capfirst }}</th>
+                                    <th>
+                                        {% if column.is_sortable %}
+                                        <a href="{{ column.sort_url }}" class="text-decoration-none text-body fw-semibold">
+                                            {{ column.label|capfirst }}
+                                            {% if column.is_sorted %}
+                                                {% if column.sort_direction == 'desc' %}&darr;{% else %}&uarr;{% endif %}
+                                            {% endif %}
+                                        </a>
+                                        {% else %}
+                                        {{ column.label|capfirst }}
+                                        {% endif %}
+                                    </th>
                                     {% endfor %}
                                     <th class="text-nowrap">Действия</th>
                                 </tr>
@@ -115,6 +160,7 @@
                                 {% endfor %}
                             </tbody>
                         </table>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -208,6 +254,68 @@ document.addEventListener('DOMContentLoaded', function () {
 
     select.addEventListener('change', syncLineColor);
     syncLineColor();
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const filterForm = document.querySelector('[data-metro-filter-form]');
+
+    if (!filterForm) {
+        return;
+    }
+
+    const citySelect = filterForm.querySelector('[data-metro-filter-city]');
+    const lineSelect = filterForm.querySelector('[data-metro-filter-line]');
+    const lineOptions = Array.from(lineSelect.options);
+
+    function syncLineOptions() {
+        const cityId = citySelect.value;
+
+        lineOptions.forEach(function (option) {
+            const optionCityId = option.dataset.cityId || '';
+            const isVisible = !option.value || !cityId || optionCityId === cityId;
+            option.hidden = !isVisible;
+            option.disabled = !isVisible;
+        });
+
+        const selectedOption = lineSelect.selectedOptions[0];
+        if (selectedOption && selectedOption.disabled) {
+            lineSelect.value = '';
+        }
+    }
+
+    function updateResults() {
+        syncLineOptions();
+
+        const params = new URLSearchParams(new FormData(filterForm));
+        const url = new URL(window.location.href);
+        url.search = params.toString();
+
+        fetch(url.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (response) {
+                return response.text();
+            })
+            .then(function (html) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newResults = doc.querySelector('#catalog-results');
+                const currentResults = document.querySelector('#catalog-results');
+
+                if (newResults && currentResults) {
+                    currentResults.innerHTML = newResults.innerHTML;
+                }
+
+                window.history.replaceState({}, '', url.toString());
+            });
+    }
+
+    citySelect.addEventListener('change', updateResults);
+    lineSelect.addEventListener('change', updateResults);
+    syncLineOptions();
 });
 </script>
 {% endblock %}

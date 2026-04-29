@@ -196,16 +196,15 @@ class LocationCatalogMetroTests(TestCase):
             city=self.city,
         )
 
-    def test_location_catalog_renders_metro_line_dictionary(self):
+    def test_location_catalog_routes_old_metro_line_tab_to_metro(self):
         response = self.client.get(
             reverse('location:location_catalog'), {'model': 'metro_line'}
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'name="model" value="metro_line"')
-        self.assertContains(response, 'name="line"')
-        self.assertContains(response, 'name="line_color"')
-        self.assertContains(response, 'name="city"')
+        self.assertContains(response, 'name="model" value="metro"')
+        self.assertNotContains(response, 'model=metro_line')
+        self.assertNotContains(response, 'name="line_color"')
 
     def test_location_catalog_renders_metro_dictionary(self):
         response = self.client.get(
@@ -213,11 +212,23 @@ class LocationCatalogMetroTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [column['name'] for column in response.context['columns']],
+            ['station', 'metro_line', 'metro_line__city'],
+        )
         self.assertContains(response, 'name="model" value="metro"')
         self.assertContains(response, 'name="station"')
         self.assertContains(response, 'name="metro_line"')
+        self.assertContains(response, 'name="filter_city"')
+        self.assertContains(response, 'name="filter_metro_line"')
+        self.assertContains(response, 'data-metro-filter-form')
+        self.assertContains(
+            response, f'data-city-id="{self.city.pk}"', html=False
+        )
         self.assertContains(response, 'catalog-line-select-swatch')
         self.assertNotContains(response, 'name="line_color"')
+        self.assertNotContains(response, 'Применить')
+        self.assertNotContains(response, 'Сбросить')
 
     def test_location_catalog_creates_updates_and_deletes_metro(self):
         other_line = MetroLine.objects.create(
@@ -287,6 +298,56 @@ class LocationCatalogMetroTests(TestCase):
         self.assertContains(response, 'catalog-line-color-strip')
         self.assertContains(response, '#FF0000')
         self.assertContains(response, 'Line 1')
+        self.assertContains(response, 'City 1')
+
+    def test_location_catalog_filters_metro_by_city_and_line(self):
+        other_city = City.objects.create(name='City 2', region=self.region)
+        other_line = MetroLine.objects.create(
+            line='Line 2',
+            line_color='#00FF00',
+            city=other_city,
+        )
+        Metro.objects.create(station='Station 1', metro_line=self.metro_line)
+        Metro.objects.create(station='Station 2', metro_line=other_line)
+
+        city_response = self.client.get(
+            reverse('location:location_catalog'),
+            {'model': 'metro', 'filter_city': self.city.pk},
+        )
+
+        self.assertContains(city_response, 'Station 1')
+        self.assertNotContains(city_response, 'Station 2')
+
+        line_response = self.client.get(
+            reverse('location:location_catalog'),
+            {'model': 'metro', 'filter_metro_line': other_line.pk},
+        )
+
+        self.assertNotContains(line_response, 'Station 1')
+        self.assertContains(line_response, 'Station 2')
+
+    def test_location_catalog_sorts_metro_by_column_headers(self):
+        Metro.objects.create(station='Bravo', metro_line=self.metro_line)
+        Metro.objects.create(station='Alpha', metro_line=self.metro_line)
+
+        asc_response = self.client.get(
+            reverse('location:location_catalog'),
+            {'model': 'metro', 'sort_by': 'station', 'sort_dir': 'asc'},
+        )
+        desc_response = self.client.get(
+            reverse('location:location_catalog'),
+            {'model': 'metro', 'sort_by': 'station', 'sort_dir': 'desc'},
+        )
+
+        self.assertEqual(
+            asc_response.context['rows'][0]['cells'][0]['value'],
+            'Alpha',
+        )
+        self.assertEqual(
+            desc_response.context['rows'][0]['cells'][0]['value'],
+            'Bravo',
+        )
+        self.assertContains(asc_response, 'sort_by=station')
 
 
 class RealEstateComplexDeleteViewTests(TestCase):
