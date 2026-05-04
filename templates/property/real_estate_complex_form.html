@@ -216,7 +216,10 @@
         </div>
 
         <div class="card mb-4">
-            <div class="card-header">Корпуса ЖК</div>
+            <div class="card-header d-flex justify-content-between align-items-center gap-2">
+                <span>Корпуса ЖК</span>
+                <button type="button" class="btn btn-outline-primary btn-sm" data-add-building-row>+</button>
+            </div>
             <div class="card-body">
                 {{ building_formset.management_form }}
 
@@ -240,9 +243,9 @@
                                 <th>Удалить</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody data-building-formset-body>
                             {% for building_form in building_formset %}
-                            <tr>
+                            <tr data-building-form-row>
                                 {% for hidden in building_form.hidden_fields %}
                                     {{ hidden }}
                                 {% endfor %}
@@ -277,7 +280,8 @@
                                     {% endfor %}
                                 </td>
                                 <td class="text-center">
-                                    {{ building_form.DELETE }}
+                                    <span class="d-none">{{ building_form.DELETE }}</span>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" data-remove-building-row>-</button>
                                     {% for error in building_form.DELETE.errors %}
                                         <div class="text-danger">{{ error }}</div>
                                     {% endfor %}
@@ -295,10 +299,6 @@
                             {% endfor %}
                         </tbody>
                     </table>
-                </div>
-
-                <div class="form-text">
-                    Чтобы добавить корпус, заполните пустую строку в таблице. Для удаления отметьте чекбокс в колонке "Удалить" и сохраните форму.
                 </div>
             </div>
         </div>
@@ -344,6 +344,53 @@
         {% endwith %}
     </tr>
 </template>
+
+<template id="building-empty-form-template">
+    <tr data-building-form-row>
+        {% with building_form=building_formset.empty_form %}
+            {% for hidden in building_form.hidden_fields %}
+                {{ hidden }}
+            {% endfor %}
+            <td>
+                {{ building_form.number }}
+                {% for error in building_form.number.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </td>
+            <td>
+                {{ building_form.address }}
+                {% for error in building_form.address.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </td>
+            <td>
+                {{ building_form.commissioning_date }}
+                {% for error in building_form.commissioning_date.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </td>
+            <td>
+                {{ building_form.key_handover_date }}
+                {% for error in building_form.key_handover_date.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </td>
+            <td class="text-center">
+                {{ building_form.is_active }}
+                {% for error in building_form.is_active.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </td>
+            <td class="text-center">
+                <span class="d-none">{{ building_form.DELETE }}</span>
+                <button type="button" class="btn btn-sm btn-outline-danger" data-remove-building-row>-</button>
+                {% for error in building_form.DELETE.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </td>
+        {% endwith %}
+    </tr>
+</template>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -363,12 +410,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const addMetroRowButton = document.querySelector('[data-add-metro-row]');
     const metroEmptyFormTemplate = document.getElementById('metro-availability-empty-form-template');
     const metroTotalFormsInput = document.getElementById('id_metro-TOTAL_FORMS');
+    const buildingFormsetBody = document.querySelector('[data-building-formset-body]');
+    const addBuildingRowButton = document.querySelector('[data-add-building-row]');
+    const buildingEmptyFormTemplate = document.getElementById('building-empty-form-template');
+    const buildingTotalFormsInput = document.getElementById('id_buildings-TOTAL_FORMS');
     const existingComplexesData = document.getElementById('existing-complexes-data');
     const citiesData = document.getElementById('location-cities-data');
     const districtsData = document.getElementById('location-districts-data');
     const metroStationsData = document.getElementById('location-metro-stations-data');
 
-    if (!complexNameInput || !developerSelect || !duplicateWarning || !existingComplexesData || !regionSelect || !citySelect || !districtSelect || !metroFormsetBody || !addMetroRowButton || !metroEmptyFormTemplate || !metroTotalFormsInput || !citiesData || !districtsData || !metroStationsData) {
+    if (!complexNameInput || !developerSelect || !duplicateWarning || !existingComplexesData || !regionSelect || !citySelect || !districtSelect || !metroFormsetBody || !addMetroRowButton || !metroEmptyFormTemplate || !metroTotalFormsInput || !buildingFormsetBody || !addBuildingRowButton || !buildingEmptyFormTemplate || !buildingTotalFormsInput || !citiesData || !districtsData || !metroStationsData) {
         return;
     }
 
@@ -531,6 +582,20 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function bindBuildingRow(row) {
+        const removeButton = row.querySelector('[data-remove-building-row]');
+        const deleteInput = row.querySelector('input[name$="-DELETE"]');
+
+        if (!removeButton || !deleteInput) {
+            return;
+        }
+
+        removeButton.addEventListener('click', function () {
+            deleteInput.checked = true;
+            row.classList.add('d-none');
+        });
+    }
+
     function addMetroRow() {
         const formIndex = Number(metroTotalFormsInput.value);
         const rowHtml = metroEmptyFormTemplate.innerHTML.replace(/__prefix__/g, String(formIndex));
@@ -541,6 +606,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const row = metroFormsetBody.querySelector('tr[data-metro-form-row]:last-child');
         bindMetroRow(row);
         refreshMetroStations();
+    }
+
+    function addBuildingRow() {
+        const formIndex = Number(buildingTotalFormsInput.value);
+        const rowHtml = buildingEmptyFormTemplate.innerHTML.replace(/__prefix__/g, String(formIndex));
+
+        buildingFormsetBody.insertAdjacentHTML('beforeend', rowHtml);
+        buildingTotalFormsInput.value = String(formIndex + 1);
+
+        const row = buildingFormsetBody.querySelector('tr[data-building-form-row]:last-child');
+        bindBuildingRow(row);
     }
 
     function applyCity(cityId) {
@@ -624,7 +700,9 @@ document.addEventListener('DOMContentLoaded', function () {
     complexNameInput.addEventListener('input', syncDuplicateComplexWarning);
     developerSelect.addEventListener('change', syncDuplicateComplexWarning);
     addMetroRowButton.addEventListener('click', addMetroRow);
+    addBuildingRowButton.addEventListener('click', addBuildingRow);
     metroFormsetBody.querySelectorAll('[data-metro-form-row]').forEach(bindMetroRow);
+    buildingFormsetBody.querySelectorAll('[data-building-form-row]').forEach(bindBuildingRow);
 
     if (districtSelect.value) {
         applyDistrict(districtSelect.value);

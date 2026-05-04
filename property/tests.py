@@ -93,6 +93,9 @@ class RealEstateComplexFormLocationTests(TestCase):
         self.assertContains(response, 'data-add-metro-row')
         self.assertContains(response, 'data-remove-metro-row')
         self.assertContains(response, 'metro-availability-empty-form-template')
+        self.assertContains(response, 'data-add-building-row')
+        self.assertContains(response, 'data-remove-building-row')
+        self.assertContains(response, 'building-empty-form-template')
 
     def test_create_view_passes_existing_complexes_for_duplicate_warning(self):
         complex_obj = RealEstateComplex.objects.create(
