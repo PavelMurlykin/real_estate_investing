@@ -602,6 +602,14 @@ class DeveloperListView(ListView):
     template_name = 'property/developer_list.html'
     context_object_name = 'developers'
     paginate_by = 20
+    sort_fields = {
+        'name': 'name',
+        'description': 'description',
+    }
+    table_columns = (
+        {'key': 'name', 'label': 'Название'},
+        {'key': 'description', 'label': 'Описание'},
+    )
 
     def get_queryset(self):
         """Описание метода get_queryset.
@@ -611,7 +619,79 @@ class DeveloperListView(ListView):
         Возвращает:
             Any: Тип результата зависит от контекста использования.
         """
-        return Developer.objects.order_by('name')
+        queryset = Developer.objects.all()
+        filters = self.get_filters()
+
+        if filters['name']:
+            queryset = queryset.filter(name__icontains=filters['name'])
+        if filters['description']:
+            queryset = queryset.filter(
+                description__icontains=filters['description']
+            )
+
+        sort_by = self.request.GET.get('sort_by', '')
+        sort_dir = self.request.GET.get('sort_dir', 'asc')
+        sort_field = self.sort_fields.get(sort_by)
+        if sort_field:
+            sort_prefix = '-' if sort_dir == 'desc' else ''
+            return queryset.order_by(f'{sort_prefix}{sort_field}', 'name')
+
+        return queryset.order_by('name')
+
+    def get_filters(self):
+        return {
+            'name': self.request.GET.get('filter_name', '').strip(),
+            'description': self.request.GET.get(
+                'filter_description', ''
+            ).strip(),
+        }
+
+    def build_querystring(self, **overrides):
+        params = self.request.GET.copy()
+        params.pop('page', None)
+        for key, value in overrides.items():
+            if value in (None, ''):
+                params.pop(key, None)
+                continue
+            params[key] = value
+        return params.urlencode()
+
+    def build_table_columns(self):
+        sort_by = self.request.GET.get('sort_by', '')
+        sort_dir = self.request.GET.get('sort_dir', 'asc')
+        columns = []
+
+        for column in self.table_columns:
+            key = column['key']
+            next_sort_dir = 'asc'
+            is_sorted = sort_by == key
+            if is_sorted and sort_dir != 'desc':
+                next_sort_dir = 'desc'
+
+            columns.append(
+                {
+                    **column,
+                    'is_sorted': is_sorted,
+                    'sort_direction': sort_dir if is_sorted else '',
+                    'sort_url': (
+                        '?'
+                        + self.build_querystring(
+                            sort_by=key, sort_dir=next_sort_dir
+                        )
+                    ),
+                }
+            )
+
+        return columns
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filters'] = self.get_filters()
+        context['sort_by'] = self.request.GET.get('sort_by', '')
+        context['sort_dir'] = self.request.GET.get('sort_dir', 'asc')
+        context['columns'] = self.build_table_columns()
+        context['pagination_querystring'] = self.build_querystring()
+        return context
 
 
 class DeveloperCreateView(CreateView):

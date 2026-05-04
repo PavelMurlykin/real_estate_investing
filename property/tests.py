@@ -408,6 +408,45 @@ class LocationCatalogMetroTests(TestCase):
         self.assertContains(asc_response, 'sort_by=station')
 
 
+class DeveloperListViewTests(TestCase):
+    def test_developer_list_filters_and_sorts_with_catalog_static_hooks(self):
+        Developer.objects.create(name='Beta Developer', description='Townhouses')
+        Developer.objects.create(name='Alpha Developer', description='Apartments')
+
+        response = self.client.get(
+            reverse('property:developer_list'),
+            {
+                'filter_description': 'Apart',
+                'sort_by': 'name',
+                'sort_dir': 'desc',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-catalog-filter-form')
+        self.assertContains(response, 'data-catalog-filter-control')
+        self.assertContains(response, 'catalog-results')
+        self.assertContains(response, 'static/js/catalog.js')
+        self.assertContains(response, 'Alpha Developer')
+        self.assertNotContains(response, 'Beta Developer')
+        self.assertEqual(response.context['sort_by'], 'name')
+        self.assertEqual(response.context['sort_dir'], 'desc')
+        self.assertEqual(
+            [column['key'] for column in response.context['columns']],
+            ['name', 'description'],
+        )
+
+    def test_developer_list_does_not_render_active_column(self):
+        Developer.objects.create(name='Developer 1', is_active=False)
+
+        response = self.client.get(reverse('property:developer_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, '<th>Активен</th>', html=True)
+        self.assertNotContains(response, 'Да')
+        self.assertNotContains(response, 'Нет')
+
+
 class RealEstateComplexDeleteViewTests(TestCase):
     """Описание класса RealEstateComplexDeleteViewTests.
 
