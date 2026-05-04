@@ -1,0 +1,4 @@
+interface:
+  display_name: "Infrastructure"
+  short_description: "Docker, Compose, CI/CD workflow"
+  default_prompt: "Use $infrastructure to add Docker, Docker Compose, or GitHub Actions CI/CD with secure reproducible configuration."

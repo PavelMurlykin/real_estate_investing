@@ -1,0 +1,4 @@
+interface:
+  display_name: "Backend"
+  short_description: "Django/PostgreSQL backend workflow"
+  default_prompt: "Use $backend to implement a Django backend change with PostgreSQL-aware queries, security checks, PEP 8 style, and pytest coverage."

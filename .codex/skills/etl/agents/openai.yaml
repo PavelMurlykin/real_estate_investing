@@ -1,0 +1,4 @@
+interface:
+  display_name: "ETL"
+  short_description: "Parsing, normalization, DB loading"
+  default_prompt: "Use $etl to parse website data, normalize it, and load it into the PostgreSQL database safely and repeatably."
