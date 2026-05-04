@@ -5,7 +5,7 @@ from django.urls import reverse
 
 from location.models import City, District, Metro, MetroLine, Region
 
-from .forms import RealEstateComplexForm
+from .forms import RealEstateComplexBuildingForm, RealEstateComplexForm
 from .models import (
     ApartmentDecoration,
     ApartmentLayout,
@@ -96,6 +96,10 @@ class RealEstateComplexFormLocationTests(TestCase):
         self.assertContains(response, 'data-add-building-row')
         self.assertContains(response, 'data-remove-building-row')
         self.assertContains(response, 'building-empty-form-template')
+        self.assertContains(response, 'buildings-0-commissioning_year')
+        self.assertContains(response, 'buildings-0-commissioning_quarter')
+        self.assertContains(response, 'buildings-0-key_handover_year')
+        self.assertContains(response, 'buildings-0-key_handover_quarter')
 
     def test_create_view_passes_existing_complexes_for_duplicate_warning(self):
         complex_obj = RealEstateComplex.objects.create(
@@ -173,6 +177,52 @@ class RealEstateComplexFormLocationTests(TestCase):
         )
         self.assertEqual(availability.metro, self.metro)
         self.assertEqual(availability.walking_time_minutes, 12)
+
+    def test_create_view_saves_building_quarter_periods(self):
+        response = self.client.post(
+            reverse('property:complex_create'),
+            self._complex_create_post_data(
+                **{
+                    'buildings-TOTAL_FORMS': '1',
+                    'buildings-0-number': '1',
+                    'buildings-0-address': 'Address 1',
+                    'buildings-0-commissioning_date': '',
+                    'buildings-0-commissioning_year': '2026',
+                    'buildings-0-commissioning_quarter': '4',
+                    'buildings-0-key_handover_date': '',
+                    'buildings-0-key_handover_year': '2027',
+                    'buildings-0-key_handover_quarter': '1',
+                    'buildings-0-is_active': 'on',
+                }
+            ),
+        )
+
+        self.assertRedirects(response, reverse('property:complex_list'))
+        building = RealEstateComplexBuilding.objects.get(number='1')
+        self.assertEqual(building.commissioning_year, 2026)
+        self.assertEqual(building.commissioning_quarter, 4)
+        self.assertEqual(building.key_handover_year, 2027)
+        self.assertEqual(building.key_handover_quarter, 1)
+        self.assertEqual(building.get_commissioning_display(), 'IV кв. 2026')
+        self.assertEqual(building.get_key_handover_display(), 'I кв. 2027')
+
+    def test_building_form_rejects_date_and_quarter_period_together(self):
+        form = RealEstateComplexBuildingForm(
+            data={
+                'number': '1',
+                'address': 'Address 1',
+                'commissioning_date': '2026-10-01',
+                'commissioning_year': '2026',
+                'commissioning_quarter': '4',
+                'key_handover_date': '',
+                'key_handover_year': '',
+                'key_handover_quarter': '',
+                'is_active': 'on',
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('commissioning_date', form.errors)
 
     def test_create_view_rejects_metro_station_from_another_city(self):
         other_line = MetroLine.objects.create(

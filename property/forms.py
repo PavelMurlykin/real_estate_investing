@@ -259,7 +259,11 @@ class RealEstateComplexBuildingForm(forms.ModelForm):
             'number',
             'address',
             'commissioning_date',
+            'commissioning_year',
+            'commissioning_quarter',
             'key_handover_date',
+            'key_handover_year',
+            'key_handover_quarter',
             'is_active',
         ]
         widgets = {
@@ -268,8 +272,20 @@ class RealEstateComplexBuildingForm(forms.ModelForm):
             'commissioning_date': forms.DateInput(
                 attrs={'class': 'form-control', 'type': 'date'}
             ),
+            'commissioning_year': forms.NumberInput(
+                attrs={'class': 'form-control', 'min': 2000, 'max': 2100}
+            ),
+            'commissioning_quarter': forms.Select(
+                attrs={'class': 'form-control'}
+            ),
             'key_handover_date': forms.DateInput(
                 attrs={'class': 'form-control', 'type': 'date'}
+            ),
+            'key_handover_year': forms.NumberInput(
+                attrs={'class': 'form-control', 'min': 2000, 'max': 2100}
+            ),
+            'key_handover_quarter': forms.Select(
+                attrs={'class': 'form-control'}
             ),
             'is_active': forms.CheckboxInput(
                 attrs={'class': 'form-check-input'}

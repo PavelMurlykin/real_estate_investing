@@ -237,8 +237,12 @@
                             <tr>
                                 <th>Корпус</th>
                                 <th>Адрес</th>
-                                <th>Ввод в эксплуатацию</th>
-                                <th>Выдача ключей</th>
+                                <th>Дата ввода</th>
+                                <th>Год ввода</th>
+                                <th>Квартал ввода</th>
+                                <th>Дата ключей</th>
+                                <th>Год ключей</th>
+                                <th>Квартал ключей</th>
                                 <th>Активен</th>
                                 <th>Удалить</th>
                             </tr>
@@ -268,8 +272,32 @@
                                     {% endfor %}
                                 </td>
                                 <td>
+                                    {{ building_form.commissioning_year }}
+                                    {% for error in building_form.commissioning_year.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {{ building_form.commissioning_quarter }}
+                                    {% for error in building_form.commissioning_quarter.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </td>
+                                <td>
                                     {{ building_form.key_handover_date }}
                                     {% for error in building_form.key_handover_date.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {{ building_form.key_handover_year }}
+                                    {% for error in building_form.key_handover_year.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {{ building_form.key_handover_quarter }}
+                                    {% for error in building_form.key_handover_quarter.errors %}
                                         <div class="text-danger">{{ error }}</div>
                                     {% endfor %}
                                 </td>
@@ -289,7 +317,7 @@
                             </tr>
                             {% if building_form.non_field_errors %}
                             <tr>
-                                <td colspan="6">
+                                <td colspan="10">
                                     {% for error in building_form.non_field_errors %}
                                         <div class="text-danger">{{ error }}</div>
                                     {% endfor %}
@@ -370,8 +398,32 @@
                 {% endfor %}
             </td>
             <td>
+                {{ building_form.commissioning_year }}
+                {% for error in building_form.commissioning_year.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </td>
+            <td>
+                {{ building_form.commissioning_quarter }}
+                {% for error in building_form.commissioning_quarter.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </td>
+            <td>
                 {{ building_form.key_handover_date }}
                 {% for error in building_form.key_handover_date.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </td>
+            <td>
+                {{ building_form.key_handover_year }}
+                {% for error in building_form.key_handover_year.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </td>
+            <td>
+                {{ building_form.key_handover_quarter }}
+                {% for error in building_form.key_handover_quarter.errors %}
                     <div class="text-danger">{{ error }}</div>
                 {% endfor %}
             </td>
