@@ -30,7 +30,7 @@ Use this checklist for model, migration, queryset, reporting, search, filtering,
 
 ## Migrations
 
-- Generate migrations with `python manage.py makemigrations`.
-- Run `python manage.py makemigrations --check --dry-run` after edits to ensure no missing migrations.
+- Generate migrations through the project virtual environment, for example `.\.venv\Scripts\python.exe manage.py makemigrations` on Windows/PowerShell.
+- Run `.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run` after edits to ensure no missing migrations.
 - Keep data migrations idempotent and chunked for large tables.
 - Do not use app models directly in migrations; use `apps.get_model()`.

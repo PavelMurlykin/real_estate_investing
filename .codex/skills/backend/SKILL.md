@@ -14,7 +14,8 @@ Use this skill for backend work in the Django/PostgreSQL application.
 3. Design data access for PostgreSQL and Django ORM behavior, not only for in-memory correctness.
 4. Implement the smallest clear backend change, with migrations when models change.
 5. Add or update pytest coverage for every new behavior.
-6. Run focused checks first, then broader checks when the change touches shared behavior.
+6. Run project commands and tests through the repository virtual environment.
+7. Run focused checks first, then broader checks when the change touches shared behavior.
 
 ## Project Context
 
@@ -22,6 +23,7 @@ Use this skill for backend work in the Django/PostgreSQL application.
 - Database: PostgreSQL via `django.db.backends.postgresql`.
 - Settings module: `real_estate_investing.settings`.
 - Custom user model: `users.User`.
+- Use the project virtual environment for development and testing. On Windows/PowerShell, run Python commands through `.\.venv\Scripts\python.exe` unless the `.venv` is already activated.
 - Current apps include `bank`, `core`, `customer`, `homepage`, `location`, `mortgage`, `property`, `trench_mortgage`, and `users`.
 - Existing JavaScript for Django templates lives in `static/js`, including `catalog.js` and `mortgage_form.js`.
 - Current tests are mostly Django `TestCase`; new functionality must be covered with pytest. If pytest tooling is missing, add the minimal project configuration and dependencies needed for pytest-django.
@@ -83,10 +85,10 @@ Prefer focused pytest tests near the app being changed. Use Django's test client
 Run the narrowest useful commands for the change. Typical commands:
 
 ```powershell
-python manage.py makemigrations --check --dry-run
-python -m pytest path\to\test_file.py
-python -m pytest
-python manage.py check
+.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
+.\.venv\Scripts\python.exe -m pytest path\to\test_file.py
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe manage.py check
 ```
 
 If pytest is not installed yet, add `pytest` and `pytest-django` to the project dependencies and create minimal pytest configuration before writing pytest-only tests.

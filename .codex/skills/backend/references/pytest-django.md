@@ -88,12 +88,12 @@ assert len(queries) <= 5
 Run focused tests first:
 
 ```powershell
-python -m pytest app\tests.py
+.\.venv\Scripts\python.exe -m pytest app\tests.py
 ```
 
 Then broaden when the change touches shared behavior:
 
 ```powershell
-python -m pytest
-python manage.py check
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe manage.py check
 ```
