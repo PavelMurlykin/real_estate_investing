@@ -1,6 +1,6 @@
 ---
 name: backend
-description: Django backend development workflow for this real_estate_investing project. Use when implementing or reviewing Python/Django backend changes, models, views, forms, services, migrations, PostgreSQL queries, security-sensitive logic, performance-sensitive database access, or pytest coverage. Enforce PostgreSQL-aware design, Django security conventions, efficient ORM usage, PEP 8 style, and tests for all new functionality.
+description: Django backend development workflow for this real_estate_investing project. Use when implementing or reviewing Python/Django backend changes, models, views, forms, services, migrations, Django templates, PostgreSQL queries, security-sensitive logic, performance-sensitive database access, or pytest coverage. Enforce PostgreSQL-aware design, Django security conventions, efficient ORM usage, reuse of existing static JavaScript for templates, PEP 8 style, and tests for all new functionality.
 ---
 
 # Backend
@@ -23,12 +23,14 @@ Use this skill for backend work in the Django/PostgreSQL application.
 - Settings module: `real_estate_investing.settings`.
 - Custom user model: `users.User`.
 - Current apps include `bank`, `core`, `customer`, `homepage`, `location`, `mortgage`, `property`, `trench_mortgage`, and `users`.
+- Existing JavaScript for Django templates lives in `static/js`, including `catalog.js` and `mortgage_form.js`.
 - Current tests are mostly Django `TestCase`; new functionality must be covered with pytest. If pytest tooling is missing, add the minimal project configuration and dependencies needed for pytest-django.
 
 ## Implementation Rules
 
 - Prefer existing local patterns over new architecture.
 - Keep business logic out of templates; use forms, model methods, queryset helpers, or service functions when the surrounding app already has that shape.
+- When developing Django templates, inspect `static/js` first and reuse existing JavaScript functions before adding new scripts, inline handlers, or duplicate client-side behavior.
 - Use Django forms and validators for user input. Do not trust request data.
 - Use `get_object_or_404`, permission checks, and ownership filters for object access.
 - Wrap multi-row writes in `transaction.atomic()` when partial writes would corrupt state.
