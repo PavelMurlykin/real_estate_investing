@@ -38,6 +38,8 @@ def test_searchable_select_static_filters_options_by_partial_match():
     assert 'select.form-control' in script
     assert 'select.form-select' in script
     assert 'searchableSelectExclude' in script
+    assert 'searchableSelectColor' in script
+    assert 'searchable-select-option-color' in script
     assert 'MutationObserver' in script
     assert 'includes(query)' in script
     assert 'window.searchableSelect' in script
@@ -125,6 +127,22 @@ class RealEstateComplexFormLocationTests(TestCase):
         self.assertContains(response, 'buildings-0-commissioning_quarter')
         self.assertContains(response, 'buildings-0-key_handover_year')
         self.assertContains(response, 'buildings-0-key_handover_quarter')
+        self.assertEqual(
+            response.context['location_metro_stations'][0][
+                'metro_line__line_color'
+            ],
+            '#FF0000',
+        )
+
+    def test_complex_form_metro_options_show_station_name_without_line(self):
+        form = RealEstateComplexMetroAvailabilityForm()
+
+        metro_choices = {
+            str(value): label for value, label in form.fields['metro'].choices
+        }
+
+        self.assertEqual(metro_choices[str(self.metro.pk)], 'Station 1')
+        self.assertNotIn('Line 1', metro_choices[str(self.metro.pk)])
 
     def test_create_view_passes_existing_complexes_for_duplicate_warning(self):
         complex_obj = RealEstateComplex.objects.create(

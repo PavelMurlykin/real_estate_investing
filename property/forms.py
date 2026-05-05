@@ -324,6 +324,7 @@ class RealEstateComplexMetroAvailabilityForm(forms.ModelForm):
             'metro_line__city'
         ).order_by('metro_line__city__name', 'metro_line__line', 'station')
         self.fields['metro'].empty_label = 'Выберите станцию'
+        self.fields['metro'].label_from_instance = lambda metro: metro.station
 
 
 class BaseRealEstateComplexMetroAvailabilityInlineFormSet(BaseInlineFormSet):

@@ -488,7 +488,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const metroStations = JSON.parse(metroStationsData.textContent).map(function (station) {
         return {
             id: station.id,
-            name: `${station.station} (${station.metro_line__line})`,
+            name: station.station,
+            color: station.metro_line__line_color,
             city_id: station.metro_line__city_id,
         };
     });
@@ -540,6 +541,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const option = document.createElement('option');
             option.value = item.id;
             option.textContent = item.name;
+            if (item.color) {
+                option.dataset.searchableSelectColor = item.color;
+            }
             select.appendChild(option);
         });
 

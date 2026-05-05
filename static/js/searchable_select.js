@@ -18,6 +18,10 @@
         return String(option.textContent || '').trim();
     }
 
+    function getOptionColor(option) {
+        return option ? option.dataset.searchableSelectColor || '' : '';
+    }
+
     function getSelectedOption(select) {
         return select.selectedOptions && select.selectedOptions.length
             ? select.selectedOptions[0]
@@ -137,6 +141,7 @@
         const previousValue = state.select.value;
         state.select.value = option.value;
         state.input.value = option.value ? getOptionText(option) : '';
+        syncSelectedColor(state);
         closeMenu(state);
 
         if (state.select.value !== previousValue) {
@@ -175,7 +180,20 @@
             item.dataset.searchableSelectOption = String(index);
             item.setAttribute('role', 'option');
             item.setAttribute('aria-selected', 'false');
-            item.textContent = getOptionText(option);
+
+            const color = getOptionColor(option);
+            if (color) {
+                const colorLine = document.createElement('span');
+                colorLine.className = 'searchable-select-option-color';
+                colorLine.style.backgroundColor = color;
+                colorLine.setAttribute('aria-hidden', 'true');
+                item.appendChild(colorLine);
+            }
+
+            const label = document.createElement('span');
+            label.textContent = getOptionText(option);
+            item.appendChild(label);
+
             item.classList.toggle('is-selected', option.value === selectedValue);
             item.addEventListener('mousedown', function (event) {
                 event.preventDefault();
@@ -205,6 +223,7 @@
     function syncInputFromSelect(state) {
         state.input.placeholder = getPlaceholder(state.select);
         state.input.value = getInputValue(state.select);
+        syncSelectedColor(state);
         syncValidity(state);
         if (!state.menu.classList.contains('d-none')) {
             renderOptions(state);
@@ -222,6 +241,12 @@
         }
 
         state.input.setCustomValidity('');
+    }
+
+    function syncSelectedColor(state) {
+        const color = getOptionColor(getSelectedOption(state.select));
+        state.wrapper.classList.toggle('has-selected-color', Boolean(color));
+        state.selectedColor.style.backgroundColor = color || 'transparent';
     }
 
     function handleInput(state) {
@@ -312,6 +337,10 @@
         input.required = select.required;
         moveLabelsToInput(select, input);
 
+        const selectedColor = document.createElement('span');
+        selectedColor.className = 'searchable-select-selected-color';
+        selectedColor.setAttribute('aria-hidden', 'true');
+
         const menu = document.createElement('div');
         menu.className = 'searchable-select-menu d-none';
         menu.id = `searchable-select-menu-${nextId}`;
@@ -320,6 +349,7 @@
 
         input.setAttribute('aria-controls', menu.id);
         wrapper.appendChild(input);
+        wrapper.appendChild(selectedColor);
         document.body.appendChild(menu);
 
         select.classList.add('searchable-select-source');
@@ -334,6 +364,7 @@
             menu: menu,
             observer: null,
             select: select,
+            selectedColor: selectedColor,
             wrapper: wrapper,
         };
         instances.set(select, state);

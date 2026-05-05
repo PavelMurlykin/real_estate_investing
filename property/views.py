@@ -993,7 +993,6 @@ class RealEstateComplexFormsetMixin:
             .values(
                 'id',
                 'station',
-                'metro_line__line',
                 'metro_line__line_color',
                 'metro_line__city_id',
             )
