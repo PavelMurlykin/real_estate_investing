@@ -304,7 +304,12 @@ class RealEstateComplexMetroAvailabilityForm(forms.ModelForm):
             'is_active',
         ]
         widgets = {
-            'metro': forms.Select(attrs={'class': 'form-control'}),
+            'metro': forms.Select(
+                attrs={
+                    'class': 'form-control',
+                    'data-searchable-select': '',
+                }
+            ),
             'walking_time_minutes': forms.NumberInput(
                 attrs={'class': 'form-control', 'min': 1}
             ),

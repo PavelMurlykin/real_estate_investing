@@ -544,6 +544,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         select.value = selectedValue || '';
+        if (window.searchableSelect) {
+            window.searchableSelect.refresh(select);
+        }
     }
 
     function getFilteredCities() {

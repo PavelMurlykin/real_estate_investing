@@ -22,7 +22,10 @@ class BankConfig(AppConfig):
         Возвращает:
             Any: Тип результата определяется вызывающим кодом.
         """
-        if os.environ.get('DISABLE_KEY_RATE_SCHEDULER') == '1':
+        if (
+            os.environ.get('DISABLE_KEY_RATE_SCHEDULER') == '1'
+            or 'pytest' in sys.modules
+        ):
             return
 
         disabled_commands = {

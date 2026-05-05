@@ -3,3 +3,5 @@ Django
 openpyxl
 python-dateutil
 python-dotenv
+pytest
+pytest-django

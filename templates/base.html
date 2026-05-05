@@ -66,8 +66,9 @@
             });
         })();
     </script>
-    {% load django_bootstrap5 %}
+    {% load django_bootstrap5 static %}
     {% bootstrap_css %}
+    <link rel="stylesheet" href="{% static 'css/searchable_select.css' %}">
 
     {% block extra_css %}
     {% endblock %}
@@ -96,6 +97,7 @@
     {% include "includes/footer.html" %}
 
     {% bootstrap_javascript %}
+    <script src="{% static 'js/searchable_select.js' %}"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             const selector = document.querySelector("[data-theme-selector]");
