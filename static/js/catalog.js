@@ -82,6 +82,9 @@
         if (selectedOption && selectedOption.disabled) {
             select.value = '';
         }
+        if (window.searchableSelect) {
+            window.searchableSelect.refresh(select);
+        }
     }
 
     function syncDependentSelects(form) {

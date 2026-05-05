@@ -68,7 +68,7 @@
                 <div class="card-header">{{ current_model_title|capfirst }}</div>
                 <div class="card-body">
                     {% if model_key == 'metro' %}
-                    <form method="get" class="row g-2 mb-4" data-catalog-filter-form data-catalog-results-target="#catalog-results">
+                    <form method="get" class="row g-2 mb-4" data-metro-filter-form data-catalog-filter-form data-catalog-results-target="#catalog-results">
                         <input type="hidden" name="model" value="metro">
                         <input type="hidden" name="sort_by" value="{{ sort_by }}">
                         <input type="hidden" name="sort_dir" value="{{ sort_dir }}">

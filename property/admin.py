@@ -72,7 +72,11 @@ class RealEstateComplexBuildingInline(admin.TabularInline):
         'number',
         'address',
         'commissioning_date',
+        'commissioning_year',
+        'commissioning_quarter',
         'key_handover_date',
+        'key_handover_year',
+        'key_handover_quarter',
         'is_active',
     )
     show_change_link = True
@@ -160,8 +164,8 @@ class RealEstateComplexBuildingAdmin(admin.ModelAdmin):
         'number',
         'real_estate_complex',
         'address',
-        'commissioning_date',
-        'key_handover_date',
+        'commissioning_period',
+        'key_handover_period',
         'is_active',
     )
     list_filter = (
@@ -169,6 +173,10 @@ class RealEstateComplexBuildingAdmin(admin.ModelAdmin):
         'real_estate_complex',
         'real_estate_complex__developer',
         'commissioning_date',
+        'commissioning_year',
+        'commissioning_quarter',
+        'key_handover_year',
+        'key_handover_quarter',
         'created_at',
     )
     search_fields = ('number', 'address', 'real_estate_complex__name')
@@ -189,6 +197,14 @@ class RealEstateComplexBuildingAdmin(admin.ModelAdmin):
         return (
             super().get_queryset(request).select_related('real_estate_complex')
         )
+
+    @admin.display(description='Ввод в эксплуатацию')
+    def commissioning_period(self, obj):
+        return obj.get_commissioning_display() or '-'
+
+    @admin.display(description='Выдача ключей')
+    def key_handover_period(self, obj):
+        return obj.get_key_handover_display() or '-'
 
 
 @admin.register(RealEstateComplexMetroAvailability)

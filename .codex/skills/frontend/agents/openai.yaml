@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend"
+  short_description: "React frontend development workflow"
+  default_prompt: "Use $frontend to implement a React frontend change with accessible UI, secure data handling, performance checks, and tests."

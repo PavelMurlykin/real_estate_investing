@@ -1,5 +1,6 @@
 # property/models.py
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
 
@@ -208,13 +209,37 @@ class RealEstateComplexBuilding(BaseModel):
     Список корпусов ЖК.
     """
 
+    class Quarter(models.IntegerChoices):
+        FIRST = 1, 'I кв.'
+        SECOND = 2, 'II кв.'
+        THIRD = 3, 'III кв.'
+        FOURTH = 4, 'IV кв.'
+
     number = models.CharField(max_length=100, verbose_name='Корпус')
     address = models.CharField(null=True, max_length=255, verbose_name='Адрес')
     commissioning_date = models.DateField(
-        null=True, verbose_name='Дата ввода в эксплуатацию'
+        null=True, blank=True, verbose_name='Дата ввода в эксплуатацию'
+    )
+    commissioning_year = models.PositiveSmallIntegerField(
+        null=True, blank=True, verbose_name='Год ввода в эксплуатацию'
+    )
+    commissioning_quarter = models.PositiveSmallIntegerField(
+        choices=Quarter.choices,
+        null=True,
+        blank=True,
+        verbose_name='Квартал ввода в эксплуатацию',
     )
     key_handover_date = models.DateField(
-        null=True, verbose_name='Дата выдачи ключей'
+        null=True, blank=True, verbose_name='Дата выдачи ключей'
+    )
+    key_handover_year = models.PositiveSmallIntegerField(
+        null=True, blank=True, verbose_name='Год выдачи ключей'
+    )
+    key_handover_quarter = models.PositiveSmallIntegerField(
+        choices=Quarter.choices,
+        null=True,
+        blank=True,
+        verbose_name='Квартал выдачи ключей',
     )
 
     real_estate_complex = models.ForeignKey(
@@ -241,6 +266,60 @@ class RealEstateComplexBuilding(BaseModel):
             str: Человекочитаемое представление текущего объекта.
         """
         return self.number
+
+    def clean(self):
+        super().clean()
+        self._clean_period_fields(
+            'commissioning',
+            'Укажите либо точную дату ввода в эксплуатацию, либо год и квартал.',
+        )
+        self._clean_period_fields(
+            'key_handover',
+            'Укажите либо точную дату выдачи ключей, либо год и квартал.',
+        )
+
+    def _clean_period_fields(self, prefix, message):
+        date = getattr(self, f'{prefix}_date')
+        year = getattr(self, f'{prefix}_year')
+        quarter = getattr(self, f'{prefix}_quarter')
+
+        if date and (year or quarter):
+            raise ValidationError(
+                {
+                    f'{prefix}_date': message,
+                    f'{prefix}_year': message,
+                    f'{prefix}_quarter': message,
+                }
+            )
+
+        if bool(year) != bool(quarter):
+            raise ValidationError(
+                {
+                    f'{prefix}_year': 'Для квартального срока укажите год и квартал.',
+                    f'{prefix}_quarter': 'Для квартального срока укажите год и квартал.',
+                }
+            )
+
+    def _format_period(self, date, year, quarter):
+        if date:
+            return date
+        if year and quarter:
+            return f'{self.Quarter(quarter).label} {year}'
+        return ''
+
+    def get_commissioning_display(self):
+        return self._format_period(
+            self.commissioning_date,
+            self.commissioning_year,
+            self.commissioning_quarter,
+        )
+
+    def get_key_handover_display(self):
+        return self._format_period(
+            self.key_handover_date,
+            self.key_handover_year,
+            self.key_handover_quarter,
+        )
 
 
 class ApartmentLayout(BaseModel):

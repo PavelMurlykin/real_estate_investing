@@ -216,6 +216,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Вызываем событие change для обновления следующих списков
                     selectElement.dispatchEvent(new Event('change'));
                 }
+                if (window.searchableSelect) {
+                    window.searchableSelect.refresh(selectElement);
+                }
             });
     }
 

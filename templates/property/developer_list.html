@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Застройщики{% endblock %}
 
@@ -9,68 +10,108 @@
         <a href="{% url 'property:developer_create' %}" class="btn btn-primary">Добавить застройщика</a>
     </div>
 
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-2" data-catalog-filter-form data-catalog-results-target="#catalog-results">
+                <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+
+                <div class="col-md-6">
+                    <label class="form-label">Застройщик</label>
+                    <input type="text" name="filter_name" value="{{ filters.name }}" class="form-control" data-catalog-filter-control>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Описание</label>
+                    <input type="text" name="filter_description" value="{{ filters.description }}" class="form-control" data-catalog-filter-control>
+                </div>
+                <div class="col-12">
+                    <a href="{% url 'property:developer_list' %}" class="btn btn-outline-secondary">Сбросить</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="card">
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-striped table-hover">
-                    <thead>
-                        <tr>
-                            <th>Название</th>
-                            <th>Описание</th>
-                            <th>Активен</th>
-                            <th class="text-nowrap">Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for developer in developers %}
-                        <tr>
-                            <td>{{ developer.name }}</td>
-                            <td>{{ developer.description|default:"-"|truncatechars:100 }}</td>
-                            <td>{{ developer.is_active|yesno:"Да,Нет" }}</td>
-                            <td class="align-middle text-nowrap">
-                                <div class="d-flex gap-2 flex-nowrap">
-                                    <a href="{% url 'property:developer_update' developer.pk %}" class="btn btn-sm btn-outline-primary">Редактировать</a>
-                                    <a href="{% url 'property:developer_delete' developer.pk %}" class="btn btn-sm btn-outline-danger">Удалить</a>
-                                </div>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="4" class="text-center">Застройщики не найдены</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div id="catalog-results">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle">
+                        <thead>
+                            <tr>
+                                {% for column in columns %}
+                                <th>
+                                    <a href="{{ column.sort_url }}" class="text-decoration-none text-body fw-semibold">
+                                        {{ column.label }}
+                                        {% if column.is_sorted %}
+                                            {% if column.sort_direction == 'desc' %}&darr;{% else %}&uarr;{% endif %}
+                                        {% endif %}
+                                    </a>
+                                </th>
+                                {% endfor %}
+                                <th class="text-nowrap">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for developer in developers %}
+                            <tr>
+                                {% for column in columns %}
+                                <td>
+                                    {% if column.key == 'name' %}
+                                        {{ developer.name }}
+                                    {% elif column.key == 'description' %}
+                                        {{ developer.description|default:"-"|truncatechars:100 }}
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                                <td class="align-middle text-nowrap">
+                                    <div class="d-flex gap-2 flex-nowrap">
+                                        <a href="{% url 'property:developer_update' developer.pk %}" class="btn btn-sm btn-outline-primary">Редактировать</a>
+                                        <a href="{% url 'property:developer_delete' developer.pk %}" class="btn btn-sm btn-outline-danger">Удалить</a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="{{ columns|length|add:1 }}" class="text-center">Застройщики не найдены</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if is_paginated %}
+                <nav aria-label="Пагинация">
+                    <ul class="pagination justify-content-center mb-0">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Первая</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Предыдущая</a>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item disabled">
+                            <span class="page-link">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Следующая</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Последняя</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
             </div>
-
-            {% if is_paginated %}
-            <nav aria-label="Пагинация">
-                <ul class="pagination justify-content-center mb-0">
-                    {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page=1">Первая</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Предыдущая</a>
-                    </li>
-                    {% endif %}
-
-                    <li class="page-item disabled">
-                        <span class="page-link">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
-                    </li>
-
-                    {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Следующая</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Последняя</a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
-            {% endif %}
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/catalog.js' %}"></script>
 {% endblock %}

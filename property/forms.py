@@ -259,7 +259,11 @@ class RealEstateComplexBuildingForm(forms.ModelForm):
             'number',
             'address',
             'commissioning_date',
+            'commissioning_year',
+            'commissioning_quarter',
             'key_handover_date',
+            'key_handover_year',
+            'key_handover_quarter',
             'is_active',
         ]
         widgets = {
@@ -268,8 +272,20 @@ class RealEstateComplexBuildingForm(forms.ModelForm):
             'commissioning_date': forms.DateInput(
                 attrs={'class': 'form-control', 'type': 'date'}
             ),
+            'commissioning_year': forms.NumberInput(
+                attrs={'class': 'form-control', 'min': 2000, 'max': 2100}
+            ),
+            'commissioning_quarter': forms.Select(
+                attrs={'class': 'form-control'}
+            ),
             'key_handover_date': forms.DateInput(
                 attrs={'class': 'form-control', 'type': 'date'}
+            ),
+            'key_handover_year': forms.NumberInput(
+                attrs={'class': 'form-control', 'min': 2000, 'max': 2100}
+            ),
+            'key_handover_quarter': forms.Select(
+                attrs={'class': 'form-control'}
             ),
             'is_active': forms.CheckboxInput(
                 attrs={'class': 'form-check-input'}
@@ -308,6 +324,7 @@ class RealEstateComplexMetroAvailabilityForm(forms.ModelForm):
             'metro_line__city'
         ).order_by('metro_line__city__name', 'metro_line__line', 'station')
         self.fields['metro'].empty_label = 'Выберите станцию'
+        self.fields['metro'].label_from_instance = lambda metro: metro.station
 
 
 class BaseRealEstateComplexMetroAvailabilityInlineFormSet(BaseInlineFormSet):

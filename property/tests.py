@@ -1,11 +1,17 @@
 from decimal import Decimal
+from pathlib import Path
 
+from django.conf import settings
 from django.test import TestCase
 from django.urls import reverse
 
 from location.models import City, District, Metro, MetroLine, Region
 
-from .forms import RealEstateComplexForm
+from .forms import (
+    RealEstateComplexBuildingForm,
+    RealEstateComplexForm,
+    RealEstateComplexMetroAvailabilityForm,
+)
 from .models import (
     ApartmentDecoration,
     ApartmentLayout,
@@ -17,6 +23,26 @@ from .models import (
     RealEstateComplexMetroAvailability,
     RealEstateType,
 )
+
+
+def test_metro_availability_select_uses_bootstrap_class_for_auto_search():
+    form = RealEstateComplexMetroAvailabilityForm()
+
+    assert form.fields['metro'].widget.attrs.get('class') == 'form-control'
+
+
+def test_searchable_select_static_filters_options_by_partial_match():
+    script_path = Path(settings.BASE_DIR) / 'static/js/searchable_select.js'
+    script = script_path.read_text(encoding='utf-8')
+
+    assert 'select.form-control' in script
+    assert 'select.form-select' in script
+    assert 'searchableSelectExclude' in script
+    assert 'searchableSelectColor' in script
+    assert 'searchable-select-option-color' in script
+    assert 'MutationObserver' in script
+    assert 'includes(query)' in script
+    assert 'window.searchableSelect' in script
 
 
 class RealEstateComplexFormLocationTests(TestCase):
@@ -85,6 +111,7 @@ class RealEstateComplexFormLocationTests(TestCase):
         self.assertContains(response, 'id_city')
         self.assertContains(response, 'location-cities-data')
         self.assertContains(response, 'metro-0-metro')
+        self.assertContains(response, 'static/js/searchable_select.js')
         self.assertContains(response, 'location-metro-stations-data')
         self.assertContains(response, 'duplicate-complex-warning')
         self.assertContains(response, 'existing-complexes-data')
@@ -93,6 +120,29 @@ class RealEstateComplexFormLocationTests(TestCase):
         self.assertContains(response, 'data-add-metro-row')
         self.assertContains(response, 'data-remove-metro-row')
         self.assertContains(response, 'metro-availability-empty-form-template')
+        self.assertContains(response, 'data-add-building-row')
+        self.assertContains(response, 'data-remove-building-row')
+        self.assertContains(response, 'building-empty-form-template')
+        self.assertContains(response, 'buildings-0-commissioning_year')
+        self.assertContains(response, 'buildings-0-commissioning_quarter')
+        self.assertContains(response, 'buildings-0-key_handover_year')
+        self.assertContains(response, 'buildings-0-key_handover_quarter')
+        self.assertEqual(
+            response.context['location_metro_stations'][0][
+                'metro_line__line_color'
+            ],
+            '#FF0000',
+        )
+
+    def test_complex_form_metro_options_show_station_name_without_line(self):
+        form = RealEstateComplexMetroAvailabilityForm()
+
+        metro_choices = {
+            str(value): label for value, label in form.fields['metro'].choices
+        }
+
+        self.assertEqual(metro_choices[str(self.metro.pk)], 'Station 1')
+        self.assertNotIn('Line 1', metro_choices[str(self.metro.pk)])
 
     def test_create_view_passes_existing_complexes_for_duplicate_warning(self):
         complex_obj = RealEstateComplex.objects.create(
@@ -170,6 +220,52 @@ class RealEstateComplexFormLocationTests(TestCase):
         )
         self.assertEqual(availability.metro, self.metro)
         self.assertEqual(availability.walking_time_minutes, 12)
+
+    def test_create_view_saves_building_quarter_periods(self):
+        response = self.client.post(
+            reverse('property:complex_create'),
+            self._complex_create_post_data(
+                **{
+                    'buildings-TOTAL_FORMS': '1',
+                    'buildings-0-number': '1',
+                    'buildings-0-address': 'Address 1',
+                    'buildings-0-commissioning_date': '',
+                    'buildings-0-commissioning_year': '2026',
+                    'buildings-0-commissioning_quarter': '4',
+                    'buildings-0-key_handover_date': '',
+                    'buildings-0-key_handover_year': '2027',
+                    'buildings-0-key_handover_quarter': '1',
+                    'buildings-0-is_active': 'on',
+                }
+            ),
+        )
+
+        self.assertRedirects(response, reverse('property:complex_list'))
+        building = RealEstateComplexBuilding.objects.get(number='1')
+        self.assertEqual(building.commissioning_year, 2026)
+        self.assertEqual(building.commissioning_quarter, 4)
+        self.assertEqual(building.key_handover_year, 2027)
+        self.assertEqual(building.key_handover_quarter, 1)
+        self.assertEqual(building.get_commissioning_display(), 'IV кв. 2026')
+        self.assertEqual(building.get_key_handover_display(), 'I кв. 2027')
+
+    def test_building_form_rejects_date_and_quarter_period_together(self):
+        form = RealEstateComplexBuildingForm(
+            data={
+                'number': '1',
+                'address': 'Address 1',
+                'commissioning_date': '2026-10-01',
+                'commissioning_year': '2026',
+                'commissioning_quarter': '4',
+                'key_handover_date': '',
+                'key_handover_year': '',
+                'key_handover_quarter': '',
+                'is_active': 'on',
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('commissioning_date', form.errors)
 
     def test_create_view_rejects_metro_station_from_another_city(self):
         other_line = MetroLine.objects.create(
@@ -353,6 +449,45 @@ class LocationCatalogMetroTests(TestCase):
             'Bravo',
         )
         self.assertContains(asc_response, 'sort_by=station')
+
+
+class DeveloperListViewTests(TestCase):
+    def test_developer_list_filters_and_sorts_with_catalog_static_hooks(self):
+        Developer.objects.create(name='Beta Developer', description='Townhouses')
+        Developer.objects.create(name='Alpha Developer', description='Apartments')
+
+        response = self.client.get(
+            reverse('property:developer_list'),
+            {
+                'filter_description': 'Apart',
+                'sort_by': 'name',
+                'sort_dir': 'desc',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-catalog-filter-form')
+        self.assertContains(response, 'data-catalog-filter-control')
+        self.assertContains(response, 'catalog-results')
+        self.assertContains(response, 'static/js/catalog.js')
+        self.assertContains(response, 'Alpha Developer')
+        self.assertNotContains(response, 'Beta Developer')
+        self.assertEqual(response.context['sort_by'], 'name')
+        self.assertEqual(response.context['sort_dir'], 'desc')
+        self.assertEqual(
+            [column['key'] for column in response.context['columns']],
+            ['name', 'description'],
+        )
+
+    def test_developer_list_does_not_render_active_column(self):
+        Developer.objects.create(name='Developer 1', is_active=False)
+
+        response = self.client.get(reverse('property:developer_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, '<th>Активен</th>', html=True)
+        self.assertNotContains(response, 'Да')
+        self.assertNotContains(response, 'Нет')
 
 
 class RealEstateComplexDeleteViewTests(TestCase):

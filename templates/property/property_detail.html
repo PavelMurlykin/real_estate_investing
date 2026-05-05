@@ -58,11 +58,11 @@
                             {% if property.building.real_estate_complex.presentation_link %}
                             <p><strong>Презентация:</strong> <a href="{{ property.building.real_estate_complex.presentation_link }}" target="_blank">Скачать</a></p>
                             {% endif %}
-                            {% if property.building.commissioning_date %}
-                            <p><strong>Дата ввода в эксплуатацию:</strong> {{ property.building.commissioning_date }}</p>
+                            {% if property.building.get_commissioning_display %}
+                            <p><strong>Ввод в эксплуатацию:</strong> {{ property.building.get_commissioning_display }}</p>
                             {% endif %}
-                            {% if property.building.key_handover_date %}
-                            <p><strong>Дата выдачи ключей:</strong> {{ property.building.key_handover_date }}</p>
+                            {% if property.building.get_key_handover_display %}
+                            <p><strong>Выдача ключей:</strong> {{ property.building.get_key_handover_display }}</p>
                             {% endif %}
                         </div>
                     </div>
