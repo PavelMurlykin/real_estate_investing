@@ -1,6 +1,12 @@
 (function () {
+    const autoSelectSelector = [
+        'select[data-searchable-select]',
+        'select.form-control',
+        'select.form-select',
+    ].join(', ');
     const instances = new WeakMap();
     const noResultsText = '\u041d\u0438\u0447\u0435\u0433\u043e \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e';
+    const requiredText = '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435.';
     let nextId = 1;
     let openState = null;
 
@@ -41,6 +47,57 @@
     function getOptions(select) {
         return Array.from(select.options).filter(function (option) {
             return !option.disabled;
+        });
+    }
+
+    function shouldEnhanceSelect(select) {
+        if (
+            select.dataset.searchableSelectExclude !== undefined
+            || select.dataset.themeSelector !== undefined
+            || select.multiple
+            || Number(select.getAttribute('size') || 1) > 1
+            || select.classList.contains('searchable-select-source')
+        ) {
+            return false;
+        }
+
+        return select.matches(autoSelectSelector);
+    }
+
+    function getInputClassName(select) {
+        const classes = ['form-control', 'searchable-select-input'];
+
+        if (
+            select.classList.contains('form-control-sm')
+            || select.classList.contains('form-select-sm')
+        ) {
+            classes.push('form-control-sm');
+        }
+        if (
+            select.classList.contains('form-control-lg')
+            || select.classList.contains('form-select-lg')
+        ) {
+            classes.push('form-control-lg');
+        }
+        if (select.classList.contains('is-invalid')) {
+            classes.push('is-invalid');
+        }
+        if (select.classList.contains('is-valid')) {
+            classes.push('is-valid');
+        }
+
+        return classes.join(' ');
+    }
+
+    function moveLabelsToInput(select, input) {
+        if (!select.id || !input.id) {
+            return;
+        }
+
+        document.querySelectorAll('label[for]').forEach(function (label) {
+            if (label.htmlFor === select.id) {
+                label.htmlFor = input.id;
+            }
         });
     }
 
@@ -148,10 +205,23 @@
     function syncInputFromSelect(state) {
         state.input.placeholder = getPlaceholder(state.select);
         state.input.value = getInputValue(state.select);
+        syncValidity(state);
         if (!state.menu.classList.contains('d-none')) {
             renderOptions(state);
             positionMenu(state);
         }
+    }
+
+    function syncValidity(state) {
+        if (state.isRequired && !state.select.value) {
+            state.input.setCustomValidity(
+                state.select.dataset.searchableSelectRequiredText
+                || requiredText
+            );
+            return;
+        }
+
+        state.input.setCustomValidity('');
     }
 
     function handleInput(state) {
@@ -210,6 +280,10 @@
     }
 
     function initSearchableSelect(select) {
+        if (!shouldEnhanceSelect(select)) {
+            return;
+        }
+
         if (instances.has(select)) {
             refreshSearchableSelect(select);
             return;
@@ -217,12 +291,15 @@
 
         const wrapper = document.createElement('div');
         wrapper.className = 'searchable-select';
+        if (select.style.width) {
+            wrapper.style.width = select.style.width;
+        }
         select.parentNode.insertBefore(wrapper, select);
         wrapper.appendChild(select);
 
         const input = document.createElement('input');
         input.type = 'text';
-        input.className = 'form-control searchable-select-input';
+        input.className = getInputClassName(select);
         input.autocomplete = 'off';
         input.setAttribute('role', 'combobox');
         input.setAttribute('aria-autocomplete', 'list');
@@ -232,6 +309,8 @@
         if (select.id) {
             input.id = `${select.id}_search`;
         }
+        input.required = select.required;
+        moveLabelsToInput(select, input);
 
         const menu = document.createElement('div');
         menu.className = 'searchable-select-menu d-none';
@@ -245,16 +324,28 @@
 
         select.classList.add('searchable-select-source');
         select.tabIndex = -1;
+        select.required = false;
 
         const state = {
             activeIndex: -1,
             input: input,
+            isRequired: input.required,
             matches: [],
             menu: menu,
+            observer: null,
             select: select,
             wrapper: wrapper,
         };
         instances.set(select, state);
+
+        state.observer = new MutationObserver(function () {
+            syncInputFromSelect(state);
+        });
+        state.observer.observe(select, {
+            attributes: true,
+            childList: true,
+            subtree: true,
+        });
 
         input.addEventListener('focus', function () {
             openMenu(state);
@@ -282,14 +373,14 @@
             return;
         }
         state.input.disabled = select.disabled;
+        state.input.className = getInputClassName(select);
+        state.input.required = state.isRequired;
         syncInputFromSelect(state);
     }
 
     function initAll(root) {
         const scope = root || document;
-        scope.querySelectorAll('select[data-searchable-select]').forEach(
-            initSearchableSelect
-        );
+        scope.querySelectorAll(autoSelectSelector).forEach(initSearchableSelect);
     }
 
     document.addEventListener('mousedown', function (event) {

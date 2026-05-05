@@ -25,19 +25,20 @@ from .models import (
 )
 
 
-def test_metro_availability_select_opts_into_searchable_select():
+def test_metro_availability_select_uses_bootstrap_class_for_auto_search():
     form = RealEstateComplexMetroAvailabilityForm()
 
-    assert (
-        form.fields['metro'].widget.attrs.get('data-searchable-select') == ''
-    )
+    assert form.fields['metro'].widget.attrs.get('class') == 'form-control'
 
 
 def test_searchable_select_static_filters_options_by_partial_match():
     script_path = Path(settings.BASE_DIR) / 'static/js/searchable_select.js'
     script = script_path.read_text(encoding='utf-8')
 
-    assert 'select[data-searchable-select]' in script
+    assert 'select.form-control' in script
+    assert 'select.form-select' in script
+    assert 'searchableSelectExclude' in script
+    assert 'MutationObserver' in script
     assert 'includes(query)' in script
     assert 'window.searchableSelect' in script
 
@@ -108,7 +109,6 @@ class RealEstateComplexFormLocationTests(TestCase):
         self.assertContains(response, 'id_city')
         self.assertContains(response, 'location-cities-data')
         self.assertContains(response, 'metro-0-metro')
-        self.assertContains(response, 'data-searchable-select')
         self.assertContains(response, 'static/js/searchable_select.js')
         self.assertContains(response, 'location-metro-stations-data')
         self.assertContains(response, 'duplicate-complex-warning')
