@@ -1,6 +1,6 @@
 ---
 name: backend
-description: Django backend development workflow for this real_estate_investing project. Use when implementing or reviewing Python/Django backend changes, models, views, forms, services, migrations, Django templates, PostgreSQL queries, security-sensitive logic, performance-sensitive database access, or pytest coverage. Enforce PostgreSQL-aware design, Django security conventions, efficient ORM usage, reuse of existing static JavaScript for templates, PEP 8 style, and tests for all new functionality.
+description: Django backend development workflow for this real_estate_investing project. Use when implementing or reviewing Python/Django backend changes, models, views, forms, services, migrations, Django templates, PostgreSQL queries, security-sensitive logic, performance-sensitive database access, naming, docstrings, string literal style, or pytest coverage. Enforce PostgreSQL-aware design, Django security conventions, efficient ORM usage, reuse of existing static JavaScript for templates, full meaningful names without abbreviations, double-quoted docstrings, single-quoted string values, PEP 8 style, and tests for all new functionality.
 ---
 
 # Backend
@@ -39,6 +39,16 @@ Use this skill for backend work in the Django/PostgreSQL application.
 - Avoid raw SQL unless the ORM cannot express the query safely and clearly. If raw SQL is necessary, parameterize it.
 - Keep migrations reviewable. Do not edit applied migrations unless the user explicitly asks and the project state makes it safe.
 - Follow PEP 8 naming, imports, line length conventions visible in nearby files, and idiomatic Django style.
+
+## Code Style Rules
+
+Apply these rules to all new and changed backend code:
+
+- Use full, meaningful names for classes, attributes, functions, modules, variables, data structures, database tables, fields, constraints, indexes, and related identifiers.
+- Do not use abbreviations, unclear initials, or shortened names.
+- Add docstrings to every class, method and function.
+- Write docstrings with triple double quotes (`"""`).
+- Write all text values and string literals other than docstrings with single quotes.
 
 ## Database Performance
 

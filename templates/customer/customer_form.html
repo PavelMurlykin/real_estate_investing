@@ -93,14 +93,32 @@
                     </div>
 
                     <div class="col-md-8">
-                        <label class="form-label" for="{{ form.preferential_programs.id_for_label }}">{{ form.preferential_programs.label }}</label>
-                        {{ form.preferential_programs }}
+                        <fieldset>
+                            <legend class="form-label fs-6">{{ form.preferential_programs.label }}</legend>
+                            <div class="border rounded p-3 overflow-auto" style="max-height: 16rem;">
+                                {% for checkbox in form.preferential_programs %}
+                                    <div class="form-check">
+                                        {{ checkbox.tag }}
+                                        <label class="form-check-label" for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label>
+                                    </div>
+                                {% empty %}
+                                    <p class="text-muted mb-0">Нет доступных программ</p>
+                                {% endfor %}
+                            </div>
+                        </fieldset>
                         <div class="form-text">{{ form.preferential_programs.help_text }}</div>
                         <div class="text-danger small">{{ form.preferential_programs.errors }}</div>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label" for="{{ form.has_owned_property.id_for_label }}">{{ form.has_owned_property.label }}</label>
-                        {{ form.has_owned_property }}
+                        <fieldset>
+                            <legend class="form-label fs-6">{{ form.has_owned_property.label }}</legend>
+                            {% for radio in form.has_owned_property %}
+                                <div class="form-check">
+                                    {{ radio.tag }}
+                                    <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+                                </div>
+                            {% endfor %}
+                        </fieldset>
                         <div class="text-danger small">{{ form.has_owned_property.errors }}</div>
                     </div>
                 </div>
@@ -130,8 +148,19 @@
                         <div class="text-danger small">{{ form.desired_district.errors }}</div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label" for="{{ form.desired_layouts.id_for_label }}">{{ form.desired_layouts.label }}</label>
-                        {{ form.desired_layouts }}
+                        <fieldset>
+                            <legend class="form-label fs-6">{{ form.desired_layouts.label }}</legend>
+                            <div class="border rounded p-3 overflow-auto" style="max-height: 16rem;">
+                                {% for checkbox in form.desired_layouts %}
+                                    <div class="form-check">
+                                        {{ checkbox.tag }}
+                                        <label class="form-check-label" for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label>
+                                    </div>
+                                {% empty %}
+                                    <p class="text-muted mb-0">Нет доступных планировок</p>
+                                {% endfor %}
+                            </div>
+                        </fieldset>
                         <div class="text-danger small">{{ form.desired_layouts.errors }}</div>
                     </div>
 
@@ -152,8 +181,17 @@
                         <div class="text-danger small">{{ form.desired_floor.errors }}</div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label" for="{{ form.cardinal_directions.id_for_label }}">{{ form.cardinal_directions.label }}</label>
-                        {{ form.cardinal_directions }}
+                        <fieldset>
+                            <legend class="form-label fs-6">{{ form.cardinal_directions.label }}</legend>
+                            <div class="border rounded p-3">
+                                {% for checkbox in form.cardinal_directions %}
+                                    <div class="form-check">
+                                        {{ checkbox.tag }}
+                                        <label class="form-check-label" for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </fieldset>
                         <div class="text-danger small">{{ form.cardinal_directions.errors }}</div>
                     </div>
 
