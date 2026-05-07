@@ -25,6 +25,25 @@ class Customer(BaseModel):
         (PURCHASE_GOAL_INVESTMENT, 'Для инвестиций'),
     )
 
+    CARDINAL_DIRECTION_NORTH = 'Север'
+    CARDINAL_DIRECTION_NORTH_EAST = 'Северо-восток'
+    CARDINAL_DIRECTION_EAST = 'Восток'
+    CARDINAL_DIRECTION_SOUTH_EAST = 'Юго-восток'
+    CARDINAL_DIRECTION_SOUTH = 'Юг'
+    CARDINAL_DIRECTION_SOUTH_WEST = 'Юго-запад'
+    CARDINAL_DIRECTION_WEST = 'Запад'
+    CARDINAL_DIRECTION_NORTH_WEST = 'Северо-запад'
+    CARDINAL_DIRECTION_CHOICES = (
+        (CARDINAL_DIRECTION_NORTH, 'Север'),
+        (CARDINAL_DIRECTION_NORTH_EAST, 'Северо-восток'),
+        (CARDINAL_DIRECTION_EAST, 'Восток'),
+        (CARDINAL_DIRECTION_SOUTH_EAST, 'Юго-восток'),
+        (CARDINAL_DIRECTION_SOUTH, 'Юг'),
+        (CARDINAL_DIRECTION_SOUTH_WEST, 'Юго-запад'),
+        (CARDINAL_DIRECTION_WEST, 'Запад'),
+        (CARDINAL_DIRECTION_NORTH_WEST, 'Северо-запад'),
+    )
+
     MAX_MORTGAGE_TERM_YEARS = 30
     MAX_AGE_FOR_MORTGAGE = 75
     RATE_MARGIN = Decimal('2')

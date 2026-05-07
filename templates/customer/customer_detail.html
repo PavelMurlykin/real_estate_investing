@@ -48,7 +48,7 @@
                             <p><strong>Максимальный ежемесячный платёж:</strong> {{ customer.max_monthly_payment|default:"-" }}</p>
                         </div>
                         <div class="col-md-6">
-                            <p><strong>Льготные программы:</strong>
+                            <p><strong>Доступные программы:</strong>
                                 {% with programs=customer.preferential_programs.all %}
                                     {% if programs %}
                                         {% for program in programs %}
