@@ -1,7 +1,10 @@
-django-environ
-Django
-openpyxl
-python-dateutil
-python-dotenv
-pytest
-pytest-django
+django-bootstrap5==26.2
+django-environ==0.13.0
+Django==6.0.4
+gunicorn==26.0.0
+openpyxl==3.1.5
+psycopg2-binary==2.9.12
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.2
+pytest==9.0.3
+pytest-django==4.12.0

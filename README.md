@@ -49,6 +49,31 @@ A Django-based web application for calculating mortgage payments with support fo
 
 7. Open your browser and navigate to `http://127.0.0.1:8000/`
 
+## Docker Compose
+
+The project can run as three containers: `nginx`, `web` with Django and
+Gunicorn, and `db` with PostgreSQL. PostgreSQL data is stored in the named
+Docker volume `postgres_data`; collected static files are shared through the
+named volume `staticfiles`.
+
+1. Create a local `.env` file from `.env.example` and fill in `SECRET_KEY`,
+   `DB_NAME`, `DB_USER`, and `DB_PASSWORD`.
+
+2. Build and start the stack:
+   ```bash
+   docker compose up --build
+   ```
+
+3. Open `http://localhost:8080/`.
+
+If port `8080` is already in use, set another host port in `.env` with
+`NGINX_PORT`, for example `NGINX_PORT=8081`.
+
+On startup the `web` container waits for PostgreSQL, runs
+`collectstatic --noinput`, applies migrations with `migrate --noinput`, and
+then starts Gunicorn. Nginx serves `/static/` directly and proxies all other
+requests to Django.
+
 ## Usage
 
 1. Enter the required mortgage parameters:

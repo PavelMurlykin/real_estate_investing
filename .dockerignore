@@ -1,0 +1,15 @@
+.env
+.git
+.gitignore
+.venv
+__pycache__/
+*.py[cod]
+*.log
+.pytest_cache/
+pytest-cache-files-*/
+.mypy_cache/
+.ruff_cache/
+staticfiles/
+db.sqlite3
+Dockerfile
+compose.yaml
