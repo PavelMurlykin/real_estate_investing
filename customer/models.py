@@ -47,6 +47,7 @@ class Customer(BaseModel):
     MAX_MORTGAGE_TERM_YEARS = 30
     MAX_AGE_FOR_MORTGAGE = 75
     RATE_MARGIN = Decimal('2')
+    DEFAULT_PREFERENTIAL_ANNUAL_RATE = Decimal('6')
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -414,6 +415,13 @@ class Customer(BaseModel):
             return None
         return total_property_cost.quantize(
             Decimal('0.01'), rounding=ROUND_HALF_UP
+        )
+
+    def has_selected_preferential_program(self):
+        """Проверяет наличие выбранной льготной программы."""
+        return any(
+            program.is_preferential
+            for program in self.preferential_programs.all()
         )
 
 

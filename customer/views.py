@@ -156,6 +156,17 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
             annual_rate=annual_rate,
             max_term_years=max_term_years,
         )
+        has_preferential_program = (
+            customer.has_selected_preferential_program()
+        )
+        preferential_max_property_cost = None
+        if has_preferential_program:
+            preferential_max_property_cost = (
+                customer.calculate_max_property_cost(
+                    annual_rate=Customer.DEFAULT_PREFERENTIAL_ANNUAL_RATE,
+                    max_term_years=max_term_years,
+                )
+            )
 
         context['calculated'] = {
             'max_term_years': max_term_years,
@@ -163,6 +174,15 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
             'annual_rate': f'{annual_rate:.2f}',
             'max_property_cost': format_currency(max_property_cost)
             if max_property_cost is not None
+            else '',
+            'has_preferential_program': has_preferential_program,
+            'preferential_annual_rate': (
+                f'{Customer.DEFAULT_PREFERENTIAL_ANNUAL_RATE:g}'
+            ),
+            'preferential_max_property_cost': format_currency(
+                preferential_max_property_cost
+            )
+            if preferential_max_property_cost is not None
             else '',
         }
         calculation_filters = get_calculation_filters(self.request)

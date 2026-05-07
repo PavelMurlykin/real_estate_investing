@@ -1,9 +1,13 @@
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
 from bank.models import MortgageProgram
+from mortgage.utils import format_currency
 from property.models import ApartmentLayout
+
 from .forms import CustomerForm
 from .models import Customer
 
@@ -149,3 +153,101 @@ class CustomerFormTests(TestCase):
         self.assertContains(response, 'name="desired_layouts"', count=1)
         self.assertContains(response, 'name="cardinal_directions"', count=8)
         self.assertContains(response, 'name="has_owned_property"', count=3)
+
+
+class CustomerDetailViewTests(TestCase):
+    """Проверяет карточку клиента."""
+
+    def setUp(self):
+        """Подготавливает пользователя для тестов карточки клиента."""
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            email='detail-agent@example.com',
+            password='password',
+            phone_number='+79990000001',
+            first_name='Agent',
+            last_name='User',
+        )
+        self.client.force_login(self.user)
+
+    def test_detail_page_uses_customer_name_in_heading(self):
+        """Проверяет вывод имени клиента в заголовке карточки."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Карточка клиента Иван Петров')
+        self.assertNotContains(response, f'Карточка клиента #{customer.pk}')
+
+    def test_detail_page_calculates_preferential_max_property_cost(self):
+        """Проверяет расчет максимальной стоимости по льготной ставке."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            initial_payment_amount=Decimal('1000000'),
+            max_monthly_payment=Decimal('100000'),
+        )
+        preferential_program = MortgageProgram.objects.create(
+            name='Семейная',
+            condition='Льготные условия',
+            is_preferential=True,
+        )
+        customer.preferential_programs.add(preferential_program)
+        expected_cost = customer.calculate_max_property_cost(
+            annual_rate=Customer.DEFAULT_PREFERENTIAL_ANNUAL_RATE,
+            max_term_years=Customer.MAX_MORTGAGE_TERM_YEARS,
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.context['calculated']['has_preferential_program']
+        )
+        self.assertEqual(
+            response.context['calculated'][
+                'preferential_max_property_cost'
+            ],
+            format_currency(expected_cost),
+        )
+        self.assertContains(
+            response,
+            'Максимальная стоимость объекта по льготной ставке 6%',
+        )
+
+    def test_detail_page_hides_preferential_calculation_without_program(self):
+        """Проверяет скрытие льготного расчета без льготной программы."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            initial_payment_amount=Decimal('1000000'),
+            max_monthly_payment=Decimal('100000'),
+        )
+        regular_program = MortgageProgram.objects.create(
+            name='Стандартная',
+            condition='Базовые условия',
+            is_preferential=False,
+        )
+        customer.preferential_programs.add(regular_program)
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(
+            response.context['calculated']['has_preferential_program']
+        )
+        self.assertNotContains(
+            response,
+            'Максимальная стоимость объекта по льготной ставке',
+        )
