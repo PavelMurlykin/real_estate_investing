@@ -36,7 +36,9 @@ The default container runtime is a three-service Docker Compose stack:
   `real_estate_investing.wsgi:application`. It waits for PostgreSQL readiness,
   runs `collectstatic --noinput`, applies migrations, and then starts Gunicorn.
 - `db` uses the official PostgreSQL image with durable data in the named
-  `postgres_data` volume.
+  `postgres_data` volume. For PostgreSQL 18 and newer, mount the volume at
+  `/var/lib/postgresql` so the official image can use its version-specific data
+  directory layout.
 
 Compose-specific configuration must remain environment-driven through `.env`
 and `.env.example`. The application service talks to PostgreSQL through the
