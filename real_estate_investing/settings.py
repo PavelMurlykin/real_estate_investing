@@ -6,6 +6,13 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
+
+def get_env_list(name, default=''):
+    """Return a comma-separated environment variable as a clean list."""
+    value = os.getenv(name, default)
+    return [item.strip() for item in value.split(',') if item.strip()]
+
+
 DEBUG = os.getenv('DEBUG', 'False').strip().lower() in (
     '1',
     'true',
@@ -14,7 +21,11 @@ DEBUG = os.getenv('DEBUG', 'False').strip().lower() in (
 )
 SECRET_KEY = os.getenv('SECRET_KEY', '')
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.175']
+ALLOWED_HOSTS = get_env_list(
+    'ALLOWED_HOSTS',
+    'localhost,127.0.0.1,192.168.1.175',
+)
+CSRF_TRUSTED_ORIGINS = get_env_list('CSRF_TRUSTED_ORIGINS')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -80,7 +91,7 @@ TIME_ZONE = 'Europe/Moscow'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]

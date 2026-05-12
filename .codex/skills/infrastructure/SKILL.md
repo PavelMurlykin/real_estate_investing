@@ -26,6 +26,26 @@ Use this skill for Docker, Docker Compose, and GitHub Actions CI/CD work.
 - Current dependency file: `requirements.txt`.
 - Existing `.env` is local-only; do not commit real secrets.
 
+## Project Architecture Decision
+
+The default container runtime is a three-service Docker Compose stack:
+
+- `nginx` is the only public HTTP entrypoint. It serves collected static files
+  from a shared named volume and proxies dynamic requests to Django.
+- `web` runs Django through Gunicorn using
+  `real_estate_investing.wsgi:application`. It waits for PostgreSQL readiness,
+  runs `collectstatic --noinput`, applies migrations, and then starts Gunicorn.
+- `db` uses the official PostgreSQL image with durable data in the named
+  `postgres_data` volume. For PostgreSQL 18 and newer, mount the volume at
+  `/var/lib/postgresql` so the official image can use its version-specific data
+  directory layout.
+
+Compose-specific configuration must remain environment-driven through `.env`
+and `.env.example`. The application service talks to PostgreSQL through the
+Compose service name `db`; nginx talks to Django through the service name
+`web`. Do not expose PostgreSQL to the host unless a task explicitly requires
+local database access from host tools.
+
 ## Docker and Compose
 
 Read `references/docker-compose-django.md` before adding or changing Dockerfiles, Compose files, entrypoints, service health checks, volumes, static files, or PostgreSQL service definitions.
