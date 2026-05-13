@@ -13,6 +13,14 @@ def get_env_list(name, default=''):
     return [item.strip() for item in value.split(',') if item.strip()]
 
 
+def get_env_int(name, default):
+    """Return an integer environment variable with fallback for blank values."""
+    value = os.getenv(name)
+    if value is None or value.strip() == '':
+        return default
+    return int(value)
+
+
 DEBUG = os.getenv('DEBUG', 'False').strip().lower() in (
     '1',
     'true',
@@ -118,7 +126,7 @@ EMAIL_BACKEND = os.getenv(
     ),
 )
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'localhost')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', '25'))
+EMAIL_PORT = get_env_int('EMAIL_PORT', 25)
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'False').strip().lower() in (

@@ -67,7 +67,9 @@ named volume `staticfiles`.
 3. Open `http://localhost:8080/`.
 
 If port `8080` is already in use, set another host port in `.env` with
-`NGINX_PORT`, for example `NGINX_PORT=8081`.
+`NGINX_PORT`, for example `NGINX_PORT=8081`. When `CSRF_TRUSTED_ORIGINS` is
+set explicitly, include the same host port there too, for example
+`http://localhost:8081,http://127.0.0.1:8081`.
 
 On startup the `web` container waits for PostgreSQL, runs
 `collectstatic --noinput`, applies migrations with `migrate --noinput`, and
