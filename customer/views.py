@@ -1,7 +1,13 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
 from django.urls import reverse_lazy
-from django.views.generic import CreateView, DetailView, ListView, UpdateView
+from django.views.generic import (
+    CreateView,
+    DeleteView,
+    DetailView,
+    ListView,
+    UpdateView,
+)
 
 from mortgage.utils import (
     apply_calculation_filters,
@@ -243,3 +249,10 @@ class CustomerUpdateView(CustomerOwnedQuerysetMixin, UpdateView):
             Any: Тип результата зависит от контекста использования.
         """
         return reverse_lazy('customer:detail', kwargs={'pk': self.object.pk})
+
+
+class CustomerDeleteView(CustomerOwnedQuerysetMixin, DeleteView):
+    """Удаляет клиента текущего пользователя."""
+
+    model = Customer
+    success_url = reverse_lazy('customer:list')

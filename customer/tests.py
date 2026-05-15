@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -5,11 +6,22 @@ from django.test import TestCase
 from django.urls import reverse
 
 from bank.models import MortgageProgram
+from location.models import City, District, Region
+from mortgage.models import MortgageCalculation
 from mortgage.utils import format_currency
-from property.models import ApartmentLayout
+from property.models import (
+    ApartmentDecoration,
+    ApartmentLayout,
+    Developer,
+    Property,
+    RealEstateClass,
+    RealEstateComplex,
+    RealEstateComplexBuilding,
+    RealEstateType,
+)
 
 from .forms import CustomerForm
-from .models import Customer
+from .models import Customer, CustomerCalculation
 
 
 class CustomerFormTests(TestCase):
@@ -250,4 +262,116 @@ class CustomerDetailViewTests(TestCase):
         self.assertNotContains(
             response,
             'Максимальная стоимость объекта по льготной ставке',
+        )
+
+
+class CustomerDeleteViewTests(TestCase):
+    """Проверяет удаление клиента из списка клиентов."""
+
+    def setUp(self):
+        """Подготавливает пользователя для тестов удаления клиента."""
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            email='delete-agent@example.com',
+            password='password',
+            phone_number='+79990000002',
+            first_name='Agent',
+            last_name='User',
+        )
+        self.client.force_login(self.user)
+
+    def _create_property(self) -> Property:
+        """Создает объект недвижимости для ипотечного расчета."""
+        region = Region.objects.create(name='Регион 1', code='R1')
+        city = City.objects.create(name='Город 1', region=region)
+        district = District.objects.create(name='Район 1', city=city)
+        developer = Developer.objects.create(name='Застройщик 1')
+        estate_type = RealEstateType.objects.create(name='Квартира')
+        estate_class = RealEstateClass.objects.create(
+            name='Комфорт', weight=Decimal('1.00')
+        )
+        complex_obj = RealEstateComplex.objects.create(
+            name='ЖК Тест',
+            developer=developer,
+            district=district,
+            real_estate_class=estate_class,
+            real_estate_type=estate_type,
+        )
+        building = RealEstateComplexBuilding.objects.create(
+            number='1',
+            real_estate_complex=complex_obj,
+        )
+        layout = ApartmentLayout.objects.create(name='1К')
+        decoration = ApartmentDecoration.objects.create(name='Без отделки')
+        return Property.objects.create(
+            apartment_number='101',
+            building=building,
+            decoration=decoration,
+            layout=layout,
+            area=Decimal('42.00'),
+            floor=10,
+            property_cost=Decimal('5000000.00'),
+        )
+
+    def _create_calculation(self) -> MortgageCalculation:
+        """Создает сохраненный ипотечный расчет."""
+        return MortgageCalculation.objects.create(
+            property=self._create_property(),
+            base_property_cost=Decimal('5000000.00'),
+            initial_payment_percent=Decimal('20.00'),
+            initial_payment_date=date(2026, 1, 1),
+            mortgage_term=240,
+            annual_rate=Decimal('12.00'),
+            has_grace_period=False,
+            final_property_cost=Decimal('5000000.00'),
+            main_payments_count=240,
+            mortgage_end_date=date(2046, 1, 1),
+            main_monthly_payment=Decimal('55054.31'),
+            total_loan_amount=Decimal('4000000.00'),
+            total_overpayment=Decimal('9213034.40'),
+        )
+
+    def test_list_page_shows_delete_button(self):
+        """Проверяет вывод кнопки удаления в списке клиентов."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+
+        response = self.client.get(reverse('customer:list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Удалить')
+        self.assertContains(
+            response,
+            reverse('customer:delete', kwargs={'pk': customer.pk}),
+        )
+
+    def test_delete_customer_removes_link_and_keeps_calculation(self):
+        """Проверяет, что удаление клиента не удаляет сам расчет."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_calculation()
+        customer_calculation = CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=calculation,
+        )
+
+        response = self.client.post(
+            reverse('customer:delete', kwargs={'pk': customer.pk})
+        )
+
+        self.assertRedirects(response, reverse('customer:list'))
+        self.assertFalse(Customer.objects.filter(pk=customer.pk).exists())
+        self.assertFalse(
+            CustomerCalculation.objects.filter(
+                pk=customer_calculation.pk
+            ).exists()
+        )
+        self.assertTrue(
+            MortgageCalculation.objects.filter(pk=calculation.pk).exists()
         )
