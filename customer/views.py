@@ -224,7 +224,11 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
         context['calculation_sort'] = calculation_sort
         context['calculation_order'] = calculation_order
         context['calculation_table_headers'] = (
-            build_calculation_table_headers(self.request)
+            [
+                header
+                for header in build_calculation_table_headers(self.request)
+                if header['field'] != 'timestamp'
+            ]
         )
         return context
 
@@ -256,3 +260,21 @@ class CustomerDeleteView(CustomerOwnedQuerysetMixin, DeleteView):
 
     model = Customer
     success_url = reverse_lazy('customer:list')
+
+
+class CustomerCalculationDeleteView(LoginRequiredMixin, DeleteView):
+    """Удаляет связь клиента с сохраненным ипотечным расчетом."""
+
+    model = CustomerCalculation
+
+    def get_queryset(self):
+        """Возвращает связи расчетов для клиентов текущего пользователя."""
+        return CustomerCalculation.objects.filter(
+            customer__user=self.request.user
+        )
+
+    def get_success_url(self):
+        """Возвращает пользователя в карточку клиента после удаления связи."""
+        return reverse_lazy(
+            'customer:detail', kwargs={'pk': self.object.customer_id}
+        )

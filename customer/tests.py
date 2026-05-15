@@ -375,3 +375,90 @@ class CustomerDeleteViewTests(TestCase):
         self.assertTrue(
             MortgageCalculation.objects.filter(pk=calculation.pk).exists()
         )
+
+    def test_detail_saved_calculations_use_dynamic_filters(self):
+        """Проверяет подключение динамической фильтрации в карточке."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_calculation()
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=calculation,
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-catalog-filter-form')
+        self.assertContains(response, 'data-catalog-filter-control', count=11)
+        self.assertContains(response, 'customer-calculation-results')
+        self.assertContains(response, 'static/js/catalog.js')
+
+    def test_detail_saved_calculations_hide_date_and_detail_action(self):
+        """Проверяет состав столбцов и действий в сохраненных расчетах."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_calculation()
+        customer_calculation = CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=calculation,
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Дата расчета')
+        self.assertNotContains(response, 'Подробнее')
+        self.assertContains(response, 'Удалить')
+        self.assertContains(
+            response,
+            reverse(
+                'customer:calculation_delete',
+                kwargs={'pk': customer_calculation.pk},
+            ),
+        )
+
+    def test_delete_customer_calculation_removes_link_and_keeps_calculation(
+        self,
+    ):
+        """Проверяет удаление связи клиента и расчета из карточки."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_calculation()
+        customer_calculation = CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=calculation,
+        )
+
+        response = self.client.post(
+            reverse(
+                'customer:calculation_delete',
+                kwargs={'pk': customer_calculation.pk},
+            )
+        )
+
+        self.assertRedirects(
+            response, reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+        self.assertTrue(Customer.objects.filter(pk=customer.pk).exists())
+        self.assertFalse(
+            CustomerCalculation.objects.filter(
+                pk=customer_calculation.pk
+            ).exists()
+        )
+        self.assertTrue(
+            MortgageCalculation.objects.filter(pk=calculation.pk).exists()
+        )

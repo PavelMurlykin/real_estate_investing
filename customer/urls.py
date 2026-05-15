@@ -14,4 +14,9 @@ urlpatterns = [
     path(
         '<int:pk>/delete/', views.CustomerDeleteView.as_view(), name='delete'
     ),
+    path(
+        'calculations/<int:pk>/delete/',
+        views.CustomerCalculationDeleteView.as_view(),
+        name='calculation_delete',
+    ),
 ]
