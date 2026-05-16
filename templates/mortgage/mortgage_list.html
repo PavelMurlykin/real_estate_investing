@@ -2,6 +2,10 @@
 {% load static %}
 {% load mortgage_filters %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/calculation_table.css' %}">
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -71,7 +75,6 @@
                                         </td>
                                     {% endif %}
                                     <td>{{ calculation.property.building.real_estate_complex.district.city.name }}</td>
-                                    <td>{{ calculation.timestamp|date:"d.m.Y H:i" }}</td>
                                     <td>{{ calculation.property.building.real_estate_complex.name }}, кв. {{ calculation.property.apartment_number }}</td>
                                     <td>{{ calculation.final_property_cost|currency }} руб.</td>
                                     <td>{{ calculation.table_initial_payment_amount|currency }} руб.</td>
@@ -79,7 +82,16 @@
                                     <td>{{ calculation.mortgage_term|years_label_from_months }}</td>
                                     <td>{{ calculation.annual_rate }}%</td>
                                     <td class="text-nowrap">
-                                        <div class="d-flex gap-2">
+                                        <div class="d-flex gap-2 flex-nowrap">
+                                            <button
+                                                class="btn btn-sm btn-outline-primary calculation-toggle collapsed"
+                                                type="button"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#mortgage-calculation-details-{{ calculation.pk }}"
+                                                aria-expanded="false"
+                                                aria-controls="mortgage-calculation-details-{{ calculation.pk }}"
+                                                aria-label="Показать детали расчета"
+                                            ></button>
                                             <a href="{% url 'mortgage:calculation_detail' calculation.pk %}" class="btn btn-sm btn-outline-primary">
                                                 <i class="bi bi-eye"></i> Подробнее
                                             </a>
@@ -91,6 +103,15 @@
                                                     </button>
                                                 </form>
                                             {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="{% if target_customer %}{{ calculation_table_headers|length|add:2 }}{% else %}{{ calculation_table_headers|length|add:1 }}{% endif %}" class="p-0 border-0">
+                                        <div class="collapse" id="mortgage-calculation-details-{{ calculation.pk }}">
+                                            <div class="p-3 bg-body-tertiary">
+                                                {% include "mortgage/includes/calculation_detail_table.html" %}
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>

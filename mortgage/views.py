@@ -756,6 +756,7 @@ def calculation_list(request):
             'calculation_filter_reset_url': calculation_filter_reset_url,
             'calculation_table_headers': build_calculation_table_headers(
                 request,
+                excluded_fields=('timestamp',),
             ),
         },
     )

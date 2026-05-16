@@ -194,9 +194,7 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
         }
         calculation_filters = get_calculation_filters(self.request)
         calculation_sort, calculation_order = get_calculation_sort(
-            self.request,
-            default_sort='city',
-            default_order='asc',
+            self.request
         )
         base_customer_calculations = CustomerCalculation.objects.filter(
             customer=customer
@@ -247,8 +245,6 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
             build_calculation_table_headers(
                 self.request,
                 excluded_fields=('timestamp',),
-                default_sort='city',
-                default_order='asc',
             )
         )
         return context

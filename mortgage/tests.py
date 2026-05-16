@@ -175,6 +175,55 @@ class MortgageCalculatorViewTests(TestCase):
             ),
         )
 
+    def test_calculation_list_shows_spoiler_actions_and_calculation_details(self):
+        calculation = self._create_calculation()
+        calculation.base_property_cost = Decimal('5000000.00')
+        calculation.final_property_cost = Decimal('4500000.00')
+        calculation.discount_markup_type = 'discount'
+        calculation.discount_markup_value = Decimal('10.00')
+        calculation.initial_payment_percent = Decimal('20.00')
+        calculation.mortgage_term = 240
+        calculation.annual_rate = Decimal('12.00')
+        calculation.has_grace_period = False
+        calculation.main_payments_count = 240
+        calculation.main_monthly_payment = Decimal('55054.31')
+        calculation.save()
+
+        response = self.client.get(reverse('mortgage:calculation_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'css/calculation_table.css')
+        self.assertContains(response, 'data-bs-toggle="collapse"')
+        self.assertContains(response, 'calculation-toggle')
+        self.assertContains(response, 'aria-label="Показать детали расчета"')
+        self.assertContains(
+            response,
+            f'mortgage-calculation-details-{calculation.pk}',
+        )
+        self.assertContains(
+            response,
+            reverse(
+                'mortgage:calculation_detail', kwargs={'pk': calculation.pk}
+            ),
+        )
+        self.assertContains(
+            response,
+            reverse(
+                'mortgage:calculation_delete', kwargs={'pk': calculation.pk}
+            ),
+        )
+        self.assertContains(response, 'table-bordered')
+        self.assertContains(response, 'Стоимость объекта')
+        self.assertContains(response, '5 000 000 руб.')
+        self.assertContains(response, '<th scope="row">Скидка</th>', html=True)
+        self.assertContains(response, '500 000 руб. (10 %)')
+        self.assertContains(response, 'Итоговая стоимость объекта')
+        self.assertContains(response, '4 500 000 руб.')
+        self.assertContains(response, '900 000 руб. (20 %)')
+        self.assertContains(response, '20 лет (240 мес.)')
+        self.assertContains(response, 'Сумма ежемесячного платежа')
+        self.assertContains(response, '55 054,31 руб.')
+
     def test_calculation_delete_removes_saved_calculation(self):
         calculation = self._create_calculation()
 
@@ -199,7 +248,16 @@ class MortgageCalculatorViewTests(TestCase):
             response.context['calculation_table_headers'][0]['field'],
             'city',
         )
+        self.assertEqual(
+            response.context['calculation_table_headers'][1]['field'],
+            'object',
+        )
         self.assertContains(response, 'Город')
+        self.assertNotContains(response, 'Дата расчета')
+        self.assertNotContains(
+            response,
+            calculation.timestamp.strftime('%d.%m.%Y %H:%M'),
+        )
         self.assertContains(response, 'name="city"')
         self.assertContains(response, 'Город 1')
         self.assertContains(

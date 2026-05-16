@@ -419,7 +419,7 @@ class CustomerDeleteViewTests(TestCase):
         self.assertContains(response, 'customer-calculation-results')
         self.assertContains(response, 'static/js/catalog.js')
 
-    def test_detail_saved_calculations_hide_date_and_detail_action(self):
+    def test_detail_saved_calculations_hide_date_and_show_detail_action(self):
         """Проверяет состав столбцов и действий в сохраненных расчетах."""
         customer = Customer.objects.create(
             user=self.user,
@@ -438,7 +438,14 @@ class CustomerDeleteViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'Дата расчета')
-        self.assertNotContains(response, 'Подробнее')
+        self.assertContains(response, 'Подробнее')
+        self.assertContains(
+            response,
+            reverse(
+                'mortgage:calculation_detail',
+                kwargs={'pk': calculation.pk},
+            ),
+        )
         self.assertContains(response, 'Удалить')
         self.assertContains(
             response,
@@ -522,6 +529,10 @@ class CustomerDeleteViewTests(TestCase):
             response.context['calculation_table_headers'][0]['field'],
             'city',
         )
+        self.assertEqual(
+            response.context['calculation_table_headers'][1]['field'],
+            'object',
+        )
         self.assertContains(response, 'Город')
         self.assertContains(response, 'name="city"')
         self.assertEqual(len(calculations), 1)
@@ -594,9 +605,9 @@ class CustomerDeleteViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-bs-toggle="collapse"')
-        self.assertContains(response, 'customer-calculation-toggle')
+        self.assertContains(response, 'calculation-toggle')
         self.assertContains(response, 'aria-label="Показать детали расчета"')
-        self.assertContains(response, '[aria-expanded="true"]::before')
+        self.assertContains(response, 'css/calculation_table.css')
         self.assertNotContains(response, '>Раскрыть</button>')
         self.assertContains(
             response,

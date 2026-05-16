@@ -5,29 +5,7 @@
 {% block title %}Карточка клиента {{ customer.full_name }}{% endblock %}
 
 {% block extra_css %}
-<style>
-    .customer-calculation-toggle {
-        align-items: center;
-        display: inline-flex;
-        height: 2rem;
-        justify-content: center;
-        padding: 0;
-        width: 2rem;
-    }
-
-    .customer-calculation-toggle::before {
-        border-color: transparent transparent transparent currentColor;
-        border-style: solid;
-        border-width: 0.35rem 0 0.35rem 0.55rem;
-        content: "";
-        display: block;
-    }
-
-    .customer-calculation-toggle[aria-expanded="true"]::before {
-        border-color: currentColor transparent transparent transparent;
-        border-width: 0.55rem 0.35rem 0 0.35rem;
-    }
-</style>
+<link rel="stylesheet" href="{% static 'css/calculation_table.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -215,85 +193,33 @@
                                             <td>{{ calculation.mortgage_term|years_label_from_months }}</td>
                                             <td>{{ calculation.annual_rate }}%</td>
                                             <td class="text-nowrap">
-                                                <button
-                                                    class="btn btn-sm btn-outline-primary customer-calculation-toggle collapsed"
-                                                    type="button"
-                                                    data-bs-toggle="collapse"
-                                                    data-bs-target="#customer-calculation-details-{{ customer_calculation.pk }}"
-                                                    aria-expanded="false"
-                                                    aria-controls="customer-calculation-details-{{ customer_calculation.pk }}"
-                                                    aria-label="Показать детали расчета"
-                                                ></button>
-                                                <form method="post" action="{% url 'customer:calculation_delete' customer_calculation.pk %}" class="d-inline" onsubmit="return confirm('Удалить связь клиента с расчетом? Сам расчет сохранится.');">
-                                                    {% csrf_token %}
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
-                                                </form>
+                                                <div class="d-flex gap-2 flex-nowrap">
+                                                    <button
+                                                        class="btn btn-sm btn-outline-primary calculation-toggle collapsed"
+                                                        type="button"
+                                                        data-bs-toggle="collapse"
+                                                        data-bs-target="#customer-calculation-details-{{ customer_calculation.pk }}"
+                                                        aria-expanded="false"
+                                                        aria-controls="customer-calculation-details-{{ customer_calculation.pk }}"
+                                                        aria-label="Показать детали расчета"
+                                                    ></button>
+                                                    <a href="{% url 'mortgage:calculation_detail' calculation.pk %}" class="btn btn-sm btn-outline-primary">
+                                                        <i class="bi bi-eye"></i> Подробнее
+                                                    </a>
+                                                    <form method="post" action="{% url 'customer:calculation_delete' customer_calculation.pk %}" onsubmit="return confirm('Удалить связь клиента с расчетом? Сам расчет сохранится.');">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                            <i class="bi bi-trash"></i> Удалить
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             </td>
                                         </tr>
                                         <tr>
                                             <td colspan="{{ calculation_table_headers|length|add:1 }}" class="p-0 border-0">
                                                 <div class="collapse" id="customer-calculation-details-{{ customer_calculation.pk }}">
                                                     <div class="p-3 bg-body-tertiary">
-                                                        <table class="table table-bordered table-sm mb-0 bg-body">
-                                                            <tbody>
-                                                                <tr>
-                                                                    <th scope="row" class="w-50">Стоимость объекта</th>
-                                                                    <td>{{ calculation.base_property_cost|compact_currency }} руб.</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th scope="row">{{ calculation|discount_markup_label }}</th>
-                                                                    <td>
-                                                                        {{ calculation|discount_markup_amount|compact_currency }} руб. ({{ calculation.discount_markup_value|compact_decimal }} %)
-                                                                    </td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th scope="row">Итоговая стоимость объекта</th>
-                                                                    <td>{{ calculation.final_property_cost|compact_currency }} руб.</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th scope="row">Первоначальный взнос</th>
-                                                                    <td>{{ calculation.initial_payment_amount|compact_currency }} руб. ({{ calculation.initial_payment_percent|compact_decimal }} %)</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th scope="row">Дата первоначального взноса</th>
-                                                                    <td>{{ calculation.initial_payment_date|date:"d.m.Y" }}</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th scope="row">Срок ипотеки</th>
-                                                                    <td>{{ calculation.mortgage_term|years_label_from_months }} ({{ calculation.mortgage_term }} мес.)</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th scope="row">Годовая ставка</th>
-                                                                    <td>{{ calculation.annual_rate|compact_decimal }} %</td>
-                                                                </tr>
-                                                                {% if calculation.has_grace_period %}
-                                                                    <tr>
-                                                                        <th scope="row">Срок льготного периода</th>
-                                                                        <td>{{ calculation.grace_period_term|years_label_from_months }} ({{ calculation.grace_period_term }} мес.)</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <th scope="row">Годовая ставка в льготный период</th>
-                                                                        <td>{{ calculation.grace_period_rate|compact_decimal }} %</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <th scope="row">Число платежей за льготный период</th>
-                                                                        <td>{{ calculation.grace_payments_count }}</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <th scope="row">Сумма ежемесячного платежа во время льготного периода</th>
-                                                                        <td>{{ calculation.grace_monthly_payment|compact_currency }} руб.</td>
-                                                                    </tr>
-                                                                {% endif %}
-                                                                <tr>
-                                                                    <th scope="row">Число платежей</th>
-                                                                    <td>{{ calculation.main_payments_count }}</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th scope="row">Сумма ежемесячного платежа</th>
-                                                                    <td>{{ calculation.main_monthly_payment|compact_currency }} руб.</td>
-                                                                </tr>
-                                                            </tbody>
-                                                        </table>
+                                                        {% include "mortgage/includes/calculation_detail_table.html" %}
                                                     </div>
                                                 </div>
                                             </td>

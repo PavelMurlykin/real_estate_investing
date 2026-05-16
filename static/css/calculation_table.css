@@ -1,0 +1,21 @@
+.calculation-toggle {
+    align-items: center;
+    display: inline-flex;
+    height: 2rem;
+    justify-content: center;
+    padding: 0;
+    width: 2rem;
+}
+
+.calculation-toggle::before {
+    border-color: transparent transparent transparent currentColor;
+    border-style: solid;
+    border-width: 0.35rem 0 0.35rem 0.55rem;
+    content: "";
+    display: block;
+}
+
+.calculation-toggle[aria-expanded="true"]::before {
+    border-color: currentColor transparent transparent transparent;
+    border-width: 0.55rem 0.35rem 0 0.35rem;
+}
