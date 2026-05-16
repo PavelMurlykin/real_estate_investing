@@ -288,6 +288,22 @@ def format_currency(value):
         return str(value)
 
 
+def format_compact_decimal(value):
+    """Форматирует десятичное число без незначащих нулей."""
+    if value is None:
+        return ''
+
+    try:
+        decimal_value = Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return str(value)
+
+    normalized_value = decimal_value.normalize()
+    if normalized_value == normalized_value.to_integral():
+        return str(normalized_value.quantize(Decimal('1')))
+    return format(normalized_value, 'f').replace('.', ',')
+
+
 def format_integer(value):
     """
     Форматирует целое число с разделителями разрядов

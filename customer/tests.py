@@ -564,6 +564,97 @@ class CustomerDeleteViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(cities, ['Астрахань', 'Ярославль'])
 
+    def test_detail_saved_calculation_spoiler_shows_full_calculation(self):
+        """Проверяет содержимое спойлера сохраненного расчета."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_calculation()
+        calculation.base_property_cost = Decimal('5000000.00')
+        calculation.final_property_cost = Decimal('4500000.00')
+        calculation.discount_markup_type = 'discount'
+        calculation.discount_markup_value = Decimal('10.00')
+        calculation.initial_payment_percent = Decimal('20.00')
+        calculation.mortgage_term = 240
+        calculation.annual_rate = Decimal('12.00')
+        calculation.has_grace_period = False
+        calculation.main_payments_count = 240
+        calculation.main_monthly_payment = Decimal('55054.31')
+        calculation.save()
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=calculation,
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-bs-toggle="collapse"')
+        self.assertContains(response, 'customer-calculation-toggle')
+        self.assertContains(response, 'aria-label="Показать детали расчета"')
+        self.assertContains(response, '[aria-expanded="true"]::before')
+        self.assertNotContains(response, '>Раскрыть</button>')
+        self.assertContains(
+            response,
+            f'customer-calculation-details-{calculation.customer_links.first().pk}',
+        )
+        self.assertContains(response, 'table-bordered')
+        self.assertContains(response, 'Стоимость объекта')
+        self.assertContains(response, '5 000 000 руб.')
+        self.assertContains(response, '<th scope="row">Скидка</th>', html=True)
+        self.assertContains(response, '500 000 руб. (10 %)')
+        self.assertNotContains(response, 'Скидка/Удорожание')
+        self.assertNotContains(response, 'Скидка - 500 000 руб. (10 %)')
+        self.assertContains(response, 'Итоговая стоимость объекта')
+        self.assertContains(response, '4 500 000 руб.')
+        self.assertContains(response, '900 000 руб. (20 %)')
+        self.assertContains(response, '01.01.2026')
+        self.assertContains(response, '20 лет (240 мес.)')
+        self.assertContains(response, '12 %')
+        self.assertContains(response, 'Число платежей')
+        self.assertContains(response, 'Сумма ежемесячного платежа')
+        self.assertContains(response, '55 054,31 руб.')
+        self.assertNotContains(response, 'Срок льготного периода')
+
+    def test_detail_saved_calculation_spoiler_shows_grace_period_fields(self):
+        """Проверяет поля льготного периода в спойлере расчета."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_calculation()
+        calculation.has_grace_period = True
+        calculation.grace_period_term = 24
+        calculation.grace_period_rate = Decimal('6.00')
+        calculation.grace_payments_count = 24
+        calculation.grace_monthly_payment = Decimal('30000.00')
+        calculation.save()
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=calculation,
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Срок льготного периода')
+        self.assertContains(response, '2 года (24 мес.)')
+        self.assertContains(response, 'Годовая ставка в льготный период')
+        self.assertContains(response, '6 %')
+        self.assertContains(response, 'Число платежей за льготный период')
+        self.assertContains(
+            response,
+            'Сумма ежемесячного платежа во время льготного периода',
+        )
+        self.assertContains(response, '30 000 руб.')
+
     def test_detail_saved_calculation_sort_links_use_ajax_without_anchor(self):
         """Проверяет AJAX-сортировку без браузерного якоря."""
         customer = Customer.objects.create(
