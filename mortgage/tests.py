@@ -36,7 +36,12 @@ class MortgageCalculatorViewTests(TestCase):
         self.property = self._create_property(cost=Decimal('5000000.00'))
         self.url = reverse('mortgage:mortgage_calculator')
 
-    def _create_property(self, cost: Decimal) -> Property:
+    def _create_property(
+        self,
+        cost: Decimal,
+        city_name='Город 1',
+        complex_name='ЖК Тест',
+    ) -> Property:
         """Описание метода _create_property.
 
         Выполняет прикладную операцию текущего модуля.
@@ -47,16 +52,21 @@ class MortgageCalculatorViewTests(TestCase):
         Возвращает:
             Any: Тип результата определяется вызывающим кодом.
         """
-        region = Region.objects.create(name='Регион 1', code='R1')
-        city = City.objects.create(name='Город 1', region=region)
-        district = District.objects.create(name='Район 1', city=city)
-        developer = Developer.objects.create(name='Застройщик 1')
-        estate_type = RealEstateType.objects.create(name='Квартира')
+        suffix = Region.objects.count() + 1
+        region = Region.objects.create(
+            name=f'Регион {suffix}', code=f'R{suffix}'
+        )
+        city = City.objects.create(name=city_name, region=region)
+        district = District.objects.create(
+            name=f'Район {suffix}', city=city
+        )
+        developer = Developer.objects.create(name=f'Застройщик {suffix}')
+        estate_type = RealEstateType.objects.create(name=f'Квартира {suffix}')
         estate_class = RealEstateClass.objects.create(
-            name='Комфорт', weight=Decimal('1.00')
+            name=f'Комфорт {suffix}', weight=Decimal('1.00')
         )
         complex_obj = RealEstateComplex.objects.create(
-            name='ЖК Тест',
+            name=complex_name,
             developer=developer,
             district=district,
             real_estate_class=estate_class,
@@ -66,8 +76,10 @@ class MortgageCalculatorViewTests(TestCase):
             number='1',
             real_estate_complex=complex_obj,
         )
-        layout = ApartmentLayout.objects.create(name='1К')
-        decoration = ApartmentDecoration.objects.create(name='Без отделки')
+        layout = ApartmentLayout.objects.create(name=f'1К {suffix}')
+        decoration = ApartmentDecoration.objects.create(
+            name=f'Без отделки {suffix}'
+        )
         return Property.objects.create(
             apartment_number='101',
             building=building,
@@ -78,9 +90,15 @@ class MortgageCalculatorViewTests(TestCase):
             property_cost=cost,
         )
 
-    def _create_calculation(self) -> MortgageCalculation:
+    def _create_calculation(
+        self,
+        property_obj=None,
+    ) -> MortgageCalculation:
+        if property_obj is None:
+            property_obj = self.property
+
         return MortgageCalculation.objects.create(
-            property=self.property,
+            property=property_obj,
             base_property_cost=Decimal('5000000.00'),
             initial_payment_percent=Decimal('20.00'),
             initial_payment_date=date(2026, 1, 1),
@@ -168,6 +186,93 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertRedirects(response, reverse('mortgage:calculation_list'))
         self.assertFalse(
             MortgageCalculation.objects.filter(pk=calculation.pk).exists()
+        )
+
+    def test_calculation_list_shows_city_column_and_filter(self):
+        calculation = self._create_calculation()
+
+        response = self.client.get(reverse('mortgage:calculation_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context['calculation_table_headers'][0]['field'],
+            'city',
+        )
+        self.assertContains(response, 'Город')
+        self.assertContains(response, 'name="city"')
+        self.assertContains(response, 'Город 1')
+        self.assertContains(
+            response,
+            calculation.property.building.real_estate_complex.name,
+        )
+
+    def test_calculation_list_filters_by_city(self):
+        moscow_property = self._create_property(
+            cost=Decimal('5000000.00'),
+            city_name='Москва',
+            complex_name='ЖК Москва',
+        )
+        kazan_property = self._create_property(
+            cost=Decimal('5000000.00'),
+            city_name='Казань',
+            complex_name='ЖК Казань',
+        )
+        moscow_calculation = self._create_calculation(
+            property_obj=moscow_property
+        )
+        self._create_calculation(property_obj=kazan_property)
+        moscow_city = (
+            moscow_calculation.property.building.real_estate_complex
+            .district.city
+        )
+
+        response = self.client.get(
+            reverse('mortgage:calculation_list'),
+            {'city': moscow_city.pk},
+        )
+        calculations = list(response.context['calculations'])
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(calculations, [moscow_calculation])
+
+    def test_calculation_list_sorts_by_city(self):
+        z_property = self._create_property(
+            cost=Decimal('5000000.00'),
+            city_name='Ярославль',
+            complex_name='ЖК Ярославль',
+        )
+        a_property = self._create_property(
+            cost=Decimal('5000000.00'),
+            city_name='Астрахань',
+            complex_name='ЖК Астрахань',
+        )
+        self._create_calculation(property_obj=z_property)
+        self._create_calculation(property_obj=a_property)
+
+        response = self.client.get(
+            reverse('mortgage:calculation_list'),
+            {'sort': 'city', 'order': 'asc'},
+        )
+        cities = [
+            calculation.property.building.real_estate_complex.district.city.name
+            for calculation in response.context['calculations']
+        ]
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(cities, ['Астрахань', 'Ярославль'])
+
+    def test_calculation_list_sort_links_use_ajax_without_anchor(self):
+        self._create_calculation()
+
+        response = self.client.get(reverse('mortgage:calculation_list'))
+        header_urls = [
+            header['url']
+            for header in response.context['calculation_table_headers']
+        ]
+
+        self.assertTrue(header_urls)
+        self.assertTrue(
+            all('#catalog-results' not in url for url in header_urls)
         )
 
     def test_calculate_uses_property_cost_when_property_cost_is_empty(self):

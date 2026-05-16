@@ -1,6 +1,8 @@
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -280,18 +282,27 @@ class CustomerDeleteViewTests(TestCase):
         )
         self.client.force_login(self.user)
 
-    def _create_property(self) -> Property:
+    def _create_property(
+        self,
+        city_name='Город 1',
+        complex_name='ЖК Тест',
+    ) -> Property:
         """Создает объект недвижимости для ипотечного расчета."""
-        region = Region.objects.create(name='Регион 1', code='R1')
-        city = City.objects.create(name='Город 1', region=region)
-        district = District.objects.create(name='Район 1', city=city)
-        developer = Developer.objects.create(name='Застройщик 1')
-        estate_type = RealEstateType.objects.create(name='Квартира')
+        suffix = Region.objects.count() + 1
+        region = Region.objects.create(
+            name=f'Регион {suffix}', code=f'R{suffix}'
+        )
+        city = City.objects.create(name=city_name, region=region)
+        district = District.objects.create(
+            name=f'Район {suffix}', city=city
+        )
+        developer = Developer.objects.create(name=f'Застройщик {suffix}')
+        estate_type = RealEstateType.objects.create(name=f'Квартира {suffix}')
         estate_class = RealEstateClass.objects.create(
-            name='Комфорт', weight=Decimal('1.00')
+            name=f'Комфорт {suffix}', weight=Decimal('1.00')
         )
         complex_obj = RealEstateComplex.objects.create(
-            name='ЖК Тест',
+            name=complex_name,
             developer=developer,
             district=district,
             real_estate_class=estate_class,
@@ -301,8 +312,10 @@ class CustomerDeleteViewTests(TestCase):
             number='1',
             real_estate_complex=complex_obj,
         )
-        layout = ApartmentLayout.objects.create(name='1К')
-        decoration = ApartmentDecoration.objects.create(name='Без отделки')
+        layout = ApartmentLayout.objects.create(name=f'1К {suffix}')
+        decoration = ApartmentDecoration.objects.create(
+            name=f'Без отделки {suffix}'
+        )
         return Property.objects.create(
             apartment_number='101',
             building=building,
@@ -313,10 +326,17 @@ class CustomerDeleteViewTests(TestCase):
             property_cost=Decimal('5000000.00'),
         )
 
-    def _create_calculation(self) -> MortgageCalculation:
+    def _create_calculation(
+        self,
+        city_name='Город 1',
+        complex_name='ЖК Тест',
+    ) -> MortgageCalculation:
         """Создает сохраненный ипотечный расчет."""
         return MortgageCalculation.objects.create(
-            property=self._create_property(),
+            property=self._create_property(
+                city_name=city_name,
+                complex_name=complex_name,
+            ),
             base_property_cost=Decimal('5000000.00'),
             initial_payment_percent=Decimal('20.00'),
             initial_payment_date=date(2026, 1, 1),
@@ -395,7 +415,7 @@ class CustomerDeleteViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-catalog-filter-form')
-        self.assertContains(response, 'data-catalog-filter-control', count=11)
+        self.assertContains(response, 'data-catalog-filter-control', count=12)
         self.assertContains(response, 'customer-calculation-results')
         self.assertContains(response, 'static/js/catalog.js')
 
@@ -462,3 +482,134 @@ class CustomerDeleteViewTests(TestCase):
         self.assertTrue(
             MortgageCalculation.objects.filter(pk=calculation.pk).exists()
         )
+
+    def test_detail_saved_calculations_show_city_column_and_filter(self):
+        """Проверяет столбец города и фильтр по городу."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        moscow_calculation = self._create_calculation(
+            city_name='Москва',
+            complex_name='ЖК Москва',
+        )
+        kazan_calculation = self._create_calculation(
+            city_name='Казань',
+            complex_name='ЖК Казань',
+        )
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=moscow_calculation,
+        )
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=kazan_calculation,
+        )
+        moscow_city = (
+            moscow_calculation.property.building.real_estate_complex
+            .district.city
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk}),
+            {'city': moscow_city.pk},
+        )
+        calculations = list(response.context['customer_calculations'])
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context['calculation_table_headers'][0]['field'],
+            'city',
+        )
+        self.assertContains(response, 'Город')
+        self.assertContains(response, 'name="city"')
+        self.assertEqual(len(calculations), 1)
+        self.assertEqual(calculations[0].calculation, moscow_calculation)
+
+    def test_detail_saved_calculations_sort_by_city(self):
+        """Проверяет сортировку сохраненных расчетов по городу."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        z_calculation = self._create_calculation(
+            city_name='Ярославль',
+            complex_name='ЖК Ярославль',
+        )
+        a_calculation = self._create_calculation(
+            city_name='Астрахань',
+            complex_name='ЖК Астрахань',
+        )
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=z_calculation,
+        )
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=a_calculation,
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk}),
+            {'sort': 'city', 'order': 'asc'},
+        )
+        cities = [
+            calculation.calculation.property.building.real_estate_complex
+            .district.city.name
+            for calculation in response.context['customer_calculations']
+        ]
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(cities, ['Астрахань', 'Ярославль'])
+
+    def test_detail_saved_calculation_sort_links_use_ajax_without_anchor(self):
+        """Проверяет AJAX-сортировку без браузерного якоря."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_calculation()
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=calculation,
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+        header_urls = [
+            header['url']
+            for header in response.context['calculation_table_headers']
+        ]
+
+        self.assertTrue(header_urls)
+        self.assertTrue(
+            all(
+                '#customer-calculation-results' not in url
+                for url in header_urls
+            )
+        )
+        self.assertContains(
+            response,
+            '?sort=city&amp;order=desc',
+        )
+        self.assertContains(response, 'data-catalog-sort-link')
+        self.assertContains(
+            response,
+            'data-catalog-results-target="#customer-calculation-results"',
+        )
+        self.assertContains(response, 'catalog.js?v=20260516-sort')
+
+    def test_catalog_static_sorts_results_without_page_reload(self):
+        """Проверяет AJAX-сортировку таблиц без полного перехода."""
+        script_path = Path(settings.BASE_DIR) / 'static/js/catalog.js'
+        script = script_path.read_text(encoding='utf-8')
+
+        self.assertIn('data-catalog-sort-link', script)
+        self.assertIn('event.preventDefault()', script)
+        self.assertIn('fetchResultsUrl(', script)
+        self.assertIn("historyUrl.hash = ''", script)
+        self.assertIn('}, true);', script)
