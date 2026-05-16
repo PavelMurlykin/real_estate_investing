@@ -1,0 +1,3 @@
+<a href="{{ sort_url }}" class="{{ sort_link_classes|default:'text-decoration-none text-body fw-semibold' }}" data-catalog-sort-link>
+    {{ sort_label }}{% if sort_indicator %} {{ sort_indicator }}{% elif sort_is_sorted %}{% if sort_direction == 'desc' %} &darr;{% else %} &uarr;{% endif %}{% endif %}
+</a>

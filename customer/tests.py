@@ -1,15 +1,29 @@
+from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
 from bank.models import MortgageProgram
+from location.models import City, District, Region
+from mortgage.models import MortgageCalculation
 from mortgage.utils import format_currency
-from property.models import ApartmentLayout
+from property.models import (
+    ApartmentDecoration,
+    ApartmentLayout,
+    Developer,
+    Property,
+    RealEstateClass,
+    RealEstateComplex,
+    RealEstateComplexBuilding,
+    RealEstateType,
+)
 
 from .forms import CustomerForm
-from .models import Customer
+from .models import Customer, CustomerCalculation
 
 
 class CustomerFormTests(TestCase):
@@ -251,3 +265,441 @@ class CustomerDetailViewTests(TestCase):
             response,
             'Максимальная стоимость объекта по льготной ставке',
         )
+
+
+class CustomerDeleteViewTests(TestCase):
+    """Проверяет удаление клиента из списка клиентов."""
+
+    def setUp(self):
+        """Подготавливает пользователя для тестов удаления клиента."""
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            email='delete-agent@example.com',
+            password='password',
+            phone_number='+79990000002',
+            first_name='Agent',
+            last_name='User',
+        )
+        self.client.force_login(self.user)
+
+    def _create_property(
+        self,
+        city_name='Город 1',
+        complex_name='ЖК Тест',
+    ) -> Property:
+        """Создает объект недвижимости для ипотечного расчета."""
+        suffix = Region.objects.count() + 1
+        region = Region.objects.create(
+            name=f'Регион {suffix}', code=f'R{suffix}'
+        )
+        city = City.objects.create(name=city_name, region=region)
+        district = District.objects.create(
+            name=f'Район {suffix}', city=city
+        )
+        developer = Developer.objects.create(name=f'Застройщик {suffix}')
+        estate_type = RealEstateType.objects.create(name=f'Квартира {suffix}')
+        estate_class = RealEstateClass.objects.create(
+            name=f'Комфорт {suffix}', weight=Decimal('1.00')
+        )
+        complex_obj = RealEstateComplex.objects.create(
+            name=complex_name,
+            developer=developer,
+            district=district,
+            real_estate_class=estate_class,
+            real_estate_type=estate_type,
+        )
+        building = RealEstateComplexBuilding.objects.create(
+            number='1',
+            real_estate_complex=complex_obj,
+        )
+        layout = ApartmentLayout.objects.create(name=f'1К {suffix}')
+        decoration = ApartmentDecoration.objects.create(
+            name=f'Без отделки {suffix}'
+        )
+        return Property.objects.create(
+            apartment_number='101',
+            building=building,
+            decoration=decoration,
+            layout=layout,
+            area=Decimal('42.00'),
+            floor=10,
+            property_cost=Decimal('5000000.00'),
+        )
+
+    def _create_calculation(
+        self,
+        city_name='Город 1',
+        complex_name='ЖК Тест',
+    ) -> MortgageCalculation:
+        """Создает сохраненный ипотечный расчет."""
+        return MortgageCalculation.objects.create(
+            property=self._create_property(
+                city_name=city_name,
+                complex_name=complex_name,
+            ),
+            base_property_cost=Decimal('5000000.00'),
+            initial_payment_percent=Decimal('20.00'),
+            initial_payment_date=date(2026, 1, 1),
+            mortgage_term=240,
+            annual_rate=Decimal('12.00'),
+            has_grace_period=False,
+            final_property_cost=Decimal('5000000.00'),
+            main_payments_count=240,
+            mortgage_end_date=date(2046, 1, 1),
+            main_monthly_payment=Decimal('55054.31'),
+            total_loan_amount=Decimal('4000000.00'),
+            total_overpayment=Decimal('9213034.40'),
+        )
+
+    def test_list_page_shows_delete_button(self):
+        """Проверяет вывод кнопки удаления в списке клиентов."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+
+        response = self.client.get(reverse('customer:list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Удалить')
+        self.assertContains(
+            response,
+            reverse('customer:delete', kwargs={'pk': customer.pk}),
+        )
+
+    def test_delete_customer_removes_link_and_keeps_calculation(self):
+        """Проверяет, что удаление клиента не удаляет сам расчет."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_calculation()
+        customer_calculation = CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=calculation,
+        )
+
+        response = self.client.post(
+            reverse('customer:delete', kwargs={'pk': customer.pk})
+        )
+
+        self.assertRedirects(response, reverse('customer:list'))
+        self.assertFalse(Customer.objects.filter(pk=customer.pk).exists())
+        self.assertFalse(
+            CustomerCalculation.objects.filter(
+                pk=customer_calculation.pk
+            ).exists()
+        )
+        self.assertTrue(
+            MortgageCalculation.objects.filter(pk=calculation.pk).exists()
+        )
+
+    def test_detail_saved_calculations_use_dynamic_filters(self):
+        """Проверяет подключение динамической фильтрации в карточке."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_calculation()
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=calculation,
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-catalog-filter-form')
+        self.assertContains(response, 'data-catalog-filter-control', count=12)
+        self.assertContains(response, 'customer-calculation-results')
+        self.assertContains(response, 'static/js/catalog.js')
+
+    def test_detail_saved_calculations_hide_date_and_detail_action(self):
+        """Проверяет состав столбцов и действий в сохраненных расчетах."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_calculation()
+        customer_calculation = CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=calculation,
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Дата расчета')
+        self.assertNotContains(response, 'Подробнее')
+        self.assertContains(response, 'Удалить')
+        self.assertContains(
+            response,
+            reverse(
+                'customer:calculation_delete',
+                kwargs={'pk': customer_calculation.pk},
+            ),
+        )
+
+    def test_delete_customer_calculation_removes_link_and_keeps_calculation(
+        self,
+    ):
+        """Проверяет удаление связи клиента и расчета из карточки."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_calculation()
+        customer_calculation = CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=calculation,
+        )
+
+        response = self.client.post(
+            reverse(
+                'customer:calculation_delete',
+                kwargs={'pk': customer_calculation.pk},
+            )
+        )
+
+        self.assertRedirects(
+            response, reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+        self.assertTrue(Customer.objects.filter(pk=customer.pk).exists())
+        self.assertFalse(
+            CustomerCalculation.objects.filter(
+                pk=customer_calculation.pk
+            ).exists()
+        )
+        self.assertTrue(
+            MortgageCalculation.objects.filter(pk=calculation.pk).exists()
+        )
+
+    def test_detail_saved_calculations_show_city_column_and_filter(self):
+        """Проверяет столбец города и фильтр по городу."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        moscow_calculation = self._create_calculation(
+            city_name='Москва',
+            complex_name='ЖК Москва',
+        )
+        kazan_calculation = self._create_calculation(
+            city_name='Казань',
+            complex_name='ЖК Казань',
+        )
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=moscow_calculation,
+        )
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=kazan_calculation,
+        )
+        moscow_city = (
+            moscow_calculation.property.building.real_estate_complex
+            .district.city
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk}),
+            {'city': moscow_city.pk},
+        )
+        calculations = list(response.context['customer_calculations'])
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context['calculation_table_headers'][0]['field'],
+            'city',
+        )
+        self.assertContains(response, 'Город')
+        self.assertContains(response, 'name="city"')
+        self.assertEqual(len(calculations), 1)
+        self.assertEqual(calculations[0].calculation, moscow_calculation)
+
+    def test_detail_saved_calculations_sort_by_city(self):
+        """Проверяет сортировку сохраненных расчетов по городу."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        z_calculation = self._create_calculation(
+            city_name='Ярославль',
+            complex_name='ЖК Ярославль',
+        )
+        a_calculation = self._create_calculation(
+            city_name='Астрахань',
+            complex_name='ЖК Астрахань',
+        )
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=z_calculation,
+        )
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=a_calculation,
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk}),
+            {'sort': 'city', 'order': 'asc'},
+        )
+        cities = [
+            calculation.calculation.property.building.real_estate_complex
+            .district.city.name
+            for calculation in response.context['customer_calculations']
+        ]
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(cities, ['Астрахань', 'Ярославль'])
+
+    def test_detail_saved_calculation_spoiler_shows_full_calculation(self):
+        """Проверяет содержимое спойлера сохраненного расчета."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_calculation()
+        calculation.base_property_cost = Decimal('5000000.00')
+        calculation.final_property_cost = Decimal('4500000.00')
+        calculation.discount_markup_type = 'discount'
+        calculation.discount_markup_value = Decimal('10.00')
+        calculation.initial_payment_percent = Decimal('20.00')
+        calculation.mortgage_term = 240
+        calculation.annual_rate = Decimal('12.00')
+        calculation.has_grace_period = False
+        calculation.main_payments_count = 240
+        calculation.main_monthly_payment = Decimal('55054.31')
+        calculation.save()
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=calculation,
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-bs-toggle="collapse"')
+        self.assertContains(response, 'customer-calculation-toggle')
+        self.assertContains(response, 'aria-label="Показать детали расчета"')
+        self.assertContains(response, '[aria-expanded="true"]::before')
+        self.assertNotContains(response, '>Раскрыть</button>')
+        self.assertContains(
+            response,
+            f'customer-calculation-details-{calculation.customer_links.first().pk}',
+        )
+        self.assertContains(response, 'table-bordered')
+        self.assertContains(response, 'Стоимость объекта')
+        self.assertContains(response, '5 000 000 руб.')
+        self.assertContains(response, '<th scope="row">Скидка</th>', html=True)
+        self.assertContains(response, '500 000 руб. (10 %)')
+        self.assertNotContains(response, 'Скидка/Удорожание')
+        self.assertNotContains(response, 'Скидка - 500 000 руб. (10 %)')
+        self.assertContains(response, 'Итоговая стоимость объекта')
+        self.assertContains(response, '4 500 000 руб.')
+        self.assertContains(response, '900 000 руб. (20 %)')
+        self.assertContains(response, '01.01.2026')
+        self.assertContains(response, '20 лет (240 мес.)')
+        self.assertContains(response, '12 %')
+        self.assertContains(response, 'Число платежей')
+        self.assertContains(response, 'Сумма ежемесячного платежа')
+        self.assertContains(response, '55 054,31 руб.')
+        self.assertNotContains(response, 'Срок льготного периода')
+
+    def test_detail_saved_calculation_spoiler_shows_grace_period_fields(self):
+        """Проверяет поля льготного периода в спойлере расчета."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_calculation()
+        calculation.has_grace_period = True
+        calculation.grace_period_term = 24
+        calculation.grace_period_rate = Decimal('6.00')
+        calculation.grace_payments_count = 24
+        calculation.grace_monthly_payment = Decimal('30000.00')
+        calculation.save()
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=calculation,
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Срок льготного периода')
+        self.assertContains(response, '2 года (24 мес.)')
+        self.assertContains(response, 'Годовая ставка в льготный период')
+        self.assertContains(response, '6 %')
+        self.assertContains(response, 'Число платежей за льготный период')
+        self.assertContains(
+            response,
+            'Сумма ежемесячного платежа во время льготного периода',
+        )
+        self.assertContains(response, '30 000 руб.')
+
+    def test_detail_saved_calculation_sort_links_use_ajax_without_anchor(self):
+        """Проверяет AJAX-сортировку без браузерного якоря."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_calculation()
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=calculation,
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+        header_urls = [
+            header['url']
+            for header in response.context['calculation_table_headers']
+        ]
+
+        self.assertTrue(header_urls)
+        self.assertTrue(
+            all(
+                '#customer-calculation-results' not in url
+                for url in header_urls
+            )
+        )
+        self.assertContains(
+            response,
+            '?sort=city&amp;order=desc',
+        )
+        self.assertContains(response, 'data-catalog-sort-link')
+        self.assertContains(response, 'data-catalog-results')
+        self.assertContains(response, 'catalog.js?v=20260516-sort')
+
+    def test_catalog_static_sorts_results_without_page_reload(self):
+        """Проверяет AJAX-сортировку таблиц без полного перехода."""
+        script_path = Path(settings.BASE_DIR) / 'static/js/catalog.js'
+        script = script_path.read_text(encoding='utf-8')
+
+        self.assertIn('data-catalog-sort-link', script)
+        self.assertIn('getCatalogResultsTarget', script)
+        self.assertIn("closest('[data-catalog-results]')", script)
+        self.assertIn('event.preventDefault()', script)
+        self.assertIn('fetchResultsUrl(', script)
+        self.assertIn("historyUrl.hash = ''", script)
+        self.assertIn('}, true);', script)

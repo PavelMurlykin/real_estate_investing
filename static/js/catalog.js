@@ -31,6 +31,19 @@
         }
     }
 
+    function getCatalogResultsTarget(element) {
+        if (element.dataset.catalogResultsTarget) {
+            return element.dataset.catalogResultsTarget;
+        }
+
+        const results = element.closest('[data-catalog-results]');
+        if (results && results.id) {
+            return '#' + results.id;
+        }
+
+        return '#catalog-results';
+    }
+
     function initSelectSwatches() {
         document.querySelectorAll('[data-select-swatch]').forEach(function (swatch) {
             const select = getElement(swatch.dataset.selectSwatchSelect);
@@ -105,15 +118,25 @@
         }
     }
 
-    function fetchFilteredResults(form) {
-        syncDependentSelects(form);
+    function syncFilterFormsFromUrl(targetSelector, url) {
+        document.querySelectorAll('[data-catalog-filter-form]').forEach(function (form) {
+            const formTargetSelector = form.dataset.catalogResultsTarget || '#catalog-results';
 
-        const targetSelector = form.dataset.catalogResultsTarget || '#catalog-results';
-        const params = new URLSearchParams(new FormData(form));
-        const url = new URL(window.location.href);
-        url.search = params.toString();
+            if (formTargetSelector !== targetSelector) {
+                return;
+            }
 
-        fetch(url.toString(), {
+            ['sort', 'order'].forEach(function (name) {
+                const control = form.querySelector('[name="' + name + '"]');
+                if (control && url.searchParams.has(name)) {
+                    control.value = url.searchParams.get(name);
+                }
+            });
+        });
+    }
+
+    function fetchResultsUrl(url, targetSelector) {
+        return fetch(url.toString(), {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
             },
@@ -122,9 +145,48 @@
                 return response.text();
             })
             .then(function (html) {
+                const historyUrl = new URL(url.toString());
+                historyUrl.hash = '';
+
                 replaceResults(html, targetSelector);
-                window.history.replaceState({}, '', url.toString());
+                syncFilterFormsFromUrl(targetSelector, url);
+                window.history.replaceState({}, '', historyUrl.toString());
             });
+    }
+
+    function fetchFilteredResults(form) {
+        syncDependentSelects(form);
+
+        const targetSelector = form.dataset.catalogResultsTarget || '#catalog-results';
+        const params = new URLSearchParams(new FormData(form));
+        const url = new URL(window.location.href);
+        url.search = params.toString();
+
+        fetchResultsUrl(url, targetSelector);
+    }
+
+    function initCatalogSortLinks() {
+        document.addEventListener('click', function (event) {
+            const link = event.target.closest('[data-catalog-sort-link]');
+
+            if (
+                !link
+                || event.defaultPrevented
+                || event.button !== 0
+                || event.metaKey
+                || event.ctrlKey
+                || event.shiftKey
+                || event.altKey
+            ) {
+                return;
+            }
+
+            event.preventDefault();
+            fetchResultsUrl(
+                new URL(link.href, window.location.href),
+                getCatalogResultsTarget(link)
+            );
+        }, true);
     }
 
     function initCatalogFilterForms() {
@@ -159,5 +221,6 @@
     onReady(function () {
         initSelectSwatches();
         initCatalogFilterForms();
+        initCatalogSortLinks();
     });
 })();

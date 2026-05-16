@@ -58,6 +58,10 @@
                             <td class="text-nowrap">
                                 <a href="{% url 'customer:detail' customer.pk %}" class="btn btn-sm btn-outline-primary">Карточка</a>
                                 <a href="{% url 'customer:update' customer.pk %}" class="btn btn-sm btn-outline-secondary">Редактировать</a>
+                                <form method="post" action="{% url 'customer:delete' customer.pk %}" class="d-inline" onsubmit="return confirm('Удалить клиента? Связи с расчетами будут удалены, сами расчеты сохранятся.');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
+                                </form>
                             </td>
                         </tr>
                         {% empty %}

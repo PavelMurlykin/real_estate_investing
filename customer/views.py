@@ -1,7 +1,13 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
 from django.urls import reverse_lazy
-from django.views.generic import CreateView, DetailView, ListView, UpdateView
+from django.views.generic import (
+    CreateView,
+    DeleteView,
+    DetailView,
+    ListView,
+    UpdateView,
+)
 
 from mortgage.utils import (
     apply_calculation_filters,
@@ -9,6 +15,7 @@ from mortgage.utils import (
     annotate_calculation_table_values,
     build_calculation_table_headers,
     format_currency,
+    get_calculation_city_choices,
     get_calculation_filters,
     get_calculation_sort,
 )
@@ -187,15 +194,28 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
         }
         calculation_filters = get_calculation_filters(self.request)
         calculation_sort, calculation_order = get_calculation_sort(
-            self.request
+            self.request,
+            default_sort='city',
+            default_order='asc',
+        )
+        base_customer_calculations = CustomerCalculation.objects.filter(
+            customer=customer
         )
         customer_calculations = (
-            CustomerCalculation.objects.filter(customer=customer)
+            base_customer_calculations
             .select_related(
                 'calculation',
                 'calculation__property',
                 'calculation__property__building',
                 'calculation__property__building__real_estate_complex',
+                (
+                    'calculation__property__building'
+                    '__real_estate_complex__district'
+                ),
+                (
+                    'calculation__property__building'
+                    '__real_estate_complex__district__city'
+                ),
             )
         )
         customer_calculations = apply_calculation_filters(
@@ -212,13 +232,24 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
             calculation_order,
             prefix='calculation__',
         )
+        calculation_cities = get_calculation_city_choices(
+            base_customer_calculations,
+            prefix='calculation__',
+        )
 
         context['customer_calculations'] = customer_calculations
+        context['calculation_cities'] = calculation_cities
         context['calculation_filters'] = calculation_filters
         context['calculation_sort'] = calculation_sort
         context['calculation_order'] = calculation_order
+        context['calculation_filter_reset_url'] = self.request.path
         context['calculation_table_headers'] = (
-            build_calculation_table_headers(self.request)
+            build_calculation_table_headers(
+                self.request,
+                excluded_fields=('timestamp',),
+                default_sort='city',
+                default_order='asc',
+            )
         )
         return context
 
@@ -243,3 +274,28 @@ class CustomerUpdateView(CustomerOwnedQuerysetMixin, UpdateView):
             Any: Тип результата зависит от контекста использования.
         """
         return reverse_lazy('customer:detail', kwargs={'pk': self.object.pk})
+
+
+class CustomerDeleteView(CustomerOwnedQuerysetMixin, DeleteView):
+    """Удаляет клиента текущего пользователя."""
+
+    model = Customer
+    success_url = reverse_lazy('customer:list')
+
+
+class CustomerCalculationDeleteView(LoginRequiredMixin, DeleteView):
+    """Удаляет связь клиента с сохраненным ипотечным расчетом."""
+
+    model = CustomerCalculation
+
+    def get_queryset(self):
+        """Возвращает связи расчетов для клиентов текущего пользователя."""
+        return CustomerCalculation.objects.filter(
+            customer__user=self.request.user
+        )
+
+    def get_success_url(self):
+        """Возвращает пользователя в карточку клиента после удаления связи."""
+        return reverse_lazy(
+            'customer:detail', kwargs={'pk': self.object.customer_id}
+        )

@@ -20,6 +20,7 @@ from .utils import (
     annotate_calculation_table_values,
     build_calculation_table_headers,
     format_currency,
+    get_calculation_city_choices,
     get_calculation_filters,
     get_calculation_sort,
 )
@@ -730,9 +731,12 @@ def calculation_list(request):
             'property',
             'property__building',
             'property__building__real_estate_complex',
+            'property__building__real_estate_complex__district',
+            'property__building__real_estate_complex__district__city',
         )
         .all()
     )
+    calculation_cities = get_calculation_city_choices(calculations)
     calculations = apply_calculation_filters(
         annotate_calculation_table_values(calculations), calculation_filters
     )
@@ -744,6 +748,11 @@ def calculation_list(request):
         linked_calculation_ids = list(
             target_customer.saved_calculations.values_list('pk', flat=True)
         )
+    calculation_filter_reset_url = request.path
+    if target_customer is not None:
+        calculation_filter_reset_url = (
+            f'{request.path}?customer={target_customer.pk}'
+        )
 
     return render(
         request,
@@ -753,10 +762,12 @@ def calculation_list(request):
             'target_customer': target_customer,
             'linked_calculation_ids': linked_calculation_ids,
             'calculation_filters': calculation_filters,
+            'calculation_cities': calculation_cities,
             'calculation_sort': calculation_sort,
             'calculation_order': calculation_order,
+            'calculation_filter_reset_url': calculation_filter_reset_url,
             'calculation_table_headers': build_calculation_table_headers(
-                request
+                request,
             ),
         },
     )

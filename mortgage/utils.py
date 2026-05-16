@@ -5,6 +5,7 @@ from django.db.models import DecimalField, ExpressionWrapper, F, Q, Value
 
 
 CALCULATION_SORT_FIELDS = {
+    'city': 'property__building__real_estate_complex__district__city__name',
     'timestamp': 'timestamp',
     'object': 'property__building__real_estate_complex__name',
     'cost': 'final_property_cost',
@@ -15,6 +16,7 @@ CALCULATION_SORT_FIELDS = {
 }
 
 CALCULATION_TABLE_HEADERS = (
+    ('city', 'Город'),
     ('timestamp', 'Дата расчета'),
     ('object', 'Объект'),
     ('cost', 'Стоимость объекта'),
@@ -52,7 +54,10 @@ def _parse_decimal(value):
 
 
 def get_calculation_filters(request):
+    """Возвращает нормализованные значения фильтров таблицы расчетов."""
+    selected_city = (request.GET.get('city') or '').strip()
     return {
+        'city': selected_city if selected_city.isdecimal() else '',
         'q': (request.GET.get('q') or '').strip(),
         'cost_from': (request.GET.get('cost_from') or '').strip(),
         'cost_to': (request.GET.get('cost_to') or '').strip(),
@@ -108,6 +113,18 @@ def _apply_years_range(queryset, filters, prefix, field, filter_name):
 
 
 def apply_calculation_filters(queryset, filters, prefix=''):
+    """Применяет фильтры таблицы расчетов к переданному queryset."""
+    city = filters.get('city')
+    if city:
+        queryset = queryset.filter(
+            **{
+                (
+                    f'{_prefixed("property", prefix)}__building'
+                    '__real_estate_complex__district__city_id'
+                ): city
+            }
+        )
+
     search = filters.get('q')
     if search:
         queryset = queryset.filter(
@@ -152,30 +169,57 @@ def apply_calculation_filters(queryset, filters, prefix=''):
     return queryset
 
 
-def get_calculation_sort(request):
-    sort = request.GET.get('sort') or 'timestamp'
-    if sort not in CALCULATION_SORT_FIELDS:
-        sort = 'timestamp'
+def get_calculation_sort(
+    request,
+    default_sort='timestamp',
+    default_order='desc',
+):
+    """Возвращает безопасные параметры сортировки таблицы расчетов."""
+    if default_sort not in CALCULATION_SORT_FIELDS:
+        default_sort = 'timestamp'
+    if default_order not in ('asc', 'desc'):
+        default_order = 'desc'
 
-    order = request.GET.get('order') or 'desc'
+    sort = request.GET.get('sort') or default_sort
+    if sort not in CALCULATION_SORT_FIELDS:
+        sort = default_sort
+
+    order = request.GET.get('order') or default_order
     if order not in ('asc', 'desc'):
-        order = 'desc'
+        order = default_order
 
     return sort, order
 
 
 def apply_calculation_sort(queryset, sort, order, prefix=''):
+    """Применяет сортировку таблицы расчетов к переданному queryset."""
     sort_field = _prefixed(CALCULATION_SORT_FIELDS[sort], prefix)
     if order == 'desc':
         sort_field = f'-{sort_field}'
     return queryset.order_by(sort_field)
 
 
-def build_calculation_table_headers(request):
-    current_sort, current_order = get_calculation_sort(request)
+def build_calculation_table_headers(
+    request,
+    excluded_fields=None,
+    default_sort='timestamp',
+    default_order='desc',
+    url_fragment='',
+):
+    """Формирует заголовки таблицы расчетов со ссылками сортировки."""
+    excluded_fields = set(excluded_fields or ())
+    url_fragment = url_fragment.lstrip('#')
+    current_sort, current_order = get_calculation_sort(
+        request,
+        default_sort=default_sort,
+        default_order=default_order,
+    )
     headers = []
 
     for field, label in CALCULATION_TABLE_HEADERS:
+        if field in excluded_fields:
+            continue
+
         next_order = 'desc'
         indicator = ''
         if field == current_sort:
@@ -185,18 +229,46 @@ def build_calculation_table_headers(request):
         query = request.GET.copy()
         query['sort'] = field
         query['order'] = next_order
+        url = f'?{query.urlencode()}'
+        if url_fragment:
+            url = f'{url}#{url_fragment}'
 
         headers.append(
             {
                 'field': field,
                 'label': label,
-                'url': f'?{query.urlencode()}',
+                'url': url,
                 'is_active': field == current_sort,
                 'indicator': indicator,
             }
         )
 
     return headers
+
+
+def get_calculation_city_choices(queryset, prefix=''):
+    """Возвращает города, доступные в переданном наборе расчетов."""
+    city_id_field = (
+        f'{_prefixed("property", prefix)}__building'
+        '__real_estate_complex__district__city_id'
+    )
+    city_name_field = (
+        f'{_prefixed("property", prefix)}__building'
+        '__real_estate_complex__district__city__name'
+    )
+    city_rows = (
+        queryset.values(city_id_field, city_name_field)
+        .distinct()
+        .order_by(city_name_field)
+    )
+
+    return [
+        {
+            'id': str(row[city_id_field]),
+            'name': row[city_name_field],
+        }
+        for row in city_rows
+    ]
 
 
 def format_currency(value):
@@ -214,6 +286,22 @@ def format_currency(value):
         return f'{num:,.2f}'.replace(',', ' ').replace('.', ',')
     except (ValueError, TypeError):
         return str(value)
+
+
+def format_compact_decimal(value):
+    """Форматирует десятичное число без незначащих нулей."""
+    if value is None:
+        return ''
+
+    try:
+        decimal_value = Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return str(value)
+
+    normalized_value = decimal_value.normalize()
+    if normalized_value == normalized_value.to_integral():
+        return str(normalized_value.quantize(Decimal('1')))
+    return format(normalized_value, 'f').replace('.', ',')
 
 
 def format_integer(value):
