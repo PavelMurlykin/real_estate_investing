@@ -597,10 +597,7 @@ class CustomerDeleteViewTests(TestCase):
             '?sort=city&amp;order=desc',
         )
         self.assertContains(response, 'data-catalog-sort-link')
-        self.assertContains(
-            response,
-            'data-catalog-results-target="#customer-calculation-results"',
-        )
+        self.assertContains(response, 'data-catalog-results')
         self.assertContains(response, 'catalog.js?v=20260516-sort')
 
     def test_catalog_static_sorts_results_without_page_reload(self):
@@ -609,6 +606,8 @@ class CustomerDeleteViewTests(TestCase):
         script = script_path.read_text(encoding='utf-8')
 
         self.assertIn('data-catalog-sort-link', script)
+        self.assertIn('getCatalogResultsTarget', script)
+        self.assertIn("closest('[data-catalog-results]')", script)
         self.assertIn('event.preventDefault()', script)
         self.assertIn('fetchResultsUrl(', script)
         self.assertIn("historyUrl.hash = ''", script)

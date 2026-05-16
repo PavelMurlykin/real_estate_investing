@@ -469,6 +469,8 @@ class DeveloperListViewTests(TestCase):
         self.assertContains(response, 'data-catalog-filter-form')
         self.assertContains(response, 'data-catalog-filter-control')
         self.assertContains(response, 'catalog-results')
+        self.assertContains(response, 'data-catalog-results')
+        self.assertContains(response, 'data-catalog-sort-link')
         self.assertContains(response, 'static/js/catalog.js')
         self.assertContains(response, 'Alpha Developer')
         self.assertNotContains(response, 'Beta Developer')

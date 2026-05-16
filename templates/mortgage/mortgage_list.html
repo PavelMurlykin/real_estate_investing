@@ -33,7 +33,7 @@
 
     <div class="card">
         <div class="card-body">
-            <div id="catalog-results">
+            <div id="catalog-results" data-catalog-results>
                 {% if calculations %}
                     {% if target_customer %}
                         <form method="post">
@@ -49,9 +49,7 @@
                                     {% endif %}
                                     {% for header in calculation_table_headers %}
                                         <th>
-                                            <a href="{{ header.url }}" class="text-body text-decoration-none fw-semibold" data-catalog-sort-link data-catalog-results-target="#catalog-results">
-                                                {{ header.label }}{% if header.indicator %} {{ header.indicator }}{% endif %}
-                                            </a>
+                                            {% include "includes/catalog_sort_link.html" with sort_url=header.url sort_label=header.label sort_indicator=header.indicator sort_link_classes="text-body text-decoration-none fw-semibold" %}
                                         </th>
                                     {% endfor %}
                                     <th class="text-nowrap">Действия</th>

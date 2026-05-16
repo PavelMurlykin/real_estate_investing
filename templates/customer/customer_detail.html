@@ -163,7 +163,7 @@
         <div class="card-body">
             {% include "mortgage/includes/calculation_filter_form.html" with calculation_filter_results_target="#customer-calculation-results" calculation_filter_id_prefix="customer_calculation" %}
 
-            <div id="customer-calculation-results">
+            <div id="customer-calculation-results" data-catalog-results>
                 {% if customer_calculations %}
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
@@ -171,9 +171,7 @@
                                 <tr>
                                     {% for header in calculation_table_headers %}
                                         <th>
-                                            <a href="{{ header.url }}" class="text-body text-decoration-none" data-catalog-sort-link data-catalog-results-target="#customer-calculation-results">
-                                                {{ header.label }}{% if header.indicator %} {{ header.indicator }}{% endif %}
-                                            </a>
+                                            {% include "includes/catalog_sort_link.html" with sort_url=header.url sort_label=header.label sort_indicator=header.indicator sort_link_classes="text-body text-decoration-none" %}
                                         </th>
                                     {% endfor %}
                                     <th>Действия</th>
