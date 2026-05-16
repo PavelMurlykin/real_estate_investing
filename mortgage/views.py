@@ -115,6 +115,50 @@ def _get_discount_markup_labels(discount_markup_type):
     return 'Удорожание, %', 'Удорожание, руб.'
 
 
+def _get_sample_calculation(request):
+    """Возвращает расчет-образец для предзаполнения формы калькулятора."""
+    sample_calculation_id = (request.GET.get('sample') or '').strip()
+    if not sample_calculation_id or not sample_calculation_id.isdecimal():
+        return None
+
+    return get_object_or_404(
+        MortgageCalculation.objects.select_related('property'),
+        pk=sample_calculation_id,
+    )
+
+
+def _get_calculation_form_initial(calculation):
+    """Формирует initial-данные формы из сохраненного расчета."""
+    discount_markup_rubles = (
+        calculation.base_property_cost
+        * calculation.discount_markup_value
+        / decimal.Decimal('100')
+    )
+    initial_payment_rubles = calculation.initial_payment_amount
+    grace_period_term = calculation.grace_period_term or 0
+    has_grace_period = 'yes' if calculation.has_grace_period else 'no'
+
+    return {
+        'PROPERTY': calculation.property_id,
+        'PROPERTY_COST': calculation.base_property_cost,
+        'DISCOUNT_MARKUP_TYPE': calculation.discount_markup_type,
+        'DISCOUNT_MARKUP_VALUE': calculation.discount_markup_value,
+        'DISCOUNT_MARKUP_RUBLES': discount_markup_rubles,
+        'DISCOUNT_MARKUP_SOURCE': 'percent',
+        'INITIAL_PAYMENT_PERCENT': calculation.initial_payment_percent,
+        'INITIAL_PAYMENT_RUBLES': initial_payment_rubles,
+        'INITIAL_PAYMENT_SOURCE': 'percent',
+        'INITIAL_PAYMENT_DATE': calculation.initial_payment_date,
+        'MORTGAGE_TERM_YEARS': calculation.mortgage_term // 12,
+        'MORTGAGE_TERM': calculation.mortgage_term,
+        'ANNUAL_RATE': calculation.annual_rate,
+        'HAS_GRACE_PERIOD': has_grace_period,
+        'GRACE_PERIOD_TERM_YEARS': grace_period_term // 12,
+        'GRACE_PERIOD_TERM': grace_period_term,
+        'GRACE_PERIOD_RATE': calculation.grace_period_rate,
+    }
+
+
 def mortgage_calculator(request):
     # Инициализация формы
     """Описание метода mortgage_calculator.
@@ -128,6 +172,11 @@ def mortgage_calculator(request):
         Any: Тип результата определяется вызывающим кодом.
     """
     target_customer = _get_target_customer(request)
+    sample_calculation = (
+        _get_sample_calculation(request)
+        if request.method == 'GET'
+        else None
+    )
 
     if request.method == 'POST':
         form_data = request.POST.copy()
@@ -140,12 +189,17 @@ def mortgage_calculator(request):
                         selected_property.property_cost
                     )
         mortgage_form = MortgageForm(form_data)
+    elif sample_calculation is not None:
+        mortgage_form = MortgageForm(
+            initial=_get_calculation_form_initial(sample_calculation)
+        )
     else:
         mortgage_form = MortgageForm()
 
     context = {
         'mortgage_form': mortgage_form,
         'target_customer': target_customer,
+        'sample_calculation': sample_calculation,
     }
 
     if request.method == 'POST':

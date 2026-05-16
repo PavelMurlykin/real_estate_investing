@@ -371,6 +371,75 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertNotContains(response, 'Наличие льготного периода')
         self.assertNotContains(response, 'Срок льготного периода, годы')
 
+    def test_calculation_detail_has_new_calculation_by_sample_button(self):
+        calculation = self._create_calculation()
+
+        response = self.client.get(
+            reverse('mortgage:calculation_detail', kwargs={'pk': calculation.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Новый расчет по образцу')
+        self.assertContains(
+            response,
+            f'{reverse("mortgage:mortgage_calculator")}?sample={calculation.pk}',
+        )
+
+    def test_mortgage_form_prefills_fields_from_sample_calculation(self):
+        calculation = self._create_calculation()
+        calculation.base_property_cost = Decimal('6000000.00')
+        calculation.discount_markup_type = 'markup'
+        calculation.discount_markup_value = Decimal('5.00')
+        calculation.final_property_cost = Decimal('6300000.00')
+        calculation.initial_payment_percent = Decimal('25.00')
+        calculation.initial_payment_date = date(2026, 2, 1)
+        calculation.mortgage_term = 180
+        calculation.annual_rate = Decimal('11.50')
+        calculation.has_grace_period = True
+        calculation.grace_period_term = 24
+        calculation.grace_period_rate = Decimal('3.50')
+        calculation.save()
+
+        response = self.client.get(
+            reverse('mortgage:mortgage_calculator'),
+            {'sample': calculation.pk},
+        )
+        form_initial = response.context['mortgage_form'].initial
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(form_initial['PROPERTY'], calculation.property_id)
+        self.assertEqual(
+            form_initial['PROPERTY_COST'],
+            Decimal('6000000.00'),
+        )
+        self.assertEqual(form_initial['DISCOUNT_MARKUP_TYPE'], 'markup')
+        self.assertEqual(
+            form_initial['DISCOUNT_MARKUP_VALUE'],
+            Decimal('5.00'),
+        )
+        self.assertEqual(
+            form_initial['DISCOUNT_MARKUP_RUBLES'],
+            Decimal('300000.00'),
+        )
+        self.assertEqual(form_initial['DISCOUNT_MARKUP_SOURCE'], 'percent')
+        self.assertEqual(
+            form_initial['INITIAL_PAYMENT_PERCENT'],
+            Decimal('25.00'),
+        )
+        self.assertEqual(
+            form_initial['INITIAL_PAYMENT_RUBLES'],
+            Decimal('1575000.00'),
+        )
+        self.assertEqual(form_initial['INITIAL_PAYMENT_SOURCE'], 'percent')
+        self.assertEqual(form_initial['INITIAL_PAYMENT_DATE'], date(2026, 2, 1))
+        self.assertEqual(form_initial['MORTGAGE_TERM_YEARS'], 15)
+        self.assertEqual(form_initial['MORTGAGE_TERM'], 180)
+        self.assertEqual(form_initial['ANNUAL_RATE'], Decimal('11.50'))
+        self.assertEqual(form_initial['HAS_GRACE_PERIOD'], 'yes')
+        self.assertEqual(form_initial['GRACE_PERIOD_TERM_YEARS'], 2)
+        self.assertEqual(form_initial['GRACE_PERIOD_TERM'], 24)
+        self.assertEqual(form_initial['GRACE_PERIOD_RATE'], Decimal('3.50'))
+
     def test_calculation_detail_shows_grace_period_rows(self):
         calculation = self._create_calculation()
         calculation.has_grace_period = True
