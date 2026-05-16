@@ -395,12 +395,6 @@ def mortgage_calculator(request):
                     ['Площадь', float(property_obj.area)],
                     ['Этаж', property_obj.floor],
                     ['Стоимость объекта, руб.', property_cost],
-                    [
-                        'Корректировка цены',
-                        'Скидка'
-                        if mortgage_data['DISCOUNT_MARKUP_TYPE'] == 'discount'
-                        else 'Удорожание',
-                    ],
                     [discount_markup_percent_label, discount_markup_value],
                     [discount_markup_rubles_label, discount_markup_rubles],
                     ['Итоговая стоимость объекта, руб.', final_property_cost],
@@ -464,12 +458,6 @@ def mortgage_calculator(request):
                         int(mortgage_data['MORTGAGE_TERM']),
                     ],
                     ['Годовая ставка, %', float(mortgage_data['ANNUAL_RATE'])],
-                    [
-                        'Наличие льготного периода',
-                        'Да'
-                        if mortgage_data['HAS_GRACE_PERIOD'] == 'yes'
-                        else 'Нет',
-                    ],
                 ]
 
                 if mortgage_data['HAS_GRACE_PERIOD'] == 'yes':
@@ -784,39 +772,35 @@ def calculation_delete(request, pk):
 def calculation_detail(request, pk):
     """Детальная информация о расчете"""
     calculation = get_object_or_404(
-        MortgageCalculation.objects.select_related('property'), pk=pk
+        MortgageCalculation.objects.select_related(
+            'property',
+            'property__layout',
+            'property__building',
+            'property__building__real_estate_complex',
+            'property__building__real_estate_complex__developer',
+            'property__building__real_estate_complex__district',
+            'property__building__real_estate_complex__district__city',
+            'property__building__real_estate_complex__real_estate_class',
+        ),
+        pk=pk,
     )
-
-    # Форматируем значения для отображения
-    calculation.formatted_final_property_cost = format_currency(
-        calculation.final_property_cost
+    calculator = MortgageCalculator(
+        property_cost=float(calculation.final_property_cost),
+        initial_payment_percent=float(calculation.initial_payment_percent),
+        initial_payment_date=calculation.initial_payment_date,
+        mortgage_term=int(calculation.mortgage_term),
+        annual_rate=float(calculation.annual_rate),
+        has_grace_period=calculation.has_grace_period,
+        grace_period_term=int(calculation.grace_period_term or 0),
+        grace_period_rate=float(calculation.grace_period_rate or 0),
     )
-    calculation.formatted_grace_monthly_payment = (
-        format_currency(calculation.grace_monthly_payment)
-        if calculation.grace_monthly_payment
-        else None
-    )
-    calculation.formatted_loan_after_grace = (
-        format_currency(calculation.loan_after_grace)
-        if calculation.loan_after_grace
-        else None
-    )
-    calculation.formatted_main_monthly_payment = (
-        format_currency(calculation.main_monthly_payment)
-        if calculation.main_monthly_payment
-        else None
-    )
-    calculation.formatted_total_loan_amount = (
-        format_currency(calculation.total_loan_amount)
-        if calculation.total_loan_amount
-        else None
-    )
-    calculation.formatted_total_overpayment = (
-        format_currency(calculation.total_overpayment)
-        if calculation.total_overpayment
-        else None
-    )
+    payment_schedule = calculator.get_payment_schedule()
 
     return render(
-        request, 'mortgage/mortgage_detail.html', {'calculation': calculation}
+        request,
+        'mortgage/mortgage_detail.html',
+        {
+            'calculation': calculation,
+            'payment_schedule': payment_schedule,
+        },
     )

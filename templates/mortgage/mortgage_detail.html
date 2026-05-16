@@ -1,77 +1,221 @@
 {% extends 'base.html' %}
 {% load mortgage_filters %}
 
+{% block title %}Детали расчета ипотеки{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Детали расчета ипотеки</h2>
-        <div>
-            <a href="{% url 'mortgage:calculation_list' %}" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Назад к списку
-            </a>
+        <a href="{% url 'mortgage:calculation_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Назад к списку
+        </a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4 class="mb-0">Данные объекта</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered mb-0">
+                    <tbody>
+                        <tr>
+                            <th scope="row" class="w-50">Застройщик</th>
+                            <td>{{ calculation.property.building.real_estate_complex.developer.name }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Город</th>
+                            <td>{{ calculation.property.building.real_estate_complex.district.city.name }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Название ЖК</th>
+                            <td>{{ calculation.property.building.real_estate_complex.name }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Класс ЖК</th>
+                            <td>{{ calculation.property.building.real_estate_complex.real_estate_class.name }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Корпус</th>
+                            <td>{{ calculation.property.building.number }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">№ квартиры</th>
+                            <td>{{ calculation.property.apartment_number }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Планировка</th>
+                            <td>{{ calculation.property.layout.name }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Площадь</th>
+                            <td>{{ calculation.property.area|compact_decimal }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Этаж</th>
+                            <td>{{ calculation.property.floor }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Стоимость объекта, руб.</th>
+                            <td>{{ calculation.base_property_cost|compact_currency }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">{{ calculation|discount_markup_label }}, %</th>
+                            <td>{{ calculation.discount_markup_value|compact_decimal }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">{{ calculation|discount_markup_label }}, руб.</th>
+                            <td>{{ calculation|discount_markup_amount|compact_currency }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Итоговая стоимость объекта, руб.</th>
+                            <td>{{ calculation.final_property_cost|compact_currency }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <div class="card mb-4">
         <div class="card-header">
-            <h4>Информация о расчете</h4>
+            <h4 class="mb-0">Параметры ипотеки</h4>
         </div>
         <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <p><strong>Дата расчета:</strong> {{ calculation.timestamp|date:"d.m.Y H:i" }}</p>
-                    <p><strong>Объект:</strong> {{ calculation.property.building.real_estate_complex.name }}, кв. {{ calculation.property.apartment_number }}</p>
-                    <p><strong>Итоговая стоимость объекта:</strong> {{ calculation.formatted_final_property_cost }} руб.</p>
-                    <p><strong>Первоначальный взнос:</strong> {{ calculation.initial_payment_percent }}%</p>
-                    <p><strong>Дата первоначального взноса:</strong> {{ calculation.initial_payment_date|date:"d.m.Y" }}</p>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>Срок ипотеки:</strong> {{ calculation.mortgage_term|term_from_months }}</p>
-                    <p><strong>Годовая ставка:</strong> {{ calculation.annual_rate }}%</p>
-                    <p><strong>Льготный период:</strong> {{ calculation.has_grace_period|yesno:"Да,Нет" }}</p>
-                    {% if calculation.has_grace_period %}
-                    <p><strong>Срок льготного периода:</strong> {{ calculation.grace_period_term|term_from_months }}</p>
-                    <p><strong>Ставка в льготный период:</strong> {{ calculation.grace_period_rate }}%</p>
-                    {% endif %}
-                </div>
+            <div class="table-responsive">
+                <table class="table table-bordered mb-0">
+                    <tbody>
+                        <tr>
+                            <th scope="row" class="w-50">Первоначальный взнос, %</th>
+                            <td>{{ calculation.initial_payment_percent|compact_decimal }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Первоначальный взнос, руб.</th>
+                            <td>{{ calculation.initial_payment_amount|compact_currency }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Дата первоначального взноса</th>
+                            <td>{{ calculation.initial_payment_date|date:"d.m.Y" }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Срок ипотеки, годы</th>
+                            <td>{{ calculation.mortgage_term|mortgage_years }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Срок ипотеки, мес.</th>
+                            <td>{{ calculation.mortgage_term }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Годовая ставка, %</th>
+                            <td>{{ calculation.annual_rate|compact_decimal }}</td>
+                        </tr>
+                        {% if calculation.has_grace_period %}
+                            <tr>
+                                <th scope="row">Срок льготного периода, годы</th>
+                                <td>{{ calculation.grace_period_term|mortgage_years }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Срок льготного периода, мес.</th>
+                                <td>{{ calculation.grace_period_term }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Годовая ставка в льготный период, %</th>
+                                <td>{{ calculation.grace_period_rate|compact_decimal }}</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4 class="mb-0">Результаты расчета</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered mb-0">
+                    <tbody>
+                        {% if calculation.has_grace_period %}
+                            <tr>
+                                <th scope="row" class="w-50">Число платежей за льготный период</th>
+                                <td>{{ calculation.grace_payments_count }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Дата последнего платежа по льготному периоду</th>
+                                <td>{{ calculation.grace_period_end_date|date:"d.m.Y" }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Сумма ежемесячного платежа во время льготного периода, руб.</th>
+                                <td>{{ calculation.grace_monthly_payment|compact_currency }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Сумма кредита после окончания льготного периода, руб.</th>
+                                <td>{{ calculation.loan_after_grace|compact_currency }}</td>
+                            </tr>
+                        {% endif %}
+                        <tr>
+                            <th scope="row" class="w-50">Число платежей за основной период</th>
+                            <td>{{ calculation.main_payments_count }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Дата последнего платежа по ипотеке</th>
+                            <td>{{ calculation.mortgage_end_date|date:"d.m.Y" }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Сумма ежемесячного платежа за основной период, руб.</th>
+                            <td>{{ calculation.main_monthly_payment|compact_currency }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Сумма кредита, руб.</th>
+                            <td>{{ calculation.total_loan_amount|compact_currency }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Сумма переплат по кредиту, руб.</th>
+                            <td>{{ calculation.total_overpayment|compact_currency }}</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
     <div class="card">
         <div class="card-header">
-            <h4>Результаты расчета</h4>
+            <h4 class="mb-0">График платежей</h4>
         </div>
         <div class="card-body">
-            {% if calculation.has_grace_period %}
-            <div class="row mb-4">
-                <div class="col-md-12">
-                    <h5>Льготный период</h5>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>Число платежей за льготный период:</strong> {{ calculation.grace_payments_count }}</p>
-                    <p><strong>Дата окончания льготного периода:</strong> {{ calculation.grace_period_end_date|date:"d.m.Y" }}</p>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>Ежемесячный платеж в льготный период:</strong> {{ calculation.formatted_grace_monthly_payment }} руб.</p>
-                    <p><strong>Сумма кредита после льготного периода:</strong> {{ calculation.formatted_loan_after_grace }} руб.</p>
-                </div>
-            </div>
-            {% endif %}
-
-            <div class="row">
-                <div class="col-md-12">
-                    <h5>Основной период</h5>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>Число платежей за основной период:</strong> {{ calculation.main_payments_count }}</p>
-                    <p><strong>Дата окончания ипотеки:</strong> {{ calculation.mortgage_end_date|date:"d.m.Y" }}</p>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>Ежемесячный платеж за основной период:</strong> {{ calculation.formatted_main_monthly_payment }} руб.</p>
-                    <p><strong>Общая сумма кредита:</strong> {{ calculation.formatted_total_loan_amount }} руб.</p>
-                    <p><strong>Общая переплата по кредиту:</strong> {{ calculation.formatted_total_overpayment }} руб.</p>
-                </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>№</th>
+                            <th>Дата платежа</th>
+                            <th>Сумма платежа, руб.</th>
+                            <th>В том числе проценты, руб.</th>
+                            <th>В том числе основной долг, руб.</th>
+                            <th>Остаток долга, руб.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payment_schedule %}
+                            <tr>
+                                <td>{{ payment.payment_number }}</td>
+                                <td>{{ payment.payment_date|date:"d.m.Y" }}</td>
+                                <td>{{ payment.payment_amount|compact_currency }}</td>
+                                <td>{{ payment.interest_amount|compact_currency }}</td>
+                                <td>{{ payment.principal_amount|compact_currency }}</td>
+                                <td>{{ payment.remaining_debt|compact_currency }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center">График платежей не сформирован.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

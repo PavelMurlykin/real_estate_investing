@@ -26,6 +26,16 @@ def years_label_from_months(value):
 
 
 @register.filter
+def mortgage_years(value):
+    """Возвращает количество полных лет из срока в месяцах."""
+    try:
+        months = int(value)
+    except (TypeError, ValueError):
+        return ''
+    return months // 12
+
+
+@register.filter
 def term_from_months(value):
     return format_term_from_months(value)
 

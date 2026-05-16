@@ -1,6 +1,8 @@
 from datetime import date
 from decimal import Decimal
+from io import BytesIO
 
+from openpyxl import load_workbook
 from django.test import TestCase
 from django.urls import reverse
 
@@ -144,7 +146,6 @@ class MortgageCalculatorViewTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Корректировка цены')
         self.assertContains(response, 'Скидка, %')
         self.assertContains(response, 'Скидка, руб.')
         self.assertContains(response, 'initial_payment_source')
@@ -273,6 +274,70 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertTrue(header_urls)
         self.assertTrue(
             all('#catalog-results' not in url for url in header_urls)
+        )
+
+    def test_calculation_detail_matches_excel_sections(self):
+        calculation = self._create_calculation()
+
+        response = self.client.get(
+            reverse('mortgage:calculation_detail', kwargs={'pk': calculation.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Данные объекта')
+        self.assertContains(response, 'Параметры ипотеки')
+        self.assertContains(response, 'Результаты расчета')
+        self.assertContains(response, 'График платежей')
+        self.assertContains(response, 'table-bordered', count=4)
+        self.assertContains(response, 'Застройщик')
+        self.assertContains(response, 'Город')
+        self.assertContains(response, 'Название ЖК')
+        self.assertContains(response, 'Стоимость объекта, руб.')
+        self.assertContains(response, 'Скидка, %')
+        self.assertContains(response, 'Итоговая стоимость объекта, руб.')
+        self.assertContains(response, 'Первоначальный взнос, %')
+        self.assertContains(response, 'Дата первоначального взноса')
+        self.assertContains(response, 'Срок ипотеки, годы')
+        self.assertContains(response, 'Срок ипотеки, мес.')
+        self.assertContains(response, 'Годовая ставка, %')
+        self.assertContains(response, 'Число платежей за основной период')
+        self.assertContains(response, 'Сумма кредита, руб.')
+        self.assertContains(response, 'Сумма переплат по кредиту, руб.')
+        self.assertContains(response, 'Дата платежа')
+        self.assertContains(response, 'В том числе проценты, руб.')
+        self.assertContains(response, 'В том числе основной долг, руб.')
+        self.assertContains(response, '01.01.2026')
+        self.assertContains(response, '20')
+        self.assertContains(response, '240')
+        self.assertNotContains(response, 'Корректировка цены')
+        self.assertNotContains(response, 'Наличие льготного периода')
+        self.assertNotContains(response, 'Срок льготного периода, годы')
+
+    def test_calculation_detail_shows_grace_period_rows(self):
+        calculation = self._create_calculation()
+        calculation.has_grace_period = True
+        calculation.grace_period_term = 24
+        calculation.grace_period_rate = Decimal('6.00')
+        calculation.grace_payments_count = 24
+        calculation.grace_period_end_date = date(2028, 1, 1)
+        calculation.grace_monthly_payment = Decimal('30000.00')
+        calculation.loan_after_grace = Decimal('3500000.00')
+        calculation.main_payments_count = 216
+        calculation.save()
+
+        response = self.client.get(
+            reverse('mortgage:calculation_detail', kwargs={'pk': calculation.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Срок льготного периода, годы')
+        self.assertContains(response, 'Срок льготного периода, мес.')
+        self.assertContains(response, 'Годовая ставка в льготный период, %')
+        self.assertContains(response, 'Число платежей за льготный период')
+        self.assertContains(response, 'Дата последнего платежа по льготному периоду')
+        self.assertContains(
+            response,
+            'Сумма ежемесячного платежа во время льготного периода, руб.',
         )
 
     def test_calculate_uses_property_cost_when_property_cost_is_empty(self):
@@ -428,6 +493,16 @@ class MortgageCalculatorViewTests(TestCase):
             'attachment; filename="mortgage_calculation.xlsx"',
             response['Content-Disposition'],
         )
+        workbook = load_workbook(BytesIO(response.content))
+        worksheet = workbook.active
+        values = [
+            cell.value
+            for row in worksheet.iter_rows()
+            for cell in row
+            if cell.value is not None
+        ]
+        self.assertNotIn('Корректировка цены', values)
+        self.assertNotIn('Наличие льготного периода', values)
 
     def test_property_cost_api_returns_cost_from_database(self):
         """Описание метода test_property_cost_api_returns_cost_from_database.
