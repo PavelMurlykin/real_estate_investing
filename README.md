@@ -1,162 +1,258 @@
-# Mortgage Calculator
+# Real Estate Investing
 
-A Django-based web application for calculating mortgage payments with support for grace periods.
+Django-приложение для учета объектов недвижимости, застройщиков, жилых
+комплексов, банковских программ, клиентов и ипотечных расчетов. Проект
+запускается локально через Django или как Docker Compose stack из трех
+контейнеров: `nginx`, `web` и `db`.
 
-## Features
+## Возможности
 
-- **Mortgage Calculation**: Calculate monthly payments, total loan amount, and overpayment for mortgages
-- **Grace Period Support**: Option to include a grace period with different interest rates
-- **Payment Schedule**: Detailed amortization table showing each payment's breakdown
-- **Excel Export**: Save calculation results and payment schedule to Excel format
-- **Input Validation**: Comprehensive error handling for user inputs
-- **Responsive Design**: Clean, user-friendly interface
+- Каталог недвижимости: объекты, ЖК, корпуса, застройщики и справочники.
+- Справочники локаций: регионы, города, районы, метро и линии метро.
+- Банки, ипотечные программы и ключевая ставка.
+- Ипотечный калькулятор с сохранением расчетов.
+- Калькулятор траншевой ипотеки.
+- Клиенты и сохраненные клиентские расчеты.
+- Пользователи с кастомной моделью и входом по email или телефону.
+- Экспорт/импорт данных и работа с Excel.
+- Healthcheck endpoint: `/health/`.
 
-## Technology Stack
+## Технологический стек
 
-- **Backend**: Django 4.2.7
-- **Frontend**: HTML, CSS, JavaScript
-- **Data Export**: OpenPyXL for Excel generation
-- **Date Handling**: python-dateutil
+- Python 3.12+
+- Django 6.0
+- PostgreSQL 18
+- Gunicorn
+- nginx
+- Docker Compose
+- django-bootstrap5
+- pytest + pytest-django
+- OpenPyXL
 
-## Installation
+## Архитектура Docker Compose
 
-1. Clone or download the project files
-2. Create a virtual environment (recommended):
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+Compose запускает три сервиса:
 
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+- `nginx` - публичная HTTP-точка входа, проксирует запросы в Django и отдает
+  собранную статику.
+- `web` - Django + Gunicorn. При старте ждет PostgreSQL, выполняет
+  `collectstatic`, применяет миграции и запускает Gunicorn.
+- `db` - PostgreSQL 18. Данные хранятся в named volume `postgres_data`.
 
-4. Apply database migrations:
-   ```bash
-   python manage.py migrate
-   ```
+Статика хранится в named volume `staticfiles`. PostgreSQL не публикуется наружу
+и доступен только внутри Docker-сети.
 
-5. Create a superuser (optional, for admin access):
-   ```bash
-   python manage.py createsuperuser
-   ```
+## Быстрый запуск через Docker Compose
 
-6. Run the development server:
-   ```bash
-   python manage.py runserver
-   ```
+Создать `.env`:
 
-7. Open your browser and navigate to `http://127.0.0.1:8000/`
-
-## Docker Compose
-
-The project can run as three containers: `nginx`, `web` with Django and
-Gunicorn, and `db` with PostgreSQL. PostgreSQL data is stored in the named
-Docker volume `postgres_data`; collected static files are shared through the
-named volume `staticfiles`.
-
-1. Create a local `.env` file from `.env.example` and fill in `SECRET_KEY`,
-   `DB_NAME`, `DB_USER`, and `DB_PASSWORD`.
-
-2. Build and start the stack:
-   ```bash
-   docker compose up --build
-   ```
-
-3. Open `http://localhost:8080/`.
-
-If port `8080` is already in use, set another host port in `.env` with
-`NGINX_PORT`, for example `NGINX_PORT=8081`. When `CSRF_TRUSTED_ORIGINS` is
-set explicitly, include the same host port there too, for example
-`http://localhost:8081,http://127.0.0.1:8081`.
-
-On startup the `web` container waits for PostgreSQL, runs
-`collectstatic --noinput`, applies migrations with `migrate --noinput`, and
-then starts Gunicorn. Nginx serves `/static/` directly and proxies all other
-requests to Django.
-
-## Usage
-
-1. Enter the required mortgage parameters:
-   - Property cost (in rubles)
-   - Down payment percentage
-   - Initial payment date (DD.MM.YYYY format)
-   - Mortgage term in years
-   - Annual interest rate
-
-2. If applicable, select "Yes" for grace period and provide:
-   - Grace period term in years
-   - Grace period interest rate
-
-3. Click "Calculate" to see results
-
-4. Optionally, click "Save to Excel" to export the results
-
-## Input Parameters
-
-- Property Cost (rubles)
-- Down Payment (%)
-- Initial Payment Date (DD.MM.YYYY)
-- Mortgage Term (years)
-- Annual Interest Rate (%)
-- Grace Period (yes/no)
-  - If yes: Grace Period Term (years) and Grace Period Interest Rate (%)
-
-## Output Parameters
-
-- Number of grace period payments
-- Last payment date of grace period
-- Monthly payment during grace period (rubles)
-- Loan amount after grace period (rubles)
-- Number of main period payments
-- Mortgage end date
-- Monthly payment during main period (rubles)
-- Total loan amount (rubles)
-- Total overpayment (rubles)
-- Detailed payment schedule
-
-## Project Structure
-
-```
-mortgage_calculator/
-├── manage.py
-├── mortgage/
-│   ├── __init__.py
-│   ├── settings.py
-│   ├── urls.py
-│   └── wsgi.py
-└── calculator/
-    ├── __init__.py
-    ├── admin.py
-    ├── apps.py
-    ├── forms.py
-    ├── models.py
-    ├── views.py
-    ├── mortgage_calculator.py
-    └── templates/
-        └── calculator/
-            └── index.html
+```bash
+cp .env.example .env
 ```
 
-## Key Components
+Заполнить обязательные значения:
 
-- **MortgageCalculator Class**: Implements the business logic for mortgage calculations
-- **MortgageForm**: Handles input validation and data cleaning
-- **MortgageCalculation Model**: Stores calculation results in the database
-- **Excel Export**: Generates detailed reports in Excel format
+```env
+DEBUG=False
+SECRET_KEY=replace-with-long-random-secret-key
+ALLOWED_HOSTS=localhost,127.0.0.1,web
+CSRF_TRUSTED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
+DB_NAME=real_estate_investing
+DB_USER=real_estate_investing
+DB_PASSWORD=replace-with-strong-database-password
+DB_HOST=db
+DB_PORT=5432
+NGINX_PORT=8080
+EMAIL_PORT=25
+```
 
-## Requirements
+Собрать и запустить контейнеры:
 
-- Python 3.8+
-- Django 4.2.7
-- OpenPyXL 3.1.2
-- python-dateutil 2.8.2
+```bash
+docker compose up -d --build
+```
 
-## License
+Проверить состояние:
 
-This project is open source and available under the MIT License.
+```bash
+docker compose ps
+docker compose logs --tail 100 web
+```
 
-## Support
+Открыть приложение:
 
-For issues or questions regarding this application, please check the Django documentation or create an issue in the project repository.
+```text
+http://localhost:8080/
+```
+
+Если порт `8080` занят, указать другой порт в `.env`, например:
+
+```env
+NGINX_PORT=8081
+CSRF_TRUSTED_ORIGINS=http://localhost:8081,http://127.0.0.1:8081
+```
+
+## Локальный запуск без Docker
+
+Для локального запуска нужен PostgreSQL и заполненный `.env`.
+
+Создать виртуальное окружение:
+
+```bash
+python -m venv .venv
+```
+
+Активировать на Windows:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Активировать на Linux/macOS:
+
+```bash
+source .venv/bin/activate
+```
+
+Установить зависимости:
+
+```bash
+pip install -r requirements.txt
+```
+
+Пример локального `.env`:
+
+```env
+DEBUG=True
+SECRET_KEY=local-development-secret-key
+ALLOWED_HOSTS=localhost,127.0.0.1
+CSRF_TRUSTED_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
+DB_NAME=real_estate_investing
+DB_USER=real_estate_investing
+DB_PASSWORD=replace-with-local-password
+DB_HOST=localhost
+DB_PORT=5432
+EMAIL_PORT=25
+```
+
+Применить миграции и запустить сервер:
+
+```bash
+python manage.py migrate
+python manage.py runserver
+```
+
+Открыть:
+
+```text
+http://127.0.0.1:8000/
+```
+
+## Основные URL
+
+- `/` - главная страница.
+- `/admin/` - Django admin.
+- `/health/` - healthcheck.
+- `/users/` - регистрация, вход и профиль.
+- `/property/` - объекты недвижимости.
+- `/property/complexes/` - жилые комплексы.
+- `/property/developers/` - застройщики.
+- `/property/dictionaries/` - справочники недвижимости.
+- `/locations/` - справочники локаций.
+- `/bank/` - банки и банковские справочники.
+- `/bank/key-rate/` - ключевая ставка.
+- `/mortgage/` - ипотечный калькулятор.
+- `/mortgage/calculations/` - сохраненные ипотечные расчеты.
+- `/trench-mortgage/` - калькулятор траншевой ипотеки.
+- `/customers/` - клиенты.
+- `/api/` - внутренние API для интерфейса.
+
+## Тесты и проверки
+
+Запустить Django check:
+
+```bash
+python manage.py check
+```
+
+Запустить тесты:
+
+```bash
+python -m pytest
+```
+
+Через Docker:
+
+```bash
+docker compose exec web python manage.py check
+docker compose exec web python -m pytest
+```
+
+## Backup и восстановление базы
+
+Создать backup PostgreSQL:
+
+```bash
+mkdir -p ~/backups
+docker compose exec db sh -c 'pg_dump -Fc -U "$POSTGRES_USER" "$POSTGRES_DB" > /tmp/backup.dump'
+docker compose cp db:/tmp/backup.dump ~/backups/real_estate_investing-$(date +%Y-%m-%d-%H%M).dump
+```
+
+Подробная инструкция по backup/restore находится в
+`.documentation/backup_restore.md`.
+
+## Документация по эксплуатации
+
+Эксплуатационная документация находится в `.documentation/`:
+
+- `README.md` - карта документации.
+- `server_setup.md` - подготовка чистого Ubuntu-сервера.
+- `application_initial_setup.md` - первичная настройка приложения на сервере.
+- `manual_deployment.md` - ручной деплой после изменений в Git.
+- `backup_restore.md` - backup и восстановление PostgreSQL.
+- `https_setup.md` - настройка HTTPS через Caddy.
+- `production_update_checklist.md` - checklist перед production-обновлением.
+- `troubleshooting.md` - типовые ошибки и диагностика.
+
+## Структура проекта
+
+```text
+real_estate_investing/
+├── bank/                    # Банки, программы и ключевая ставка
+├── core/                    # Общие endpoint'ы и healthcheck
+├── customer/                # Клиенты и клиентские расчеты
+├── homepage/                # Главная страница
+├── location/                # Регионы, города, районы, метро
+├── mortgage/                # Ипотечный калькулятор
+├── property/                # Недвижимость, ЖК, застройщики, справочники
+├── trench_mortgage/         # Траншевая ипотека
+├── users/                   # Пользователи и аутентификация
+├── real_estate_investing/   # Настройки, urls, wsgi/asgi
+├── static/                  # CSS, JS, изображения
+├── templates/               # Django templates
+├── docker/                  # nginx config и Django entrypoint
+├── .documentation/          # Документация эксплуатации
+├── compose.yaml
+├── Dockerfile
+└── requirements.txt
+```
+
+## Переменные окружения
+
+Полный список переменных описан в `.env.example`.
+
+Ключевые переменные:
+
+- `DEBUG`
+- `SECRET_KEY`
+- `ALLOWED_HOSTS`
+- `CSRF_TRUSTED_ORIGINS`
+- `DB_NAME`
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_HOST`
+- `DB_PORT`
+- `NGINX_PORT`
+- `EMAIL_*`
+
+Не коммитить `.env` и реальные секреты в Git.
