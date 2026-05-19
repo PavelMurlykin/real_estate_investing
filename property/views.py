@@ -1305,7 +1305,7 @@ class PropertyDetailView(DetailView):
             'building',
             'layout',
             'decoration',
-        )
+        ).prefetch_related('window_views')
 
 
 class PropertyFormContextMixin:

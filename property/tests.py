@@ -787,6 +787,55 @@ class PropertyFormCascadeTests(TestCase):
             [self.building.pk],
         )
 
+    def test_property_list_has_detail_action(self):
+        """The property list should link each row to its detail card."""
+        property_obj = Property.objects.create(
+            apartment_number='101',
+            building=self.building,
+            decoration=self.decoration,
+            layout=self.layout,
+            area=Decimal('42.00'),
+            floor=10,
+            property_cost=Decimal('1000000.00'),
+        )
+
+        response = self.client.get(reverse('property:list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Подробнее')
+        self.assertContains(
+            response,
+            reverse('property:detail', kwargs={'pk': property_obj.pk}),
+        )
+
+    def test_property_detail_shows_title_window_views_and_images(self):
+        """The property detail page should show new view and image fields."""
+        property_obj = Property.objects.create(
+            apartment_number='101',
+            building=self.building,
+            decoration=self.decoration,
+            layout=self.layout,
+            area=Decimal('42.00'),
+            floor=10,
+            property_cost=Decimal('1000000.00'),
+            layout_image='property/layouts/layout.gif',
+            floor_plan_image='property/floor_plans/floor-plan.gif',
+            window_view_image='property/window_views/window-view.gif',
+        )
+        property_obj.window_views.add(self.window_view)
+
+        response = self.client.get(
+            reverse('property:detail', kwargs={'pk': property_obj.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Complex 1 - 1 - 101')
+        self.assertContains(response, 'Вид из окна')
+        self.assertContains(response, 'Park')
+        self.assertContains(response, 'property/layouts/layout.gif')
+        self.assertContains(response, 'property/floor_plans/floor-plan.gif')
+        self.assertContains(response, 'property/window_views/window-view.gif')
+
     def test_create_view_saves_window_views_and_image_fields(self):
         """The property create form should save window views and images."""
         with TemporaryDirectory() as media_root:
