@@ -1,8 +1,10 @@
 from decimal import Decimal
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from django.conf import settings
-from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from location.models import City, District, Metro, MetroLine, Region
@@ -22,6 +24,14 @@ from .models import (
     RealEstateComplexBuilding,
     RealEstateComplexMetroAvailability,
     RealEstateType,
+    WindowView,
+)
+
+
+SIMPLE_GIF = (
+    b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!'
+    b'\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00'
+    b'\x00\x02\x02L\x01\x00;'
 )
 
 
@@ -681,6 +691,12 @@ class PropertyFormCascadeTests(TestCase):
             number='2',
             real_estate_complex=self.other_complex,
         )
+        self.layout = ApartmentLayout.objects.create(name='Layout 1')
+        self.decoration = ApartmentDecoration.objects.create(
+            name='Decoration 1'
+        )
+        self.window_view = WindowView.objects.create(name='Park')
+        self.other_window_view = WindowView.objects.create(name='River')
 
     def create_complex(self, name, developer, district):
         """Create a complex with shared dictionary values."""
@@ -709,6 +725,12 @@ class PropertyFormCascadeTests(TestCase):
             },
             {self.building.pk, self.other_building.pk},
         )
+        self.assertContains(response, 'enctype="multipart/form-data"')
+        self.assertContains(response, 'id_layout_image')
+        self.assertContains(response, 'id_floor_plan_image')
+        self.assertContains(response, 'id_window_view_image')
+        self.assertContains(response, 'type="checkbox"')
+        self.assertContains(response, 'Park')
 
     def test_invalid_create_post_restores_selected_location_chain(self):
         """A selected building should restore its dependent selectors."""
@@ -764,3 +786,49 @@ class PropertyFormCascadeTests(TestCase):
             [item['id'] for item in selected_response.json()],
             [self.building.pk],
         )
+
+    def test_create_view_saves_window_views_and_image_fields(self):
+        """The property create form should save window views and images."""
+        with TemporaryDirectory() as media_root:
+            with override_settings(MEDIA_ROOT=media_root):
+                response = self.client.post(
+                    reverse('property:create'),
+                    {
+                        'apartment_number': '101',
+                        'building': self.building.pk,
+                        'decoration': self.decoration.pk,
+                        'layout': self.layout.pk,
+                        'area': '42.00',
+                        'floor': '10',
+                        'property_cost': '1000000.00',
+                        'window_views': [
+                            self.window_view.pk,
+                            self.other_window_view.pk,
+                        ],
+                        'layout_image': SimpleUploadedFile(
+                            'layout.gif',
+                            SIMPLE_GIF,
+                            content_type='image/gif',
+                        ),
+                        'floor_plan_image': SimpleUploadedFile(
+                            'floor-plan.gif',
+                            SIMPLE_GIF,
+                            content_type='image/gif',
+                        ),
+                        'window_view_image': SimpleUploadedFile(
+                            'window-view.gif',
+                            SIMPLE_GIF,
+                            content_type='image/gif',
+                        ),
+                    },
+                )
+
+        self.assertRedirects(response, reverse('property:list'))
+        property_obj = Property.objects.get(apartment_number='101')
+        self.assertEqual(
+            set(property_obj.window_views.values_list('pk', flat=True)),
+            {self.window_view.pk, self.other_window_view.pk},
+        )
+        self.assertTrue(property_obj.layout_image.name)
+        self.assertTrue(property_obj.floor_plan_image.name)
+        self.assertTrue(property_obj.window_view_image.name)

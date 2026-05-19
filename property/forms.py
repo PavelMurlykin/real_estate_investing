@@ -9,6 +9,7 @@ from .models import (
     RealEstateComplex,
     RealEstateComplexBuilding,
     RealEstateComplexMetroAvailability,
+    WindowView,
 )
 
 
@@ -65,6 +66,10 @@ class PropertyForm(forms.ModelForm):
             'area',
             'floor',
             'property_cost',
+            'window_views',
+            'layout_image',
+            'floor_plan_image',
+            'window_view_image',
         ]
         widgets = {
             'apartment_number': forms.TextInput(
@@ -80,6 +85,16 @@ class PropertyForm(forms.ModelForm):
             'property_cost': forms.NumberInput(
                 attrs={'class': 'form-control', 'step': '0.01'}
             ),
+            'window_views': forms.CheckboxSelectMultiple(
+                attrs={'class': 'form-check-input'}
+            ),
+            'layout_image': forms.FileInput(attrs={'class': 'form-control'}),
+            'floor_plan_image': forms.FileInput(
+                attrs={'class': 'form-control'}
+            ),
+            'window_view_image': forms.FileInput(
+                attrs={'class': 'form-control'}
+            ),
         }
         labels = {
             'apartment_number': 'Номер квартиры',
@@ -89,7 +104,19 @@ class PropertyForm(forms.ModelForm):
             'area': 'Площадь, м2',
             'floor': 'Этаж',
             'property_cost': 'Стоимость, руб.',
+            'window_views': 'Вид из окна',
+            'layout_image': 'Планировка',
+            'floor_plan_image': 'План этажа',
+            'window_view_image': 'Вид из окна',
         }
+
+    def __init__(self, *args, **kwargs):
+        """Prepare property form dictionary fields."""
+        super().__init__(*args, **kwargs)
+        self.fields['window_views'].queryset = WindowView.objects.order_by(
+            'name'
+        )
+        self.fields['window_views'].required = False
 
 
 class DeveloperForm(forms.ModelForm):

@@ -37,6 +37,7 @@ from .models import (
     RealEstateComplex,
     RealEstateComplexBuilding,
     RealEstateType,
+    WindowView,
 )
 
 
@@ -553,6 +554,13 @@ class DictionaryCatalogView(BaseCatalogView):
         CatalogModelConfig(
             key='apartment_decoration',
             model=ApartmentDecoration,
+            form_fields=('name', 'description', 'is_active'),
+            table_fields=('name', 'description', 'is_active'),
+            order_by=('name',),
+        ),
+        CatalogModelConfig(
+            key='window_view',
+            model=WindowView,
             form_fields=('name', 'description', 'is_active'),
             table_fields=('name', 'description', 'is_active'),
             order_by=('name',),

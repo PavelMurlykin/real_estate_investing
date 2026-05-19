@@ -388,6 +388,33 @@ class ApartmentDecoration(BaseModel):
         return self.name
 
 
+class WindowView(BaseModel):
+    """Dictionary entry for a property window view."""
+
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name='Вид из окна',
+    )
+    description = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Описание',
+    )
+
+    class Meta(BaseModel.Meta):
+        """Window view table metadata."""
+
+        db_table = 'window_view'
+        verbose_name = 'Вид из окна'
+        verbose_name_plural = 'Виды из окна'
+        ordering = ['name']
+
+    def __str__(self):
+        """Return the window view name."""
+        return self.name
+
+
 class Property(BaseModel):
     """
     Список объектов недвижимости.
@@ -413,6 +440,31 @@ class Property(BaseModel):
     floor = models.IntegerField(verbose_name='Этаж')
     property_cost = models.DecimalField(
         max_digits=15, decimal_places=2, verbose_name='Стоимость объекта, руб.'
+    )
+    layout_image = models.ImageField(
+        upload_to='property/layouts/',
+        blank=True,
+        null=True,
+        verbose_name='Планировка',
+    )
+    floor_plan_image = models.ImageField(
+        upload_to='property/floor_plans/',
+        blank=True,
+        null=True,
+        verbose_name='План этажа',
+    )
+    window_view_image = models.ImageField(
+        upload_to='property/window_views/',
+        blank=True,
+        null=True,
+        verbose_name='Вид из окна',
+    )
+    window_views = models.ManyToManyField(
+        WindowView,
+        through='PropertyWindowView',
+        related_name='properties',
+        blank=True,
+        verbose_name='Виды из окна',
     )
 
     class Meta(BaseModel.Meta):
@@ -446,3 +498,31 @@ class Property(BaseModel):
             f'корпус {building_number}, '
             f'кв. {self.apartment_number}'
         )
+
+
+class PropertyWindowView(BaseModel):
+    """Text window view selected for a property."""
+
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        verbose_name='Объект недвижимости',
+    )
+    window_view = models.ForeignKey(
+        WindowView,
+        on_delete=models.PROTECT,
+        verbose_name='Вид из окна',
+    )
+
+    class Meta(BaseModel.Meta):
+        """Property to window view link table metadata."""
+
+        db_table = 'property_window_view'
+        verbose_name = 'Вид из окна объекта недвижимости'
+        verbose_name_plural = 'Виды из окна объектов недвижимости'
+        unique_together = ('property', 'window_view')
+        ordering = ['property', 'window_view__name']
+
+    def __str__(self):
+        """Return a readable property window view link."""
+        return f'{self.property}: {self.window_view}'
