@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}{% if object %}Редактирование{% else %}Создание{% endif %} объекта недвижимости{% endblock %}
 
@@ -11,7 +12,7 @@
 
     <div class="card">
         <div class="card-body">
-            <form method="post">
+            <form method="post" data-cascade-selects data-cascade-data="#property-form-data">
                 {% csrf_token %}
 
                 <h4 class="mb-3 mt-4">Местоположение</h4>
@@ -20,7 +21,7 @@
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label">Регион</label>
-                            <select class="form-control" id="region-select">
+                            <select class="form-control" id="region-select" data-cascade-field="region">
                                 <option value="">Выберите регион</option>
                                 {% for region in regions %}
                                 <option value="{{ region.id }}" {% if current_region == region.id %}selected{% endif %}>{{ region.name }}</option>
@@ -32,7 +33,7 @@
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label">Город</label>
-                            <select class="form-control" id="city-select">
+                            <select class="form-control" id="city-select" data-cascade-field="city" data-cascade-data-key="cities" data-cascade-empty-label="Выберите город" data-cascade-parent-region="region_id" data-cascade-autofill-region="region_id">
                                 <option value="">Выберите город</option>
                                 {% if filtered_cities %}
                                     {% for city in filtered_cities %}
@@ -52,7 +53,7 @@
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label">Район</label>
-                            <select class="form-control" id="district-select">
+                            <select class="form-control" id="district-select" data-cascade-field="district" data-cascade-data-key="districts" data-cascade-empty-label="Выберите район" data-cascade-parent-region="city__region_id" data-cascade-parent-city="city_id" data-cascade-autofill-region="city__region_id" data-cascade-autofill-city="city_id">
                                 <option value="">Выберите район</option>
                                 {% if filtered_districts %}
                                     {% for district in filtered_districts %}
@@ -70,7 +71,7 @@
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label">Застройщик</label>
-                            <select class="form-control" id="developer-select">
+                            <select class="form-control" id="developer-select" data-cascade-field="developer">
                                 <option value="">Выберите застройщика</option>
                                 {% for developer in developers %}
                                 <option value="{{ developer.id }}" {% if current_developer == developer.id %}selected{% endif %}>{{ developer.name }}</option>
@@ -84,7 +85,7 @@
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label">Жилой комплекс</label>
-                            <select class="form-control" id="complex-select">
+                            <select class="form-control" id="complex-select" data-cascade-field="complex" data-cascade-data-key="complexes" data-cascade-empty-label="Выберите ЖК" data-cascade-parent-region="district__city__region_id" data-cascade-parent-city="district__city_id" data-cascade-parent-district="district_id" data-cascade-parent-developer="developer_id" data-cascade-autofill-region="district__city__region_id" data-cascade-autofill-city="district__city_id" data-cascade-autofill-district="district_id" data-cascade-autofill-developer="developer_id">
                                 <option value="">Выберите ЖК</option>
                                 {% if filtered_complexes %}
                                     {% for complex in filtered_complexes %}
@@ -102,17 +103,11 @@
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label for="{{ form.building.id_for_label }}" class="form-label">{{ form.building.label }}</label>
-                            <select class="form-control" id="id_building" name="building">
+                            <select class="form-control" id="id_building" name="building" data-cascade-field="building" data-cascade-data-key="buildings" data-cascade-label-key="number" data-cascade-empty-label="Выберите корпус" data-cascade-parent-complex="real_estate_complex_id" data-cascade-required-parents="complex">
                                 <option value="">Выберите корпус</option>
-                                {% if filtered_buildings %}
-                                    {% for building in filtered_buildings %}
-                                    <option value="{{ building.id }}" {% if current_building == building.id %}selected{% endif %}>{{ building.number }}</option>
-                                    {% endfor %}
-                                {% else %}
-                                    {% for building in buildings %}
-                                    <option value="{{ building.id }}" {% if current_building == building.id %}selected{% endif %}>{{ building.number }}</option>
-                                    {% endfor %}
-                                {% endif %}
+                                {% for building in buildings %}
+                                <option value="{{ building.id }}" {% if current_building == building.id %}selected{% endif %}>{{ building.number }}</option>
+                                {% endfor %}
                             </select>
                             {% if form.building.errors %}
                             <div class="text-danger">{{ form.building.errors }}</div>
@@ -187,91 +182,9 @@
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Функция для фильтрации городов по региону
-    const regionSelect = document.getElementById('region-select');
-    const citySelect = document.getElementById('city-select');
-    const districtSelect = document.getElementById('district-select');
-    const developerSelect = document.getElementById('developer-select');
-    const complexSelect = document.getElementById('complex-select');
-    const buildingSelect = document.getElementById('id_building');
+{{ property_form_data|json_script:"property-form-data" }}
+{% endblock %}
 
-    // Функция для загрузки данных через AJAX
-    function loadOptions(url, selectElement, params = {}) {
-        fetch(url + '?' + new URLSearchParams(params))
-            .then(response => response.json())
-            .then(data => {
-                selectElement.innerHTML = '<option value="">Выберите вариант</option>';
-                data.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.id;
-                    option.textContent = item.name;
-                    selectElement.appendChild(option);
-                });
-
-                // Если есть текущее значение, устанавливаем его
-                if (params.currentValue) {
-                    selectElement.value = params.currentValue;
-                    // Вызываем событие change для обновления следующих списков
-                    selectElement.dispatchEvent(new Event('change'));
-                }
-                if (window.searchableSelect) {
-                    window.searchableSelect.refresh(selectElement);
-                }
-            });
-    }
-
-    // При изменении региона фильтруем города
-    regionSelect.addEventListener('change', function() {
-        const regionId = this.value;
-        if (regionId) {
-            loadOptions('/api/cities/', citySelect, {region_id: regionId});
-        } else {
-            citySelect.innerHTML = '<option value="">Выберите город</option>';
-            districtSelect.innerHTML = '<option value="">Выберите район</option>';
-            complexSelect.innerHTML = '<option value="">Выберите ЖК</option>';
-            buildingSelect.innerHTML = '<option value="">Выберите корпус</option>';
-        }
-    });
-
-    // При изменении города фильтруем районы
-    citySelect.addEventListener('change', function() {
-        const cityId = this.value;
-        if (cityId) {
-            loadOptions('/api/districts/', districtSelect, {city_id: cityId});
-        } else {
-            districtSelect.innerHTML = '<option value="">Выберите район</option>';
-            complexSelect.innerHTML = '<option value="">Выберите ЖК</option>';
-            buildingSelect.innerHTML = '<option value="">Выберите корпус</option>';
-        }
-    });
-
-    // При изменении района фильтруем ЖК
-    districtSelect.addEventListener('change', function() {
-        const districtId = this.value;
-        if (districtId) {
-            loadOptions('/api/complexes/', complexSelect, {district_id: districtId});
-        } else {
-            complexSelect.innerHTML = '<option value="">Выберите ЖК</option>';
-            buildingSelect.innerHTML = '<option value="">Выберите корпус</option>';
-        }
-    });
-
-    // При изменении ЖК фильтруем корпуса
-    complexSelect.addEventListener('change', function() {
-        const complexId = this.value;
-        if (complexId) {
-            loadOptions('/api/buildings/', buildingSelect, {complex_id: complexId});
-        } else {
-            buildingSelect.innerHTML = '<option value="">Выберите корпус</option>';
-        }
-    });
-
-    // Если при загрузке страницы есть выбранные значения, инициируем цепочку событий
-    {% if current_region %}
-    regionSelect.dispatchEvent(new Event('change'));
-    {% endif %}
-});
-</script>
+{% block extra_scripts %}
+<script src="{% static 'js/dependent_selects.js' %}"></script>
 {% endblock %}

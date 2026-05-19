@@ -1300,7 +1300,125 @@ class PropertyDetailView(DetailView):
         )
 
 
-class PropertyCreateView(CreateView):
+class PropertyFormContextMixin:
+    """Prepare related selectors for the property create and update forms."""
+
+    def get_selected_building(self, form):
+        """Return the building selected by the bound form or object."""
+        building_id = ''
+        if form.is_bound:
+            building_id = form.data.get('building', '')
+        elif getattr(form.instance, 'building_id', None):
+            building_id = form.instance.building_id
+
+        if not building_id:
+            return None
+        if not str(building_id).isdigit():
+            return None
+
+        return (
+            RealEstateComplexBuilding.objects.select_related(
+                'real_estate_complex__developer',
+                'real_estate_complex__district__city__region',
+            )
+            .filter(pk=building_id)
+            .first()
+        )
+
+    def get_location_context(self):
+        """Build reusable querysets for property location controls."""
+        regions = Region.objects.order_by('name')
+        cities = City.objects.select_related('region').order_by('name')
+        districts = District.objects.select_related(
+            'city__region'
+        ).order_by('name')
+        developers = Developer.objects.order_by('name')
+        complexes = RealEstateComplex.objects.select_related(
+            'developer',
+            'district__city__region',
+        ).order_by('name')
+        buildings = RealEstateComplexBuilding.objects.select_related(
+            'real_estate_complex'
+        ).order_by('real_estate_complex__name', 'number')
+
+        return {
+            'regions': regions,
+            'cities': cities,
+            'districts': districts,
+            'developers': developers,
+            'complexes': complexes,
+            'all_buildings': buildings,
+            'property_form_data': {
+                'cities': list(cities.values('id', 'name', 'region_id')),
+                'districts': list(
+                    districts.values(
+                        'id',
+                        'name',
+                        'city_id',
+                        'city__region_id',
+                    )
+                ),
+                'complexes': list(
+                    complexes.values(
+                        'id',
+                        'name',
+                        'developer_id',
+                        'district_id',
+                        'district__city_id',
+                        'district__city__region_id',
+                    )
+                ),
+                'buildings': list(
+                    buildings.values(
+                        'id',
+                        'number',
+                        'real_estate_complex_id',
+                    )
+                ),
+            },
+        }
+
+    def apply_current_location_context(self, context, selected_building):
+        """Add current selector values and filtered buildings to context."""
+        context['current_region'] = ''
+        context['current_city'] = ''
+        context['current_district'] = ''
+        context['current_developer'] = ''
+        context['current_complex'] = ''
+        context['current_building'] = ''
+        context['buildings'] = RealEstateComplexBuilding.objects.none()
+
+        if not selected_building:
+            return
+
+        real_estate_complex = selected_building.real_estate_complex
+        district = real_estate_complex.district
+        city = district.city
+        region = city.region
+        developer = real_estate_complex.developer
+
+        context['current_region'] = region.id
+        context['current_city'] = city.id
+        context['current_district'] = district.id
+        context['current_developer'] = developer.id
+        context['current_complex'] = real_estate_complex.id
+        context['current_building'] = selected_building.id
+        context['buildings'] = context['all_buildings'].filter(
+            real_estate_complex=real_estate_complex
+        )
+
+    def get_context_data(self, **kwargs):
+        """Add cascade selector data to the property form context."""
+        context = super().get_context_data(**kwargs)
+        context.update(self.get_location_context())
+        self.apply_current_location_context(
+            context,
+            self.get_selected_building(context['form']),
+        )
+        return context
+
+
+class PropertyCreateView(PropertyFormContextMixin, CreateView):
     """Описание класса PropertyCreateView.
 
     Инкапсулирует данные и поведение, необходимые для работы компонента
@@ -1323,19 +1441,10 @@ class PropertyCreateView(CreateView):
         Возвращает:
             Any: Тип результата зависит от контекста использования.
         """
-        context = super().get_context_data(**kwargs)
-        context['regions'] = Region.objects.all()
-        context['cities'] = City.objects.all()
-        context['districts'] = District.objects.all()
-        context['developers'] = Developer.objects.all()
-        context['complexes'] = RealEstateComplex.objects.all()
-        context['buildings'] = RealEstateComplexBuilding.objects.all()
-        context['layouts'] = ApartmentLayout.objects.all()
-        context['decorations'] = ApartmentDecoration.objects.all()
-        return context
+        return super().get_context_data(**kwargs)
 
 
-class PropertyUpdateView(UpdateView):
+class PropertyUpdateView(PropertyFormContextMixin, UpdateView):
     """Описание класса PropertyUpdateView.
 
     Инкапсулирует данные и поведение, необходимые для работы компонента
@@ -1367,45 +1476,7 @@ class PropertyUpdateView(UpdateView):
         Возвращает:
             Any: Тип результата зависит от контекста использования.
         """
-        context = super().get_context_data(**kwargs)
-        context['regions'] = Region.objects.all()
-        context['cities'] = City.objects.all()
-        context['districts'] = District.objects.all()
-        context['developers'] = Developer.objects.all()
-        context['complexes'] = RealEstateComplex.objects.all()
-        context['buildings'] = RealEstateComplexBuilding.objects.all()
-        context['layouts'] = ApartmentLayout.objects.all()
-        context['decorations'] = ApartmentDecoration.objects.all()
-
-        property_obj = self.get_object()
-
-        if property_obj.building:
-            building = property_obj.building
-            real_estate_complex = building.real_estate_complex
-            district = real_estate_complex.district
-            city = district.city
-            region = city.region
-            developer = real_estate_complex.developer
-
-            context['current_region'] = region.id
-            context['current_city'] = city.id
-            context['current_district'] = district.id
-            context['current_developer'] = developer.id
-            context['current_complex'] = real_estate_complex.id
-            context['current_building'] = building.id
-
-            context['filtered_cities'] = City.objects.filter(region=region)
-            context['filtered_districts'] = District.objects.filter(city=city)
-            context['filtered_complexes'] = RealEstateComplex.objects.filter(
-                district=district
-            )
-            context['filtered_buildings'] = (
-                RealEstateComplexBuilding.objects.filter(
-                    real_estate_complex=real_estate_complex,
-                )
-            )
-
-        return context
+        return super().get_context_data(**kwargs)
 
 
 class PropertyDeleteView(DeleteView):

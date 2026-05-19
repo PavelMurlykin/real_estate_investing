@@ -45,6 +45,17 @@ def test_searchable_select_static_filters_options_by_partial_match():
     assert 'window.searchableSelect' in script
 
 
+def test_dependent_selects_static_supports_cascade_configuration():
+    script_path = Path(settings.BASE_DIR) / 'static/js/dependent_selects.js'
+    script = script_path.read_text(encoding='utf-8')
+
+    assert 'data-cascade-selects' in script
+    assert 'cascadeParent' in script
+    assert 'cascadeAutofill' in script
+    assert 'cascadeRequiredParents' in script
+    assert 'clearDependentValues' in script
+
+
 class RealEstateComplexFormLocationTests(TestCase):
     def setUp(self):
         self.region = Region.objects.create(name='Region 1', code='R1')
@@ -624,4 +635,132 @@ class RealEstateComplexDeleteViewTests(TestCase):
         self.assertEqual(
             str(property_obj),
             'ЖК "Complex 1", корпус 1, кв. 101',
+        )
+class PropertyFormCascadeTests(TestCase):
+    """Tests for property form dependent location selectors."""
+
+    def setUp(self):
+        """Create related location, complex, and building records."""
+        self.region = Region.objects.create(name='Region 1', code='R1')
+        self.other_region = Region.objects.create(name='Region 2', code='R2')
+        self.city = City.objects.create(name='City 1', region=self.region)
+        self.other_city = City.objects.create(
+            name='City 2',
+            region=self.other_region,
+        )
+        self.district = District.objects.create(
+            name='District 1',
+            city=self.city,
+        )
+        self.other_district = District.objects.create(
+            name='District 2',
+            city=self.other_city,
+        )
+        self.developer = Developer.objects.create(name='Developer 1')
+        self.other_developer = Developer.objects.create(name='Developer 2')
+        self.estate_type = RealEstateType.objects.create(name='Apartment')
+        self.estate_class = RealEstateClass.objects.create(
+            name='Comfort',
+            weight=Decimal('1.00'),
+        )
+        self.complex = self.create_complex(
+            'Complex 1',
+            self.developer,
+            self.district,
+        )
+        self.other_complex = self.create_complex(
+            'Complex 2',
+            self.other_developer,
+            self.other_district,
+        )
+        self.building = RealEstateComplexBuilding.objects.create(
+            number='1',
+            real_estate_complex=self.complex,
+        )
+        self.other_building = RealEstateComplexBuilding.objects.create(
+            number='2',
+            real_estate_complex=self.other_complex,
+        )
+
+    def create_complex(self, name, developer, district):
+        """Create a complex with shared dictionary values."""
+        return RealEstateComplex.objects.create(
+            name=name,
+            developer=developer,
+            district=district,
+            real_estate_class=self.estate_class,
+            real_estate_type=self.estate_type,
+        )
+
+    def test_create_view_starts_without_building_options(self):
+        """The property create form should not show all buildings initially."""
+        response = self.client.get(reverse('property:create'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'static/js/dependent_selects.js')
+        self.assertContains(response, 'data-cascade-selects')
+        self.assertContains(response, 'property-form-data')
+        self.assertFalse(response.context['buildings'].exists())
+        self.assertEqual(response.context['current_complex'], '')
+        self.assertEqual(
+            {
+                item['id']
+                for item in response.context['property_form_data']['buildings']
+            },
+            {self.building.pk, self.other_building.pk},
+        )
+
+    def test_invalid_create_post_restores_selected_location_chain(self):
+        """A selected building should restore its dependent selectors."""
+        response = self.client.post(
+            reverse('property:create'),
+            {
+                'building': self.building.pk,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['current_region'], self.region.pk)
+        self.assertEqual(response.context['current_city'], self.city.pk)
+        self.assertEqual(response.context['current_district'], self.district.pk)
+        self.assertEqual(
+            response.context['current_developer'],
+            self.developer.pk,
+        )
+        self.assertEqual(response.context['current_complex'], self.complex.pk)
+        self.assertEqual(response.context['current_building'], self.building.pk)
+        self.assertEqual(
+            list(response.context['buildings']),
+            [self.building],
+        )
+
+    def test_complexes_api_filters_by_developer_and_location(self):
+        """The complexes API should support developer and location filters."""
+        response = self.client.get(
+            '/api/complexes/',
+            {
+                'developer_id': self.developer.pk,
+                'region_id': self.region.pk,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [item['id'] for item in response.json()],
+            [self.complex.pk],
+        )
+
+    def test_buildings_api_requires_complex(self):
+        """The buildings API should return rows only for a selected complex."""
+        empty_response = self.client.get('/api/buildings/')
+        selected_response = self.client.get(
+            '/api/buildings/',
+            {'complex_id': self.complex.pk},
+        )
+
+        self.assertEqual(empty_response.status_code, 200)
+        self.assertEqual(empty_response.json(), [])
+        self.assertEqual(
+            [item['id'] for item in selected_response.json()],
+            [self.building.pk],
         )
