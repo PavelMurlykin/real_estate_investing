@@ -6,11 +6,13 @@ from .models import (
     ApartmentLayout,
     Developer,
     Property,
+    PropertyWindowView,
     RealEstateClass,
     RealEstateComplex,
     RealEstateComplexBuilding,
     RealEstateComplexMetroAvailability,
     RealEstateType,
+    WindowView,
 )
 
 
@@ -276,6 +278,25 @@ class ApartmentDecorationAdmin(admin.ModelAdmin):
     ordering = ('name',)
 
 
+@admin.register(WindowView)
+class WindowViewAdmin(admin.ModelAdmin):
+    """Admin for property window view dictionary entries."""
+
+    list_display = ('name', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name', 'description')
+    list_editable = ('is_active',)
+    ordering = ('name',)
+
+
+class PropertyWindowViewInline(admin.TabularInline):
+    """Inline for property window view text values."""
+
+    model = PropertyWindowView
+    extra = 1
+    fields = ('window_view', 'is_active')
+
+
 class PropertyAdmin(admin.ModelAdmin):
     """Описание класса PropertyAdmin.
 
@@ -298,6 +319,7 @@ class PropertyAdmin(admin.ModelAdmin):
         'building__real_estate_complex',
         'decoration',
         'layout',
+        'window_views',
         'created_at',
     )
     search_fields = (
@@ -311,6 +333,7 @@ class PropertyAdmin(admin.ModelAdmin):
         'building',
         'apartment_number',
     )
+    inlines = (PropertyWindowViewInline,)
 
     def get_queryset(self, request):
         """Описание метода get_queryset.
@@ -329,6 +352,7 @@ class PropertyAdmin(admin.ModelAdmin):
             .select_related(
                 'building__real_estate_complex', 'decoration', 'layout'
             )
+            .prefetch_related('window_views')
         )
 
     def get_complex_name(self, obj):

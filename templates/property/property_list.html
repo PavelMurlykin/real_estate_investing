@@ -121,6 +121,7 @@
                                 {% endfor %}
                                 <td class="align-middle text-nowrap">
                                     <div class="d-flex gap-2 flex-nowrap">
+                                        <a href="{% url 'property:detail' property.pk %}" class="btn btn-sm btn-outline-primary">Подробнее</a>
                                         <a href="{% url 'property:update' property.pk %}" class="btn btn-sm btn-outline-primary">Редактировать</a>
                                         <a href="{% url 'property:delete' property.pk %}" class="btn btn-sm btn-outline-danger">Удалить</a>
                                     </div>

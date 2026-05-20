@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Объект недвижимости #{{ property.id }}{% endblock %}
+{% block title %}{{ property.building.real_estate_complex.name }} - {{ property.building.number }} - {{ property.apartment_number }}{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Объект недвижимости #{{ property.id }}</h1>
+        <h1>{{ property.building.real_estate_complex.name }} - {{ property.building.number }} - {{ property.apartment_number }}</h1>
         <div>
             <a href="{% url 'property:update' property.pk %}" class="btn btn-warning">Редактировать</a>
             <a href="{% url 'property:delete' property.pk %}" class="btn btn-danger">Удалить</a>
@@ -27,12 +27,60 @@
                             <p><strong>Корпус:</strong> {{ property.building.number }}</p>
                             <p><strong>Квартира:</strong> {{ property.apartment_number }}</p>
                             <p><strong>Планировка:</strong> {{ property.layout.name }}</p>
+                            <p>
+                                <strong>Вид из окна:</strong>
+                                {% for window_view in property.window_views.all %}
+                                    {{ window_view.name }}{% if not forloop.last %}, {% endif %}
+                                {% empty %}
+                                    -
+                                {% endfor %}
+                            </p>
                         </div>
                         <div class="col-md-6">
                             <p><strong>Отделка:</strong> {{ property.decoration.name }}</p>
                             <p><strong>Площадь:</strong> {{ property.area }} м²</p>
                             <p><strong>Этаж:</strong> {{ property.floor }}</p>
                             <p><strong>Стоимость:</strong> {{ property.property_cost }} руб.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Изображения</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <p class="fw-semibold mb-2">Планировка</p>
+                            {% if property.layout_image %}
+                            <a href="{{ property.layout_image.url }}" target="_blank">
+                                <img src="{{ property.layout_image.url }}" alt="Планировка" class="img-fluid rounded border">
+                            </a>
+                            {% else %}
+                            <p class="text-muted mb-0">Не загружено</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <p class="fw-semibold mb-2">План этажа</p>
+                            {% if property.floor_plan_image %}
+                            <a href="{{ property.floor_plan_image.url }}" target="_blank">
+                                <img src="{{ property.floor_plan_image.url }}" alt="План этажа" class="img-fluid rounded border">
+                            </a>
+                            {% else %}
+                            <p class="text-muted mb-0">Не загружено</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <p class="fw-semibold mb-2">Вид из окна</p>
+                            {% if property.window_view_image %}
+                            <a href="{{ property.window_view_image.url }}" target="_blank">
+                                <img src="{{ property.window_view_image.url }}" alt="Вид из окна" class="img-fluid rounded border">
+                            </a>
+                            {% else %}
+                            <p class="text-muted mb-0">Не загружено</p>
+                            {% endif %}
                         </div>
                     </div>
                 </div>

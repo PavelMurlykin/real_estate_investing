@@ -12,7 +12,7 @@
 
     <div class="card">
         <div class="card-body">
-            <form method="post" data-cascade-selects data-cascade-data="#property-form-data">
+            <form method="post" enctype="multipart/form-data" data-cascade-selects data-cascade-data="#property-form-data">
                 {% csrf_token %}
 
                 <h4 class="mb-3 mt-4">Местоположение</h4>
@@ -144,6 +144,22 @@
                             <div class="text-danger">{{ form.floor.errors }}</div>
                             {% endif %}
                         </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.layout_image.id_for_label }}" class="form-label">{{ form.layout_image.label }}</label>
+                            {{ form.layout_image }}
+                            {% if form.layout_image.errors %}
+                            <div class="text-danger">{{ form.layout_image.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.floor_plan_image.id_for_label }}" class="form-label">{{ form.floor_plan_image.label }}</label>
+                            {{ form.floor_plan_image }}
+                            {% if form.floor_plan_image.errors %}
+                            <div class="text-danger">{{ form.floor_plan_image.errors }}</div>
+                            {% endif %}
+                        </div>
                     </div>
 
                     <div class="col-md-6">
@@ -168,6 +184,29 @@
                             {{ form.decoration }}
                             {% if form.decoration.errors %}
                             <div class="text-danger">{{ form.decoration.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.window_views.label }}</label>
+                            {% for checkbox in form.window_views %}
+                            <div class="form-check">
+                                {{ checkbox.tag }}
+                                <label class="form-check-label" for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label>
+                            </div>
+                            {% empty %}
+                            <div class="text-muted">Нет доступных вариантов</div>
+                            {% endfor %}
+                            {% if form.window_views.errors %}
+                            <div class="text-danger">{{ form.window_views.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.window_view_image.id_for_label }}" class="form-label">{{ form.window_view_image.label }}</label>
+                            {{ form.window_view_image }}
+                            {% if form.window_view_image.errors %}
+                            <div class="text-danger">{{ form.window_view_image.errors }}</div>
                             {% endif %}
                         </div>
                     </div>
