@@ -1,62 +1,31 @@
 {% load mortgage_filters %}
 
-<table class="table table-bordered table-sm mb-0 bg-body">
+{% calculation_detail_table calculation as detail_table %}
+<table class="table table-bordered table-sm mb-0 bg-body calculation-detail-table">
+    <colgroup>
+        <col style="width: {{ detail_table.label_width }}ch;">
+        <col style="width: {{ detail_table.value_width }}ch;">
+        <col class="calculation-layout-column">
+    </colgroup>
     <tbody>
+        {% for row in detail_table.rows %}
         <tr>
-            <th scope="row" class="w-50">Стоимость объекта</th>
-            <td>{{ calculation.base_property_cost|compact_currency }} руб.</td>
-        </tr>
-        <tr>
-            <th scope="row">{{ calculation|discount_markup_label }}</th>
-            <td>
-                {{ calculation|discount_markup_amount|compact_currency }} руб. ({{ calculation.discount_markup_value|compact_decimal }} %)
+            <th scope="row" class="text-nowrap">{{ row.label }}</th>
+            <td class="text-nowrap">{{ row.value }}</td>
+            {% if forloop.first %}
+            <td rowspan="{{ detail_table.rows|length }}" class="calculation-layout-cell">
+                <div class="calculation-layout-frame">
+                    {% if detail_table.layout_image %}
+                    <a href="{{ detail_table.layout_image.url }}" class="calculation-layout-link" data-image-modal="true" data-image-modal-title="Планировка">
+                        <img src="{{ detail_table.layout_image.url }}" alt="Планировка" class="calculation-layout-image">
+                    </a>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </div>
             </td>
+            {% endif %}
         </tr>
-        <tr>
-            <th scope="row">Итоговая стоимость объекта</th>
-            <td>{{ calculation.final_property_cost|compact_currency }} руб.</td>
-        </tr>
-        <tr>
-            <th scope="row">Первоначальный взнос</th>
-            <td>{{ calculation.initial_payment_amount|compact_currency }} руб. ({{ calculation.initial_payment_percent|compact_decimal }} %)</td>
-        </tr>
-        <tr>
-            <th scope="row">Дата первоначального взноса</th>
-            <td>{{ calculation.initial_payment_date|date:"d.m.Y" }}</td>
-        </tr>
-        <tr>
-            <th scope="row">Срок ипотеки</th>
-            <td>{{ calculation.mortgage_term|years_label_from_months }} ({{ calculation.mortgage_term }} мес.)</td>
-        </tr>
-        <tr>
-            <th scope="row">Годовая ставка</th>
-            <td>{{ calculation.annual_rate|compact_decimal }} %</td>
-        </tr>
-        {% if calculation.has_grace_period %}
-            <tr>
-                <th scope="row">Срок льготного периода</th>
-                <td>{{ calculation.grace_period_term|years_label_from_months }} ({{ calculation.grace_period_term }} мес.)</td>
-            </tr>
-            <tr>
-                <th scope="row">Годовая ставка в льготный период</th>
-                <td>{{ calculation.grace_period_rate|compact_decimal }} %</td>
-            </tr>
-            <tr>
-                <th scope="row">Число платежей за льготный период</th>
-                <td>{{ calculation.grace_payments_count }}</td>
-            </tr>
-            <tr>
-                <th scope="row">Сумма ежемесячного платежа во время льготного периода</th>
-                <td>{{ calculation.grace_monthly_payment|compact_currency }} руб.</td>
-            </tr>
-        {% endif %}
-        <tr>
-            <th scope="row">Число платежей</th>
-            <td>{{ calculation.main_payments_count }}</td>
-        </tr>
-        <tr>
-            <th scope="row">Сумма ежемесячного платежа</th>
-            <td>{{ calculation.main_monthly_payment|compact_currency }} руб.</td>
-        </tr>
+        {% endfor %}
     </tbody>
 </table>

@@ -69,6 +69,7 @@
     {% load django_bootstrap5 static %}
     {% bootstrap_css %}
     <link rel="stylesheet" href="{% static 'css/searchable_select.css' %}">
+    <link rel="stylesheet" href="{% static 'css/image_modal.css' %}">
 
     {% block extra_css %}
     {% endblock %}
@@ -96,8 +97,23 @@
     <hr>
     {% include "includes/footer.html" %}
 
+    <div class="modal fade image-preview-modal" id="image-preview-modal" tabindex="-1" aria-labelledby="image-preview-modal-title" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="image-preview-modal-title" data-image-modal-title>Image preview</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img alt="" class="image-preview-modal__image" data-image-modal-image>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {% bootstrap_javascript %}
     <script src="{% static 'js/searchable_select.js' %}"></script>
+    <script src="{% static 'js/image_modal.js' %}"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             const selector = document.querySelector("[data-theme-selector]");

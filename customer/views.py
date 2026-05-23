@@ -204,6 +204,7 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
             .select_related(
                 'calculation',
                 'calculation__property',
+                'calculation__property__layout',
                 'calculation__property__building',
                 'calculation__property__building__real_estate_complex',
                 (

@@ -25,8 +25,10 @@ from .forms import (
     DeveloperForm,
     PropertyForm,
     RealEstateComplexBuildingFormSet,
+    RealEstateComplexBuildingUpdateFormSet,
     RealEstateComplexForm,
     RealEstateComplexMetroAvailabilityFormSet,
+    RealEstateComplexMetroAvailabilityUpdateFormSet,
 )
 from .models import (
     ApartmentDecoration,
@@ -902,6 +904,10 @@ class RealEstateComplexFormsetMixin:
     template_name = 'property/real_estate_complex_form.html'
     success_url = reverse_lazy('property:complex_list')
 
+    def is_update_form(self):
+        """Return whether the form is editing an existing complex."""
+        return bool(getattr(self, 'object', None) and self.object.pk)
+
     def get_formset(self):
         """Описание метода get_formset.
 
@@ -915,13 +921,16 @@ class RealEstateComplexFormsetMixin:
             if getattr(self, 'object', None)
             else RealEstateComplex()
         )
+        formset_class = (
+            RealEstateComplexBuildingUpdateFormSet
+            if self.is_update_form()
+            else RealEstateComplexBuildingFormSet
+        )
         if self.request.method == 'POST':
-            return RealEstateComplexBuildingFormSet(
+            return formset_class(
                 self.request.POST, instance=instance, prefix='buildings'
             )
-        return RealEstateComplexBuildingFormSet(
-            instance=instance, prefix='buildings'
-        )
+        return formset_class(instance=instance, prefix='buildings')
 
     def get_metro_availability_formset(self):
         instance = (
@@ -929,13 +938,16 @@ class RealEstateComplexFormsetMixin:
             if getattr(self, 'object', None)
             else RealEstateComplex()
         )
+        formset_class = (
+            RealEstateComplexMetroAvailabilityUpdateFormSet
+            if self.is_update_form()
+            else RealEstateComplexMetroAvailabilityFormSet
+        )
         if self.request.method == 'POST':
-            return RealEstateComplexMetroAvailabilityFormSet(
+            return formset_class(
                 self.request.POST, instance=instance, prefix='metro'
             )
-        return RealEstateComplexMetroAvailabilityFormSet(
-            instance=instance, prefix='metro'
-        )
+        return formset_class(instance=instance, prefix='metro')
 
     def validate_metro_availability_city(self, form, metro_formset):
         selected_city = form.cleaned_data.get('city')

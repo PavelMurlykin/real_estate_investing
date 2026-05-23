@@ -1,4 +1,4 @@
-from django import forms
+﻿from django import forms
 from django.forms import BaseInlineFormSet, inlineformset_factory
 
 from location.models import City, District, Metro, Region
@@ -44,18 +44,29 @@ class PropertyFilterForm(forms.Form):
 
 
 class PropertyForm(forms.ModelForm):
-    """Описание класса PropertyForm.
+    """Form for creating and updating property objects."""
 
-    Инкапсулирует данные и поведение, необходимые для работы компонента
-    в данном модуле.
-    """
+    IMAGE_CLEAR_FIELDS = (
+        ('clear_layout_image', 'layout_image'),
+        ('clear_floor_plan_image', 'floor_plan_image'),
+        ('clear_window_view_image', 'window_view_image'),
+    )
+
+    clear_layout_image = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'd-none'}),
+    )
+    clear_floor_plan_image = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'd-none'}),
+    )
+    clear_window_view_image = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'd-none'}),
+    )
 
     class Meta:
-        """Описание служебного класса Meta.
-
-        Определяет метаданные и параметры конфигурации для родительского
-        класса Django.
-        """
+        """Configure model fields and widgets for the property form."""
 
         model = Property
         fields = [
@@ -111,12 +122,50 @@ class PropertyForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        """Prepare property form dictionary fields."""
+        """Prepare dictionary fields and current image names."""
         super().__init__(*args, **kwargs)
         self.fields['window_views'].queryset = WindowView.objects.order_by(
             'name'
         )
         self.fields['window_views'].required = False
+        self.initial_image_names = {}
+        for _, image_field in self.IMAGE_CLEAR_FIELDS:
+            image = getattr(self.instance, image_field, None)
+            self.initial_image_names[image_field] = image.name if image else ''
+
+    def save(self, commit=True):
+        """Save property fields and remove images marked for deletion."""
+        instance = super().save(commit=False)
+        image_names_to_delete = []
+
+        for clear_field, image_field in self.IMAGE_CLEAR_FIELDS:
+            if not self.cleaned_data.get(clear_field):
+                continue
+
+            initial_image_name = self.initial_image_names.get(image_field)
+            if initial_image_name:
+                image_names_to_delete.append((image_field, initial_image_name))
+
+            if image_field not in self.files:
+                setattr(instance, image_field, None)
+
+        if commit:
+            instance.save()
+            self.save_m2m()
+            self.delete_saved_images(image_names_to_delete, instance)
+
+        return instance
+
+    def delete_saved_images(self, image_names_to_delete, instance):
+        """Delete cleared image files from storage after saving the model."""
+        for image_field, image_name in image_names_to_delete:
+            current_image = getattr(instance, image_field)
+            if current_image and current_image.name == image_name:
+                continue
+
+            storage = instance._meta.get_field(image_field).storage
+            if storage.exists(image_name):
+                storage.delete(image_name)
 
 
 class DeveloperForm(forms.ModelForm):
@@ -167,6 +216,7 @@ class RealEstateComplexForm(forms.ModelForm):
         label='Город',
         widget=forms.Select(attrs={'class': 'form-control'}),
     )
+
 
     class Meta:
         """Описание служебного класса Meta.
@@ -295,9 +345,12 @@ class RealEstateComplexBuildingForm(forms.ModelForm):
         ]
         widgets = {
             'number': forms.TextInput(attrs={'class': 'form-control'}),
-            'address': forms.TextInput(attrs={'class': 'form-control'}),
+            'address': forms.TextInput(
+                attrs={'class': 'form-control', 'autocomplete': 'off'}
+            ),
             'commissioning_date': forms.DateInput(
-                attrs={'class': 'form-control', 'type': 'date'}
+                attrs={'class': 'form-control', 'type': 'date'},
+                format='%Y-%m-%d',
             ),
             'commissioning_year': forms.NumberInput(
                 attrs={'class': 'form-control', 'min': 2000, 'max': 2100}
@@ -306,7 +359,8 @@ class RealEstateComplexBuildingForm(forms.ModelForm):
                 attrs={'class': 'form-control'}
             ),
             'key_handover_date': forms.DateInput(
-                attrs={'class': 'form-control', 'type': 'date'}
+                attrs={'class': 'form-control', 'type': 'date'},
+                format='%Y-%m-%d',
             ),
             'key_handover_year': forms.NumberInput(
                 attrs={'class': 'form-control', 'min': 2000, 'max': 2100}
@@ -442,6 +496,16 @@ RealEstateComplexBuildingFormSet = inlineformset_factory(
 )
 
 
+RealEstateComplexBuildingUpdateFormSet = inlineformset_factory(
+    RealEstateComplex,
+    RealEstateComplexBuilding,
+    form=RealEstateComplexBuildingForm,
+    formset=BaseRealEstateComplexBuildingInlineFormSet,
+    extra=0,
+    can_delete=True,
+)
+
+
 RealEstateComplexMetroAvailabilityFormSet = inlineformset_factory(
     RealEstateComplex,
     RealEstateComplexMetroAvailability,
@@ -450,3 +514,14 @@ RealEstateComplexMetroAvailabilityFormSet = inlineformset_factory(
     extra=3,
     can_delete=True,
 )
+
+
+RealEstateComplexMetroAvailabilityUpdateFormSet = inlineformset_factory(
+    RealEstateComplex,
+    RealEstateComplexMetroAvailability,
+    form=RealEstateComplexMetroAvailabilityForm,
+    formset=BaseRealEstateComplexMetroAvailabilityInlineFormSet,
+    extra=0,
+    can_delete=True,
+)
+

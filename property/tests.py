@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -165,6 +166,14 @@ class RealEstateComplexFormLocationTests(TestCase):
         self.assertEqual(metro_choices[str(self.metro.pk)], 'Station 1')
         self.assertNotIn('Line 1', metro_choices[str(self.metro.pk)])
 
+    def test_building_address_input_disables_browser_autocomplete(self):
+        form = RealEstateComplexBuildingForm()
+
+        self.assertEqual(
+            form.fields['address'].widget.attrs.get('autocomplete'),
+            'off',
+        )
+
     def test_create_view_passes_existing_complexes_for_duplicate_warning(self):
         complex_obj = RealEstateComplex.objects.create(
             name='Complex 1',
@@ -203,6 +212,65 @@ class RealEstateComplexFormLocationTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['existing_complexes'], [])
+
+    def test_update_view_does_not_render_empty_extra_inline_rows(self):
+        complex_obj = RealEstateComplex.objects.create(
+            name='Complex 1',
+            developer=self.developer,
+            district=self.district,
+            real_estate_class=self.estate_class,
+            real_estate_type=self.estate_type,
+        )
+        RealEstateComplexBuilding.objects.create(
+            number='1',
+            address='Address 1',
+            real_estate_complex=complex_obj,
+        )
+        RealEstateComplexMetroAvailability.objects.create(
+            real_estate_complex=complex_obj,
+            metro=self.metro,
+            walking_time_minutes=12,
+        )
+
+        response = self.client.get(
+            reverse('property:complex_update', kwargs={'pk': complex_obj.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context['building_formset'].total_form_count(),
+            1,
+        )
+        self.assertEqual(
+            response.context['metro_availability_formset'].total_form_count(),
+            1,
+        )
+        self.assertNotContains(response, 'buildings-1-number')
+        self.assertNotContains(response, 'metro-1-metro')
+
+    def test_update_view_renders_building_dates_in_html_date_format(self):
+        complex_obj = RealEstateComplex.objects.create(
+            name='Complex 1',
+            developer=self.developer,
+            district=self.district,
+            real_estate_class=self.estate_class,
+            real_estate_type=self.estate_type,
+        )
+        RealEstateComplexBuilding.objects.create(
+            number='1',
+            address='Address 1',
+            commissioning_date=date(2026, 10, 1),
+            key_handover_date=date(2027, 1, 15),
+            real_estate_complex=complex_obj,
+        )
+
+        response = self.client.get(
+            reverse('property:complex_update', kwargs={'pk': complex_obj.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'value="2026-10-01"')
+        self.assertContains(response, 'value="2027-01-15"')
 
     def _complex_create_post_data(self, **overrides):
         data = self._form_data(
@@ -269,6 +337,85 @@ class RealEstateComplexFormLocationTests(TestCase):
         self.assertEqual(building.key_handover_quarter, 1)
         self.assertEqual(building.get_commissioning_display(), 'IV кв. 2026')
         self.assertEqual(building.get_key_handover_display(), 'I кв. 2027')
+
+    def test_create_view_saves_building_exact_dates(self):
+        response = self.client.post(
+            reverse('property:complex_create'),
+            self._complex_create_post_data(
+                **{
+                    'buildings-TOTAL_FORMS': '1',
+                    'buildings-0-number': '1',
+                    'buildings-0-address': 'Address 1',
+                    'buildings-0-commissioning_date': '2026-10-01',
+                    'buildings-0-commissioning_year': '',
+                    'buildings-0-commissioning_quarter': '',
+                    'buildings-0-key_handover_date': '2027-01-15',
+                    'buildings-0-key_handover_year': '',
+                    'buildings-0-key_handover_quarter': '',
+                    'buildings-0-is_active': 'on',
+                }
+            ),
+        )
+
+        self.assertRedirects(response, reverse('property:complex_list'))
+        building = RealEstateComplexBuilding.objects.get(number='1')
+        self.assertEqual(building.commissioning_date, date(2026, 10, 1))
+        self.assertEqual(building.key_handover_date, date(2027, 1, 15))
+
+    def test_update_view_saves_building_date_and_quarter_periods(self):
+        complex_obj = RealEstateComplex.objects.create(
+            name='Complex 1',
+            developer=self.developer,
+            district=self.district,
+            real_estate_class=self.estate_class,
+            real_estate_type=self.estate_type,
+        )
+        building = RealEstateComplexBuilding.objects.create(
+            number='1',
+            address='Address 1',
+            real_estate_complex=complex_obj,
+        )
+        data = self._form_data(
+            city=self.city.pk,
+            region=self.region.pk,
+            district=self.district.pk,
+        )
+        data.update(
+            {
+                'buildings-TOTAL_FORMS': '1',
+                'buildings-INITIAL_FORMS': '1',
+                'buildings-MIN_NUM_FORMS': '0',
+                'buildings-MAX_NUM_FORMS': '1000',
+                'buildings-0-id': building.pk,
+                'buildings-0-real_estate_complex': complex_obj.pk,
+                'buildings-0-number': '1A',
+                'buildings-0-address': 'Address 1A',
+                'buildings-0-commissioning_date': '2026-10-01',
+                'buildings-0-commissioning_year': '',
+                'buildings-0-commissioning_quarter': '',
+                'buildings-0-key_handover_date': '',
+                'buildings-0-key_handover_year': '2027',
+                'buildings-0-key_handover_quarter': '1',
+                'buildings-0-is_active': 'on',
+                'metro-TOTAL_FORMS': '0',
+                'metro-INITIAL_FORMS': '0',
+                'metro-MIN_NUM_FORMS': '0',
+                'metro-MAX_NUM_FORMS': '1000',
+            }
+        )
+
+        response = self.client.post(
+            reverse('property:complex_update', kwargs={'pk': complex_obj.pk}),
+            data,
+        )
+
+        self.assertRedirects(response, reverse('property:complex_list'))
+        building.refresh_from_db()
+        self.assertEqual(building.number, '1A')
+        self.assertEqual(building.address, 'Address 1A')
+        self.assertEqual(building.commissioning_date, date(2026, 10, 1))
+        self.assertEqual(building.key_handover_year, 2027)
+        self.assertEqual(building.key_handover_quarter, 1)
 
     def test_building_form_rejects_date_and_quarter_period_together(self):
         form = RealEstateComplexBuildingForm(
@@ -835,6 +982,137 @@ class PropertyFormCascadeTests(TestCase):
         self.assertContains(response, 'property/layouts/layout.gif')
         self.assertContains(response, 'property/floor_plans/floor-plan.gif')
         self.assertContains(response, 'property/window_views/window-view.gif')
+        self.assertContains(
+            response,
+            'src="/media/property/layouts/layout.gif"',
+        )
+        self.assertContains(
+            response,
+            'src="/media/property/floor_plans/floor-plan.gif"',
+        )
+        self.assertContains(
+            response,
+            'src="/media/property/window_views/window-view.gif"',
+        )
+        self.assertContains(response, 'static/js/image_modal.js')
+        self.assertContains(response, 'static/css/image_modal.css')
+        self.assertContains(response, 'id="image-preview-modal"')
+        self.assertContains(response, 'data-image-modal="true"', count=3)
+        self.assertNotContains(
+            response,
+            'href="/media/property/layouts/layout.gif" target="_blank"',
+        )
+        self.assertNotContains(
+            response,
+            'href="/media/property/floor_plans/floor-plan.gif" target="_blank"',
+        )
+        self.assertNotContains(
+            response,
+            'href="/media/property/window_views/window-view.gif" target="_blank"',
+        )
+
+    def test_update_view_shows_current_image_filenames(self):
+        """The property update form should show saved image filenames."""
+        property_obj = Property.objects.create(
+            apartment_number='101',
+            building=self.building,
+            decoration=self.decoration,
+            layout=self.layout,
+            area=Decimal('42.00'),
+            floor=10,
+            property_cost=Decimal('1000000.00'),
+            layout_image='property/layouts/layout.gif',
+            floor_plan_image='property/floor_plans/floor-plan.gif',
+            window_view_image='property/window_views/window-view.gif',
+        )
+
+        response = self.client.get(
+            reverse('property:update', kwargs={'pk': property_obj.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'layout.gif')
+        self.assertContains(response, 'floor-plan.gif')
+        self.assertContains(response, 'window-view.gif')
+        self.assertContains(response, '/media/property/layouts/layout.gif')
+        self.assertContains(response, 'id_clear_layout_image')
+        self.assertContains(response, 'id_clear_floor_plan_image')
+        self.assertContains(response, 'id_clear_window_view_image')
+        self.assertContains(response, 'data-clear-file-button')
+        self.assertContains(response, '&times;')
+        self.assertContains(response, 'data-image-modal="true"', count=3)
+        self.assertNotContains(
+            response,
+            'href="/media/property/layouts/layout.gif" target="_blank"',
+        )
+        self.assertContains(
+            response,
+            '/media/property/floor_plans/floor-plan.gif',
+        )
+        self.assertContains(
+            response,
+            '/media/property/window_views/window-view.gif',
+        )
+
+    def test_update_view_clears_selected_image_files(self):
+        """The property update form should clear and delete selected images."""
+        with TemporaryDirectory() as media_root:
+            media_root_path = Path(media_root)
+            image_paths = [
+                media_root_path / 'property/layouts/layout.gif',
+                media_root_path / 'property/floor_plans/floor-plan.gif',
+                media_root_path / 'property/window_views/window-view.gif',
+            ]
+            for image_path in image_paths:
+                image_path.parent.mkdir(parents=True, exist_ok=True)
+                image_path.write_bytes(SIMPLE_GIF)
+
+            with override_settings(MEDIA_ROOT=media_root):
+                property_obj = Property.objects.create(
+                    apartment_number='101',
+                    building=self.building,
+                    decoration=self.decoration,
+                    layout=self.layout,
+                    area=Decimal('42.00'),
+                    floor=10,
+                    property_cost=Decimal('1000000.00'),
+                    layout_image='property/layouts/layout.gif',
+                    floor_plan_image='property/floor_plans/floor-plan.gif',
+                    window_view_image='property/window_views/window-view.gif',
+                )
+                response = self.client.post(
+                    reverse(
+                        'property:update',
+                        kwargs={'pk': property_obj.pk},
+                    ),
+                    {
+                        'apartment_number': '101',
+                        'building': self.building.pk,
+                        'decoration': self.decoration.pk,
+                        'layout': self.layout.pk,
+                        'area': '42.00',
+                        'floor': '10',
+                        'property_cost': '1000000.00',
+                        'clear_layout_image': 'on',
+                        'clear_floor_plan_image': 'on',
+                        'clear_window_view_image': 'on',
+                    },
+                )
+
+                self.assertRedirects(
+                    response,
+                    reverse(
+                        'property:detail',
+                        kwargs={'pk': property_obj.pk},
+                    ),
+                )
+                property_obj.refresh_from_db()
+                self.assertFalse(property_obj.layout_image)
+                self.assertFalse(property_obj.floor_plan_image)
+                self.assertFalse(property_obj.window_view_image)
+
+            for image_path in image_paths:
+                self.assertFalse(image_path.exists())
 
     def test_create_view_saves_window_views_and_image_fields(self):
         """The property create form should save window views and images."""
