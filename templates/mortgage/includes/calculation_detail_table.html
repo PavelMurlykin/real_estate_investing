@@ -16,7 +16,7 @@
             <td rowspan="{{ detail_table.rows|length }}" class="calculation-layout-cell">
                 <div class="calculation-layout-frame">
                     {% if detail_table.layout_image %}
-                    <a href="{{ detail_table.layout_image.url }}" target="_blank" class="calculation-layout-link">
+                    <a href="{{ detail_table.layout_image.url }}" class="calculation-layout-link" data-image-modal="true" data-image-modal-title="Планировка">
                         <img src="{{ detail_table.layout_image.url }}" alt="Планировка" class="calculation-layout-image">
                     </a>
                     {% else %}

@@ -631,6 +631,12 @@ class CustomerDeleteViewTests(TestCase):
             response,
             'src="/media/property/layouts/layout.gif"',
         )
+        self.assertContains(response, 'data-image-modal="true"')
+        self.assertContains(response, 'static/js/image_modal.js')
+        self.assertNotContains(
+            response,
+            'href="/media/property/layouts/layout.gif" target="_blank"',
+        )
         self.assertContains(response, 'alt="Планировка"')
         self.assertContains(
             response,

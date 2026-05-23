@@ -1,0 +1,9 @@
+.image-preview-modal__image {
+    display: block;
+    height: auto;
+    margin: 0 auto;
+    max-height: calc(100vh - 10rem);
+    max-width: 100%;
+    object-fit: contain;
+    width: auto;
+}

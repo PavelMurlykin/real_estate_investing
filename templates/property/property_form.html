@@ -151,7 +151,7 @@
                             <div class="small text-muted mb-1 d-flex align-items-center gap-2" data-current-file-row>
                                 <span>
                                     Текущий файл:
-                                    <a href="{{ object.layout_image.url }}" target="_blank">{{ object.get_layout_image_filename }}</a>
+                                    <a href="{{ object.layout_image.url }}" data-image-modal="true" data-image-modal-title="{{ form.layout_image.label }}">{{ object.get_layout_image_filename }}</a>
                                 </span>
                                 {{ form.clear_layout_image }}
                                 <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-clear-file-button aria-label="Удалить файл">&times;</button>
@@ -169,7 +169,7 @@
                             <div class="small text-muted mb-1 d-flex align-items-center gap-2" data-current-file-row>
                                 <span>
                                     Текущий файл:
-                                    <a href="{{ object.floor_plan_image.url }}" target="_blank">{{ object.get_floor_plan_image_filename }}</a>
+                                    <a href="{{ object.floor_plan_image.url }}" data-image-modal="true" data-image-modal-title="{{ form.floor_plan_image.label }}">{{ object.get_floor_plan_image_filename }}</a>
                                 </span>
                                 {{ form.clear_floor_plan_image }}
                                 <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-clear-file-button aria-label="Удалить файл">&times;</button>
@@ -228,7 +228,7 @@
                             <div class="small text-muted mb-1 d-flex align-items-center gap-2" data-current-file-row>
                                 <span>
                                     Текущий файл:
-                                    <a href="{{ object.window_view_image.url }}" target="_blank">{{ object.get_window_view_image_filename }}</a>
+                                    <a href="{{ object.window_view_image.url }}" data-image-modal="true" data-image-modal-title="{{ form.window_view_image.label }}">{{ object.get_window_view_image_filename }}</a>
                                 </span>
                                 {{ form.clear_window_view_image }}
                                 <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-clear-file-button aria-label="Удалить файл">&times;</button>

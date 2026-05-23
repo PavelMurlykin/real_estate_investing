@@ -55,7 +55,7 @@
                         <div class="col-md-4">
                             <p class="fw-semibold mb-2">Планировка</p>
                             {% if property.layout_image %}
-                            <a href="{{ property.layout_image.url }}" target="_blank">
+                            <a href="{{ property.layout_image.url }}" data-image-modal="true" data-image-modal-title="Планировка">
                                 <img src="{{ property.layout_image.url }}" alt="Планировка" class="img-fluid rounded border">
                             </a>
                             {% else %}
@@ -65,7 +65,7 @@
                         <div class="col-md-4">
                             <p class="fw-semibold mb-2">План этажа</p>
                             {% if property.floor_plan_image %}
-                            <a href="{{ property.floor_plan_image.url }}" target="_blank">
+                            <a href="{{ property.floor_plan_image.url }}" data-image-modal="true" data-image-modal-title="План этажа">
                                 <img src="{{ property.floor_plan_image.url }}" alt="План этажа" class="img-fluid rounded border">
                             </a>
                             {% else %}
@@ -75,7 +75,7 @@
                         <div class="col-md-4">
                             <p class="fw-semibold mb-2">Вид из окна</p>
                             {% if property.window_view_image %}
-                            <a href="{{ property.window_view_image.url }}" target="_blank">
+                            <a href="{{ property.window_view_image.url }}" data-image-modal="true" data-image-modal-title="Вид из окна">
                                 <img src="{{ property.window_view_image.url }}" alt="Вид из окна" class="img-fluid rounded border">
                             </a>
                             {% else %}

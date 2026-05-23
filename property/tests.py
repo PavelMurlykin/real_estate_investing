@@ -994,6 +994,22 @@ class PropertyFormCascadeTests(TestCase):
             response,
             'src="/media/property/window_views/window-view.gif"',
         )
+        self.assertContains(response, 'static/js/image_modal.js')
+        self.assertContains(response, 'static/css/image_modal.css')
+        self.assertContains(response, 'id="image-preview-modal"')
+        self.assertContains(response, 'data-image-modal="true"', count=3)
+        self.assertNotContains(
+            response,
+            'href="/media/property/layouts/layout.gif" target="_blank"',
+        )
+        self.assertNotContains(
+            response,
+            'href="/media/property/floor_plans/floor-plan.gif" target="_blank"',
+        )
+        self.assertNotContains(
+            response,
+            'href="/media/property/window_views/window-view.gif" target="_blank"',
+        )
 
     def test_update_view_shows_current_image_filenames(self):
         """The property update form should show saved image filenames."""
@@ -1024,6 +1040,11 @@ class PropertyFormCascadeTests(TestCase):
         self.assertContains(response, 'id_clear_window_view_image')
         self.assertContains(response, 'data-clear-file-button')
         self.assertContains(response, '&times;')
+        self.assertContains(response, 'data-image-modal="true"', count=3)
+        self.assertNotContains(
+            response,
+            'href="/media/property/layouts/layout.gif" target="_blank"',
+        )
         self.assertContains(
             response,
             '/media/property/floor_plans/floor-plan.gif',

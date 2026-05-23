@@ -230,6 +230,12 @@ class MortgageCalculatorViewTests(TestCase):
             response,
             'src="/media/property/layouts/layout.gif"',
         )
+        self.assertContains(response, 'data-image-modal="true"')
+        self.assertContains(response, 'static/js/image_modal.js')
+        self.assertNotContains(
+            response,
+            'href="/media/property/layouts/layout.gif" target="_blank"',
+        )
         self.assertContains(response, 'alt="Планировка"')
         self.assertContains(response, '500 000 руб. (10 %)')
         self.assertContains(response, 'Итоговая стоимость объекта')
