@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -165,6 +166,14 @@ class RealEstateComplexFormLocationTests(TestCase):
         self.assertEqual(metro_choices[str(self.metro.pk)], 'Station 1')
         self.assertNotIn('Line 1', metro_choices[str(self.metro.pk)])
 
+    def test_building_address_input_disables_browser_autocomplete(self):
+        form = RealEstateComplexBuildingForm()
+
+        self.assertEqual(
+            form.fields['address'].widget.attrs.get('autocomplete'),
+            'off',
+        )
+
     def test_create_view_passes_existing_complexes_for_duplicate_warning(self):
         complex_obj = RealEstateComplex.objects.create(
             name='Complex 1',
@@ -203,6 +212,65 @@ class RealEstateComplexFormLocationTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['existing_complexes'], [])
+
+    def test_update_view_does_not_render_empty_extra_inline_rows(self):
+        complex_obj = RealEstateComplex.objects.create(
+            name='Complex 1',
+            developer=self.developer,
+            district=self.district,
+            real_estate_class=self.estate_class,
+            real_estate_type=self.estate_type,
+        )
+        RealEstateComplexBuilding.objects.create(
+            number='1',
+            address='Address 1',
+            real_estate_complex=complex_obj,
+        )
+        RealEstateComplexMetroAvailability.objects.create(
+            real_estate_complex=complex_obj,
+            metro=self.metro,
+            walking_time_minutes=12,
+        )
+
+        response = self.client.get(
+            reverse('property:complex_update', kwargs={'pk': complex_obj.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context['building_formset'].total_form_count(),
+            1,
+        )
+        self.assertEqual(
+            response.context['metro_availability_formset'].total_form_count(),
+            1,
+        )
+        self.assertNotContains(response, 'buildings-1-number')
+        self.assertNotContains(response, 'metro-1-metro')
+
+    def test_update_view_renders_building_dates_in_html_date_format(self):
+        complex_obj = RealEstateComplex.objects.create(
+            name='Complex 1',
+            developer=self.developer,
+            district=self.district,
+            real_estate_class=self.estate_class,
+            real_estate_type=self.estate_type,
+        )
+        RealEstateComplexBuilding.objects.create(
+            number='1',
+            address='Address 1',
+            commissioning_date=date(2026, 10, 1),
+            key_handover_date=date(2027, 1, 15),
+            real_estate_complex=complex_obj,
+        )
+
+        response = self.client.get(
+            reverse('property:complex_update', kwargs={'pk': complex_obj.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'value="2026-10-01"')
+        self.assertContains(response, 'value="2027-01-15"')
 
     def _complex_create_post_data(self, **overrides):
         data = self._form_data(
@@ -269,6 +337,85 @@ class RealEstateComplexFormLocationTests(TestCase):
         self.assertEqual(building.key_handover_quarter, 1)
         self.assertEqual(building.get_commissioning_display(), 'IV кв. 2026')
         self.assertEqual(building.get_key_handover_display(), 'I кв. 2027')
+
+    def test_create_view_saves_building_exact_dates(self):
+        response = self.client.post(
+            reverse('property:complex_create'),
+            self._complex_create_post_data(
+                **{
+                    'buildings-TOTAL_FORMS': '1',
+                    'buildings-0-number': '1',
+                    'buildings-0-address': 'Address 1',
+                    'buildings-0-commissioning_date': '2026-10-01',
+                    'buildings-0-commissioning_year': '',
+                    'buildings-0-commissioning_quarter': '',
+                    'buildings-0-key_handover_date': '2027-01-15',
+                    'buildings-0-key_handover_year': '',
+                    'buildings-0-key_handover_quarter': '',
+                    'buildings-0-is_active': 'on',
+                }
+            ),
+        )
+
+        self.assertRedirects(response, reverse('property:complex_list'))
+        building = RealEstateComplexBuilding.objects.get(number='1')
+        self.assertEqual(building.commissioning_date, date(2026, 10, 1))
+        self.assertEqual(building.key_handover_date, date(2027, 1, 15))
+
+    def test_update_view_saves_building_date_and_quarter_periods(self):
+        complex_obj = RealEstateComplex.objects.create(
+            name='Complex 1',
+            developer=self.developer,
+            district=self.district,
+            real_estate_class=self.estate_class,
+            real_estate_type=self.estate_type,
+        )
+        building = RealEstateComplexBuilding.objects.create(
+            number='1',
+            address='Address 1',
+            real_estate_complex=complex_obj,
+        )
+        data = self._form_data(
+            city=self.city.pk,
+            region=self.region.pk,
+            district=self.district.pk,
+        )
+        data.update(
+            {
+                'buildings-TOTAL_FORMS': '1',
+                'buildings-INITIAL_FORMS': '1',
+                'buildings-MIN_NUM_FORMS': '0',
+                'buildings-MAX_NUM_FORMS': '1000',
+                'buildings-0-id': building.pk,
+                'buildings-0-real_estate_complex': complex_obj.pk,
+                'buildings-0-number': '1A',
+                'buildings-0-address': 'Address 1A',
+                'buildings-0-commissioning_date': '2026-10-01',
+                'buildings-0-commissioning_year': '',
+                'buildings-0-commissioning_quarter': '',
+                'buildings-0-key_handover_date': '',
+                'buildings-0-key_handover_year': '2027',
+                'buildings-0-key_handover_quarter': '1',
+                'buildings-0-is_active': 'on',
+                'metro-TOTAL_FORMS': '0',
+                'metro-INITIAL_FORMS': '0',
+                'metro-MIN_NUM_FORMS': '0',
+                'metro-MAX_NUM_FORMS': '1000',
+            }
+        )
+
+        response = self.client.post(
+            reverse('property:complex_update', kwargs={'pk': complex_obj.pk}),
+            data,
+        )
+
+        self.assertRedirects(response, reverse('property:complex_list'))
+        building.refresh_from_db()
+        self.assertEqual(building.number, '1A')
+        self.assertEqual(building.address, 'Address 1A')
+        self.assertEqual(building.commissioning_date, date(2026, 10, 1))
+        self.assertEqual(building.key_handover_year, 2027)
+        self.assertEqual(building.key_handover_quarter, 1)
 
     def test_building_form_rejects_date_and_quarter_period_together(self):
         form = RealEstateComplexBuildingForm(

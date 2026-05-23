@@ -295,9 +295,12 @@ class RealEstateComplexBuildingForm(forms.ModelForm):
         ]
         widgets = {
             'number': forms.TextInput(attrs={'class': 'form-control'}),
-            'address': forms.TextInput(attrs={'class': 'form-control'}),
+            'address': forms.TextInput(
+                attrs={'class': 'form-control', 'autocomplete': 'off'}
+            ),
             'commissioning_date': forms.DateInput(
-                attrs={'class': 'form-control', 'type': 'date'}
+                attrs={'class': 'form-control', 'type': 'date'},
+                format='%Y-%m-%d',
             ),
             'commissioning_year': forms.NumberInput(
                 attrs={'class': 'form-control', 'min': 2000, 'max': 2100}
@@ -306,7 +309,8 @@ class RealEstateComplexBuildingForm(forms.ModelForm):
                 attrs={'class': 'form-control'}
             ),
             'key_handover_date': forms.DateInput(
-                attrs={'class': 'form-control', 'type': 'date'}
+                attrs={'class': 'form-control', 'type': 'date'},
+                format='%Y-%m-%d',
             ),
             'key_handover_year': forms.NumberInput(
                 attrs={'class': 'form-control', 'min': 2000, 'max': 2100}
@@ -442,11 +446,31 @@ RealEstateComplexBuildingFormSet = inlineformset_factory(
 )
 
 
+RealEstateComplexBuildingUpdateFormSet = inlineformset_factory(
+    RealEstateComplex,
+    RealEstateComplexBuilding,
+    form=RealEstateComplexBuildingForm,
+    formset=BaseRealEstateComplexBuildingInlineFormSet,
+    extra=0,
+    can_delete=True,
+)
+
+
 RealEstateComplexMetroAvailabilityFormSet = inlineformset_factory(
     RealEstateComplex,
     RealEstateComplexMetroAvailability,
     form=RealEstateComplexMetroAvailabilityForm,
     formset=BaseRealEstateComplexMetroAvailabilityInlineFormSet,
     extra=3,
+    can_delete=True,
+)
+
+
+RealEstateComplexMetroAvailabilityUpdateFormSet = inlineformset_factory(
+    RealEstateComplex,
+    RealEstateComplexMetroAvailability,
+    form=RealEstateComplexMetroAvailabilityForm,
+    formset=BaseRealEstateComplexMetroAvailabilityInlineFormSet,
+    extra=0,
     can_delete=True,
 )
