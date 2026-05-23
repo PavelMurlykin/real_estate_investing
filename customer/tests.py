@@ -1,4 +1,4 @@
-from datetime import date
+﻿from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
@@ -594,6 +594,8 @@ class CustomerDeleteViewTests(TestCase):
         calculation.main_payments_count = 240
         calculation.main_monthly_payment = Decimal('55054.31')
         calculation.save()
+        calculation.property.layout_image = 'property/layouts/layout.gif'
+        calculation.property.save()
         CustomerCalculation.objects.create(
             customer=customer,
             calculation=calculation,
@@ -616,7 +618,20 @@ class CustomerDeleteViewTests(TestCase):
         self.assertContains(response, 'table-bordered')
         self.assertContains(response, 'Стоимость объекта')
         self.assertContains(response, '5 000 000 руб.')
-        self.assertContains(response, '<th scope="row">Скидка</th>', html=True)
+        self.assertContains(
+            response,
+            '<th scope="row" class="text-nowrap">Скидка</th>',
+            html=True,
+        )
+        self.assertContains(response, 'calculation-detail-table')
+        self.assertContains(response, 'style="width: 29ch;"')
+        self.assertContains(response, 'style="width: 23ch;"')
+        self.assertContains(response, 'calculation-layout-cell')
+        self.assertContains(
+            response,
+            'src="/media/property/layouts/layout.gif"',
+        )
+        self.assertContains(response, 'alt="Планировка"')
         self.assertContains(response, '500 000 руб. (10 %)')
         self.assertNotContains(response, 'Скидка/Удорожание')
         self.assertNotContains(response, 'Скидка - 500 000 руб. (10 %)')
@@ -714,3 +729,4 @@ class CustomerDeleteViewTests(TestCase):
         self.assertIn('fetchResultsUrl(', script)
         self.assertIn("historyUrl.hash = ''", script)
         self.assertIn('}, true);', script)
+
