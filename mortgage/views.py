@@ -771,6 +771,7 @@ def calculation_list(request):
     calculations = (
         MortgageCalculation.objects.select_related(
             'property',
+            'property__layout',
             'property__building',
             'property__building__real_estate_complex',
             'property__building__real_estate_complex__district',

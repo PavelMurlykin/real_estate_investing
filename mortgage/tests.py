@@ -223,7 +223,7 @@ class MortgageCalculatorViewTests(TestCase):
             html=True,
         )
         self.assertContains(response, 'calculation-detail-table')
-        self.assertContains(response, 'style="width: 29ch;"')
+        self.assertContains(response, 'style="width: 36ch;"')
         self.assertContains(response, 'style="width: 23ch;"')
         self.assertContains(response, 'calculation-layout-cell')
         self.assertContains(

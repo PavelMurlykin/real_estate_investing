@@ -624,7 +624,7 @@ class CustomerDeleteViewTests(TestCase):
             html=True,
         )
         self.assertContains(response, 'calculation-detail-table')
-        self.assertContains(response, 'style="width: 29ch;"')
+        self.assertContains(response, 'style="width: 36ch;"')
         self.assertContains(response, 'style="width: 23ch;"')
         self.assertContains(response, 'calculation-layout-cell')
         self.assertContains(
@@ -632,16 +632,29 @@ class CustomerDeleteViewTests(TestCase):
             'src="/media/property/layouts/layout.gif"',
         )
         self.assertContains(response, 'alt="Планировка"')
+        self.assertContains(
+            response,
+            '<th scope="row" class="text-nowrap">Планировка</th>',
+            html=True,
+        )
+        self.assertContains(
+            response,
+            '<th scope="row" class="text-nowrap">Площадь</th>',
+            html=True,
+        )
+        self.assertContains(response, '1К 1')
+        self.assertContains(response, '<td class="text-nowrap">42</td>', html=True)
         self.assertContains(response, '500 000 руб. (10 %)')
         self.assertNotContains(response, 'Скидка/Удорожание')
         self.assertNotContains(response, 'Скидка - 500 000 руб. (10 %)')
         self.assertContains(response, 'Итоговая стоимость объекта')
         self.assertContains(response, '4 500 000 руб.')
         self.assertContains(response, '900 000 руб. (20 %)')
-        self.assertContains(response, '01.01.2026')
+        self.assertNotContains(response, 'Дата первоначального взноса')
+        self.assertNotContains(response, '01.01.2026')
         self.assertContains(response, '20 лет (240 мес.)')
         self.assertContains(response, '12 %')
-        self.assertContains(response, 'Число платежей')
+        self.assertNotContains(response, 'Число платежей')
         self.assertContains(response, 'Сумма ежемесячного платежа')
         self.assertContains(response, '55 054,31 руб.')
         self.assertNotContains(response, 'Срок льготного периода')
@@ -670,16 +683,23 @@ class CustomerDeleteViewTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'style="width: 36ch;"')
         self.assertContains(response, 'Срок льготного периода')
         self.assertContains(response, '2 года (24 мес.)')
         self.assertContains(response, 'Годовая ставка в льготный период')
         self.assertContains(response, '6 %')
-        self.assertContains(response, 'Число платежей за льготный период')
-        self.assertContains(
+        self.assertNotContains(response, 'Число платежей за льготный период')
+        self.assertNotContains(
             response,
             'Сумма ежемесячного платежа во время льготного периода',
         )
+        self.assertContains(response, 'Сумма льготного платежа')
         self.assertContains(response, '30 000 руб.')
+        content = response.content.decode()
+        self.assertLess(
+            content.index('Сумма ежемесячного платежа'),
+            content.index('Срок льготного периода'),
+        )
 
     def test_detail_saved_calculation_sort_links_use_ajax_without_anchor(self):
         """Проверяет AJAX-сортировку без браузерного якоря."""

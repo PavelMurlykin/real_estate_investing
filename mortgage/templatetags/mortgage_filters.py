@@ -76,6 +76,11 @@ def calculation_detail_table(calculation):
     """Return rows, dynamic column widths, and layout image for details."""
     rubles = '\u0440\u0443\u0431.'
     months = '\u043c\u0435\u0441.'
+    grace_period_labels = (
+        '\u0421\u0440\u043e\u043a \u043b\u044c\u0433\u043e\u0442\u043d\u043e\u0433\u043e \u043f\u0435\u0440\u0438\u043e\u0434\u0430',
+        '\u0413\u043e\u0434\u043e\u0432\u0430\u044f \u0441\u0442\u0430\u0432\u043a\u0430 \u0432 \u043b\u044c\u0433\u043e\u0442\u043d\u044b\u0439 \u043f\u0435\u0440\u0438\u043e\u0434',
+        '\u0421\u0443\u043c\u043c\u0430 \u043b\u044c\u0433\u043e\u0442\u043d\u043e\u0433\u043e \u043f\u043b\u0430\u0442\u0435\u0436\u0430',
+    )
 
     def years_text(month_count):
         try:
@@ -95,7 +100,16 @@ def calculation_detail_table(calculation):
             label = '\u043b\u0435\u0442'
         return f'{years} {label}'
 
+    property_obj = calculation.property
     rows = [
+        {
+            'label': 'Планировка',
+            'value': property_obj.layout.name,
+        },
+        {
+            'label': 'Площадь',
+            'value': compact_decimal(property_obj.area),
+        },
         {
             'label': '\u0421\u0442\u043e\u0438\u043c\u043e\u0441\u0442\u044c \u043e\u0431\u044a\u0435\u043a\u0442\u0430',
             'value': f'{compact_currency(calculation.base_property_cost)} {rubles}',
@@ -123,16 +137,16 @@ def calculation_detail_table(calculation):
             ),
         },
         {
-            'label': '\u0414\u0430\u0442\u0430 \u043f\u0435\u0440\u0432\u043e\u043d\u0430\u0447\u0430\u043b\u044c\u043d\u043e\u0433\u043e \u0432\u0437\u043d\u043e\u0441\u0430',
-            'value': calculation.initial_payment_date.strftime('%d.%m.%Y'),
-        },
-        {
             'label': '\u0421\u0440\u043e\u043a \u0438\u043f\u043e\u0442\u0435\u043a\u0438',
             'value': f'{years_text(calculation.mortgage_term)} ({calculation.mortgage_term} {months})',
         },
         {
             'label': '\u0413\u043e\u0434\u043e\u0432\u0430\u044f \u0441\u0442\u0430\u0432\u043a\u0430',
             'value': f'{compact_decimal(calculation.annual_rate)} %',
+        },
+        {
+            'label': '\u0421\u0443\u043c\u043c\u0430 \u0435\u0436\u0435\u043c\u0435\u0441\u044f\u0447\u043d\u043e\u0433\u043e \u043f\u043b\u0430\u0442\u0435\u0436\u0430',
+            'value': f'{compact_currency(calculation.main_monthly_payment)} {rubles}',
         },
     ]
 
@@ -148,37 +162,18 @@ def calculation_detail_table(calculation):
                     'value': f'{compact_decimal(calculation.grace_period_rate)} %',
                 },
                 {
-                    'label': '\u0427\u0438\u0441\u043b\u043e \u043f\u043b\u0430\u0442\u0435\u0436\u0435\u0439 \u0437\u0430 \u043b\u044c\u0433\u043e\u0442\u043d\u044b\u0439 \u043f\u0435\u0440\u0438\u043e\u0434',
-                    'value': str(calculation.grace_payments_count),
-                },
-                {
-                    'label': (
-                        '\u0421\u0443\u043c\u043c\u0430 \u0435\u0436\u0435\u043c\u0435\u0441\u044f\u0447\u043d\u043e\u0433\u043e '
-                        '\u043f\u043b\u0430\u0442\u0435\u0436\u0430 \u0432\u043e \u0432\u0440\u0435\u043c\u044f '
-                        '\u043b\u044c\u0433\u043e\u0442\u043d\u043e\u0433\u043e \u043f\u0435\u0440\u0438\u043e\u0434\u0430'
-                    ),
+                    'label': '\u0421\u0443\u043c\u043c\u0430 \u043b\u044c\u0433\u043e\u0442\u043d\u043e\u0433\u043e \u043f\u043b\u0430\u0442\u0435\u0436\u0430',
                     'value': f'{compact_currency(calculation.grace_monthly_payment)} {rubles}',
                 },
             ]
         )
 
-    rows.extend(
-        [
-            {
-                'label': '\u0427\u0438\u0441\u043b\u043e \u043f\u043b\u0430\u0442\u0435\u0436\u0435\u0439',
-                'value': str(calculation.main_payments_count),
-            },
-            {
-                'label': '\u0421\u0443\u043c\u043c\u0430 \u0435\u0436\u0435\u043c\u0435\u0441\u044f\u0447\u043d\u043e\u0433\u043e \u043f\u043b\u0430\u0442\u0435\u0436\u0430',
-                'value': f'{compact_currency(calculation.main_monthly_payment)} {rubles}',
-            },
-        ]
-    )
-
     return {
         'rows': rows,
-        'label_width': max(len(row['label']) for row in rows) + 4,
+        'label_width': max(
+            max(len(row['label']) for row in rows),
+            max(len(label) for label in grace_period_labels),
+        ) + 4,
         'value_width': max(len(row['value']) for row in rows) + 4,
         'layout_image': calculation.property.layout_image,
     }
-
