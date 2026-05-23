@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% load static %}
 
 {% block title %}{% if object %}Редактирование{% else %}Создание{% endif %} объекта недвижимости{% endblock %}
@@ -147,6 +147,16 @@
 
                         <div class="mb-3">
                             <label for="{{ form.layout_image.id_for_label }}" class="form-label">{{ form.layout_image.label }}</label>
+                            {% if object.layout_image %}
+                            <div class="small text-muted mb-1 d-flex align-items-center gap-2" data-current-file-row>
+                                <span>
+                                    Текущий файл:
+                                    <a href="{{ object.layout_image.url }}" target="_blank">{{ object.get_layout_image_filename }}</a>
+                                </span>
+                                {{ form.clear_layout_image }}
+                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-clear-file-button aria-label="Удалить файл">&times;</button>
+                            </div>
+                            {% endif %}
                             {{ form.layout_image }}
                             {% if form.layout_image.errors %}
                             <div class="text-danger">{{ form.layout_image.errors }}</div>
@@ -155,6 +165,16 @@
 
                         <div class="mb-3">
                             <label for="{{ form.floor_plan_image.id_for_label }}" class="form-label">{{ form.floor_plan_image.label }}</label>
+                            {% if object.floor_plan_image %}
+                            <div class="small text-muted mb-1 d-flex align-items-center gap-2" data-current-file-row>
+                                <span>
+                                    Текущий файл:
+                                    <a href="{{ object.floor_plan_image.url }}" target="_blank">{{ object.get_floor_plan_image_filename }}</a>
+                                </span>
+                                {{ form.clear_floor_plan_image }}
+                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-clear-file-button aria-label="Удалить файл">&times;</button>
+                            </div>
+                            {% endif %}
                             {{ form.floor_plan_image }}
                             {% if form.floor_plan_image.errors %}
                             <div class="text-danger">{{ form.floor_plan_image.errors }}</div>
@@ -204,6 +224,16 @@
 
                         <div class="mb-3">
                             <label for="{{ form.window_view_image.id_for_label }}" class="form-label">{{ form.window_view_image.label }}</label>
+                            {% if object.window_view_image %}
+                            <div class="small text-muted mb-1 d-flex align-items-center gap-2" data-current-file-row>
+                                <span>
+                                    Текущий файл:
+                                    <a href="{{ object.window_view_image.url }}" target="_blank">{{ object.get_window_view_image_filename }}</a>
+                                </span>
+                                {{ form.clear_window_view_image }}
+                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-clear-file-button aria-label="Удалить файл">&times;</button>
+                            </div>
+                            {% endif %}
                             {{ form.window_view_image }}
                             {% if form.window_view_image.errors %}
                             <div class="text-danger">{{ form.window_view_image.errors }}</div>
@@ -225,5 +255,26 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-clear-file-button]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const row = button.closest('[data-current-file-row]');
+            if (!row) {
+                return;
+            }
+
+            const checkbox = row.querySelector('input[type="checkbox"]');
+            if (!checkbox) {
+                return;
+            }
+
+            checkbox.checked = true;
+            row.classList.add('d-none');
+        });
+    });
+});
+</script>
 <script src="{% static 'js/dependent_selects.js' %}"></script>
 {% endblock %}
+

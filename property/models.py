@@ -483,6 +483,24 @@ class Property(BaseModel):
         """
         return reverse('property:detail', kwargs={'pk': self.pk})
 
+    def _get_image_filename(self, image_field):
+        """Return a saved image filename without its upload directory."""
+        if not image_field:
+            return ''
+        return image_field.name.rsplit('/', 1)[-1]
+
+    def get_layout_image_filename(self):
+        """Return the saved layout image filename."""
+        return self._get_image_filename(self.layout_image)
+
+    def get_floor_plan_image_filename(self):
+        """Return the saved floor plan image filename."""
+        return self._get_image_filename(self.floor_plan_image)
+
+    def get_window_view_image_filename(self):
+        """Return the saved window view image filename."""
+        return self._get_image_filename(self.window_view_image)
+
     def __str__(self):
         """Описание метода __str__.
 

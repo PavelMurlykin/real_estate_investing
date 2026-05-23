@@ -982,6 +982,116 @@ class PropertyFormCascadeTests(TestCase):
         self.assertContains(response, 'property/layouts/layout.gif')
         self.assertContains(response, 'property/floor_plans/floor-plan.gif')
         self.assertContains(response, 'property/window_views/window-view.gif')
+        self.assertContains(
+            response,
+            'src="/media/property/layouts/layout.gif"',
+        )
+        self.assertContains(
+            response,
+            'src="/media/property/floor_plans/floor-plan.gif"',
+        )
+        self.assertContains(
+            response,
+            'src="/media/property/window_views/window-view.gif"',
+        )
+
+    def test_update_view_shows_current_image_filenames(self):
+        """The property update form should show saved image filenames."""
+        property_obj = Property.objects.create(
+            apartment_number='101',
+            building=self.building,
+            decoration=self.decoration,
+            layout=self.layout,
+            area=Decimal('42.00'),
+            floor=10,
+            property_cost=Decimal('1000000.00'),
+            layout_image='property/layouts/layout.gif',
+            floor_plan_image='property/floor_plans/floor-plan.gif',
+            window_view_image='property/window_views/window-view.gif',
+        )
+
+        response = self.client.get(
+            reverse('property:update', kwargs={'pk': property_obj.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'layout.gif')
+        self.assertContains(response, 'floor-plan.gif')
+        self.assertContains(response, 'window-view.gif')
+        self.assertContains(response, '/media/property/layouts/layout.gif')
+        self.assertContains(response, 'id_clear_layout_image')
+        self.assertContains(response, 'id_clear_floor_plan_image')
+        self.assertContains(response, 'id_clear_window_view_image')
+        self.assertContains(response, 'data-clear-file-button')
+        self.assertContains(response, '&times;')
+        self.assertContains(
+            response,
+            '/media/property/floor_plans/floor-plan.gif',
+        )
+        self.assertContains(
+            response,
+            '/media/property/window_views/window-view.gif',
+        )
+
+    def test_update_view_clears_selected_image_files(self):
+        """The property update form should clear and delete selected images."""
+        with TemporaryDirectory() as media_root:
+            media_root_path = Path(media_root)
+            image_paths = [
+                media_root_path / 'property/layouts/layout.gif',
+                media_root_path / 'property/floor_plans/floor-plan.gif',
+                media_root_path / 'property/window_views/window-view.gif',
+            ]
+            for image_path in image_paths:
+                image_path.parent.mkdir(parents=True, exist_ok=True)
+                image_path.write_bytes(SIMPLE_GIF)
+
+            with override_settings(MEDIA_ROOT=media_root):
+                property_obj = Property.objects.create(
+                    apartment_number='101',
+                    building=self.building,
+                    decoration=self.decoration,
+                    layout=self.layout,
+                    area=Decimal('42.00'),
+                    floor=10,
+                    property_cost=Decimal('1000000.00'),
+                    layout_image='property/layouts/layout.gif',
+                    floor_plan_image='property/floor_plans/floor-plan.gif',
+                    window_view_image='property/window_views/window-view.gif',
+                )
+                response = self.client.post(
+                    reverse(
+                        'property:update',
+                        kwargs={'pk': property_obj.pk},
+                    ),
+                    {
+                        'apartment_number': '101',
+                        'building': self.building.pk,
+                        'decoration': self.decoration.pk,
+                        'layout': self.layout.pk,
+                        'area': '42.00',
+                        'floor': '10',
+                        'property_cost': '1000000.00',
+                        'clear_layout_image': 'on',
+                        'clear_floor_plan_image': 'on',
+                        'clear_window_view_image': 'on',
+                    },
+                )
+
+                self.assertRedirects(
+                    response,
+                    reverse(
+                        'property:detail',
+                        kwargs={'pk': property_obj.pk},
+                    ),
+                )
+                property_obj.refresh_from_db()
+                self.assertFalse(property_obj.layout_image)
+                self.assertFalse(property_obj.floor_plan_image)
+                self.assertFalse(property_obj.window_view_image)
+
+            for image_path in image_paths:
+                self.assertFalse(image_path.exists())
 
     def test_create_view_saves_window_views_and_image_fields(self):
         """The property create form should save window views and images."""
