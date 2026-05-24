@@ -5,6 +5,11 @@
     const propertyCostApiTemplate = scriptElement
         ? scriptElement.dataset.propertyCostApiTemplate || ''
         : '';
+    let propertyFormData = {
+        properties: [],
+    };
+    let apartmentMenuItems = [];
+    let activeApartmentMenuIndex = -1;
 
     function onReady(callback) {
         if (document.readyState === 'loading') {
@@ -30,6 +35,19 @@
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         });
+    }
+
+    function readJson(selector) {
+        const element = document.querySelector(selector);
+        if (!element) {
+            return {};
+        }
+
+        try {
+            return JSON.parse(element.textContent);
+        } catch (error) {
+            return {};
+        }
     }
 
     function getSelectedDiscountType() {
@@ -303,6 +321,373 @@
         container.style.display = value === 'yes' ? 'block' : 'none';
     }
 
+    function setFieldValue(id, value, dispatchChange) {
+        const field = document.getElementById(id);
+        if (!field) {
+            return;
+        }
+
+        field.value = value === null || value === undefined ? '' : value;
+        if (dispatchChange) {
+            field.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+
+    function getSelectedPropertyInput() {
+        return document.getElementById('id_PROPERTY');
+    }
+
+    function getBuildingSelect() {
+        return document.getElementById('id_building');
+    }
+
+    function getApartmentNumberInput() {
+        return (
+            document.getElementById('id_OBJECT_APARTMENT_NUMBER_search')
+            || document.getElementById('id_OBJECT_APARTMENT_NUMBER')
+        );
+    }
+
+    function getApartmentNumberSourceInput() {
+        return document.getElementById('id_OBJECT_APARTMENT_NUMBER');
+    }
+
+    function getApartmentMenu() {
+        return document.getElementById('property-apartment-menu');
+    }
+
+    function getSelectedBuildingId() {
+        const buildingSelect = getBuildingSelect();
+        return buildingSelect ? String(buildingSelect.value || '') : '';
+    }
+
+    function getPropertiesForSelectedBuilding() {
+        const buildingId = getSelectedBuildingId();
+        if (!buildingId || !Array.isArray(propertyFormData.properties)) {
+            return [];
+        }
+
+        return propertyFormData.properties.filter(function (propertyItem) {
+            return String(propertyItem.building_id || '') === buildingId;
+        });
+    }
+
+    function getPropertyById(propertyId) {
+        if (!propertyId || !Array.isArray(propertyFormData.properties)) {
+            return null;
+        }
+
+        return propertyFormData.properties.find(function (propertyItem) {
+            return String(propertyItem.id || '') === String(propertyId);
+        }) || null;
+    }
+
+    function getSelectedBuildingPropertyByApartmentNumber(apartmentNumber) {
+        const normalizedApartmentNumber = String(apartmentNumber || '').trim();
+        if (!normalizedApartmentNumber) {
+            return null;
+        }
+
+        return getPropertiesForSelectedBuilding().find(
+            function (propertyItem) {
+                const propertyApartmentNumber = String(
+                    propertyItem.apartment_number || ''
+                ).trim().toLowerCase();
+                return (
+                    propertyApartmentNumber
+                    === normalizedApartmentNumber.toLowerCase()
+                );
+            }
+        ) || null;
+    }
+
+    function setSelectedPropertyId(propertyId) {
+        const input = getSelectedPropertyInput();
+        if (input) {
+            input.value = propertyId || '';
+        }
+    }
+
+    function setApartmentNumberValue(value) {
+        const sourceInput = getApartmentNumberSourceInput();
+        const visibleInput = getApartmentNumberInput();
+        const normalizedValue = value === null || value === undefined
+            ? ''
+            : value;
+
+        if (sourceInput) {
+            sourceInput.value = normalizedValue;
+        }
+        if (visibleInput && visibleInput !== sourceInput) {
+            visibleInput.value = normalizedValue;
+        }
+    }
+
+    function closeApartmentMenu() {
+        const menu = getApartmentMenu();
+        if (!menu) {
+            return;
+        }
+
+        menu.classList.add('d-none');
+        activeApartmentMenuIndex = -1;
+    }
+
+    function setActiveApartmentOption(index) {
+        const menu = getApartmentMenu();
+        if (!menu) {
+            return;
+        }
+
+        const options = Array.from(
+            menu.querySelectorAll('[data-apartment-option]')
+        );
+        activeApartmentMenuIndex = options.length ? index : -1;
+        options.forEach(function (option, optionIndex) {
+            option.classList.toggle(
+                'is-active',
+                optionIndex === activeApartmentMenuIndex
+            );
+        });
+    }
+
+    function getApartmentMenuMatches() {
+        const input = getApartmentNumberInput();
+        const query = input ? String(input.value || '').trim().toLowerCase() : '';
+        const properties = getPropertiesForSelectedBuilding();
+
+        if (!query) {
+            return properties;
+        }
+
+        return properties.filter(function (propertyItem) {
+            return String(propertyItem.apartment_number || '')
+                .trim()
+                .toLowerCase()
+                .includes(query);
+        });
+    }
+
+    function renderApartmentMenu() {
+        const menu = getApartmentMenu();
+        if (!menu) {
+            return;
+        }
+
+        apartmentMenuItems = getApartmentMenuMatches();
+        menu.innerHTML = '';
+
+        if (!getSelectedBuildingId()) {
+            const empty = document.createElement('div');
+            empty.className = 'apartment-autocomplete-empty';
+            empty.textContent = 'Сначала выберите корпус';
+            menu.appendChild(empty);
+            return;
+        }
+
+        if (!apartmentMenuItems.length) {
+            const empty = document.createElement('div');
+            empty.className = 'apartment-autocomplete-empty';
+            empty.textContent = 'Квартиры не найдены';
+            menu.appendChild(empty);
+            return;
+        }
+
+        apartmentMenuItems.forEach(function (propertyItem, index) {
+            const option = document.createElement('div');
+            option.className = 'apartment-autocomplete-option';
+            option.dataset.apartmentOption = String(index);
+            option.setAttribute('role', 'option');
+            option.textContent = propertyItem.apartment_number;
+            option.addEventListener('mousedown', function (event) {
+                event.preventDefault();
+                applySelectedProperty(propertyItem);
+                closeApartmentMenu();
+            });
+            menu.appendChild(option);
+        });
+
+        setActiveApartmentOption(0);
+    }
+
+    function openApartmentMenu() {
+        const menu = getApartmentMenu();
+        if (!menu) {
+            return;
+        }
+
+        renderApartmentMenu();
+        menu.classList.remove('d-none');
+    }
+
+    function syncApartmentSelection() {
+        renderApartmentMenu();
+        handleApartmentNumberInput();
+    }
+
+    function scheduleApartmentSelectionSync() {
+        window.setTimeout(syncApartmentSelection, 0);
+    }
+
+    function clearPropertySpecificFields(clearApartmentNumber) {
+        setSelectedPropertyId('');
+        if (clearApartmentNumber) {
+            setApartmentNumberValue('');
+        }
+        setFieldValue('id_OBJECT_AREA', '');
+        setFieldValue('id_OBJECT_LAYOUT', '', true);
+        setFieldValue('id_OBJECT_FLOOR', '');
+        setFieldValue('id_OBJECT_DECORATION', '', true);
+    }
+
+    function fillPropertySpecificFields(propertyItem) {
+        if (!propertyItem) {
+            return;
+        }
+
+        setSelectedPropertyId(propertyItem.id);
+        setApartmentNumberValue(propertyItem.apartment_number);
+        setFieldValue('id_OBJECT_AREA', propertyItem.area);
+        setFieldValue('id_OBJECT_LAYOUT', propertyItem.layout_id, true);
+        setFieldValue('id_OBJECT_FLOOR', propertyItem.floor);
+        setFieldValue(
+            'id_OBJECT_DECORATION',
+            propertyItem.decoration_id,
+            true
+        );
+    }
+
+    function applySelectedProperty(propertyItem) {
+        const costInput = document.getElementById('property_cost_input');
+        fillPropertySpecificFields(propertyItem);
+        if (costInput && propertyItem.property_cost !== undefined) {
+            costInput.value = propertyItem.property_cost;
+            handlePropertyCostChange();
+        }
+    }
+
+    function clearObjectDataFields() {
+        closeApartmentMenu();
+        setSelectedPropertyId('');
+        setFieldValue('city-select', '', true);
+        setFieldValue('district-select', '', true);
+        setFieldValue('developer-select', '', true);
+        setFieldValue('complex-select', '', true);
+        setFieldValue('id_building', '', true);
+        setApartmentNumberValue('');
+        setFieldValue('id_OBJECT_AREA', '');
+        setFieldValue('id_OBJECT_LAYOUT', '', true);
+        setFieldValue('id_OBJECT_FLOOR', '');
+        setFieldValue('id_OBJECT_DECORATION', '', true);
+        window.setTimeout(renderApartmentMenu, 0);
+    }
+
+    function handleBuildingChange() {
+        const costInput = document.getElementById('property_cost_input');
+        if (costInput) {
+            costInput.value = '';
+        }
+        window.setTimeout(function () {
+            renderApartmentMenu();
+            clearPropertySpecificFields(true);
+            handlePropertyCostChange();
+        }, 0);
+    }
+
+    function handleApartmentNumberInput() {
+        const input = getApartmentNumberInput();
+        if (!input) {
+            return;
+        }
+
+        const sourceInput = getApartmentNumberSourceInput();
+        if (sourceInput && sourceInput !== input) {
+            sourceInput.value = input.value;
+        }
+
+        renderApartmentMenu();
+        const propertyItem = getSelectedBuildingPropertyByApartmentNumber(
+            input.value
+        );
+        if (!propertyItem) {
+            setSelectedPropertyId('');
+            return;
+        }
+
+        applySelectedProperty(propertyItem);
+    }
+
+    function handleApartmentNumberFocus() {
+        openApartmentMenu();
+        handleApartmentNumberInput();
+    }
+
+    function handleApartmentNumberKeydown(event) {
+        const menu = getApartmentMenu();
+        const isOpen = menu && !menu.classList.contains('d-none');
+        if (!isOpen && ['ArrowDown', 'ArrowUp'].includes(event.key)) {
+            openApartmentMenu();
+            event.preventDefault();
+            return;
+        }
+
+        if (!isOpen) {
+            return;
+        }
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            setActiveApartmentOption(
+                Math.min(
+                    activeApartmentMenuIndex + 1,
+                    apartmentMenuItems.length - 1
+                )
+            );
+            return;
+        }
+
+        if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            setActiveApartmentOption(
+                Math.max(activeApartmentMenuIndex - 1, 0)
+            );
+            return;
+        }
+
+        if (event.key === 'Enter') {
+            const propertyItem = apartmentMenuItems[activeApartmentMenuIndex];
+            if (propertyItem) {
+                event.preventDefault();
+                applySelectedProperty(propertyItem);
+                closeApartmentMenu();
+            }
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            closeApartmentMenu();
+        }
+    }
+
+    function fillPropertyDetails(data) {
+        setFieldValue('city-select', data.city_id, true);
+        setFieldValue('district-select', data.district_id, true);
+        setFieldValue('developer-select', data.developer_id, true);
+        setFieldValue('complex-select', data.complex_id, true);
+        setFieldValue('id_building', data.building_id);
+        renderApartmentMenu();
+        fillPropertySpecificFields(data);
+    }
+
+    function clearPropertyDetails() {
+        setFieldValue('city-select', '', true);
+        setFieldValue('district-select', '', true);
+        setFieldValue('developer-select', '', true);
+        setFieldValue('complex-select', '', true);
+        setFieldValue('id_building', '', true);
+        clearPropertySpecificFields(true);
+    }
+
     function updatePropertyCost() {
         const selector = document.getElementById('id_PROPERTY');
         const costInput = document.getElementById('property_cost_input');
@@ -313,7 +698,7 @@
 
         const propertyId = selector.value;
         if (!propertyId) {
-            costInput.value = '';
+            clearPropertyDetails();
             handlePropertyCostChange();
             return;
         }
@@ -333,6 +718,7 @@
                 }
 
                 costInput.value = data.property_cost;
+                fillPropertyDetails(data);
                 handlePropertyCostChange();
             })
             .catch(function () {
@@ -344,6 +730,18 @@
         const element = document.getElementById(id);
         if (element) {
             element.addEventListener(eventName, handler);
+        }
+    }
+
+    function bindApartmentNumberInput(eventName, handler) {
+        const sourceInput = getApartmentNumberSourceInput();
+        const visibleInput = getApartmentNumberInput();
+
+        if (sourceInput) {
+            sourceInput.addEventListener(eventName, handler);
+        }
+        if (visibleInput && visibleInput !== sourceInput) {
+            visibleInput.addEventListener(eventName, handler);
         }
     }
 
@@ -364,6 +762,20 @@
 
     function bindEvents() {
         bindInput('id_PROPERTY', 'change', updatePropertyCost);
+        bindInput(
+            'clear-object-data-fields',
+            'click',
+            clearObjectDataFields
+        );
+        bindInput('id_building', 'change', handleBuildingChange);
+        bindInput('city-select', 'change', scheduleApartmentSelectionSync);
+        bindInput('district-select', 'change', scheduleApartmentSelectionSync);
+        bindInput('developer-select', 'change', scheduleApartmentSelectionSync);
+        bindInput('complex-select', 'change', scheduleApartmentSelectionSync);
+        bindApartmentNumberInput('input', handleApartmentNumberInput);
+        bindApartmentNumberInput('change', handleApartmentNumberInput);
+        bindApartmentNumberInput('focus', handleApartmentNumberFocus);
+        bindApartmentNumberInput('keydown', handleApartmentNumberKeydown);
         bindInput('property_cost_input', 'input', handlePropertyCostChange);
         bindInput(
             'discount_markup_percent',
@@ -425,7 +837,21 @@
     }
 
     onReady(function () {
+        propertyFormData = readJson('#mortgage-property-form-data');
         bindEvents();
+        document.addEventListener('mousedown', function (event) {
+            const menu = getApartmentMenu();
+            const input = getApartmentNumberInput();
+            if (
+                menu
+                && !menu.contains(event.target)
+                && input
+                && event.target !== input
+            ) {
+                closeApartmentMenu();
+            }
+        });
+        renderApartmentMenu();
         syncTermFromMonths('mortgage_term_years', 'mortgage_term_months');
         syncTermFromMonths(
             'grace_period_term_years',
@@ -437,5 +863,12 @@
         syncDiscountMarkupValues();
         updateFinalPropertyCost();
         toggleGracePeriod();
+        const selectedPropertyInput = getSelectedPropertyInput();
+        const selectedPropertyId = selectedPropertyInput
+            ? selectedPropertyInput.value
+            : '';
+        if (!getPropertyById(selectedPropertyId)) {
+            handleApartmentNumberInput();
+        }
     });
 })();

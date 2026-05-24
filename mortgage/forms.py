@@ -3,7 +3,29 @@ from datetime import date, datetime
 
 from django import forms
 
-from property.models import Property
+from location.models import City, District
+from property.models import (
+    ApartmentDecoration,
+    ApartmentLayout,
+    Developer,
+    Property,
+    RealEstateComplex,
+    RealEstateComplexBuilding,
+)
+
+
+MANUAL_PROPERTY_FIELD_NAMES = (
+    'OBJECT_CITY',
+    'OBJECT_DISTRICT',
+    'OBJECT_DEVELOPER',
+    'OBJECT_COMPLEX',
+    'OBJECT_BUILDING',
+    'OBJECT_APARTMENT_NUMBER',
+    'OBJECT_AREA',
+    'OBJECT_LAYOUT',
+    'OBJECT_FLOOR',
+    'OBJECT_DECORATION',
+)
 
 
 class MortgageForm(forms.Form):
@@ -12,12 +34,140 @@ class MortgageForm(forms.Form):
     PROPERTY = forms.ModelChoiceField(
         queryset=Property.objects.all(),
         label='Объект недвижимости',
+        required=False,
+        widget=forms.HiddenInput(attrs={'id': 'id_PROPERTY'}),
+    )
+
+    OBJECT_CITY = forms.ModelChoiceField(
+        queryset=City.objects.all(),
+        label='Город',
+        required=False,
+        empty_label='Выберите город',
         widget=forms.Select(
             attrs={
                 'class': 'form-select',
-                'id': 'id_PROPERTY',
+                'id': 'city-select',
+                'data-cascade-field': 'city',
             }
         ),
+    )
+
+    OBJECT_DISTRICT = forms.ModelChoiceField(
+        queryset=District.objects.all(),
+        label='Район',
+        required=False,
+        empty_label='Выберите район',
+        widget=forms.Select(
+            attrs={
+                'class': 'form-select',
+                'id': 'district-select',
+                'data-cascade-field': 'district',
+                'data-cascade-data-key': 'districts',
+                'data-cascade-empty-label': 'Выберите район',
+                'data-cascade-parent-city': 'city_id',
+                'data-cascade-autofill-city': 'city_id',
+            }
+        ),
+    )
+
+    OBJECT_DEVELOPER = forms.ModelChoiceField(
+        queryset=Developer.objects.all(),
+        label='Застройщик',
+        required=False,
+        empty_label='Выберите застройщика',
+        widget=forms.Select(
+            attrs={
+                'class': 'form-select',
+                'id': 'developer-select',
+                'data-cascade-field': 'developer',
+            }
+        ),
+    )
+
+    OBJECT_COMPLEX = forms.ModelChoiceField(
+        queryset=RealEstateComplex.objects.all(),
+        label='Жилой комплекс',
+        required=False,
+        empty_label='Выберите ЖК',
+        widget=forms.Select(
+            attrs={
+                'class': 'form-select',
+                'id': 'complex-select',
+                'data-cascade-field': 'complex',
+                'data-cascade-data-key': 'complexes',
+                'data-cascade-empty-label': 'Выберите ЖК',
+                'data-cascade-parent-city': 'district__city_id',
+                'data-cascade-parent-district': 'district_id',
+                'data-cascade-parent-developer': 'developer_id',
+                'data-cascade-autofill-city': 'district__city_id',
+                'data-cascade-autofill-district': 'district_id',
+                'data-cascade-autofill-developer': 'developer_id',
+            }
+        ),
+    )
+
+    OBJECT_BUILDING = forms.ModelChoiceField(
+        queryset=RealEstateComplexBuilding.objects.all(),
+        label='Корпус',
+        required=False,
+        empty_label='Выберите корпус',
+        widget=forms.Select(
+            attrs={
+                'class': 'form-select',
+                'id': 'id_building',
+                'data-cascade-field': 'building',
+                'data-cascade-data-key': 'buildings',
+                'data-cascade-label-key': 'number',
+                'data-cascade-empty-label': 'Выберите корпус',
+                'data-cascade-parent-complex': 'real_estate_complex_id',
+                'data-cascade-required-parents': 'complex',
+            }
+        ),
+    )
+
+    OBJECT_APARTMENT_NUMBER = forms.CharField(
+        label='Номер квартиры',
+        required=False,
+        max_length=50,
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-control',
+                'autocomplete': 'off',
+            }
+        ),
+    )
+
+    OBJECT_AREA = forms.DecimalField(
+        label='Площадь, м2',
+        required=False,
+        min_value=0,
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(
+            attrs={'class': 'form-control', 'step': '0.01'}
+        ),
+    )
+
+    OBJECT_LAYOUT = forms.ModelChoiceField(
+        queryset=ApartmentLayout.objects.all(),
+        label='Планировка',
+        required=False,
+        empty_label='Выберите планировку',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+
+    OBJECT_FLOOR = forms.IntegerField(
+        label='Этаж',
+        required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+    )
+
+    OBJECT_DECORATION = forms.ModelChoiceField(
+        queryset=ApartmentDecoration.objects.all(),
+        label='Отделка',
+        required=False,
+        empty_label='Выберите отделку',
+        widget=forms.Select(attrs={'class': 'form-select'}),
     )
 
     PROPERTY_COST = forms.DecimalField(
@@ -32,6 +182,55 @@ class MortgageForm(forms.Form):
             }
         ),
     )
+
+    def __init__(self, *args, **kwargs):
+        """Prepare querysets for object selectors."""
+        super().__init__(*args, **kwargs)
+        self.fields['PROPERTY'].queryset = Property.objects.select_related(
+            'building__real_estate_complex__developer',
+            'building__real_estate_complex__district__city',
+            'building',
+            'layout',
+            'decoration',
+        ).order_by(
+            'building__real_estate_complex__name',
+            'building__number',
+            'apartment_number',
+        )
+        self.fields['OBJECT_CITY'].queryset = City.objects.order_by('name')
+        self.fields['OBJECT_DISTRICT'].queryset = (
+            District.objects.select_related('city').order_by('name')
+        )
+        self.fields['OBJECT_DEVELOPER'].queryset = Developer.objects.order_by(
+            'name'
+        )
+        self.fields['OBJECT_COMPLEX'].queryset = (
+            RealEstateComplex.objects.select_related(
+                'developer',
+                'district__city',
+            ).order_by('name')
+        )
+        self.fields['OBJECT_BUILDING'].queryset = (
+            RealEstateComplexBuilding.objects.select_related(
+                'real_estate_complex'
+            ).order_by('real_estate_complex__name', 'number')
+        )
+        self.fields['OBJECT_LAYOUT'].queryset = ApartmentLayout.objects.order_by(
+            'name'
+        )
+        self.fields['OBJECT_DECORATION'].queryset = (
+            ApartmentDecoration.objects.order_by('name')
+        )
+
+    def has_manual_property_data(self):
+        """Return whether the object block contains a new property."""
+        if not hasattr(self, 'cleaned_data'):
+            return False
+
+        return any(
+            self.cleaned_data.get(field_name)
+            for field_name in MANUAL_PROPERTY_FIELD_NAMES
+        )
 
     DISCOUNT_MARKUP_TYPE = forms.ChoiceField(
         label='Корректировка цены',
@@ -249,6 +448,7 @@ class MortgageForm(forms.Form):
         grace_period_rate = cleaned_data.get('GRACE_PERIOD_RATE')
         mortgage_term = cleaned_data.get('MORTGAGE_TERM')
         mortgage_term_years = cleaned_data.get('MORTGAGE_TERM_YEARS')
+        selected_property = cleaned_data.get('PROPERTY')
 
         if mortgage_term is not None:
             cleaned_data['MORTGAGE_TERM_YEARS'] = mortgage_term // 12
@@ -287,6 +487,70 @@ class MortgageForm(forms.Form):
                         'Срок льготного периода должен быть меньше общего '
                         'срока ипотеки'
                     ),
+                )
+
+        if selected_property:
+            building = cleaned_data.get('OBJECT_BUILDING')
+            apartment_number = cleaned_data.get('OBJECT_APARTMENT_NUMBER')
+            if building and selected_property.building_id != building.pk:
+                self.add_error(
+                    'OBJECT_BUILDING',
+                    'Выбранная квартира не относится к выбранному корпусу.',
+                )
+            if (
+                apartment_number
+                and selected_property.apartment_number != apartment_number
+            ):
+                self.add_error(
+                    'OBJECT_APARTMENT_NUMBER',
+                    'Выбранная квартира не соответствует номеру квартиры.',
+                )
+            return cleaned_data
+
+        if self.has_manual_property_data():
+            for field_name in MANUAL_PROPERTY_FIELD_NAMES:
+                if cleaned_data.get(field_name):
+                    continue
+                self.add_error(
+                    field_name,
+                    'Заполните поле для сохранения нового объекта.',
+                )
+
+            city = cleaned_data.get('OBJECT_CITY')
+            district = cleaned_data.get('OBJECT_DISTRICT')
+            developer = cleaned_data.get('OBJECT_DEVELOPER')
+            real_estate_complex = cleaned_data.get('OBJECT_COMPLEX')
+            building = cleaned_data.get('OBJECT_BUILDING')
+
+            if district and city and district.city_id != city.pk:
+                self.add_error(
+                    'OBJECT_DISTRICT',
+                    'Выбранный район не относится к выбранному городу.',
+                )
+
+            if real_estate_complex:
+                if (
+                    developer
+                    and real_estate_complex.developer_id != developer.pk
+                ):
+                    self.add_error(
+                        'OBJECT_COMPLEX',
+                        'Выбранный ЖК не относится к выбранному застройщику.',
+                    )
+                if district and real_estate_complex.district_id != district.pk:
+                    self.add_error(
+                        'OBJECT_COMPLEX',
+                        'Выбранный ЖК не относится к выбранному району.',
+                    )
+
+            if (
+                building
+                and real_estate_complex
+                and building.real_estate_complex_id != real_estate_complex.pk
+            ):
+                self.add_error(
+                    'OBJECT_BUILDING',
+                    'Выбранный корпус не относится к выбранному ЖК.',
                 )
 
         return cleaned_data

@@ -3,13 +3,22 @@ import decimal
 
 import openpyxl
 from django.contrib import messages
+from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from openpyxl.styles import Alignment, Font, NamedStyle
 from openpyxl.utils import get_column_letter
 
-from property.models import Property
+from location.models import City, District
+from property.models import (
+    ApartmentDecoration,
+    ApartmentLayout,
+    Developer,
+    Property,
+    RealEstateComplex,
+    RealEstateComplexBuilding,
+)
 
 from .forms import MortgageForm
 from .models import MortgageCalculation
@@ -115,6 +124,176 @@ def _get_discount_markup_labels(discount_markup_type):
     return 'Удорожание, %', 'Удорожание, руб.'
 
 
+def _get_property_initial(property_obj):
+    """Return calculator form initial data from an existing property."""
+    real_estate_complex = property_obj.building.real_estate_complex
+    district = real_estate_complex.district
+
+    return {
+        'OBJECT_CITY': district.city_id,
+        'OBJECT_DISTRICT': district.pk,
+        'OBJECT_DEVELOPER': real_estate_complex.developer_id,
+        'OBJECT_COMPLEX': real_estate_complex.pk,
+        'OBJECT_BUILDING': property_obj.building_id,
+        'OBJECT_APARTMENT_NUMBER': property_obj.apartment_number,
+        'OBJECT_AREA': property_obj.area,
+        'OBJECT_LAYOUT': property_obj.layout_id,
+        'OBJECT_FLOOR': property_obj.floor,
+        'OBJECT_DECORATION': property_obj.decoration_id,
+    }
+
+
+def _get_property_payload(property_obj):
+    """Return property data used by the calculator UI."""
+    real_estate_complex = property_obj.building.real_estate_complex
+    district = real_estate_complex.district
+
+    return {
+        'id': property_obj.pk,
+        'property_cost': str(property_obj.property_cost),
+        'city_id': district.city_id,
+        'district_id': district.pk,
+        'developer_id': real_estate_complex.developer_id,
+        'complex_id': real_estate_complex.pk,
+        'building_id': property_obj.building_id,
+        'apartment_number': property_obj.apartment_number,
+        'area': str(property_obj.area),
+        'layout_id': property_obj.layout_id,
+        'floor': property_obj.floor,
+        'decoration_id': property_obj.decoration_id,
+    }
+
+
+def _get_property_form_data():
+    """Build reusable selector data for the mortgage object block."""
+    districts = District.objects.select_related('city').order_by('name')
+    complexes = RealEstateComplex.objects.select_related(
+        'developer',
+        'district__city',
+    ).order_by('name')
+    buildings = RealEstateComplexBuilding.objects.select_related(
+        'real_estate_complex'
+    ).order_by('real_estate_complex__name', 'number')
+    properties = Property.objects.select_related(
+        'building',
+        'building__real_estate_complex__developer',
+        'building__real_estate_complex__district__city',
+        'layout',
+        'decoration',
+    ).order_by('building_id', 'apartment_number')
+
+    return {
+        'cities': list(City.objects.order_by('name').values('id', 'name')),
+        'districts': list(districts.values('id', 'name', 'city_id')),
+        'complexes': list(
+            complexes.values(
+                'id',
+                'name',
+                'developer_id',
+                'district_id',
+                'district__city_id',
+            )
+        ),
+        'buildings': list(
+            buildings.values('id', 'number', 'real_estate_complex_id')
+        ),
+        'properties': [
+            _get_property_payload(property_obj)
+            for property_obj in properties
+        ],
+    }
+
+
+def _get_selected_property_from_form_data(form_data):
+    """Return a selected property from hidden id or apartment number."""
+    selected_id = form_data.get('PROPERTY')
+    if selected_id:
+        return (
+            Property.objects.select_related(
+                'building__real_estate_complex__developer',
+                'building__real_estate_complex__district__city',
+                'building',
+                'layout',
+                'decoration',
+            )
+            .filter(id=selected_id)
+            .first()
+        )
+
+    building_id = form_data.get('OBJECT_BUILDING')
+    apartment_number = (form_data.get('OBJECT_APARTMENT_NUMBER') or '').strip()
+    if not building_id or not apartment_number:
+        return None
+
+    return (
+        Property.objects.select_related(
+            'building__real_estate_complex__developer',
+            'building__real_estate_complex__district__city',
+            'building',
+            'layout',
+            'decoration',
+        )
+        .filter(
+            building_id=building_id,
+            apartment_number=apartment_number,
+        )
+        .order_by('pk')
+        .first()
+    )
+
+
+def _create_manual_property(cleaned_data, property_cost):
+    """Create a property from manually filled calculator object data."""
+    return Property.objects.create(
+        apartment_number=cleaned_data['OBJECT_APARTMENT_NUMBER'],
+        building=cleaned_data['OBJECT_BUILDING'],
+        decoration=cleaned_data['OBJECT_DECORATION'],
+        layout=cleaned_data['OBJECT_LAYOUT'],
+        area=cleaned_data['OBJECT_AREA'],
+        floor=cleaned_data['OBJECT_FLOOR'],
+        property_cost=decimal.Decimal(str(property_cost)),
+    )
+
+
+def _build_calculation(property_obj, data, result, values):
+    """Build a saved mortgage calculation for a property-backed scenario."""
+    return MortgageCalculation(
+        property=property_obj,
+        base_property_cost=decimal.Decimal(str(values['base_property_cost'])),
+        initial_payment_percent=decimal.Decimal(
+            str(values['initial_payment_percent'])
+        ),
+        initial_payment_date=data['INITIAL_PAYMENT_DATE'],
+        mortgage_term=data['MORTGAGE_TERM'],
+        annual_rate=decimal.Decimal(str(data['ANNUAL_RATE'])),
+        has_grace_period=data['HAS_GRACE_PERIOD'] == 'yes',
+        grace_period_term=data['GRACE_PERIOD_TERM'],
+        grace_period_rate=decimal.Decimal(
+            str(data['GRACE_PERIOD_RATE'] or 0)
+        ),
+        discount_markup_type=data['DISCOUNT_MARKUP_TYPE'],
+        discount_markup_value=decimal.Decimal(
+            str(values['discount_markup_value'])
+        ),
+        final_property_cost=decimal.Decimal(
+            str(values['final_property_cost'])
+        ),
+        grace_payments_count=result['grace_payments_count'],
+        grace_period_end_date=result['grace_period_end_date'],
+        grace_monthly_payment=decimal.Decimal(
+            str(result['grace_monthly_payment'])
+        ),
+        loan_after_grace=decimal.Decimal(str(result['loan_after_grace'])),
+        main_payments_count=result['main_payments_count'],
+        mortgage_end_date=result['mortgage_end_date'],
+        main_monthly_payment=decimal.Decimal(
+            str(result['main_monthly_payment'])
+        ),
+        total_loan_amount=decimal.Decimal(str(result['total_loan_amount'])),
+        total_overpayment=decimal.Decimal(str(result['total_overpayment'])),
+    )
+
+
 def _get_sample_calculation(request):
     """Возвращает расчет-образец для предзаполнения формы калькулятора."""
     sample_calculation_id = (request.GET.get('sample') or '').strip()
@@ -122,7 +301,14 @@ def _get_sample_calculation(request):
         return None
 
     return get_object_or_404(
-        MortgageCalculation.objects.select_related('property'),
+        MortgageCalculation.objects.select_related(
+            'property',
+            'property__building',
+            'property__building__real_estate_complex',
+            'property__building__real_estate_complex__district',
+            'property__layout',
+            'property__decoration',
+        ),
         pk=sample_calculation_id,
     )
 
@@ -138,7 +324,7 @@ def _get_calculation_form_initial(calculation):
     grace_period_term = calculation.grace_period_term or 0
     has_grace_period = 'yes' if calculation.has_grace_period else 'no'
 
-    return {
+    initial = {
         'PROPERTY': calculation.property_id,
         'PROPERTY_COST': calculation.base_property_cost,
         'DISCOUNT_MARKUP_TYPE': calculation.discount_markup_type,
@@ -157,6 +343,8 @@ def _get_calculation_form_initial(calculation):
         'GRACE_PERIOD_TERM': grace_period_term,
         'GRACE_PERIOD_RATE': calculation.grace_period_rate,
     }
+    initial.update(_get_property_initial(calculation.property))
+    return initial
 
 
 def mortgage_calculator(request):
@@ -180,14 +368,18 @@ def mortgage_calculator(request):
 
     if request.method == 'POST':
         form_data = request.POST.copy()
-        selected_id = form_data.get('PROPERTY')
-        if selected_id:
-            selected_property = Property.objects.filter(id=selected_id).first()
-            if selected_property:
-                if not form_data.get('PROPERTY_COST'):
-                    form_data['PROPERTY_COST'] = str(
-                        selected_property.property_cost
-                    )
+        selected_property = _get_selected_property_from_form_data(form_data)
+        if selected_property:
+            form_data['PROPERTY'] = str(selected_property.pk)
+            if not form_data.get('PROPERTY_COST'):
+                form_data['PROPERTY_COST'] = str(
+                    selected_property.property_cost
+                )
+            for field_name, value in _get_property_initial(
+                selected_property
+            ).items():
+                if not form_data.get(field_name):
+                    form_data[field_name] = str(value)
         mortgage_form = MortgageForm(form_data)
     elif sample_calculation is not None:
         mortgage_form = MortgageForm(
@@ -200,6 +392,7 @@ def mortgage_calculator(request):
         'mortgage_form': mortgage_form,
         'target_customer': target_customer,
         'sample_calculation': sample_calculation,
+        'property_form_data': _get_property_form_data(),
     }
 
     if request.method == 'POST':
@@ -210,9 +403,6 @@ def mortgage_calculator(request):
 
                 # Получаем выбранный объект недвижимости
                 property_obj = data['PROPERTY']
-
-                # Получаем стоимость из формы и преобразуем в float
-                property_cost = float(data['PROPERTY_COST'])
 
                 # Получаем базовую стоимость из скрытого поля
                 base_property_cost = float(data['PROPERTY_COST'])
@@ -271,58 +461,41 @@ def mortgage_calculator(request):
                         if key in payment:
                             payment[key] = format_currency(payment[key])
 
-                # Сохраняем расчет в базу данных (сохраняем как Decimal)
-                calculation = MortgageCalculation(
-                    property=property_obj,
-                    base_property_cost=decimal.Decimal(
-                        str(base_property_cost)
-                    ),
-                    initial_payment_percent=decimal.Decimal(
-                        str(initial_payment_percent)
-                    ),
-                    initial_payment_date=data['INITIAL_PAYMENT_DATE'],
-                    mortgage_term=data['MORTGAGE_TERM'],
-                    annual_rate=decimal.Decimal(str(data['ANNUAL_RATE'])),
-                    has_grace_period=data['HAS_GRACE_PERIOD'] == 'yes',
-                    grace_period_term=data['GRACE_PERIOD_TERM'],
-                    grace_period_rate=decimal.Decimal(
-                        str(data['GRACE_PERIOD_RATE'] or 0)
-                    ),
-                    discount_markup_type=data['DISCOUNT_MARKUP_TYPE'],
-                    discount_markup_value=decimal.Decimal(
-                        str(discount_markup_value)
-                    ),
-                    final_property_cost=decimal.Decimal(
-                        str(final_property_cost)
-                    ),
-                    # Результаты
-                    grace_payments_count=result['grace_payments_count'],
-                    grace_period_end_date=result['grace_period_end_date'],
-                    grace_monthly_payment=decimal.Decimal(
-                        str(result['grace_monthly_payment'])
-                    ),
-                    loan_after_grace=decimal.Decimal(
-                        str(result['loan_after_grace'])
-                    ),
-                    main_payments_count=result['main_payments_count'],
-                    mortgage_end_date=result['mortgage_end_date'],
-                    main_monthly_payment=decimal.Decimal(
-                        str(result['main_monthly_payment'])
-                    ),
-                    total_loan_amount=decimal.Decimal(
-                        str(result['total_loan_amount'])
-                    ),
-                    total_overpayment=decimal.Decimal(
-                        str(result['total_overpayment'])
-                    ),
+                calculation = None
+                should_save_calculation = (
+                    property_obj is not None
+                    or mortgage_form.has_manual_property_data()
                 )
-                calculation.save()
-                _attach_calculation_to_customer(target_customer, calculation)
-                if target_customer is not None:
-                    messages.success(
-                        request,
-                        'Расчет сохранен и привязан к клиенту.',
-                    )
+                if should_save_calculation:
+                    calculation_values = {
+                        'base_property_cost': base_property_cost,
+                        'initial_payment_percent': initial_payment_percent,
+                        'discount_markup_value': discount_markup_value,
+                        'final_property_cost': final_property_cost,
+                    }
+                    with transaction.atomic():
+                        if property_obj is None:
+                            property_obj = _create_manual_property(
+                                data,
+                                base_property_cost,
+                            )
+                        calculation = _build_calculation(
+                            property_obj,
+                            data,
+                            result,
+                            calculation_values,
+                        )
+                        calculation.save()
+                        _attach_calculation_to_customer(
+                            target_customer,
+                            calculation,
+                        )
+
+                    if target_customer is not None:
+                        messages.success(
+                            request,
+                            'Расчет сохранен и привязан к клиенту.',
+                        )
 
                 # Сохраняем расчет в контекст
                 context['result'] = formatted_result
@@ -426,33 +599,64 @@ def mortgage_calculator(request):
                     mortgage_data['DISCOUNT_MARKUP_TYPE']
                 )
 
-                property_data_list = [
+                property_data_list = []
+                if property_obj is not None:
+                    real_estate_complex = (
+                        property_obj.building.real_estate_complex
+                    )
+                    property_data_list.extend(
+                        [
+                            [
+                                'Город',
+                                real_estate_complex.district.city.name,
+                            ],
+                            ['Район', real_estate_complex.district.name],
+                            [
+                                'Застройщик',
+                                real_estate_complex.developer.name,
+                            ],
+                            ['Жилой комплекс', real_estate_complex.name],
+                            ['Корпус', property_obj.building.number],
+                            ['Номер квартиры', property_obj.apartment_number],
+                            ['Площадь, м2', float(property_obj.area)],
+                            ['Планировка', property_obj.layout.name],
+                            ['Этаж', property_obj.floor],
+                            ['Отделка', property_obj.decoration.name],
+                        ]
+                    )
+                elif mortgage_form.has_manual_property_data():
+                    property_data_list.extend(
+                        [
+                            ['Город', mortgage_data['OBJECT_CITY'].name],
+                            ['Район', mortgage_data['OBJECT_DISTRICT'].name],
+                            [
+                                'Застройщик',
+                                mortgage_data['OBJECT_DEVELOPER'].name,
+                            ],
+                            [
+                                'Жилой комплекс',
+                                mortgage_data['OBJECT_COMPLEX'].name,
+                            ],
+                            ['Корпус', mortgage_data['OBJECT_BUILDING'].number],
+                            [
+                                'Номер квартиры',
+                                mortgage_data['OBJECT_APARTMENT_NUMBER'],
+                            ],
+                            ['Площадь, м2', float(mortgage_data['OBJECT_AREA'])],
+                            ['Планировка', mortgage_data['OBJECT_LAYOUT'].name],
+                            ['Этаж', mortgage_data['OBJECT_FLOOR']],
+                            ['Отделка', mortgage_data['OBJECT_DECORATION'].name],
+                        ]
+                    )
+
+                property_data_list.extend(
                     [
-                        'Застройщик',
-                        property_obj.building.real_estate_complex.developer.name,
-                    ],
-                    [
-                        'Город',
-                        property_obj.building.real_estate_complex.district.city.name,
-                    ],
-                    [
-                        'Название ЖК',
-                        property_obj.building.real_estate_complex.name,
-                    ],
-                    [
-                        'Класс ЖК',
-                        property_obj.building.real_estate_complex.real_estate_class.name,
-                    ],
-                    ['Корпус', property_obj.building.number],
-                    ['№ квартиры', property_obj.apartment_number],
-                    ['Планировка', property_obj.layout.name],
-                    ['Площадь', float(property_obj.area)],
-                    ['Этаж', property_obj.floor],
-                    ['Стоимость объекта, руб.', property_cost],
-                    [discount_markup_percent_label, discount_markup_value],
-                    [discount_markup_rubles_label, discount_markup_rubles],
-                    ['Итоговая стоимость объекта, руб.', final_property_cost],
-                ]
+                        ['Базовая стоимость объекта, руб.', property_cost],
+                        [discount_markup_percent_label, discount_markup_value],
+                        [discount_markup_rubles_label, discount_markup_rubles],
+                        ['Итоговая стоимость объекта, руб.', final_property_cost],
+                    ]
+                )
 
                 for i, (param, value) in enumerate(
                     property_data_list, start=4
@@ -466,14 +670,14 @@ def mortgage_calculator(request):
                             cell.value = int(value)
                             cell.style = integer_style
                         elif param in [
-                            'Площадь',
+                            'Площадь, м2',
                             discount_markup_percent_label,
                             discount_markup_rubles_label,
                         ]:
                             cell.value = value
                             cell.style = number_style
                         elif param in [
-                            'Стоимость объекта, руб.',
+                            'Базовая стоимость объекта, руб.',
                             'Итоговая стоимость объекта, руб.',
                         ]:
                             cell.value = value
@@ -738,12 +942,17 @@ def property_cost_api(request, pk):
     Возвращает:
         Any: Тип результата определяется вызывающим кодом.
     """
-    property_obj = get_object_or_404(Property, pk=pk)
-    return JsonResponse(
-        {
-            'property_cost': str(property_obj.property_cost),
-        }
+    property_obj = get_object_or_404(
+        Property.objects.select_related(
+            'building__real_estate_complex__developer',
+            'building__real_estate_complex__district__city',
+            'building',
+            'layout',
+            'decoration',
+        ),
+        pk=pk,
     )
+    return JsonResponse(_get_property_payload(property_obj))
 
 
 def calculation_list(request):
