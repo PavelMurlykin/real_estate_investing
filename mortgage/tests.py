@@ -153,6 +153,26 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, 'initial_payment_percent_lock')
         self.assertContains(response, 'Срок ипотеки, мес.')
         self.assertContains(response, 'Срок льготного периода, мес.')
+        self.assertContains(response, 'id="object-data-collapse"')
+        self.assertContains(response, 'calculation-toggle')
+        self.assertContains(response, 'aria-label="Показать данные объекта"')
+        self.assertContains(response, 'clear-object-data-fields')
+        self.assertContains(response, 'Очистить все поля')
+        self.assertContains(response, 'property-apartment-menu')
+        self.assertContains(
+            response,
+            'mortgage_form.js?v=20260525-apartment-autocomplete',
+        )
+        self.assertContains(response, 'Стоимость объекта')
+        self.assertContains(response, 'Город')
+        self.assertContains(response, 'Район')
+        self.assertContains(response, 'Жилой комплекс')
+        self.assertContains(response, 'Номер квартиры')
+        self.assertNotContains(response, 'Объект недвижимости')
+        self.assertEqual(
+            response.context['property_form_data']['properties'][0]['id'],
+            self.property.pk,
+        )
 
     def test_calculation_list_is_available_from_calculation_menu(self):
         response = self.client.get(self.url)
@@ -517,6 +537,78 @@ class MortgageCalculatorViewTests(TestCase):
             calculation.final_property_cost, Decimal('5000000.00')
         )
 
+    def test_calculate_selects_property_by_building_and_apartment_number(self):
+        payload = self._base_payload()
+        payload.update(
+            {
+                'calculate': '1',
+                'PROPERTY': '',
+                'PROPERTY_COST': '',
+                'OBJECT_BUILDING': self.property.building.pk,
+                'OBJECT_APARTMENT_NUMBER': self.property.apartment_number,
+            }
+        )
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, 200)
+        calculation = MortgageCalculation.objects.latest('id')
+        self.assertEqual(calculation.property, self.property)
+        self.assertEqual(calculation.base_property_cost, Decimal('5000000.00'))
+
+    def test_calculate_without_property_does_not_save_calculation(self):
+        payload = self._base_payload()
+        payload.update(
+            {
+                'calculate': '1',
+                'PROPERTY': '',
+                'PROPERTY_COST': '5000000',
+            }
+        )
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('result', response.context)
+        self.assertFalse(MortgageCalculation.objects.exists())
+
+    def test_calculate_with_manual_object_creates_property_and_calculation(self):
+        payload = self._base_payload()
+        payload.update(
+            {
+                'calculate': '1',
+                'PROPERTY': '',
+                'PROPERTY_COST': '7000000',
+                'OBJECT_CITY': (
+                    self.property.building.real_estate_complex.district.city.pk
+                ),
+                'OBJECT_DISTRICT': (
+                    self.property.building.real_estate_complex.district.pk
+                ),
+                'OBJECT_DEVELOPER': (
+                    self.property.building.real_estate_complex.developer.pk
+                ),
+                'OBJECT_COMPLEX': (
+                    self.property.building.real_estate_complex.pk
+                ),
+                'OBJECT_BUILDING': self.property.building.pk,
+                'OBJECT_APARTMENT_NUMBER': '202',
+                'OBJECT_AREA': '55.50',
+                'OBJECT_LAYOUT': self.property.layout.pk,
+                'OBJECT_FLOOR': '12',
+                'OBJECT_DECORATION': self.property.decoration.pk,
+            }
+        )
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, 200)
+        created_property = Property.objects.get(apartment_number='202')
+        self.assertEqual(created_property.property_cost, Decimal('7000000'))
+        calculation = MortgageCalculation.objects.latest('id')
+        self.assertEqual(calculation.property, created_property)
+        self.assertEqual(calculation.base_property_cost, Decimal('7000000'))
+
     def test_calculate_keeps_overridden_cost_only_in_calculation(self):
         """Описание метода
         test_calculate_keeps_overridden_cost_only_in_calculation.
@@ -670,3 +762,12 @@ class MortgageCalculatorViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['property_cost'], '5000000.00')
+        self.assertEqual(
+            response.json()['city_id'],
+            self.property.building.real_estate_complex.district.city.pk,
+        )
+        self.assertEqual(
+            response.json()['building_id'],
+            self.property.building.pk,
+        )
+        self.assertEqual(response.json()['apartment_number'], '101')

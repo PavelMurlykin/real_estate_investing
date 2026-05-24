@@ -6,6 +6,7 @@
 {% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/calculation_table.css' %}?v=20260523-fit-area">
 <style>
     .value-lock-button {
         align-items: center;
@@ -38,6 +39,43 @@
     .value-lock-button.is-locked .lock-icon-img-unlocked {
         display: none;
     }
+
+    .apartment-autocomplete {
+        position: relative;
+    }
+
+    .apartment-autocomplete .searchable-select {
+        position: static;
+    }
+
+    .apartment-autocomplete-menu {
+        background: var(--bs-body-bg);
+        border: var(--bs-border-width) solid var(--bs-border-color);
+        border-radius: var(--bs-border-radius);
+        box-shadow: var(--bs-box-shadow);
+        left: 0;
+        max-height: 14rem;
+        overflow-y: auto;
+        position: absolute;
+        right: 0;
+        top: calc(100% + 0.25rem);
+        z-index: 1050;
+    }
+
+    .apartment-autocomplete-option {
+        cursor: pointer;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .apartment-autocomplete-option.is-active,
+    .apartment-autocomplete-option:hover {
+        background: var(--bs-primary-bg-subtle);
+    }
+
+    .apartment-autocomplete-empty {
+        color: var(--bs-secondary-color);
+        padding: 0.5rem 0.75rem;
+    }
 </style>
 {% endblock %}
 
@@ -67,20 +105,124 @@
         {% if target_customer %}
             <input type="hidden" name="customer" value="{{ target_customer.pk }}">
         {% endif %}
+        {{ mortgage_form.PROPERTY }}
 
         <div class="row g-4">
-            <div class="col-lg-6">
-                <div class="card h-100">
-                    <div class="card-header">Данные объекта</div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label for="{{ mortgage_form.PROPERTY.id_for_label }}" class="form-label">{{ mortgage_form.PROPERTY.label }}</label>
-                            {{ mortgage_form.PROPERTY }}
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex align-items-center justify-content-between gap-2">
+                        <span>Данные объекта</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <button
+                                id="clear-object-data-fields"
+                                class="btn btn-sm btn-outline-secondary"
+                                type="button"
+                            >Очистить все поля</button>
+                            <button
+                                class="btn btn-sm btn-outline-primary calculation-toggle"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#object-data-collapse"
+                                aria-expanded="true"
+                                aria-controls="object-data-collapse"
+                                aria-label="Показать данные объекта"
+                            ></button>
+                        </div>
+                    </div>
+                    <div id="object-data-collapse" class="collapse show">
+                        <div class="card-body" data-cascade-selects data-cascade-data="#mortgage-property-form-data">
                             {% for error in mortgage_form.PROPERTY.errors %}
                                 <div class="invalid-feedback d-block">{{ error }}</div>
                             {% endfor %}
-                        </div>
 
+                            <div class="row g-3 mt-1">
+                                <div class="col-md-4">
+                                    <label for="{{ mortgage_form.OBJECT_CITY.id_for_label }}" class="form-label">{{ mortgage_form.OBJECT_CITY.label }}</label>
+                                    {{ mortgage_form.OBJECT_CITY }}
+                                    {% for error in mortgage_form.OBJECT_CITY.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ mortgage_form.OBJECT_DISTRICT.id_for_label }}" class="form-label">{{ mortgage_form.OBJECT_DISTRICT.label }}</label>
+                                    {{ mortgage_form.OBJECT_DISTRICT }}
+                                    {% for error in mortgage_form.OBJECT_DISTRICT.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ mortgage_form.OBJECT_DEVELOPER.id_for_label }}" class="form-label">{{ mortgage_form.OBJECT_DEVELOPER.label }}</label>
+                                    {{ mortgage_form.OBJECT_DEVELOPER }}
+                                    {% for error in mortgage_form.OBJECT_DEVELOPER.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ mortgage_form.OBJECT_COMPLEX.id_for_label }}" class="form-label">{{ mortgage_form.OBJECT_COMPLEX.label }}</label>
+                                    {{ mortgage_form.OBJECT_COMPLEX }}
+                                    {% for error in mortgage_form.OBJECT_COMPLEX.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ mortgage_form.OBJECT_BUILDING.id_for_label }}" class="form-label">{{ mortgage_form.OBJECT_BUILDING.label }}</label>
+                                    {{ mortgage_form.OBJECT_BUILDING }}
+                                    {% for error in mortgage_form.OBJECT_BUILDING.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ mortgage_form.OBJECT_APARTMENT_NUMBER.id_for_label }}" class="form-label">{{ mortgage_form.OBJECT_APARTMENT_NUMBER.label }}</label>
+                                    <div class="apartment-autocomplete">
+                                        {{ mortgage_form.OBJECT_APARTMENT_NUMBER }}
+                                        <div
+                                            id="property-apartment-menu"
+                                            class="apartment-autocomplete-menu d-none"
+                                            role="listbox"
+                                        ></div>
+                                    </div>
+                                    {% for error in mortgage_form.OBJECT_APARTMENT_NUMBER.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ mortgage_form.OBJECT_AREA.id_for_label }}" class="form-label">{{ mortgage_form.OBJECT_AREA.label }}</label>
+                                    {{ mortgage_form.OBJECT_AREA }}
+                                    {% for error in mortgage_form.OBJECT_AREA.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ mortgage_form.OBJECT_LAYOUT.id_for_label }}" class="form-label">{{ mortgage_form.OBJECT_LAYOUT.label }}</label>
+                                    {{ mortgage_form.OBJECT_LAYOUT }}
+                                    {% for error in mortgage_form.OBJECT_LAYOUT.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ mortgage_form.OBJECT_FLOOR.id_for_label }}" class="form-label">{{ mortgage_form.OBJECT_FLOOR.label }}</label>
+                                    {{ mortgage_form.OBJECT_FLOOR }}
+                                    {% for error in mortgage_form.OBJECT_FLOOR.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ mortgage_form.OBJECT_DECORATION.id_for_label }}" class="form-label">{{ mortgage_form.OBJECT_DECORATION.label }}</label>
+                                    {{ mortgage_form.OBJECT_DECORATION }}
+                                    {% for error in mortgage_form.OBJECT_DECORATION.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header">Стоимость объекта</div>
+                    <div class="card-body">
                         <div class="mb-3">
                             <label for="{{ mortgage_form.PROPERTY_COST.id_for_label }}" class="form-label">{{ mortgage_form.PROPERTY_COST.label }}</label>
                             {{ mortgage_form.PROPERTY_COST }}
@@ -387,5 +529,10 @@
     {% endif %}
 </div>
 
-<script src="{% static 'js/mortgage_form.js' %}" data-property-cost-api-template="{% url 'mortgage:property_cost_api' 0 %}"></script>
+{{ property_form_data|json_script:"mortgage-property-form-data" }}
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/dependent_selects.js' %}"></script>
+<script src="{% static 'js/mortgage_form.js' %}?v=20260525-apartment-autocomplete" data-property-cost-api-template="{% url 'mortgage:property_cost_api' 0 %}"></script>
 {% endblock %}
