@@ -39,6 +39,7 @@ services:
       - "8000"
     volumes:
       - staticfiles:/app/staticfiles
+      - mediafiles:/app/media
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/', timeout=5).read()"]
       interval: 10s
@@ -57,6 +58,7 @@ services:
     volumes:
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - staticfiles:/app/staticfiles:ro
+      - mediafiles:/app/media:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/health/ || exit 1"]
       interval: 10s
@@ -67,3 +69,4 @@ services:
 volumes:
   postgres_data:
   staticfiles:
+  mediafiles:
