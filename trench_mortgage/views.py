@@ -209,12 +209,19 @@ def _build_trench_input_rows(
             trench_amount = str(
                 post_data.get(f'trench_amount_{idx}', '')
             ).strip()
+            trench_amount_source = str(
+                post_data.get(f'trench_amount_source_{idx}', 'percent')
+            ).strip()
             annual_rate = str(post_data.get(f'annual_rate_{idx}', '')).strip()
         else:
             trench_date = ''
             trench_percent = ''
             trench_amount = ''
+            trench_amount_source = 'percent'
             annual_rate = ''
+
+        if trench_amount_source not in ('percent', 'rubles'):
+            trench_amount_source = 'percent'
 
         if not annual_rate:
             annual_rate = default_rate_value
@@ -225,6 +232,7 @@ def _build_trench_input_rows(
                 'trench_date': trench_date,
                 'trench_percent': trench_percent,
                 'trench_amount': trench_amount,
+                'trench_amount_source': trench_amount_source,
                 'annual_rate': annual_rate,
                 'is_active': idx <= trench_count,
                 'is_last': idx == trench_count,
@@ -383,7 +391,7 @@ def _parse_trench_inputs(
         trench_count, post_data, default_annual_rate
     )
     entries = []
-    percent_sum = Decimal('0')
+    amount_sum = Decimal('0')
     loan_amount_decimal = Decimal(str(loan_amount))
     default_rate_decimal = Decimal(str(default_annual_rate))
 
@@ -395,11 +403,19 @@ def _parse_trench_inputs(
         trench_amount_raw = str(
             post_data.get(f'trench_amount_{idx}', '')
         ).strip()
+        trench_amount_source = str(
+            post_data.get(f'trench_amount_source_{idx}', 'percent')
+        ).strip()
         annual_rate_raw = str(post_data.get(f'annual_rate_{idx}', '')).strip()
         row_data = input_rows[idx - 1]
         row_data['trench_date'] = trench_date_raw
         row_data['trench_percent'] = trench_percent_raw
         row_data['trench_amount'] = trench_amount_raw
+        row_data['trench_amount_source'] = (
+            trench_amount_source
+            if trench_amount_source in ('percent', 'rubles')
+            else 'percent'
+        )
         row_data['annual_rate'] = (
             annual_rate_raw or f'{default_rate_decimal:.2f}'
         )
@@ -459,7 +475,18 @@ def _parse_trench_inputs(
                 )
                 continue
 
-            if trench_percent is not None:
+            if (
+                row_data['trench_amount_source'] == 'rubles'
+                and trench_amount is not None
+            ):
+                computed_amount = trench_amount
+                if loan_amount_decimal <= 0:
+                    errors.append('РЎСѓРјРјР° РєСЂРµРґРёС‚Р° РґРѕР»Р¶РЅР° Р±С‹С‚СЊ Р±РѕР»СЊС€Рµ 0.')
+                    continue
+                computed_percent = (
+                    computed_amount / loan_amount_decimal
+                ) * Decimal('100')
+            elif trench_percent is not None:
                 computed_percent = trench_percent
                 computed_amount = (
                     loan_amount_decimal * computed_percent / Decimal('100')
@@ -473,9 +500,9 @@ def _parse_trench_inputs(
                     computed_amount / loan_amount_decimal
                 ) * Decimal('100')
 
-            percent_sum += computed_percent
             trench_percent = computed_percent.quantize(Decimal('0.01'))
             trench_amount = computed_amount.quantize(Decimal('0.01'))
+            amount_sum += trench_amount
         entries.append(
             {
                 'number': idx,
@@ -492,23 +519,24 @@ def _parse_trench_inputs(
     if len(entries) != trench_count:
         return [], input_rows, ['Некорректные данные траншей.']
 
-    if trench_count == 1:
-        last_percent = Decimal('100')
-    else:
-        last_percent = Decimal('100') - percent_sum
+    last_amount = (
+        loan_amount_decimal.quantize(Decimal('0.01')) - amount_sum
+    ).quantize(Decimal('0.01'))
 
-    if last_percent <= 0:
+    if last_amount <= 0:
         return (
             [],
             input_rows,
             ['Сумма процентов траншей превышает или равна 100%.'],
         )
 
-    last_amount = (
-        loan_amount_decimal * last_percent / Decimal('100')
-    ).quantize(Decimal('0.01'))
+    if loan_amount_decimal <= 0:
+        last_percent = Decimal('100')
+    else:
+        last_percent = last_amount / loan_amount_decimal * Decimal('100')
     entries[-1]['trench_percent'] = last_percent.quantize(Decimal('0.01'))
     entries[-1]['trench_amount'] = last_amount
+    input_rows[-1]['trench_amount_source'] = 'rubles'
 
     for idx, entry in enumerate(entries):
         input_rows[idx]['trench_percent'] = '{:.2f}'.format(
@@ -549,6 +577,10 @@ def _calculate_trench_mortgage(mortgage_data, trench_entries):
     trenches_result = []
     total_overpayment = 0.0
     cumulative_amount = 0.0
+    cumulative_monthly_payment = 0.0
+    first_payment_date = (
+        trench_entries[0]['trench_date'] if trench_entries else None
+    )
 
     for idx, trench in enumerate(trench_entries):
         trench_date = trench['trench_date']
@@ -592,11 +624,12 @@ def _calculate_trench_mortgage(mortgage_data, trench_entries):
             period_end_date = trench_entries[idx + 1]['trench_date']
         else:
             period_end_date = mortgage_end_date
-        payments_count = _calculate_months_remaining(
-            trench_date, period_end_date
+        payments_count = _calculate_payment_count_in_schedule(
+            first_payment_date, trench_date, period_end_date
         )
 
         cumulative_amount += trench_amount
+        cumulative_monthly_payment += monthly_payment
         remaining_debt = max(loan_amount - cumulative_amount, 0)
         total_overpayment += overpayment
 
@@ -607,7 +640,8 @@ def _calculate_trench_mortgage(mortgage_data, trench_entries):
                 'percent': trench_percent,
                 'amount': trench_amount,
                 'annual_rate': annual_rate,
-                'monthly_payment': monthly_payment,
+                'trench_monthly_payment': monthly_payment,
+                'monthly_payment': cumulative_monthly_payment,
                 'payments_count': payments_count,
                 'remaining_debt': remaining_debt,
                 'overpayment': overpayment,
@@ -661,6 +695,23 @@ def _calculate_months_remaining(start_date, end_date):
     return months
 
 
+def _calculate_payment_count_in_schedule(
+    first_payment_date, start_date, end_date
+):
+    """Return payment dates in the shared schedule interval."""
+    if not first_payment_date or end_date <= start_date:
+        return 0
+
+    payment_count = 0
+    payment_date = first_payment_date
+    while payment_date < end_date:
+        if payment_date >= start_date:
+            payment_count += 1
+        payment_date += relativedelta(months=1)
+
+    return payment_count
+
+
 def _build_trench_payment_schedule(trenches, mortgage_end_date):
     """Описание метода _build_trench_payment_schedule.
 
@@ -689,7 +740,9 @@ def _build_trench_payment_schedule(trenches, mortgage_end_date):
                 'start_date': trench['date'],
                 'months_left': months_to_end,
                 'monthly_rate': trench['annual_rate'] / 100 / 12,
-                'monthly_payment': trench['monthly_payment'],
+                'monthly_payment': trench.get(
+                    'trench_monthly_payment', trench['monthly_payment']
+                ),
                 'balance': trench['amount'],
             }
         )

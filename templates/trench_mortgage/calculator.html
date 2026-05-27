@@ -1,7 +1,44 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}
     Калькулятор траншевой ипотеки
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .value-lock-button {
+        align-items: center;
+        display: inline-flex;
+        justify-content: center;
+        padding: 0;
+        width: 2.75rem;
+    }
+
+    .value-lock-button.is-locked {
+        background-color: var(--bs-primary);
+        border-color: var(--bs-primary);
+        color: var(--bs-white);
+    }
+
+    .lock-icon-img {
+        height: 1.125rem;
+        object-fit: contain;
+        width: 1.125rem;
+    }
+
+    .lock-icon-img-locked {
+        display: none;
+    }
+
+    .value-lock-button.is-locked .lock-icon-img-locked {
+        display: inline-block;
+    }
+
+    .value-lock-button.is-locked .lock-icon-img-unlocked {
+        display: none;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -157,26 +194,58 @@
                                         </div>
                                         <div class="col-md-3">
                                             <label class="form-label" for="trench_percent_{{ row.number }}">Сумма транша, %</label>
-                                            <input
-                                                id="trench_percent_{{ row.number }}"
-                                                type="number"
-                                                class="form-control trench-percent"
-                                                name="trench_percent_{{ row.number }}"
-                                                value="{{ row.trench_percent }}"
-                                                step="0.01"
-                                                min="0"
-                                            >
+                                            <div class="input-group">
+                                                <input
+                                                    id="trench_percent_{{ row.number }}"
+                                                    type="number"
+                                                    class="form-control trench-percent"
+                                                    name="trench_percent_{{ row.number }}"
+                                                    value="{{ row.trench_percent }}"
+                                                    step="0.01"
+                                                    min="0"
+                                                >
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-outline-secondary value-lock-button trench-lock-button"
+                                                    data-trench-lock-source="percent"
+                                                    aria-pressed="false"
+                                                    title="&#1047;&#1072;&#1092;&#1080;&#1082;&#1089;&#1080;&#1088;&#1086;&#1074;&#1072;&#1090;&#1100; &#1079;&#1085;&#1072;&#1095;&#1077;&#1085;&#1080;&#1077; &#1074; &#1087;&#1088;&#1086;&#1094;&#1077;&#1085;&#1090;&#1072;&#1093;"
+                                                >
+                                                    <img class="lock-icon-img lock-icon-img-unlocked" src="{% static 'img/unlock.png' %}" alt="" aria-hidden="true">
+                                                    <img class="lock-icon-img lock-icon-img-locked" src="{% static 'img/lock.png' %}" alt="" aria-hidden="true">
+                                                    <span class="visually-hidden">&#1047;&#1072;&#1092;&#1080;&#1082;&#1089;&#1080;&#1088;&#1086;&#1074;&#1072;&#1090;&#1100; &#1079;&#1085;&#1072;&#1095;&#1077;&#1085;&#1080;&#1077; &#1074; &#1087;&#1088;&#1086;&#1094;&#1077;&#1085;&#1090;&#1072;&#1093;</span>
+                                                </button>
+                                            </div>
                                         </div>
                                         <div class="col-md-3">
                                             <label class="form-label" for="trench_amount_{{ row.number }}">Сумма транша, руб.</label>
+                                            <div class="input-group">
+                                                <input
+                                                    id="trench_amount_{{ row.number }}"
+                                                    type="number"
+                                                    class="form-control trench-amount"
+                                                    name="trench_amount_{{ row.number }}"
+                                                    value="{{ row.trench_amount }}"
+                                                    step="0.01"
+                                                    min="0"
+                                                >
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-outline-secondary value-lock-button trench-lock-button"
+                                                    data-trench-lock-source="rubles"
+                                                    aria-pressed="false"
+                                                    title="&#1047;&#1072;&#1092;&#1080;&#1082;&#1089;&#1080;&#1088;&#1086;&#1074;&#1072;&#1090;&#1100; &#1079;&#1085;&#1072;&#1095;&#1077;&#1085;&#1080;&#1077; &#1074; &#1088;&#1091;&#1073;&#1083;&#1103;&#1093;"
+                                                >
+                                                    <img class="lock-icon-img lock-icon-img-unlocked" src="{% static 'img/unlock.png' %}" alt="" aria-hidden="true">
+                                                    <img class="lock-icon-img lock-icon-img-locked" src="{% static 'img/lock.png' %}" alt="" aria-hidden="true">
+                                                    <span class="visually-hidden">&#1047;&#1072;&#1092;&#1080;&#1082;&#1089;&#1080;&#1088;&#1086;&#1074;&#1072;&#1090;&#1100; &#1079;&#1085;&#1072;&#1095;&#1077;&#1085;&#1080;&#1077; &#1074; &#1088;&#1091;&#1073;&#1083;&#1103;&#1093;</span>
+                                                </button>
+                                            </div>
                                             <input
-                                                id="trench_amount_{{ row.number }}"
-                                                type="number"
-                                                class="form-control trench-amount"
-                                                name="trench_amount_{{ row.number }}"
-                                                value="{{ row.trench_amount }}"
-                                                step="0.01"
-                                                min="0"
+                                                type="hidden"
+                                                class="trench-amount-source"
+                                                name="trench_amount_source_{{ row.number }}"
+                                                value="{{ row.trench_amount_source|default:'percent' }}"
                                             >
                                         </div>
                                         <div class="col-md-3">
@@ -439,6 +508,34 @@ function syncAnnualRateToAllTrenches() {
     });
 }
 
+function getTrenchAmountSource(row) {
+    const sourceInput = row.querySelector('.trench-amount-source');
+    return sourceInput && sourceInput.value === 'rubles' ? 'rubles' : 'percent';
+}
+
+function setTrenchAmountSource(row, source) {
+    const normalizedSource = source === 'rubles' ? 'rubles' : 'percent';
+    const sourceInput = row.querySelector('.trench-amount-source');
+    if (sourceInput) {
+        sourceInput.value = normalizedSource;
+    }
+    updateTrenchLockButtons(row, normalizedSource);
+}
+
+function updateTrenchLockButtons(row, source) {
+    row.querySelectorAll('.trench-lock-button').forEach(function (button) {
+        const locked = button.dataset.trenchLockSource === source;
+        button.classList.toggle('is-locked', locked);
+        button.setAttribute('aria-pressed', locked ? 'true' : 'false');
+    });
+}
+
+function setTrenchLockButtonsDisabled(row, disabled) {
+    row.querySelectorAll('.trench-lock-button').forEach(function (button) {
+        button.disabled = disabled;
+    });
+}
+
 function updateTrenchRows() {
     const countInput = document.getElementById('id_TRENCH_COUNT');
     const rows = Array.from(document.querySelectorAll('.trench-row'));
@@ -448,7 +545,7 @@ function updateTrenchRows() {
 
     const trenchCount = Math.max(1, Math.min(5, parseInt(countInput.value || '1', 10) || 1));
     const loanAmount = getLoanAmountNumber();
-    let sumPercent = 0;
+    let sumAmount = 0;
 
     rows.forEach((row, index) => {
         const number = index + 1;
@@ -457,6 +554,7 @@ function updateTrenchRows() {
         const dateInput = row.querySelector('.trench-date');
         const percentInput = row.querySelector('.trench-percent');
         const amountInput = row.querySelector('.trench-amount');
+        const sourceInput = row.querySelector('.trench-amount-source');
         const annualRateInput = row.querySelector('.annual-rate');
 
         row.style.display = isActive ? 'block' : 'none';
@@ -468,28 +566,38 @@ function updateTrenchRows() {
             amountInput.required = false;
             percentInput.readOnly = false;
             amountInput.readOnly = false;
+            if (sourceInput) {
+                sourceInput.disabled = true;
+            }
+            setTrenchLockButtonsDisabled(row, true);
             return;
         }
 
         dateInput.required = true;
         annualRateInput.required = true;
+        if (sourceInput) {
+            sourceInput.disabled = false;
+        }
 
         if (isLast) {
-            const lastPercent = Math.max(0, 100 - sumPercent);
-            const lastAmount = loanAmount * lastPercent / 100;
+            const lastAmount = Math.max(0, loanAmount - sumAmount);
+            const lastPercent = loanAmount > 0 ? lastAmount / loanAmount * 100 : 0;
             percentInput.value = lastPercent.toFixed(2);
             amountInput.value = lastAmount.toFixed(2);
             percentInput.readOnly = true;
             amountInput.readOnly = true;
             percentInput.required = false;
             amountInput.required = false;
+            setTrenchAmountSource(row, 'rubles');
+            setTrenchLockButtonsDisabled(row, true);
             return;
         }
 
         percentInput.readOnly = false;
         amountInput.readOnly = false;
+        setTrenchLockButtonsDisabled(row, false);
 
-        if (row.dataset.editedSource === 'amount') {
+        if (getTrenchAmountSource(row) === 'rubles') {
             const amount = parseNumber(amountInput.value);
             const percentFromAmount = loanAmount > 0 ? amount / loanAmount * 100 : 0;
             percentInput.value = percentFromAmount.toFixed(2);
@@ -498,7 +606,7 @@ function updateTrenchRows() {
             amountInput.value = (loanAmount * percent / 100).toFixed(2);
         }
 
-        sumPercent += parseNumber(percentInput.value);
+        sumAmount += parseNumber(amountInput.value);
         percentInput.required = false;
         amountInput.required = false;
     });
@@ -518,25 +626,34 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.trench-row').forEach(function (row) {
         const percentInput = row.querySelector('.trench-percent');
         const amountInput = row.querySelector('.trench-amount');
-        if (percentInput && amountInput) {
-            if (!percentInput.value && amountInput.value) {
-                row.dataset.editedSource = 'amount';
-            } else {
-                row.dataset.editedSource = 'percent';
-            }
+        const sourceInput = row.querySelector('.trench-amount-source');
+        if (
+            sourceInput
+            && sourceInput.value !== 'rubles'
+            && !percentInput.value
+            && amountInput.value
+        ) {
+            sourceInput.value = 'rubles';
         }
+        setTrenchAmountSource(row, getTrenchAmountSource(row));
         if (percentInput) {
             percentInput.addEventListener('input', function () {
-                row.dataset.editedSource = 'percent';
+                setTrenchAmountSource(row, 'percent');
                 updateTrenchRows();
             });
         }
         if (amountInput) {
             amountInput.addEventListener('input', function () {
-                row.dataset.editedSource = 'amount';
+                setTrenchAmountSource(row, 'rubles');
                 updateTrenchRows();
             });
         }
+        row.querySelectorAll('.trench-lock-button').forEach(function (button) {
+            button.addEventListener('click', function () {
+                setTrenchAmountSource(row, button.dataset.trenchLockSource);
+                updateTrenchRows();
+            });
+        });
     });
 
     const annualRateInput = document.getElementById('id_ANNUAL_RATE');

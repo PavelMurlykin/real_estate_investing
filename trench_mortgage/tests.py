@@ -153,6 +153,48 @@ class TrenchMortgageCalculationTests(SimpleTestCase):
         self.assertEqual(entries[0]['trench_amount'], Decimal('250000.00'))
         self.assertEqual(entries[1]['trench_percent'], Decimal('75.00'))
 
+    def test_parse_trench_inputs_uses_locked_amount_for_remainder(self):
+        """Keep the exact ruble amount when tranche rubles are locked."""
+        post_data = {
+            'trench_date_1': '2026-01-10',
+            'trench_percent_1': '1.25',
+            'trench_amount_1': '100000',
+            'trench_amount_source_1': 'rubles',
+            'annual_rate_1': '11.5',
+            'trench_date_2': '2026-06-10',
+            'trench_percent_2': '',
+            'trench_amount_2': '',
+            'trench_amount_source_2': 'rubles',
+            'annual_rate_2': '10',
+        }
+
+        entries, _, errors = _parse_trench_inputs(post_data, 2, 7_990_000, 10)
+
+        self.assertEqual(errors, [])
+        self.assertEqual(entries[0]['trench_amount'], Decimal('100000.00'))
+        self.assertEqual(entries[1]['trench_amount'], Decimal('7890000.00'))
+
+    def test_parse_trench_inputs_uses_locked_percent_for_amount(self):
+        """Keep the exact percent when tranche percent is locked."""
+        post_data = {
+            'trench_date_1': '2026-01-10',
+            'trench_percent_1': '1.25',
+            'trench_amount_1': '100000',
+            'trench_amount_source_1': 'percent',
+            'annual_rate_1': '11.5',
+            'trench_date_2': '2026-06-10',
+            'trench_percent_2': '',
+            'trench_amount_2': '',
+            'trench_amount_source_2': 'rubles',
+            'annual_rate_2': '10',
+        }
+
+        entries, _, errors = _parse_trench_inputs(post_data, 2, 7_990_000, 10)
+
+        self.assertEqual(errors, [])
+        self.assertEqual(entries[0]['trench_amount'], Decimal('99875.00'))
+        self.assertEqual(entries[1]['trench_amount'], Decimal('7890125.00'))
+
     def test_months_remaining_depends_on_actual_dates(self):
         """Описание метода test_months_remaining_depends_on_actual_dates.
 
@@ -207,6 +249,46 @@ class TrenchMortgageCalculationTests(SimpleTestCase):
         self.assertEqual(errors, [])
         self.assertEqual(calculation['trenches'][0]['payments_count'], 6)
         self.assertEqual(calculation['trenches'][1]['payments_count'], 6)
+
+    def test_details_match_schedule_for_offset_next_trench_date(self):
+        """Match stage counts and cumulative payments with the schedule."""
+        mortgage_data = self._build_mortgage_data()
+        mortgage_data.update(
+            {
+                'initial_payment_date': date(2026, 5, 21),
+                'mortgage_term': 30,
+                'annual_rate': 13.9,
+                'total_loan_amount': 7_990_000,
+            }
+        )
+        trench_entries = [
+            {
+                'number': 1,
+                'trench_date': date(2026, 5, 21),
+                'trench_percent': Decimal('12.52'),
+                'trench_amount': Decimal('1000348.00'),
+                'annual_rate': Decimal('13.90'),
+            },
+            {
+                'number': 2,
+                'trench_date': date(2027, 3, 31),
+                'trench_percent': Decimal('87.48'),
+                'trench_amount': Decimal('6989652.00'),
+                'annual_rate': Decimal('13.90'),
+            },
+        ]
+
+        calculation, errors = _calculate_trench_mortgage(
+            mortgage_data, trench_entries
+        )
+
+        self.assertEqual(errors, [])
+        self.assertEqual(calculation['trenches'][0]['payments_count'], 11)
+        self.assertAlmostEqual(
+            calculation['trenches'][1]['monthly_payment'],
+            calculation['payment_schedule'][11]['payment_amount'],
+            places=2,
+        )
 
     def test_payment_schedule_is_generated_for_each_month(self):
         """Описание метода test_payment_schedule_is_generated_for_each_month.
