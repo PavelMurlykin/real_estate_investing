@@ -33,7 +33,6 @@ class TrenchMortgageForm(forms.Form):
                 'class': 'form-control',
                 'step': '0.01',
                 'id': 'property_cost_input',
-                'oninput': 'updateFinalPropertyCost()',
             }
         ),
     )
@@ -41,14 +40,12 @@ class TrenchMortgageForm(forms.Form):
     DISCOUNT_MARKUP_TYPE = forms.ChoiceField(
         choices=[('discount', 'Скидка'), ('markup', 'Удорожание')],
         label='Тип изменения цены',
-        widget=forms.RadioSelect(
-            attrs={'onchange': 'updateFinalPropertyCost()'}
-        ),
+        widget=forms.RadioSelect(),
         initial='discount',
     )
 
     DISCOUNT_MARKUP_VALUE = forms.DecimalField(
-        label='Значение, %',
+        label='Скидка, %',
         min_value=0,
         max_digits=5,
         decimal_places=2,
@@ -58,9 +55,32 @@ class TrenchMortgageForm(forms.Form):
             attrs={
                 'class': 'form-control',
                 'step': '0.01',
-                'oninput': 'updateFinalPropertyCost()',
+                'id': 'discount_markup_percent',
             }
         ),
+    )
+
+    DISCOUNT_MARKUP_RUBLES = forms.DecimalField(
+        label='Скидка, руб.',
+        min_value=0,
+        max_digits=15,
+        decimal_places=2,
+        required=False,
+        initial=0,
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'id': 'discount_markup_rubles',
+            }
+        ),
+    )
+
+    DISCOUNT_MARKUP_SOURCE = forms.ChoiceField(
+        choices=[('percent', 'percent'), ('rubles', 'rubles')],
+        initial='percent',
+        required=False,
+        widget=forms.HiddenInput(attrs={'id': 'discount_markup_source'}),
     )
 
     INITIAL_PAYMENT_PERCENT = forms.DecimalField(
@@ -75,7 +95,6 @@ class TrenchMortgageForm(forms.Form):
                 'class': 'form-control',
                 'step': '0.01',
                 'id': 'initial_payment_percent',
-                'oninput': 'updateInitialPaymentRubles()',
             }
         ),
     )
@@ -90,9 +109,15 @@ class TrenchMortgageForm(forms.Form):
                 'class': 'form-control',
                 'step': '0.01',
                 'id': 'initial_payment_rubles',
-                'oninput': 'updateInitialPaymentPercent()',
             }
         ),
+    )
+
+    INITIAL_PAYMENT_SOURCE = forms.ChoiceField(
+        choices=[('percent', 'percent'), ('rubles', 'rubles')],
+        initial='percent',
+        required=False,
+        widget=forms.HiddenInput(attrs={'id': 'initial_payment_source'}),
     )
 
     INITIAL_PAYMENT_DATE = forms.DateField(
@@ -108,12 +133,31 @@ class TrenchMortgageForm(forms.Form):
         input_formats=['%d.%m.%Y', '%Y-%m-%d', '%d/%m/%Y'],
     )
 
-    MORTGAGE_TERM = forms.IntegerField(
+    MORTGAGE_TERM_YEARS = forms.IntegerField(
         label='Срок ипотеки, годы',
-        min_value=1,
+        min_value=0,
         max_value=50,
         initial=30,
-        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+        required=False,
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'id': 'mortgage_term_years',
+            }
+        ),
+    )
+
+    MORTGAGE_TERM = forms.IntegerField(
+        label='Срок ипотеки, мес.',
+        min_value=1,
+        max_value=600,
+        initial=360,
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'id': 'mortgage_term_months',
+            }
+        ),
     )
 
     ANNUAL_RATE = forms.DecimalField(
@@ -172,4 +216,8 @@ class TrenchMortgageForm(forms.Form):
         cleaned_data = super().clean()
         if cleaned_data.get('DISCOUNT_MARKUP_VALUE') is None:
             cleaned_data['DISCOUNT_MARKUP_VALUE'] = 0
+        if cleaned_data.get('DISCOUNT_MARKUP_RUBLES') is None:
+            cleaned_data['DISCOUNT_MARKUP_RUBLES'] = 0
+        if cleaned_data.get('INITIAL_PAYMENT_RUBLES') is None:
+            cleaned_data['INITIAL_PAYMENT_RUBLES'] = 0
         return cleaned_data

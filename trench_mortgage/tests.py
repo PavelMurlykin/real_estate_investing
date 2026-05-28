@@ -8,6 +8,7 @@ from trench_mortgage.views import (
     _calculate_months_remaining,
     _calculate_trench_mortgage,
     _parse_trench_inputs,
+    _prepare_mortgage_data,
 )
 
 
@@ -61,7 +62,7 @@ class TrenchMortgageCalculationTests(SimpleTestCase):
             'initial_payment_percent': 16.67,
             'initial_payment_rubles': 200_000,
             'initial_payment_date': date(2026, 1, 10),
-            'mortgage_term': 1,
+            'mortgage_term': 12,
             'annual_rate': 0,
             'trench_count': 2,
             'total_loan_amount': 1_000_000,
@@ -152,6 +153,33 @@ class TrenchMortgageCalculationTests(SimpleTestCase):
         self.assertEqual(entries[0]['trench_percent'], Decimal('25.00'))
         self.assertEqual(entries[0]['trench_amount'], Decimal('250000.00'))
         self.assertEqual(entries[1]['trench_percent'], Decimal('75.00'))
+
+    def test_prepare_mortgage_data_respects_locked_ruble_values(self):
+        """Use locked ruble values for discount and initial payment."""
+        cleaned_data = {
+            'PROPERTY': None,
+            'PROPERTY_COST': Decimal('10000000.00'),
+            'DISCOUNT_MARKUP_TYPE': 'discount',
+            'DISCOUNT_MARKUP_VALUE': Decimal('0.00'),
+            'DISCOUNT_MARKUP_RUBLES': Decimal('500000.00'),
+            'DISCOUNT_MARKUP_SOURCE': 'rubles',
+            'INITIAL_PAYMENT_PERCENT': Decimal('0.00'),
+            'INITIAL_PAYMENT_RUBLES': Decimal('950000.00'),
+            'INITIAL_PAYMENT_SOURCE': 'rubles',
+            'INITIAL_PAYMENT_DATE': date(2026, 1, 10),
+            'MORTGAGE_TERM': 360,
+            'ANNUAL_RATE': Decimal('13.90'),
+            'TRENCH_COUNT': 2,
+        }
+
+        mortgage_data, errors = _prepare_mortgage_data(cleaned_data)
+
+        self.assertEqual(errors, [])
+        self.assertEqual(mortgage_data['mortgage_term'], 360)
+        self.assertAlmostEqual(mortgage_data['discount_markup_value'], 5.0)
+        self.assertAlmostEqual(mortgage_data['final_property_cost'], 9_500_000)
+        self.assertAlmostEqual(mortgage_data['initial_payment_percent'], 10.0)
+        self.assertAlmostEqual(mortgage_data['total_loan_amount'], 8_550_000)
 
     def test_parse_trench_inputs_uses_locked_amount_for_remainder(self):
         """Keep the exact ruble amount when tranche rubles are locked."""
@@ -256,7 +284,7 @@ class TrenchMortgageCalculationTests(SimpleTestCase):
         mortgage_data.update(
             {
                 'initial_payment_date': date(2026, 5, 21),
-                'mortgage_term': 30,
+                'mortgage_term': 360,
                 'annual_rate': 13.9,
                 'total_loan_amount': 7_990_000,
             }

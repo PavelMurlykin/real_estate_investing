@@ -260,17 +260,77 @@ def _calculate_display_final_cost(data):
 
     try:
         property_cost = float(data.get('PROPERTY_COST') or 0)
-        discount_value = float(data.get('DISCOUNT_MARKUP_VALUE') or 0)
+        discount_percent = float(data.get('DISCOUNT_MARKUP_VALUE') or 0)
+        discount_rubles = float(data.get('DISCOUNT_MARKUP_RUBLES') or 0)
     except (TypeError, ValueError):
         return ''
 
+    if data.get('DISCOUNT_MARKUP_SOURCE') != 'rubles':
+        discount_rubles = property_cost * discount_percent / 100
+
     discount_type = data.get('DISCOUNT_MARKUP_TYPE') or 'discount'
     if discount_type == 'discount':
-        final_cost = property_cost * (1 - discount_value / 100)
+        final_cost = property_cost - discount_rubles
     else:
-        final_cost = property_cost * (1 + discount_value / 100)
+        final_cost = property_cost + discount_rubles
 
     return format_currency(final_cost)
+
+
+def _normalize_discount_markup_values(cleaned_data):
+    """Return discount or markup values with the locked source respected."""
+    property_cost = float(cleaned_data['PROPERTY_COST'])
+    discount_markup_percent = float(
+        cleaned_data.get('DISCOUNT_MARKUP_VALUE', 0) or 0
+    )
+    discount_markup_rubles = float(
+        cleaned_data.get('DISCOUNT_MARKUP_RUBLES', 0) or 0
+    )
+
+    if cleaned_data.get('DISCOUNT_MARKUP_SOURCE') == 'rubles':
+        discount_markup_percent = (
+            discount_markup_rubles / property_cost * 100
+            if property_cost > 0
+            else 0
+        )
+    else:
+        discount_markup_rubles = (
+            property_cost * discount_markup_percent / 100
+        )
+
+    if cleaned_data['DISCOUNT_MARKUP_TYPE'] == 'discount':
+        final_property_cost = property_cost - discount_markup_rubles
+    else:
+        final_property_cost = property_cost + discount_markup_rubles
+
+    return (
+        discount_markup_percent,
+        discount_markup_rubles,
+        final_property_cost,
+    )
+
+
+def _normalize_initial_payment_values(cleaned_data, final_property_cost):
+    """Return initial payment values with the locked source respected."""
+    initial_payment_percent = float(
+        cleaned_data.get('INITIAL_PAYMENT_PERCENT', 0) or 0
+    )
+    initial_payment_rubles = float(
+        cleaned_data.get('INITIAL_PAYMENT_RUBLES', 0) or 0
+    )
+
+    if cleaned_data.get('INITIAL_PAYMENT_SOURCE') == 'rubles':
+        initial_payment_percent = (
+            initial_payment_rubles / final_property_cost * 100
+            if final_property_cost > 0
+            else 0
+        )
+    else:
+        initial_payment_rubles = (
+            final_property_cost * initial_payment_percent / 100
+        )
+
+    return initial_payment_percent, initial_payment_rubles
 
 
 def _prepare_mortgage_data(cleaned_data):
@@ -287,47 +347,19 @@ def _prepare_mortgage_data(cleaned_data):
     errors = []
     property_obj = cleaned_data['PROPERTY']
 
-    property_cost = float(cleaned_data['PROPERTY_COST'])
     base_property_cost = float(cleaned_data['PROPERTY_COST'])
-    discount_markup_value = float(
-        cleaned_data.get('DISCOUNT_MARKUP_VALUE', 0) or 0
-    )
     discount_markup_type = cleaned_data['DISCOUNT_MARKUP_TYPE']
-
-    if discount_markup_type == 'discount':
-        final_property_cost = property_cost * (1 - discount_markup_value / 100)
-    else:
-        final_property_cost = property_cost * (1 + discount_markup_value / 100)
-
-    initial_payment_percent = float(
-        cleaned_data.get('INITIAL_PAYMENT_PERCENT', 0) or 0
+    (
+        discount_markup_value,
+        discount_markup_rubles,
+        final_property_cost,
+    ) = _normalize_discount_markup_values(cleaned_data)
+    (
+        initial_payment_percent,
+        initial_payment_rubles,
+    ) = _normalize_initial_payment_values(
+        cleaned_data, final_property_cost
     )
-    initial_payment_rubles = float(
-        cleaned_data.get('INITIAL_PAYMENT_RUBLES', 0) or 0
-    )
-
-    if (
-        initial_payment_rubles
-        and not initial_payment_percent
-        and final_property_cost > 0
-    ):
-        initial_payment_percent = (
-            initial_payment_rubles / final_property_cost
-        ) * 100
-
-    if (
-        initial_payment_percent
-        and not initial_payment_rubles
-        and final_property_cost > 0
-    ):
-        initial_payment_rubles = (
-            final_property_cost * initial_payment_percent / 100
-        )
-
-    if initial_payment_percent and initial_payment_rubles:
-        initial_payment_rubles = (
-            final_property_cost * initial_payment_percent / 100
-        )
 
     total_loan_amount = final_property_cost - initial_payment_rubles
     if total_loan_amount <= 0:
@@ -340,10 +372,11 @@ def _prepare_mortgage_data(cleaned_data):
 
     return {
         'property_obj': property_obj,
-        'property_cost': property_cost,
+        'property_cost': base_property_cost,
         'base_property_cost': base_property_cost,
         'discount_markup_type': discount_markup_type,
         'discount_markup_value': discount_markup_value,
+        'discount_markup_rubles': discount_markup_rubles,
         'final_property_cost': final_property_cost,
         'initial_payment_percent': initial_payment_percent,
         'initial_payment_rubles': initial_payment_rubles,
@@ -571,7 +604,7 @@ def _calculate_trench_mortgage(mortgage_data, trench_entries):
     loan_amount = float(mortgage_data['total_loan_amount'])
     initial_payment_date = mortgage_data['initial_payment_date']
     mortgage_end_date = initial_payment_date + relativedelta(
-        years=mortgage_data['mortgage_term']
+        months=mortgage_data['mortgage_term']
     )
 
     trenches_result = []
@@ -663,6 +696,7 @@ def _calculate_trench_mortgage(mortgage_data, trench_entries):
         'initial_payment_date': mortgage_data['initial_payment_date'],
         'mortgage_term': mortgage_data['mortgage_term'],
         'mortgage_end_date': mortgage_end_date,
+        'annual_rate': mortgage_data['annual_rate'],
         'trench_count': mortgage_data['trench_count'],
         'total_loan_amount': mortgage_data['total_loan_amount'],
         'total_overpayment': total_overpayment,
@@ -892,12 +926,18 @@ def _save_trench_calculation(calculation):
     """
     calc_obj = TrenchMortgageCalculation.objects.create(
         property=calculation['property_obj'],
+        base_property_cost=Decimal(str(calculation['base_property_cost'])),
+        discount_markup_type=calculation['discount_markup_type'],
+        discount_markup_value=Decimal(
+            str(calculation['discount_markup_value'])
+        ),
         final_property_cost=Decimal(str(calculation['final_property_cost'])),
         initial_payment_percent=Decimal(
             str(calculation['initial_payment_percent'])
         ),
         initial_payment_date=calculation['initial_payment_date'],
         mortgage_term=calculation['mortgage_term'],
+        annual_rate=Decimal(str(calculation['annual_rate'])),
         trench_count=calculation['trench_count'],
         total_loan_amount=Decimal(str(calculation['total_loan_amount'])),
         total_overpayment=Decimal(str(calculation['total_overpayment'])),
@@ -1015,7 +1055,8 @@ def _export_trench_excel(calculation):
             'Дата первоначального взноса',
             calculation['initial_payment_date'].strftime('%d.%m.%Y'),
         ],
-        ['Срок кредита, лет', calculation['mortgage_term']],
+        ['Срок кредита, мес.', calculation['mortgage_term']],
+        ['Срок кредита, лет', calculation['mortgage_term'] // 12],
         ['Количество траншей', calculation['trench_count']],
     ]
 
