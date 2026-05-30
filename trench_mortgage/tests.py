@@ -3,38 +3,12 @@ from decimal import Decimal
 
 from django.test import SimpleTestCase
 
-from trench_mortgage.forms import TrenchMortgageForm
 from trench_mortgage.views import (
     _calculate_months_remaining,
     _calculate_trench_mortgage,
     _parse_trench_inputs,
     _prepare_mortgage_data,
 )
-
-
-class TrenchMortgageFormTests(SimpleTestCase):
-    """Описание класса TrenchMortgageFormTests.
-
-    Инкапсулирует данные и поведение, необходимые для работы компонента
-    в данном модуле.
-    """
-
-    def test_trench_count_choices_are_limited_to_one_to_five(self):
-        """Описание метода
-        test_trench_count_choices_are_limited_to_one_to_five.
-
-        Проверяет ожидаемое поведение сценария в рамках автоматического
-        теста.
-
-        Возвращает:
-            None: Тест завершится ошибкой при нарушении ожидаемого
-        поведения.
-        """
-        trench_count_field = TrenchMortgageForm.base_fields['TRENCH_COUNT']
-        self.assertEqual(
-            trench_count_field.choices,
-            [(1, '1'), (2, '2'), (3, '3'), (4, '4'), (5, '5')],
-        )
 
 
 class TrenchMortgageCalculationTests(SimpleTestCase):

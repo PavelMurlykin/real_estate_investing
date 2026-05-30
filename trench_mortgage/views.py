@@ -6,137 +6,13 @@ from types import SimpleNamespace
 import openpyxl
 from dateutil.relativedelta import relativedelta
 from django.http import HttpResponse
-from django.shortcuts import render
 from openpyxl.styles import Alignment, Font, NamedStyle
 from openpyxl.utils import get_column_letter
 
 from mortgage.utils import format_currency
-from property.models import Property
-
-from .forms import TrenchMortgageForm
 from .models import Trench, TrenchMortgageCalculation
 
 MAX_TRENCH_COUNT = 5
-
-
-def trench_mortgage_calculator(request):
-    """Описание метода trench_mortgage_calculator.
-
-    Выполняет прикладную операцию текущего модуля.
-
-    Аргументы:
-        request: Входной параметр, влияющий на работу метода.
-
-    Возвращает:
-        Any: Тип результата определяется вызывающим кодом.
-    """
-    initial = _build_initial_data(request.GET.get('property_id'))
-
-    if request.method == 'POST':
-        form_data = request.POST.copy()
-        _hydrate_property_cost_fields(form_data)
-        form = TrenchMortgageForm(form_data)
-    else:
-        form = TrenchMortgageForm(initial=initial)
-
-    trench_count = _resolve_trench_count(form)
-    default_rate = _resolve_default_rate(form)
-    context = {
-        'form': form,
-        'trench_count': trench_count,
-        'trench_input_rows': _build_trench_input_rows(
-            trench_count=trench_count,
-            post_data=form.data if form.is_bound else None,
-            default_annual_rate=default_rate,
-        ),
-        'final_property_cost': _calculate_display_final_cost(
-            form.data if form.is_bound else form.initial
-        ),
-    }
-
-    if request.method != 'POST' or not form.is_valid():
-        return render(request, 'trench_mortgage/calculator.html', context)
-
-    mortgage_data, prep_errors = _prepare_mortgage_data(form.cleaned_data)
-    trench_entries, input_rows, trench_errors = _parse_trench_inputs(
-        post_data=request.POST,
-        trench_count=mortgage_data['trench_count'],
-        loan_amount=mortgage_data['total_loan_amount'],
-        default_annual_rate=mortgage_data['annual_rate'],
-    )
-    context['trench_input_rows'] = input_rows
-    context['final_property_cost'] = format_currency(
-        mortgage_data['final_property_cost']
-    )
-
-    all_errors = prep_errors + trench_errors
-    if all_errors:
-        context['error_message'] = ' '.join(all_errors)
-        return render(request, 'trench_mortgage/calculator.html', context)
-
-    calculation, calc_errors = _calculate_trench_mortgage(
-        mortgage_data, trench_entries
-    )
-    if calc_errors:
-        context['error_message'] = ' '.join(calc_errors)
-        return render(request, 'trench_mortgage/calculator.html', context)
-
-    if 'export' in request.POST:
-        return _export_trench_excel(calculation)
-
-    _save_trench_calculation(calculation)
-    context['result'] = _format_result(calculation)
-    context['payment_schedule'] = _format_payment_schedule(
-        calculation['payment_schedule']
-    )
-    return render(request, 'trench_mortgage/calculator.html', context)
-
-
-def _build_initial_data(raw_property_id):
-    """Описание метода _build_initial_data.
-
-    Выполняет прикладную операцию текущего модуля.
-
-    Аргументы:
-        raw_property_id: Входной параметр, влияющий на работу метода.
-
-    Возвращает:
-        Any: Тип результата определяется вызывающим кодом.
-    """
-    initial = {}
-    if not (raw_property_id and str(raw_property_id).isdigit()):
-        return initial
-
-    property_obj = Property.objects.filter(pk=int(raw_property_id)).first()
-    if not property_obj:
-        return initial
-
-    initial['PROPERTY'] = property_obj.id
-    initial['PROPERTY_COST'] = property_obj.property_cost
-    return initial
-
-
-def _hydrate_property_cost_fields(form_data):
-    """Описание метода _hydrate_property_cost_fields.
-
-    Выполняет прикладную операцию текущего модуля.
-
-    Аргументы:
-        form_data: Входной параметр, влияющий на работу метода.
-
-    Возвращает:
-        Any: Тип результата определяется вызывающим кодом.
-    """
-    selected_id = form_data.get('PROPERTY')
-    if not selected_id:
-        return
-
-    selected_property = Property.objects.filter(id=selected_id).first()
-    if not selected_property:
-        return
-
-    if not form_data.get('PROPERTY_COST'):
-        form_data['PROPERTY_COST'] = str(selected_property.property_cost)
 
 
 def _resolve_trench_count(form):
@@ -241,41 +117,6 @@ def _build_trench_input_rows(
         )
 
     return rows
-
-
-def _calculate_display_final_cost(data):
-    """Описание метода _calculate_display_final_cost.
-
-    Выполняет прикладную операцию текущего модуля.
-
-    Аргументы:
-        data: Входной параметр, влияющий на работу метода.
-
-    Возвращает:
-        Any: Тип результата определяется вызывающим кодом.
-    """
-    if not data:
-        return ''
-    if not data.get('PROPERTY_COST'):
-        return ''
-
-    try:
-        property_cost = float(data.get('PROPERTY_COST') or 0)
-        discount_percent = float(data.get('DISCOUNT_MARKUP_VALUE') or 0)
-        discount_rubles = float(data.get('DISCOUNT_MARKUP_RUBLES') or 0)
-    except (TypeError, ValueError):
-        return ''
-
-    if data.get('DISCOUNT_MARKUP_SOURCE') != 'rubles':
-        discount_rubles = property_cost * discount_percent / 100
-
-    discount_type = data.get('DISCOUNT_MARKUP_TYPE') or 'discount'
-    if discount_type == 'discount':
-        final_cost = property_cost - discount_rubles
-    else:
-        final_cost = property_cost + discount_rubles
-
-    return format_currency(final_cost)
 
 
 def _normalize_discount_markup_values(cleaned_data):

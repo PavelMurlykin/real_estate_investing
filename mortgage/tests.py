@@ -188,6 +188,12 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Сохраненные расчеты ипотеки')
         self.assertContains(response, reverse('mortgage:calculation_list'))
+        self.assertNotContains(response, '/trench-mortgage/')
+
+    def test_old_trench_mortgage_route_is_removed(self):
+        response = self.client.get('/trench-mortgage/')
+
+        self.assertEqual(response.status_code, 404)
 
     def test_calculation_list_shows_delete_button(self):
         calculation = self._create_calculation()
