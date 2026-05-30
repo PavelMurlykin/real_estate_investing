@@ -188,6 +188,15 @@
         return propertyCost + discountMarkupRubles;
     }
 
+    function getLoanAmountNumber() {
+        const finalCost = getFinalPropertyCostNumber();
+        const rublesInput = document.getElementById('initial_payment_rubles');
+        const initialPaymentRubles = parseNumber(
+            rublesInput ? rublesInput.value : 0
+        );
+        return Math.max(0, finalCost - initialPaymentRubles);
+    }
+
     function updateInitialPaymentPercent() {
         const percentInput = document.getElementById('initial_payment_percent');
         const rublesInput = document.getElementById('initial_payment_rubles');
@@ -223,10 +232,10 @@
     function syncInitialPaymentValues() {
         if (getInitialPaymentSource() === 'rubles') {
             updateInitialPaymentPercent();
-            return;
+        } else {
+            updateInitialPaymentRubles();
         }
-
-        updateInitialPaymentRubles();
+        updateTrenchRows();
     }
 
     function updateFinalPropertyCost() {
@@ -271,11 +280,13 @@
     function handleInitialPaymentPercentInput() {
         setInitialPaymentSource('percent');
         updateInitialPaymentRubles();
+        updateTrenchRows();
     }
 
     function handleInitialPaymentRublesInput() {
         setInitialPaymentSource('rubles');
         updateInitialPaymentPercent();
+        updateTrenchRows();
     }
 
     function setInitialPaymentLock(source) {
@@ -319,6 +330,202 @@
 
         const value = (checked.value || '').toLowerCase();
         container.style.display = value === 'yes' ? 'block' : 'none';
+    }
+
+    function setCalculationType(type) {
+        const input = document.getElementById('calculation_type');
+        if (input) {
+            input.value = type === 'trench' ? 'trench' : 'market';
+        }
+    }
+
+    function syncCalculationTypeFromActiveTab() {
+        const activeTab = document.querySelector(
+            '#mortgage-calculation-tabs .nav-link.active'
+        );
+        setCalculationType(
+            activeTab ? activeTab.dataset.calculationType : 'market'
+        );
+    }
+
+    function syncFirstTrenchDateFromInitialPayment() {
+        const initialPaymentDateInput = document.getElementById(
+            'id_INITIAL_PAYMENT_DATE'
+        );
+        const firstTrenchDateInput = document.getElementById('trench_date_1');
+        if (!initialPaymentDateInput || !firstTrenchDateInput) {
+            return;
+        }
+
+        firstTrenchDateInput.value = initialPaymentDateInput.value || '';
+    }
+
+    function syncAnnualRateToAllTrenches(forceUpdate) {
+        const baseAnnualRateInput = document.getElementById('id_ANNUAL_RATE');
+        if (!baseAnnualRateInput) {
+            return;
+        }
+
+        document
+            .querySelectorAll('.trench-row .annual-rate')
+            .forEach(function (rateInput) {
+                if (forceUpdate || !rateInput.value) {
+                    rateInput.value = baseAnnualRateInput.value || '';
+                }
+            });
+    }
+
+    function getTrenchAmountSource(row) {
+        const sourceInput = row.querySelector('.trench-amount-source');
+        return sourceInput && sourceInput.value === 'rubles'
+            ? 'rubles'
+            : 'percent';
+    }
+
+    function setTrenchAmountSource(row, source) {
+        const normalizedSource = source === 'rubles' ? 'rubles' : 'percent';
+        const sourceInput = row.querySelector('.trench-amount-source');
+        if (sourceInput) {
+            sourceInput.value = normalizedSource;
+        }
+        updateTrenchLockButtons(row, normalizedSource);
+    }
+
+    function updateTrenchLockButtons(row, source) {
+        row.querySelectorAll('.trench-lock-button').forEach(function (button) {
+            const locked = button.dataset.trenchLockSource === source;
+            button.classList.toggle('is-locked', locked);
+            button.setAttribute('aria-pressed', locked ? 'true' : 'false');
+        });
+    }
+
+    function setTrenchLockButtonsDisabled(row, disabled) {
+        row.querySelectorAll('.trench-lock-button').forEach(function (button) {
+            button.disabled = disabled;
+        });
+    }
+
+    function updateTrenchRows() {
+        const countInput = document.getElementById('id_TRENCH_COUNT');
+        const rows = Array.from(document.querySelectorAll('.trench-row'));
+        if (!countInput || !rows.length) {
+            return;
+        }
+
+        const trenchCount = Math.max(
+            1,
+            Math.min(5, parseInt(countInput.value || '1', 10) || 1)
+        );
+        const loanAmount = getLoanAmountNumber();
+        let usedAmount = 0;
+
+        rows.forEach(function (row, index) {
+            const number = index + 1;
+            const isActive = number <= trenchCount;
+            const isLast = number === trenchCount;
+            const dateInput = row.querySelector('.trench-date');
+            const percentInput = row.querySelector('.trench-percent');
+            const amountInput = row.querySelector('.trench-amount');
+            const sourceInput = row.querySelector('.trench-amount-source');
+            const annualRateInput = row.querySelector('.annual-rate');
+
+            row.style.display = isActive ? 'block' : 'none';
+            if (!dateInput || !percentInput || !amountInput) {
+                return;
+            }
+
+            if (!isActive) {
+                dateInput.required = false;
+                percentInput.required = false;
+                amountInput.required = false;
+                if (annualRateInput) {
+                    annualRateInput.required = false;
+                }
+                percentInput.readOnly = false;
+                amountInput.readOnly = false;
+                if (sourceInput) {
+                    sourceInput.disabled = true;
+                }
+                setTrenchLockButtonsDisabled(row, true);
+                return;
+            }
+
+            dateInput.required = true;
+            if (annualRateInput) {
+                annualRateInput.required = true;
+            }
+            if (sourceInput) {
+                sourceInput.disabled = false;
+            }
+
+            if (isLast) {
+                const lastAmount = Math.max(0, loanAmount - usedAmount);
+                const lastPercent = loanAmount > 0
+                    ? lastAmount / loanAmount * 100
+                    : 0;
+                percentInput.value = lastPercent.toFixed(2);
+                amountInput.value = lastAmount.toFixed(2);
+                percentInput.readOnly = true;
+                amountInput.readOnly = true;
+                percentInput.required = false;
+                amountInput.required = false;
+                setTrenchAmountSource(row, 'rubles');
+                setTrenchLockButtonsDisabled(row, true);
+                return;
+            }
+
+            percentInput.readOnly = false;
+            amountInput.readOnly = false;
+            percentInput.required = true;
+            amountInput.required = true;
+            setTrenchLockButtonsDisabled(row, false);
+
+            if (getTrenchAmountSource(row) === 'rubles') {
+                const amount = parseNumber(amountInput.value);
+                percentInput.value = loanAmount > 0
+                    ? (amount / loanAmount * 100).toFixed(2)
+                    : '0.00';
+                usedAmount += amount;
+            } else {
+                const percent = parseNumber(percentInput.value);
+                const amount = loanAmount * percent / 100;
+                amountInput.value = amount.toFixed(2);
+                usedAmount += amount;
+            }
+        });
+    }
+
+    function handleTrenchPaneInput(event) {
+        const row = event.target.closest('.trench-row');
+        if (!row) {
+            return;
+        }
+
+        if (event.target.classList.contains('trench-percent')) {
+            setTrenchAmountSource(row, 'percent');
+            updateTrenchRows();
+            return;
+        }
+
+        if (event.target.classList.contains('trench-amount')) {
+            setTrenchAmountSource(row, 'rubles');
+            updateTrenchRows();
+        }
+    }
+
+    function handleTrenchPaneClick(event) {
+        const button = event.target.closest('.trench-lock-button');
+        if (!button || button.disabled) {
+            return;
+        }
+
+        const row = button.closest('.trench-row');
+        if (!row) {
+            return;
+        }
+
+        setTrenchAmountSource(row, button.dataset.trenchLockSource);
+        updateTrenchRows();
     }
 
     function setFieldValue(id, value, dispatchChange) {
@@ -815,6 +1022,14 @@
                 'grace_period_term_months'
             );
         });
+        bindInput(
+            'id_INITIAL_PAYMENT_DATE',
+            'change',
+            syncFirstTrenchDateFromInitialPayment
+        );
+        bindInput('id_ANNUAL_RATE', 'input', syncAnnualRateToAllTrenches);
+        bindInput('id_ANNUAL_RATE', 'change', syncAnnualRateToAllTrenches);
+        bindInput('id_TRENCH_COUNT', 'change', updateTrenchRows);
 
         bindRadioGroup(
             'DISCOUNT_MARKUP_TYPE',
@@ -834,6 +1049,30 @@
         bindLockButton('initial_payment_rubles_lock', function () {
             setInitialPaymentLock('rubles');
         });
+
+        document
+            .querySelectorAll('[data-calculation-type]')
+            .forEach(function (button) {
+                button.addEventListener('shown.bs.tab', function () {
+                    setCalculationType(button.dataset.calculationType);
+                });
+                button.addEventListener('click', function () {
+                    setCalculationType(button.dataset.calculationType);
+                });
+            });
+        document
+            .querySelectorAll('[data-submit-calculation-type]')
+            .forEach(function (button) {
+                button.addEventListener('click', function () {
+                    setCalculationType(button.dataset.submitCalculationType);
+                });
+            });
+
+        const trenchPane = document.getElementById('trench-mortgage-pane');
+        if (trenchPane) {
+            trenchPane.addEventListener('input', handleTrenchPaneInput);
+            trenchPane.addEventListener('click', handleTrenchPaneClick);
+        }
     }
 
     onReady(function () {
@@ -863,6 +1102,10 @@
         syncDiscountMarkupValues();
         updateFinalPropertyCost();
         toggleGracePeriod();
+        syncCalculationTypeFromActiveTab();
+        syncFirstTrenchDateFromInitialPayment();
+        syncAnnualRateToAllTrenches();
+        updateTrenchRows();
         const selectedPropertyInput = getSelectedPropertyInput();
         const selectedPropertyId = selectedPropertyInput
             ? selectedPropertyInput.value

@@ -18,6 +18,7 @@ from property.models import (
     RealEstateComplexBuilding,
     RealEstateType,
 )
+from trench_mortgage.models import Trench, TrenchMortgageCalculation
 
 
 class MortgageCalculatorViewTests(TestCase):
@@ -124,6 +125,7 @@ class MortgageCalculatorViewTests(TestCase):
             Any: Тип результата определяется вызывающим кодом.
         """
         return {
+            'CALCULATION_TYPE': 'market',
             'PROPERTY': str(self.property.id),
             'DISCOUNT_MARKUP_TYPE': 'discount',
             'DISCOUNT_MARKUP_VALUE': '0',
@@ -136,6 +138,7 @@ class MortgageCalculatorViewTests(TestCase):
             'MORTGAGE_TERM_YEARS': '20',
             'MORTGAGE_TERM': '240',
             'ANNUAL_RATE': '12',
+            'TRENCH_COUNT': '1',
             'HAS_GRACE_PERIOD': 'no',
             'GRACE_PERIOD_TERM_YEARS': '',
             'GRACE_PERIOD_TERM': '',
@@ -161,8 +164,13 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, 'property-apartment-menu')
         self.assertContains(
             response,
-            'mortgage_form.js?v=20260525-apartment-autocomplete',
+            'mortgage_form.js?v=20260530-unified-mortgage',
         )
+        self.assertContains(response, 'calculation_type')
+        self.assertContains(response, 'market-mortgage-pane')
+        self.assertContains(response, 'trench-mortgage-pane')
+        self.assertContains(response, 'id_TRENCH_COUNT')
+        self.assertContains(response, 'trench_amount_source_1')
         self.assertContains(response, 'Стоимость объекта')
         self.assertContains(response, 'Город')
         self.assertContains(response, 'Район')
@@ -180,6 +188,12 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Сохраненные расчеты ипотеки')
         self.assertContains(response, reverse('mortgage:calculation_list'))
+        self.assertNotContains(response, '/trench-mortgage/')
+
+    def test_old_trench_mortgage_route_is_removed(self):
+        response = self.client.get('/trench-mortgage/')
+
+        self.assertEqual(response.status_code, 404)
 
     def test_calculation_list_shows_delete_button(self):
         calculation = self._create_calculation()
@@ -571,6 +585,127 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('result', response.context)
         self.assertFalse(MortgageCalculation.objects.exists())
+
+    def test_trench_calculate_without_property_does_not_save_calculation(self):
+        payload = self._base_payload()
+        payload.update(
+            {
+                'calculate': 'trench',
+                'CALCULATION_TYPE': 'trench',
+                'PROPERTY': '',
+                'PROPERTY_COST': '5000000',
+                'TRENCH_COUNT': '1',
+                'trench_date_1': '2026-01-01',
+                'trench_percent_1': '',
+                'trench_amount_1': '',
+                'trench_amount_source_1': 'rubles',
+                'annual_rate_1': '12',
+            }
+        )
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('trench_result', response.context)
+        self.assertEqual(response.context['active_calculation_type'], 'trench')
+        self.assertContains(response, 'name="export"')
+        self.assertFalse(TrenchMortgageCalculation.objects.exists())
+        self.assertFalse(MortgageCalculation.objects.exists())
+
+    def test_trench_export_without_property_returns_excel_file(self):
+        payload = self._base_payload()
+        payload.update(
+            {
+                'export': 'trench',
+                'CALCULATION_TYPE': 'trench',
+                'PROPERTY': '',
+                'PROPERTY_COST': '5000000',
+                'TRENCH_COUNT': '1',
+                'trench_date_1': '2026-01-01',
+                'trench_percent_1': '',
+                'trench_amount_1': '',
+                'trench_amount_source_1': 'rubles',
+                'annual_rate_1': '12',
+            }
+        )
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        self.assertIn(
+            'trench_mortgage_calculation.xlsx',
+            response['Content-Disposition'],
+        )
+
+    def test_trench_calculate_saves_trench_calculation_from_mortgage_form(self):
+        payload = self._base_payload()
+        payload.update(
+            {
+                'calculate': 'trench',
+                'CALCULATION_TYPE': 'trench',
+                'TRENCH_COUNT': '2',
+                'trench_date_1': '2026-01-01',
+                'trench_percent_1': '2.50',
+                'trench_amount_1': '100000',
+                'trench_amount_source_1': 'rubles',
+                'annual_rate_1': '12',
+                'trench_date_2': '2026-07-01',
+                'trench_percent_2': '',
+                'trench_amount_2': '',
+                'trench_amount_source_2': 'rubles',
+                'annual_rate_2': '12',
+            }
+        )
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('trench_result', response.context)
+        self.assertIn('result', response.context)
+        self.assertFalse(MortgageCalculation.objects.exists())
+        calculation = TrenchMortgageCalculation.objects.get()
+        trenches = list(Trench.objects.order_by('trench_number'))
+        self.assertEqual(calculation.property, self.property)
+        self.assertEqual(calculation.trench_count, 2)
+        self.assertEqual(
+            calculation.total_loan_amount,
+            Decimal('4000000.00'),
+        )
+        self.assertEqual(len(trenches), 2)
+        self.assertEqual(trenches[0].trench_amount, Decimal('100000.00'))
+        self.assertEqual(trenches[1].trench_amount, Decimal('3900000.00'))
+
+    def test_market_calculate_keeps_trench_report_when_trench_data_is_present(self):
+        payload = self._base_payload()
+        payload.update(
+            {
+                'calculate': 'market',
+                'TRENCH_COUNT': '2',
+                'trench_date_1': '2026-01-01',
+                'trench_percent_1': '2.50',
+                'trench_amount_1': '100000',
+                'trench_amount_source_1': 'rubles',
+                'annual_rate_1': '12',
+                'trench_date_2': '2026-07-01',
+                'trench_percent_2': '',
+                'trench_amount_2': '',
+                'trench_amount_source_2': 'rubles',
+                'annual_rate_2': '12',
+            }
+        )
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['active_calculation_type'], 'market')
+        self.assertIn('result', response.context)
+        self.assertIn('trench_result', response.context)
+        self.assertTrue(MortgageCalculation.objects.exists())
+        self.assertFalse(TrenchMortgageCalculation.objects.exists())
 
     def test_calculate_with_manual_object_creates_property_and_calculation(self):
         payload = self._base_payload()

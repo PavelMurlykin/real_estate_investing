@@ -1,6 +1,10 @@
+import builtins
+
 from django.db import models
 
-from mortgage.models import Property
+from mortgage.models import DISCOUNT_MARKUP_CHOICES
+from mortgage.utils import format_years_label
+from property.models import Property
 
 
 class TrenchMortgageCalculation(models.Model):
@@ -11,7 +15,24 @@ class TrenchMortgageCalculation(models.Model):
     """
 
     property = models.ForeignKey(
-        Property, on_delete=models.CASCADE, verbose_name='Объект'
+        Property, on_delete=models.PROTECT, verbose_name='Объект'
+    )
+    base_property_cost = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        verbose_name='Базовая стоимость объекта, руб.',
+    )
+    discount_markup_type = models.CharField(
+        max_length=10,
+        choices=DISCOUNT_MARKUP_CHOICES,
+        default='discount',
+        verbose_name='Тип изменения цены',
+    )
+    discount_markup_value = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        verbose_name='Значение, %',
     )
     final_property_cost = models.DecimalField(
         max_digits=15,
@@ -24,7 +45,13 @@ class TrenchMortgageCalculation(models.Model):
     initial_payment_date = models.DateField(
         verbose_name='Дата первоначального взноса'
     )
-    mortgage_term = models.IntegerField(verbose_name='Срок кредита, лет')
+    mortgage_term = models.IntegerField(verbose_name='Срок кредита, мес.')
+    annual_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        verbose_name='Годовая ставка, %',
+    )
     trench_count = models.IntegerField(verbose_name='Количество траншей')
 
     # Результаты расчета
@@ -47,6 +74,11 @@ class TrenchMortgageCalculation(models.Model):
         """
         formatted_timestamp = self.timestamp.strftime('%d.%m.%Y %H:%M')
         return f'Траншевый расчет от {formatted_timestamp}'
+
+    @builtins.property
+    def mortgage_term_years_label(self):
+        """Return a human readable mortgage term in years."""
+        return format_years_label(self.mortgage_term // 12)
 
 
 class Trench(models.Model):

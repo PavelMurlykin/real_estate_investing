@@ -31,6 +31,13 @@ MANUAL_PROPERTY_FIELD_NAMES = (
 class MortgageForm(forms.Form):
     """Входные параметры для расчета ипотеки."""
 
+    CALCULATION_TYPE = forms.ChoiceField(
+        choices=[('market', 'Ипотека'), ('trench', 'Траншевая ипотека')],
+        initial='market',
+        required=False,
+        widget=forms.HiddenInput(attrs={'id': 'calculation_type'}),
+    )
+
     PROPERTY = forms.ModelChoiceField(
         queryset=Property.objects.all(),
         label='Объект недвижимости',
@@ -366,6 +373,17 @@ class MortgageForm(forms.Form):
         ),
     )
 
+    TRENCH_COUNT = forms.TypedChoiceField(
+        label='Количество траншей',
+        choices=[(i, str(i)) for i in range(1, 6)],
+        coerce=int,
+        empty_value=1,
+        initial=1,
+        widget=forms.Select(
+            attrs={'class': 'form-select', 'id': 'id_TRENCH_COUNT'}
+        ),
+    )
+
     HAS_GRACE_PERIOD = forms.ChoiceField(
         label='Наличие льготного периода',
         choices=[('no', 'Нет'), ('yes', 'Да')],
@@ -442,6 +460,7 @@ class MortgageForm(forms.Form):
         от контекста.
         """
         cleaned_data = super().clean()
+        calculation_type = cleaned_data.get('CALCULATION_TYPE') or 'market'
         has_grace_period = cleaned_data.get('HAS_GRACE_PERIOD')
         grace_period_term = cleaned_data.get('GRACE_PERIOD_TERM')
         grace_period_term_years = cleaned_data.get('GRACE_PERIOD_TERM_YEARS')
@@ -464,7 +483,7 @@ class MortgageForm(forms.Form):
             cleaned_data['GRACE_PERIOD_TERM'] = grace_period_term_years * 12
             grace_period_term = cleaned_data['GRACE_PERIOD_TERM']
 
-        if has_grace_period == 'yes':
+        if calculation_type == 'market' and has_grace_period == 'yes':
             if grace_period_term is None:
                 self.add_error(
                     'GRACE_PERIOD_TERM',
