@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from math import pow
+from types import SimpleNamespace
 
 import openpyxl
 from dateutil.relativedelta import relativedelta
@@ -999,6 +1000,23 @@ def _export_trench_excel(calculation):
     ws['A1'].alignment = Alignment(horizontal='center')
 
     property_obj = calculation['property_obj']
+    if property_obj is None:
+        empty_value = ''
+        property_obj = SimpleNamespace(
+            apartment_number=empty_value,
+            area=0,
+            floor=0,
+            building=SimpleNamespace(
+                number=empty_value,
+                real_estate_complex=SimpleNamespace(
+                    name=empty_value,
+                    developer=SimpleNamespace(name=empty_value),
+                    district=SimpleNamespace(
+                        city=SimpleNamespace(name=empty_value)
+                    ),
+                ),
+            ),
+        )
     property_rows = [
         [
             'Застройщик',

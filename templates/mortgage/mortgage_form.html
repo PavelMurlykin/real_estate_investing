@@ -100,12 +100,17 @@
         </div>
     {% endif %}
 
+    {% if error_message %}
+        <div class="alert alert-danger">{{ error_message }}</div>
+    {% endif %}
+
     <form method="post" novalidate>
         {% csrf_token %}
         {% if target_customer %}
             <input type="hidden" name="customer" value="{{ target_customer.pk }}">
         {% endif %}
         {{ mortgage_form.PROPERTY }}
+        {{ mortgage_form.CALCULATION_TYPE }}
 
         <div class="row g-4">
             <div class="col-12">
@@ -395,138 +400,407 @@
                             {% endfor %}
                         </div>
 
-                        <div class="mt-3">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header p-0">
+                <ul class="nav nav-tabs card-header-tabs px-3 pt-2" id="mortgage-calculation-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button
+                            class="nav-link {% if active_calculation_type != 'trench' %}active{% endif %}"
+                            id="market-mortgage-tab"
+                            type="button"
+                            role="tab"
+                            data-bs-toggle="tab"
+                            data-bs-target="#market-mortgage-pane"
+                            data-calculation-type="market"
+                            aria-controls="market-mortgage-pane"
+                            aria-selected="{% if active_calculation_type != 'trench' %}true{% else %}false{% endif %}"
+                        >Ипотека</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button
+                            class="nav-link {% if active_calculation_type == 'trench' %}active{% endif %}"
+                            id="trench-mortgage-tab"
+                            type="button"
+                            role="tab"
+                            data-bs-toggle="tab"
+                            data-bs-target="#trench-mortgage-pane"
+                            data-calculation-type="trench"
+                            aria-controls="trench-mortgage-pane"
+                            aria-selected="{% if active_calculation_type == 'trench' %}true{% else %}false{% endif %}"
+                        >Траншевая ипотека</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body tab-content">
+                <div
+                    class="tab-pane fade {% if active_calculation_type != 'trench' %}show active{% endif %}"
+                    id="market-mortgage-pane"
+                    role="tabpanel"
+                    aria-labelledby="market-mortgage-tab"
+                    tabindex="0"
+                >
+                    <div class="row g-3">
+                        <div class="col-md-4">
                             <label class="form-label d-block">{{ mortgage_form.HAS_GRACE_PERIOD.label }}</label>
                             {{ mortgage_form.HAS_GRACE_PERIOD }}
                             {% for error in mortgage_form.HAS_GRACE_PERIOD.errors %}
                                 <div class="invalid-feedback d-block">{{ error }}</div>
                             {% endfor %}
                         </div>
-
-                        <div id="grace-period-fields" class="mt-3" style="display: none;">
-                            <div class="row g-3 mb-3">
-                                <div class="col-6">
+                        <div id="grace-period-fields" class="col-12" style="display: none;">
+                            <div class="row g-3">
+                                <div class="col-md-4">
                                     <label for="{{ mortgage_form.GRACE_PERIOD_TERM_YEARS.id_for_label }}" class="form-label">{{ mortgage_form.GRACE_PERIOD_TERM_YEARS.label }}</label>
                                     {{ mortgage_form.GRACE_PERIOD_TERM_YEARS }}
                                     {% for error in mortgage_form.GRACE_PERIOD_TERM_YEARS.errors %}
                                         <div class="invalid-feedback d-block">{{ error }}</div>
                                     {% endfor %}
                                 </div>
-                                <div class="col-6">
+                                <div class="col-md-4">
                                     <label for="{{ mortgage_form.GRACE_PERIOD_TERM.id_for_label }}" class="form-label">{{ mortgage_form.GRACE_PERIOD_TERM.label }}</label>
                                     {{ mortgage_form.GRACE_PERIOD_TERM }}
                                     {% for error in mortgage_form.GRACE_PERIOD_TERM.errors %}
                                         <div class="invalid-feedback d-block">{{ error }}</div>
                                     {% endfor %}
                                 </div>
-                            </div>
-
-                            <div class="mb-0">
-                                <label for="{{ mortgage_form.GRACE_PERIOD_RATE.id_for_label }}" class="form-label">{{ mortgage_form.GRACE_PERIOD_RATE.label }}</label>
-                                {{ mortgage_form.GRACE_PERIOD_RATE }}
-                                {% for error in mortgage_form.GRACE_PERIOD_RATE.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                {% endfor %}
+                                <div class="col-md-4">
+                                    <label for="{{ mortgage_form.GRACE_PERIOD_RATE.id_for_label }}" class="form-label">{{ mortgage_form.GRACE_PERIOD_RATE.label }}</label>
+                                    {{ mortgage_form.GRACE_PERIOD_RATE }}
+                                    {% for error in mortgage_form.GRACE_PERIOD_RATE.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
 
-        <div class="mt-4 d-flex gap-2">
-            <button type="submit" name="calculate" class="btn btn-primary">Рассчитать</button>
-            {% if result %}
-                <button type="submit" name="export" class="btn btn-outline-success">Сохранить в Excel</button>
-            {% endif %}
-            {% if target_customer %}
-                <a href="{% url 'customer:detail' target_customer.pk %}" class="btn btn-outline-secondary">Вернуться к клиенту</a>
-            {% endif %}
-        </div>
-    </form>
+                    <div class="mt-4 d-flex gap-2">
+                        <button
+                            type="submit"
+                            name="calculate"
+                            value="market"
+                            class="btn btn-primary"
+                            data-submit-calculation-type="market"
+                        >Рассчитать</button>
+                        {% if result %}
+                            <button
+                                type="submit"
+                                name="export"
+                                value="market"
+                                class="btn btn-outline-success"
+                                data-submit-calculation-type="market"
+                            >Сохранить в Excel</button>
+                        {% endif %}
+                    </div>
 
-    {% if result %}
-        <div class="card mt-4">
-            <div class="card-header">Результаты расчета</div>
-            <div class="card-body">
-                <div class="row g-3">
-                    {% if has_grace_period %}
-                        <div class="col-md-6">
-                            <strong>Число платежей за льготный период:</strong>
-                            <div>{{ result.grace_payments_count }}</div>
+                    {% if result %}
+                        <hr class="my-4">
+                        <h5>Результаты расчета</h5>
+                        <div class="row g-3">
+                            {% if has_grace_period %}
+                                <div class="col-md-6">
+                                    <strong>Число платежей за льготный период:</strong>
+                                    <div>{{ result.grace_payments_count }}</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Дата последнего платежа по льготному периоду:</strong>
+                                    <div>{% if result.grace_period_end_date %}{{ result.grace_period_end_date|date:"d.m.Y" }}{% else %}-{% endif %}</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Ежемесячный платеж в льготный период, руб.:</strong>
+                                    <div>{{ result.grace_monthly_payment }}</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Сумма кредита после льготного периода, руб.:</strong>
+                                    <div>{{ result.loan_after_grace }}</div>
+                                </div>
+                            {% endif %}
+
+                            <div class="col-md-6">
+                                <strong>Число платежей за основной период:</strong>
+                                <div>{{ result.main_payments_count }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Дата последнего платежа по ипотеке:</strong>
+                                <div>{{ result.mortgage_end_date|date:"d.m.Y" }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Ежемесячный платеж за основной период, руб.:</strong>
+                                <div>{{ result.main_monthly_payment }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Сумма кредита, руб.:</strong>
+                                <div>{{ result.total_loan_amount }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Сумма переплат по кредиту, руб.:</strong>
+                                <div>{{ result.total_overpayment }}</div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <strong>Дата последнего платежа по льготному периоду:</strong>
-                            <div>{% if result.grace_period_end_date %}{{ result.grace_period_end_date|date:"d.m.Y" }}{% else %}-{% endif %}</div>
-                        </div>
-                        <div class="col-md-6">
-                            <strong>Ежемесячный платеж в льготный период, руб.:</strong>
-                            <div>{{ result.grace_monthly_payment }}</div>
-                        </div>
-                        <div class="col-md-6">
-                            <strong>Сумма кредита после льготного периода, руб.:</strong>
-                            <div>{{ result.loan_after_grace }}</div>
-                        </div>
+
+                        {% if payment_schedule %}
+                            <h5 class="mt-4">График платежей</h5>
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>№</th>
+                                            <th>Дата платежа</th>
+                                            <th>Сумма платежа, руб.</th>
+                                            <th>Проценты, руб.</th>
+                                            <th>Основной долг, руб.</th>
+                                            <th>Остаток долга, руб.</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for payment in payment_schedule %}
+                                            <tr>
+                                                <td>{{ payment.payment_number }}</td>
+                                                <td>{{ payment.payment_date|date:"d.m.Y" }}</td>
+                                                <td>{{ payment.payment_amount }}</td>
+                                                <td>{{ payment.interest_amount }}</td>
+                                                <td>{{ payment.principal_amount }}</td>
+                                                <td>{{ payment.remaining_debt }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endif %}
                     {% endif %}
+                </div>
 
-                    <div class="col-md-6">
-                        <strong>Число платежей за основной период:</strong>
-                        <div>{{ result.main_payments_count }}</div>
+                <div
+                    class="tab-pane fade {% if active_calculation_type == 'trench' %}show active{% endif %}"
+                    id="trench-mortgage-pane"
+                    role="tabpanel"
+                    aria-labelledby="trench-mortgage-tab"
+                    tabindex="0"
+                >
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="{{ mortgage_form.TRENCH_COUNT.id_for_label }}" class="form-label">{{ mortgage_form.TRENCH_COUNT.label }}</label>
+                            {{ mortgage_form.TRENCH_COUNT }}
+                            {% for error in mortgage_form.TRENCH_COUNT.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
                     </div>
-                    <div class="col-md-6">
-                        <strong>Дата последнего платежа по ипотеке:</strong>
-                        <div>{{ result.mortgage_end_date|date:"d.m.Y" }}</div>
+
+                    <div class="mt-3">
+                        {% for row in trench_input_rows %}
+                            <div
+                                class="trench-row border rounded p-3 mb-3"
+                                data-trench-number="{{ row.number }}"
+                                {% if not row.is_active %}style="display: none;"{% endif %}
+                            >
+                                <h6>Транш {{ row.number }}</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label" for="trench_date_{{ row.number }}">Дата транша</label>
+                                        <input
+                                            id="trench_date_{{ row.number }}"
+                                            type="date"
+                                            class="form-control trench-date"
+                                            name="trench_date_{{ row.number }}"
+                                            value="{{ row.trench_date }}"
+                                        >
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label" for="trench_percent_{{ row.number }}">Сумма транша, %</label>
+                                        <div class="input-group">
+                                            <input
+                                                id="trench_percent_{{ row.number }}"
+                                                type="number"
+                                                class="form-control trench-percent"
+                                                name="trench_percent_{{ row.number }}"
+                                                value="{{ row.trench_percent }}"
+                                                step="0.01"
+                                                min="0"
+                                                {% if row.is_last %}readonly{% endif %}
+                                            >
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline-secondary value-lock-button trench-lock-button"
+                                                data-trench-lock-source="percent"
+                                                aria-pressed="false"
+                                                title="Зафиксировать значение в процентах"
+                                            >
+                                                <img class="lock-icon-img lock-icon-img-unlocked" src="{% static 'img/unlock.png' %}" alt="" aria-hidden="true">
+                                                <img class="lock-icon-img lock-icon-img-locked" src="{% static 'img/lock.png' %}" alt="" aria-hidden="true">
+                                                <span class="visually-hidden">Зафиксировать значение в процентах</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label" for="trench_amount_{{ row.number }}">Сумма транша, руб.</label>
+                                        <div class="input-group">
+                                            <input
+                                                id="trench_amount_{{ row.number }}"
+                                                type="number"
+                                                class="form-control trench-amount"
+                                                name="trench_amount_{{ row.number }}"
+                                                value="{{ row.trench_amount }}"
+                                                step="0.01"
+                                                min="0"
+                                                {% if row.is_last %}readonly{% endif %}
+                                            >
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline-secondary value-lock-button trench-lock-button"
+                                                data-trench-lock-source="rubles"
+                                                aria-pressed="false"
+                                                title="Зафиксировать значение в рублях"
+                                            >
+                                                <img class="lock-icon-img lock-icon-img-unlocked" src="{% static 'img/unlock.png' %}" alt="" aria-hidden="true">
+                                                <img class="lock-icon-img lock-icon-img-locked" src="{% static 'img/lock.png' %}" alt="" aria-hidden="true">
+                                                <span class="visually-hidden">Зафиксировать значение в рублях</span>
+                                            </button>
+                                        </div>
+                                        <input
+                                            type="hidden"
+                                            class="trench-amount-source"
+                                            name="trench_amount_source_{{ row.number }}"
+                                            value="{{ row.trench_amount_source|default:'percent' }}"
+                                        >
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label" for="annual_rate_{{ row.number }}">Годовая ставка, %</label>
+                                        <input
+                                            id="annual_rate_{{ row.number }}"
+                                            type="number"
+                                            class="form-control annual-rate"
+                                            name="annual_rate_{{ row.number }}"
+                                            value="{{ row.annual_rate }}"
+                                            step="0.01"
+                                            min="0"
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
                     </div>
-                    <div class="col-md-6">
-                        <strong>Ежемесячный платеж за основной период, руб.:</strong>
-                        <div>{{ result.main_monthly_payment }}</div>
+
+                    <div class="mt-4 d-flex gap-2">
+                        <button
+                            type="submit"
+                            name="calculate"
+                            value="trench"
+                            class="btn btn-primary"
+                            data-submit-calculation-type="trench"
+                        >Рассчитать</button>
+                        {% if trench_result %}
+                            <button
+                                type="submit"
+                                name="export"
+                                value="trench"
+                                class="btn btn-outline-success"
+                                data-submit-calculation-type="trench"
+                            >Сохранить в Excel</button>
+                        {% endif %}
                     </div>
-                    <div class="col-md-6">
-                        <strong>Сумма кредита, руб.:</strong>
-                        <div>{{ result.total_loan_amount }}</div>
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Сумма переплат по кредиту, руб.:</strong>
-                        <div>{{ result.total_overpayment }}</div>
-                    </div>
+
+                    {% if trench_result %}
+                        <hr class="my-4">
+                        <h5>Результаты расчета</h5>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <strong>Итоговая стоимость объекта:</strong>
+                                <div>{{ trench_result.final_property_cost }} руб.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Первоначальный взнос:</strong>
+                                <div>{{ trench_result.initial_payment }} руб. ({{ trench_result.initial_payment_date }})</div>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Общая сумма кредита:</strong>
+                                <div>{{ trench_result.total_loan_amount }} руб.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Общая переплата:</strong>
+                                <div>{{ trench_result.total_overpayment }} руб.</div>
+                            </div>
+                        </div>
+
+                        <h5>Детали траншей</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Транш</th>
+                                        <th>Дата</th>
+                                        <th>Сумма, %</th>
+                                        <th>Сумма, руб.</th>
+                                        <th>Ставка, %</th>
+                                        <th>Ежемесячный платеж, руб.</th>
+                                        <th>Число платежей</th>
+                                        <th>Остаток долга, руб.</th>
+                                        <th>Переплата, руб.</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for trench in trench_result.trenches %}
+                                        <tr>
+                                            <td>{{ trench.number }}</td>
+                                            <td>{{ trench.date }}</td>
+                                            <td>{{ trench.percent }}</td>
+                                            <td>{{ trench.amount }}</td>
+                                            <td>{{ trench.annual_rate }}</td>
+                                            <td>{{ trench.monthly_payment }}</td>
+                                            <td>{{ trench.payments_count }}</td>
+                                            <td>{{ trench.remaining_debt }}</td>
+                                            <td>{{ trench.overpayment }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {% if trench_payment_schedule %}
+                            <h5 class="mt-4">График платежей</h5>
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>№</th>
+                                            <th>Дата платежа</th>
+                                            <th>Сумма платежа, руб.</th>
+                                            <th>Проценты, руб.</th>
+                                            <th>Погашение основного долга, руб.</th>
+                                            <th>Остаток долга, руб.</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for payment in trench_payment_schedule %}
+                                            <tr>
+                                                <td>{{ payment.payment_number }}</td>
+                                                <td>{{ payment.payment_date }}</td>
+                                                <td>{{ payment.payment_amount }}</td>
+                                                <td>{{ payment.interest_amount }}</td>
+                                                <td>{{ payment.principal_amount }}</td>
+                                                <td>{{ payment.remaining_debt }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endif %}
+                    {% endif %}
                 </div>
             </div>
         </div>
 
-        {% if payment_schedule %}
-            <div class="card mt-4">
-                <div class="card-header">График платежей</div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover mb-0">
-                            <thead>
-                                <tr>
-                                    <th>№</th>
-                                    <th>Дата платежа</th>
-                                    <th>Сумма платежа, руб.</th>
-                                    <th>Проценты, руб.</th>
-                                    <th>Основной долг, руб.</th>
-                                    <th>Остаток долга, руб.</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for payment in payment_schedule %}
-                                    <tr>
-                                        <td>{{ payment.payment_number }}</td>
-                                        <td>{{ payment.payment_date|date:"d.m.Y" }}</td>
-                                        <td>{{ payment.payment_amount }}</td>
-                                        <td>{{ payment.interest_amount }}</td>
-                                        <td>{{ payment.principal_amount }}</td>
-                                        <td>{{ payment.remaining_debt }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+        {% if target_customer %}
+            <div class="mt-4">
+                <a href="{% url 'customer:detail' target_customer.pk %}" class="btn btn-outline-secondary">��������� � �������</a>
             </div>
         {% endif %}
-    {% endif %}
+    </form>
 </div>
 
 {{ property_form_data|json_script:"mortgage-property-form-data" }}
@@ -534,5 +808,5 @@
 
 {% block extra_scripts %}
 <script src="{% static 'js/dependent_selects.js' %}"></script>
-<script src="{% static 'js/mortgage_form.js' %}?v=20260525-apartment-autocomplete" data-property-cost-api-template="{% url 'mortgage:property_cost_api' 0 %}"></script>
+<script src="{% static 'js/mortgage_form.js' %}?v=20260530-unified-mortgage" data-property-cost-api-template="{% url 'mortgage:property_cost_api' 0 %}"></script>
 {% endblock %}
