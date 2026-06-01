@@ -1,6 +1,7 @@
 # mortgage/views.py
 import decimal
 
+from dateutil.relativedelta import relativedelta
 from django.contrib import messages
 from django.db import transaction
 from django.http import JsonResponse
@@ -17,6 +18,7 @@ from property.models import (
     RealEstateComplexBuilding,
 )
 from trench_mortgage.views import (
+    _build_trench_payment_schedule,
     _build_trench_input_rows,
     _calculate_trench_mortgage,
     _export_trench_excel,
@@ -28,6 +30,7 @@ from trench_mortgage.views import (
     _resolve_trench_count,
     _save_trench_calculation,
 )
+from trench_mortgage.models import TrenchMortgageCalculation
 
 from .excel import (
     MortgageExcelData,
@@ -1020,5 +1023,119 @@ def calculation_detail(request, pk):
         {
             'calculation': calculation,
             'payment_schedule': payment_schedule,
+        },
+    )
+
+
+
+def _get_trench_calculation_queryset():
+    """Return trench mortgage calculations with related objects loaded."""
+    return TrenchMortgageCalculation.objects.select_related(
+        'property',
+        'property__layout',
+        'property__decoration',
+        'property__building',
+        'property__building__real_estate_complex',
+        'property__building__real_estate_complex__developer',
+        'property__building__real_estate_complex__district',
+        'property__building__real_estate_complex__district__city',
+        'property__building__real_estate_complex__real_estate_class',
+    ).prefetch_related('trenches')
+
+
+def _build_saved_trench_calculation_data(calculation):
+    """Build an export/report payload from a saved trench calculation."""
+    trenches = []
+    previous_monthly_payment = 0.0
+    for trench in calculation.trenches.all():
+        monthly_payment = float(trench.monthly_payment)
+        trench_monthly_payment = monthly_payment - previous_monthly_payment
+        previous_monthly_payment = monthly_payment
+        overpayment = (
+            trench_monthly_payment * trench.payments_count
+            - float(trench.trench_amount)
+        )
+        trenches.append(
+            {
+                'number': trench.trench_number,
+                'date': trench.trench_date,
+                'percent': float(trench.trench_percent),
+                'amount': float(trench.trench_amount),
+                'annual_rate': float(trench.annual_rate),
+                'trench_monthly_payment': trench_monthly_payment,
+                'monthly_payment': monthly_payment,
+                'payments_count': trench.payments_count,
+                'remaining_debt': float(trench.remaining_debt),
+                'overpayment': overpayment,
+            }
+        )
+
+    mortgage_end_date = calculation.initial_payment_date + relativedelta(
+        months=calculation.mortgage_term
+    )
+    return {
+        'property_obj': calculation.property,
+        'property_cost': float(calculation.final_property_cost),
+        'base_property_cost': float(calculation.base_property_cost),
+        'discount_markup_type': calculation.discount_markup_type,
+        'discount_markup_value': float(calculation.discount_markup_value),
+        'final_property_cost': float(calculation.final_property_cost),
+        'initial_payment_percent': float(calculation.initial_payment_percent),
+        'initial_payment': float(calculation.initial_payment_amount),
+        'initial_payment_date': calculation.initial_payment_date,
+        'mortgage_term': calculation.mortgage_term,
+        'mortgage_end_date': mortgage_end_date,
+        'annual_rate': float(calculation.annual_rate),
+        'trench_count': calculation.trench_count,
+        'total_loan_amount': float(calculation.total_loan_amount),
+        'total_overpayment': float(calculation.total_overpayment),
+        'trenches': trenches,
+        'payment_schedule': _build_trench_payment_schedule(
+            trenches, mortgage_end_date
+        ),
+    }
+
+
+def trench_calculation_list(request):
+    """Show saved trench mortgage calculations."""
+    calculations = annotate_calculation_table_values(
+        _get_trench_calculation_queryset()
+    ).order_by('-timestamp')
+
+    return render(
+        request,
+        'mortgage/trench_calculation_list.html',
+        {
+            'calculations': calculations,
+        },
+    )
+
+
+@require_POST
+def trench_calculation_delete(request, pk):
+    """Delete a saved trench mortgage calculation."""
+    calculation = get_object_or_404(TrenchMortgageCalculation, pk=pk)
+    calculation.delete()
+    return redirect('mortgage:trench_calculation_list')
+
+
+def trench_calculation_detail(request, pk):
+    """Show detailed information about a saved trench mortgage calculation."""
+    calculation = get_object_or_404(_get_trench_calculation_queryset(), pk=pk)
+    calculation_data = _build_saved_trench_calculation_data(calculation)
+
+    if request.method == 'POST' and request.POST.get('export') == 'trench':
+        return _export_trench_excel(calculation_data)
+
+    return render(
+        request,
+        'mortgage/trench_calculation_detail.html',
+        {
+            'calculation': calculation,
+            'calculation_data': calculation_data,
+            'trench_result': _format_trench_result(calculation_data),
+            'payment_schedule': _format_trench_payment_schedule(
+                calculation_data['payment_schedule']
+            ),
         },
     )

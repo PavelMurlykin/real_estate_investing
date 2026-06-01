@@ -80,6 +80,11 @@ class TrenchMortgageCalculation(models.Model):
         """Return a human readable mortgage term in years."""
         return format_years_label(self.mortgage_term // 12)
 
+    @builtins.property
+    def initial_payment_amount(self):
+        """Return the initial payment amount in rubles."""
+        return self.final_property_cost * self.initial_payment_percent / 100
+
 
 class Trench(models.Model):
     """Описание класса Trench.

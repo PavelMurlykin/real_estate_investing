@@ -1,23 +1,23 @@
 {% extends 'base.html' %}
 {% load mortgage_filters %}
 
-{% block title %}Детали расчета ипотеки{% endblock %}
+{% block title %}Детали расчета траншевой ипотеки{% endblock %}
 
 {% block extra_css %}
 <style>
-    .mortgage-detail-table-wrapper {
+    .trench-detail-table-wrapper {
         overflow-x: auto;
     }
 
-    .mortgage-detail-table {
+    .trench-detail-table {
         margin-left: auto;
         margin-right: auto;
         table-layout: auto;
         width: auto;
     }
 
-    .mortgage-detail-table th,
-    .mortgage-detail-table td {
+    .trench-detail-table th,
+    .trench-detail-table td {
         white-space: nowrap;
         width: auto;
     }
@@ -27,18 +27,18 @@
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Детали расчета ипотеки</h2>
+        <h2>Детали расчета траншевой ипотеки</h2>
         <div class="d-flex gap-2">
             <form method="post" class="m-0">
                 {% csrf_token %}
-                <button type="submit" name="export" value="market" class="btn btn-success">
+                <button type="submit" name="export" value="trench" class="btn btn-success">
                     <i class="bi bi-file-earmark-excel"></i> Сохранить в Excel
                 </button>
             </form>
-            <a href="{% url 'mortgage:mortgage_calculator' %}?sample={{ calculation.pk }}" class="btn btn-primary">
-                <i class="bi bi-calculator"></i> Новый расчет по образцу
+            <a href="{% url 'mortgage:mortgage_calculator' %}" class="btn btn-primary">
+                <i class="bi bi-calculator"></i> Новый расчет
             </a>
-            <a href="{% url 'mortgage:calculation_list' %}" class="btn btn-outline-secondary">
+            <a href="{% url 'mortgage:trench_calculation_list' %}" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> Назад к списку
             </a>
         </div>
@@ -49,8 +49,8 @@
             <h4 class="mb-0">Данные объекта</h4>
         </div>
         <div class="card-body">
-            <div class="table-responsive mortgage-detail-table-wrapper">
-                <table class="table table-bordered mb-0 mortgage-detail-table">
+            <div class="table-responsive trench-detail-table-wrapper">
+                <table class="table table-bordered mb-0 trench-detail-table">
                     <tbody>
                         <tr>
                             <th scope="row">Застройщик</th>
@@ -112,11 +112,11 @@
 
     <div class="card mb-4">
         <div class="card-header">
-            <h4 class="mb-0">Параметры ипотеки</h4>
+            <h4 class="mb-0">Параметры траншевой ипотеки</h4>
         </div>
         <div class="card-body">
-            <div class="table-responsive mortgage-detail-table-wrapper">
-                <table class="table table-bordered mb-0 mortgage-detail-table">
+            <div class="table-responsive trench-detail-table-wrapper">
+                <table class="table table-bordered mb-0 trench-detail-table">
                     <tbody>
                         <tr>
                             <th scope="row">Первоначальный взнос, %</th>
@@ -131,31 +131,61 @@
                             <td>{{ calculation.initial_payment_date|date:"d.m.Y" }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">Срок ипотеки, годы</th>
+                            <th scope="row">Срок кредита, годы</th>
                             <td>{{ calculation.mortgage_term|mortgage_years }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">Срок ипотеки, мес.</th>
+                            <th scope="row">Срок кредита, мес.</th>
                             <td>{{ calculation.mortgage_term }}</td>
                         </tr>
                         <tr>
                             <th scope="row">Годовая ставка, %</th>
                             <td>{{ calculation.annual_rate|compact_decimal }}</td>
                         </tr>
-                        {% if calculation.has_grace_period %}
+                        <tr>
+                            <th scope="row">Количество траншей</th>
+                            <td>{{ calculation.trench_count }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4 class="mb-0">Транши</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive trench-detail-table-wrapper">
+                <table class="table table-bordered table-striped align-middle mb-0 trench-detail-table">
+                    <thead>
+                        <tr>
+                            <th>№</th>
+                            <th>Дата</th>
+                            <th>Сумма, %</th>
+                            <th>Сумма, руб.</th>
+                            <th>Ставка, %</th>
+                            <th>Ежемесячный платеж, руб.</th>
+                            <th>Число платежей</th>
+                            <th>Остаток долга, руб.</th>
+                            <th>Переплата, руб.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for trench in trench_result.trenches %}
                             <tr>
-                                <th scope="row">Срок льготного периода, годы</th>
-                                <td>{{ calculation.grace_period_term|mortgage_years }}</td>
+                                <td>{{ trench.number }}</td>
+                                <td>{{ trench.date }}</td>
+                                <td>{{ trench.percent }}</td>
+                                <td>{{ trench.amount }}</td>
+                                <td>{{ trench.annual_rate }}</td>
+                                <td>{{ trench.monthly_payment }}</td>
+                                <td>{{ trench.payments_count }}</td>
+                                <td>{{ trench.remaining_debt }}</td>
+                                <td>{{ trench.overpayment }}</td>
                             </tr>
-                            <tr>
-                                <th scope="row">Срок льготного периода, мес.</th>
-                                <td>{{ calculation.grace_period_term }}</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">Годовая ставка в льготный период, %</th>
-                                <td>{{ calculation.grace_period_rate|compact_decimal }}</td>
-                            </tr>
-                        {% endif %}
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
@@ -167,45 +197,15 @@
             <h4 class="mb-0">Результаты расчета</h4>
         </div>
         <div class="card-body">
-            <div class="table-responsive mortgage-detail-table-wrapper">
-                <table class="table table-bordered mb-0 mortgage-detail-table">
+            <div class="table-responsive trench-detail-table-wrapper">
+                <table class="table table-bordered mb-0 trench-detail-table">
                     <tbody>
-                        {% if calculation.has_grace_period %}
-                            <tr>
-                                <th scope="row">Число платежей за льготный период</th>
-                                <td>{{ calculation.grace_payments_count }}</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">Дата последнего платежа по льготному периоду</th>
-                                <td>{{ calculation.grace_period_end_date|date:"d.m.Y" }}</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">Сумма ежемесячного платежа во время льготного периода, руб.</th>
-                                <td>{{ calculation.grace_monthly_payment|compact_currency }}</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">Сумма кредита после окончания льготного периода, руб.</th>
-                                <td>{{ calculation.loan_after_grace|compact_currency }}</td>
-                            </tr>
-                        {% endif %}
                         <tr>
-                            <th scope="row">Число платежей за основной период</th>
-                            <td>{{ calculation.main_payments_count }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row">Дата последнего платежа по ипотеке</th>
-                            <td>{{ calculation.mortgage_end_date|date:"d.m.Y" }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row">Сумма ежемесячного платежа за основной период, руб.</th>
-                            <td>{{ calculation.main_monthly_payment|compact_currency }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row">Сумма кредита, руб.</th>
+                            <th scope="row">Общая сумма кредита, руб.</th>
                             <td>{{ calculation.total_loan_amount|compact_currency }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">Сумма переплат по кредиту, руб.</th>
+                            <th scope="row">Общая переплата, руб.</th>
                             <td>{{ calculation.total_overpayment|compact_currency }}</td>
                         </tr>
                     </tbody>
@@ -219,15 +219,15 @@
             <h4 class="mb-0">График платежей</h4>
         </div>
         <div class="card-body">
-            <div class="table-responsive mortgage-detail-table-wrapper">
-                <table class="table table-bordered table-striped align-middle mb-0 mortgage-detail-table">
+            <div class="table-responsive trench-detail-table-wrapper">
+                <table class="table table-bordered table-striped align-middle mb-0 trench-detail-table">
                     <thead>
                         <tr>
                             <th>№</th>
                             <th>Дата платежа</th>
                             <th>Сумма платежа, руб.</th>
-                            <th>В том числе проценты, руб.</th>
-                            <th>В том числе основной долг, руб.</th>
+                            <th>Проценты, руб.</th>
+                            <th>Погашение основного долга, руб.</th>
                             <th>Остаток долга, руб.</th>
                         </tr>
                     </thead>
@@ -235,11 +235,11 @@
                         {% for payment in payment_schedule %}
                             <tr>
                                 <td>{{ payment.payment_number }}</td>
-                                <td>{{ payment.payment_date|date:"d.m.Y" }}</td>
-                                <td>{{ payment.payment_amount|compact_currency }}</td>
-                                <td>{{ payment.interest_amount|compact_currency }}</td>
-                                <td>{{ payment.principal_amount|compact_currency }}</td>
-                                <td>{{ payment.remaining_debt|compact_currency }}</td>
+                                <td>{{ payment.payment_date }}</td>
+                                <td>{{ payment.payment_amount }}</td>
+                                <td>{{ payment.interest_amount }}</td>
+                                <td>{{ payment.principal_amount }}</td>
+                                <td>{{ payment.remaining_debt }}</td>
                             </tr>
                         {% empty %}
                             <tr>

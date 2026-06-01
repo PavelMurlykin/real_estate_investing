@@ -23,4 +23,19 @@ urlpatterns = [
         views.calculation_detail,
         name='calculation_detail',
     ),
+    path(
+        'trench-calculations/',
+        views.trench_calculation_list,
+        name='trench_calculation_list',
+    ),
+    path(
+        'trench-calculations/<int:pk>/delete/',
+        views.trench_calculation_delete,
+        name='trench_calculation_delete',
+    ),
+    path(
+        'trench-calculations/<int:pk>/',
+        views.trench_calculation_detail,
+        name='trench_calculation_detail',
+    ),
 ]

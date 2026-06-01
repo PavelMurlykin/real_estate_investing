@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% load mortgage_filters %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">История расчетов траншевой ипотеки</h2>
+        </div>
+        <a href="{% url 'mortgage:mortgage_calculator' %}" class="btn btn-primary">
+            <i class="bi bi-calculator"></i> Новый расчет
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            {% if calculations %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Город</th>
+                                <th>Дата расчета</th>
+                                <th>Объект</th>
+                                <th>Стоимость объекта</th>
+                                <th>Первоначальный взнос</th>
+                                <th>Транши</th>
+                                <th>Срок</th>
+                                <th>Ставка</th>
+                                <th>Переплата</th>
+                                <th class="text-nowrap">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for calculation in calculations %}
+                            <tr>
+                                <td>{{ calculation.property.building.real_estate_complex.district.city.name }}</td>
+                                <td>{{ calculation.timestamp|date:"d.m.Y H:i" }}</td>
+                                <td>{{ calculation.property.building.real_estate_complex.name }}, кв. {{ calculation.property.apartment_number }}</td>
+                                <td>{{ calculation.final_property_cost|currency }} руб.</td>
+                                <td>{{ calculation.table_initial_payment_amount|currency }} руб.</td>
+                                <td>{{ calculation.trench_count }}</td>
+                                <td>{{ calculation.mortgage_term|term_from_months }}</td>
+                                <td>{{ calculation.annual_rate|compact_decimal }}%</td>
+                                <td>{{ calculation.total_overpayment|currency }} руб.</td>
+                                <td class="text-nowrap">
+                                    <div class="d-flex gap-2 flex-nowrap">
+                                        <a href="{% url 'mortgage:trench_calculation_detail' calculation.pk %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i> Подробнее
+                                        </a>
+                                        <form method="post" action="{% url 'mortgage:trench_calculation_delete' calculation.pk %}" onsubmit="return confirm('Удалить траншевый расчет?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-trash"></i> Удалить
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted">Нет сохраненных расчетов траншевой ипотеки</p>
+                    <a href="{% url 'mortgage:mortgage_calculator' %}" class="btn btn-primary">Создать первый расчет</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

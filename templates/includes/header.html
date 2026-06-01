@@ -107,7 +107,7 @@
 
           <li class="nav-item dropdown">
             <button
-              class="nav-link dropdown-toggle {% if view_name == 'mortgage:mortgage_calculator' or view_name == 'mortgage:calculation_list' or view_name == 'mortgage:calculation_detail' %}active{% endif %}"
+              class="nav-link dropdown-toggle {% if view_name == 'mortgage:mortgage_calculator' or view_name == 'mortgage:calculation_list' or view_name == 'mortgage:calculation_detail' or view_name == 'mortgage:trench_calculation_list' or view_name == 'mortgage:trench_calculation_detail' %}active{% endif %}"
               type="button"
               data-bs-toggle="dropdown"
               aria-expanded="false"
@@ -123,6 +123,11 @@
               <li>
                 <a class="dropdown-item {% if view_name == 'mortgage:calculation_list' or view_name == 'mortgage:calculation_detail' %}active{% endif %}" href="{% url 'mortgage:calculation_list' %}">
                   Сохраненные расчеты ипотеки
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item {% if view_name == 'mortgage:trench_calculation_list' or view_name == 'mortgage:trench_calculation_detail' %}active{% endif %}" href="{% url 'mortgage:trench_calculation_list' %}">
+                  Сохраненные расчеты траншевой ипотеки
                 </a>
               </li>
             </ul>

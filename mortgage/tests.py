@@ -116,6 +116,51 @@ class MortgageCalculatorViewTests(TestCase):
             total_overpayment=Decimal('9213034.40'),
         )
 
+    def _create_trench_calculation(
+        self,
+        property_obj=None,
+    ) -> TrenchMortgageCalculation:
+        if property_obj is None:
+            property_obj = self.property
+
+        calculation = TrenchMortgageCalculation.objects.create(
+            property=property_obj,
+            base_property_cost=Decimal('5000000.00'),
+            discount_markup_type='discount',
+            discount_markup_value=Decimal('0.00'),
+            final_property_cost=Decimal('5000000.00'),
+            initial_payment_percent=Decimal('20.00'),
+            initial_payment_date=date(2026, 1, 1),
+            mortgage_term=240,
+            annual_rate=Decimal('12.00'),
+            trench_count=2,
+            total_loan_amount=Decimal('4000000.00'),
+            total_overpayment=Decimal('8500000.00'),
+        )
+        Trench.objects.create(
+            calculation=calculation,
+            trench_number=1,
+            trench_date=date(2026, 1, 1),
+            trench_percent=Decimal('50.00'),
+            trench_amount=Decimal('2000000.00'),
+            annual_rate=Decimal('12.00'),
+            monthly_payment=Decimal('22021.72'),
+            payments_count=12,
+            remaining_debt=Decimal('2000000.00'),
+        )
+        Trench.objects.create(
+            calculation=calculation,
+            trench_number=2,
+            trench_date=date(2027, 1, 1),
+            trench_percent=Decimal('50.00'),
+            trench_amount=Decimal('2000000.00'),
+            annual_rate=Decimal('12.00'),
+            monthly_payment=Decimal('44043.44'),
+            payments_count=228,
+            remaining_debt=Decimal('0.00'),
+        )
+        return calculation
+
     def _base_payload(self) -> dict:
         """Описание метода _base_payload.
 
@@ -402,6 +447,14 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, 'Результаты расчета')
         self.assertContains(response, 'График платежей')
         self.assertContains(response, 'table-bordered', count=4)
+        self.assertContains(
+            response,
+            'class="table-responsive mortgage-detail-table-wrapper"',
+            count=4,
+        )
+        self.assertContains(response, 'mortgage-detail-table">', count=4)
+        self.assertContains(response, 'width: auto;')
+        self.assertContains(response, 'white-space: nowrap;')
         self.assertContains(response, 'Застройщик')
         self.assertContains(response, 'Город')
         self.assertContains(response, 'Название ЖК')
@@ -422,6 +475,7 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, '01.01.2026')
         self.assertContains(response, '20')
         self.assertContains(response, '240')
+        self.assertNotContains(response, 'class="w-50"')
         self.assertNotContains(response, 'Корректировка цены')
         self.assertNotContains(response, 'Наличие льготного периода')
         self.assertNotContains(response, 'Срок льготного периода, годы')
@@ -454,7 +508,10 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response['Content-Type'],
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            (
+                'application/vnd.openxmlformats-officedocument.'
+                'spreadsheetml.sheet'
+            ),
         )
         self.assertIn(
             'attachment; filename="mortgage_calculation.xlsx"',
@@ -478,6 +535,99 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertIn('Результаты расчета:', values)
         self.assertIn('График платежей:', values)
         self.assertIn('Сумма платежа, руб.', values)
+
+    def test_trench_calculation_list_shows_saved_calculations(self):
+        calculation = self._create_trench_calculation()
+
+        response = self.client.get(reverse('mortgage:trench_calculation_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'История расчетов траншевой ипотеки')
+        self.assertContains(response, 'Сохраненные расчеты траншевой ипотеки')
+        self.assertContains(response, 'ЖК Тест, кв. 101')
+        self.assertContains(response, '5 000 000,00 руб.')
+        self.assertContains(response, '8 500 000,00 руб.')
+        self.assertContains(
+            response,
+            reverse(
+                'mortgage:trench_calculation_detail',
+                kwargs={'pk': calculation.pk},
+            ),
+        )
+
+    def test_trench_calculation_detail_shows_report_sections(self):
+        calculation = self._create_trench_calculation()
+
+        response = self.client.get(
+            reverse(
+                'mortgage:trench_calculation_detail',
+                kwargs={'pk': calculation.pk},
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Детали расчета траншевой ипотеки')
+        self.assertContains(response, 'Данные объекта')
+        self.assertContains(response, 'Параметры траншевой ипотеки')
+        self.assertContains(response, 'Транши')
+        self.assertContains(response, 'Результаты расчета')
+        self.assertContains(response, 'График платежей')
+        self.assertContains(response, 'Количество траншей')
+        self.assertContains(response, 'Ежемесячный платеж, руб.')
+        self.assertContains(response, 'Сохранить в Excel')
+        self.assertContains(response, 'name="export"')
+        self.assertContains(response, 'value="trench"')
+
+    def test_trench_calculation_detail_export_returns_excel_file(self):
+        calculation = self._create_trench_calculation()
+        url = reverse(
+            'mortgage:trench_calculation_detail',
+            kwargs={'pk': calculation.pk},
+        )
+
+        response = self.client.post(url, {'export': 'trench'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        self.assertIn(
+            'trench_mortgage_calculation.xlsx',
+            response['Content-Disposition'],
+        )
+        workbook = load_workbook(BytesIO(response.content))
+        worksheet = workbook.active
+        self.assertEqual(worksheet.title, 'Траншевая ипотека')
+        values = [
+            cell.value
+            for row in worksheet.iter_rows()
+            for cell in row
+            if cell.value is not None
+        ]
+        self.assertIn('Траншевая ипотека - результаты расчета', values)
+        self.assertIn('Параметры траншевой ипотеки', values)
+        self.assertIn('Транши', values)
+        self.assertIn('График платежей', values)
+
+    def test_trench_calculation_delete_removes_saved_calculation(self):
+        calculation = self._create_trench_calculation()
+
+        response = self.client.post(
+            reverse(
+                'mortgage:trench_calculation_delete',
+                kwargs={'pk': calculation.pk},
+            )
+        )
+
+        self.assertRedirects(
+            response, reverse('mortgage:trench_calculation_list')
+        )
+        self.assertFalse(
+            TrenchMortgageCalculation.objects.filter(
+                pk=calculation.pk
+            ).exists()
+        )
 
     def test_mortgage_form_prefills_fields_from_sample_calculation(self):
         calculation = self._create_calculation()
