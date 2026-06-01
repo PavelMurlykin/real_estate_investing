@@ -56,12 +56,16 @@
                             <td>{{ customer.residence_city|default:"-" }}</td>
                             <td>{{ customer.created_at|date:"d.m.Y H:i" }}</td>
                             <td class="text-nowrap">
-                                <a href="{% url 'customer:detail' customer.pk %}" class="btn btn-sm btn-outline-primary">Карточка</a>
-                                <a href="{% url 'customer:update' customer.pk %}" class="btn btn-sm btn-outline-secondary">Редактировать</a>
-                                <form method="post" action="{% url 'customer:delete' customer.pk %}" class="d-inline" onsubmit="return confirm('Удалить клиента? Связи с расчетами будут удалены, сами расчеты сохранятся.');">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
-                                </form>
+                                <div class="d-flex gap-2 flex-nowrap">
+                                    {% url 'customer:detail' customer.pk as detail_url %}
+                                    {% include "includes/action_icon.html" with href=detail_url icon="details" label="Подробнее" %}
+                                    {% url 'customer:update' customer.pk as update_url %}
+                                    {% include "includes/action_icon.html" with href=update_url icon="edit" label="Редактировать" variant_class="btn-outline-secondary" %}
+                                    <form method="post" action="{% url 'customer:delete' customer.pk %}" class="d-inline" onsubmit="return confirm('Удалить клиента? Связи с расчетами будут удалены, сами расчеты сохранятся.');">
+                                        {% csrf_token %}
+                                        {% include "includes/action_icon.html" with action_icon_is_button=True icon="delete" label="Удалить" variant_class="btn-outline-danger" %}
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         {% empty %}

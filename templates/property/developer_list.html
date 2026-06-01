@@ -60,8 +60,10 @@
                                 {% endfor %}
                                 <td class="align-middle text-nowrap">
                                     <div class="d-flex gap-2 flex-nowrap">
-                                        <a href="{% url 'property:developer_update' developer.pk %}" class="btn btn-sm btn-outline-primary">Редактировать</a>
-                                        <a href="{% url 'property:developer_delete' developer.pk %}" class="btn btn-sm btn-outline-danger">Удалить</a>
+                                        {% url 'property:developer_update' developer.pk as update_url %}
+                                        {% include "includes/action_icon.html" with href=update_url icon="edit" label="Редактировать" %}
+                                        {% url 'property:developer_delete' developer.pk as delete_url %}
+                                        {% include "includes/action_icon.html" with href=delete_url icon="delete" label="Удалить" variant_class="btn-outline-danger" %}
                                     </div>
                                 </td>
                             </tr>

@@ -1,0 +1,26 @@
+{% load static %}
+{% with icon_path='img/'|add:icon|add:'.png' %}
+{% if action_icon_is_button %}
+<button
+    type="{{ button_type|default:'submit' }}"
+    class="btn {{ size_class|default:'btn-sm' }} {{ variant_class|default:'btn-outline-primary' }} action-icon-button"
+    title="{{ label }}"
+    aria-label="{{ label }}"
+    data-bs-toggle="tooltip"
+    data-bs-title="{{ label }}"
+>
+    <img src="{% static icon_path %}" alt="" class="action-icon-image" aria-hidden="true">
+</button>
+{% else %}
+<a
+    href="{{ href }}"
+    class="btn {{ size_class|default:'btn-sm' }} {{ variant_class|default:'btn-outline-primary' }} action-icon-button"
+    title="{{ label }}"
+    aria-label="{{ label }}"
+    data-bs-toggle="tooltip"
+    data-bs-title="{{ label }}"
+>
+    <img src="{% static icon_path %}" alt="" class="action-icon-image" aria-hidden="true">
+</a>
+{% endif %}
+{% endwith %}

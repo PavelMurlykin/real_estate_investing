@@ -7,7 +7,8 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>{% if object %}Редактирование{% else %}Создание{% endif %} объекта недвижимости</h1>
-        <a href="{% url 'property:list' %}" class="btn btn-secondary">Назад к списку</a>
+        {% url 'property:list' as list_url %}
+        {% include "includes/action_icon.html" with href=list_url icon="back" label="Назад к списку" size_class="action-icon-button-lg" variant_class="btn-outline-secondary" %}
     </div>
 
     <div class="card">

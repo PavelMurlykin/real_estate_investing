@@ -70,6 +70,7 @@
     {% bootstrap_css %}
     <link rel="stylesheet" href="{% static 'css/searchable_select.css' %}">
     <link rel="stylesheet" href="{% static 'css/image_modal.css' %}">
+    <link rel="stylesheet" href="{% static 'css/action_icons.css' %}">
 
     {% block extra_css %}
     {% endblock %}
@@ -126,6 +127,31 @@
                 window.appTheme.setTheme(selector.value);
             });
         });
+    </script>
+    <script>
+        (function () {
+            function initializeTooltips(root) {
+                if (!window.bootstrap || !window.bootstrap.Tooltip) {
+                    return;
+                }
+
+                root.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (element) {
+                    if (!window.bootstrap.Tooltip.getInstance(element)) {
+                        new window.bootstrap.Tooltip(element);
+                    }
+                });
+            }
+
+            document.addEventListener("DOMContentLoaded", function () {
+                initializeTooltips(document);
+            });
+
+            document.addEventListener("catalog:results-replaced", function (event) {
+                initializeTooltips(event.target);
+            });
+
+            window.initializeAppTooltips = initializeTooltips;
+        })();
     </script>
 
     {% block extra_scripts %}

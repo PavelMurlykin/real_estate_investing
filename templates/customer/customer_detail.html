@@ -13,8 +13,10 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Карточка клиента {{ customer.full_name }}</h1>
         <div class="d-flex gap-2">
-            <a href="{% url 'customer:update' customer.pk %}" class="btn btn-warning">Редактировать</a>
-            <a href="{% url 'customer:list' %}" class="btn btn-secondary">К списку</a>
+            {% url 'customer:update' customer.pk as update_url %}
+            {% include "includes/action_icon.html" with href=update_url icon="edit" label="Редактировать" size_class="action-icon-button-lg" variant_class="btn-outline-warning" %}
+            {% url 'customer:list' as list_url %}
+            {% include "includes/action_icon.html" with href=list_url icon="back" label="Назад к списку" size_class="action-icon-button-lg" variant_class="btn-outline-secondary" %}
         </div>
     </div>
 
@@ -203,14 +205,11 @@
                                                         aria-controls="customer-calculation-details-{{ customer_calculation.pk }}"
                                                         aria-label="Показать детали расчета"
                                                     ></button>
-                                                    <a href="{% url 'mortgage:calculation_detail' calculation.pk %}" class="btn btn-sm btn-outline-primary">
-                                                        <i class="bi bi-eye"></i> Подробнее
-                                                    </a>
+                                                    {% url 'mortgage:calculation_detail' calculation.pk as detail_url %}
+                                                    {% include "includes/action_icon.html" with href=detail_url icon="details" label="Подробнее" %}
                                                     <form method="post" action="{% url 'customer:calculation_delete' customer_calculation.pk %}" onsubmit="return confirm('Удалить связь клиента с расчетом? Сам расчет сохранится.');">
                                                         {% csrf_token %}
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                            <i class="bi bi-trash"></i> Удалить
-                                                        </button>
+                                                        {% include "includes/action_icon.html" with action_icon_is_button=True icon="delete" label="Удалить" variant_class="btn-outline-danger" %}
                                                     </form>
                                                 </div>
                                             </td>
