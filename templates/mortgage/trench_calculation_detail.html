@@ -38,9 +38,8 @@
             <a href="{% url 'mortgage:mortgage_calculator' %}" class="btn btn-primary">
                 <i class="bi bi-calculator"></i> Новый расчет
             </a>
-            <a href="{% url 'mortgage:trench_calculation_list' %}" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Назад к списку
-            </a>
+            {% url 'mortgage:trench_calculation_list' as list_url %}
+            {% include "includes/action_icon.html" with href=list_url icon="back" label="Назад к списку" size_class="action-icon-button-lg" variant_class="btn-outline-secondary" %}
         </div>
     </div>
 

@@ -10,22 +10,32 @@
 <style>
     .value-lock-button {
         align-items: center;
+        background-color: transparent;
+        border: 0;
+        box-shadow: none;
         display: inline-flex;
+        height: 2.375rem;
         justify-content: center;
         padding: 0;
         width: 2.75rem;
     }
 
-    .value-lock-button.is-locked {
-        background-color: var(--bs-primary);
-        border-color: var(--bs-primary);
-        color: var(--bs-white);
+    .value-lock-button:hover,
+    .value-lock-button:active,
+    .value-lock-button:focus,
+    .value-lock-button.is-locked,
+    .value-lock-button.is-locked:hover,
+    .value-lock-button.is-locked:active,
+    .value-lock-button.is-locked:focus {
+        background-color: transparent;
+        border: 0;
+        box-shadow: none;
     }
 
     .lock-icon-img {
-        height: 1.125rem;
+        height: 100%;
         object-fit: contain;
-        width: 1.125rem;
+        width: 100%;
     }
 
     .lock-icon-img-locked {

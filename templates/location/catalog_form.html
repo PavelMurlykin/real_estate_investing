@@ -138,13 +138,13 @@
                                     {% endfor %}
                                     <td class="text-nowrap">
                                         <div class="d-flex gap-2 flex-nowrap">
-                                            <a href="{{ row.edit_url }}" class="btn btn-sm btn-outline-primary">Редактировать</a>
+                                            {% include "includes/action_icon.html" with href=row.edit_url icon="edit" label="Редактировать" %}
                                             <form method="post" action="{{ form_action_url }}" onsubmit="return confirm('Удалить запись?');">
                                                 {% csrf_token %}
                                                 <input type="hidden" name="action" value="delete">
                                                 <input type="hidden" name="model" value="{{ model_key }}">
                                                 <input type="hidden" name="object_id" value="{{ row.pk }}">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
+                                                {% include "includes/action_icon.html" with action_icon_is_button=True icon="delete" label="Удалить" variant_class="btn-outline-danger" %}
                                             </form>
                                         </div>
                                     </td>

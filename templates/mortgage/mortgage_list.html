@@ -92,15 +92,12 @@
                                                 aria-controls="mortgage-calculation-details-{{ calculation.pk }}"
                                                 aria-label="Показать детали расчета"
                                             ></button>
-                                            <a href="{% url 'mortgage:calculation_detail' calculation.pk %}" class="btn btn-sm btn-outline-primary">
-                                                <i class="bi bi-eye"></i> Подробнее
-                                            </a>
+                                            {% url 'mortgage:calculation_detail' calculation.pk as detail_url %}
+                                            {% include "includes/action_icon.html" with href=detail_url icon="details" label="Подробнее" %}
                                             {% if not target_customer %}
                                                 <form method="post" action="{% url 'mortgage:calculation_delete' calculation.pk %}" onsubmit="return confirm('Удалить расчет?');">
                                                     {% csrf_token %}
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                        <i class="bi bi-trash"></i> Удалить
-                                                    </button>
+                                                    {% include "includes/action_icon.html" with action_icon_is_button=True icon="delete" label="Удалить" variant_class="btn-outline-danger" %}
                                                 </form>
                                             {% endif %}
                                         </div>

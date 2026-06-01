@@ -121,9 +121,12 @@
                                 {% endfor %}
                                 <td class="align-middle text-nowrap">
                                     <div class="d-flex gap-2 flex-nowrap">
-                                        <a href="{% url 'property:detail' property.pk %}" class="btn btn-sm btn-outline-primary">Подробнее</a>
-                                        <a href="{% url 'property:update' property.pk %}" class="btn btn-sm btn-outline-primary">Редактировать</a>
-                                        <a href="{% url 'property:delete' property.pk %}" class="btn btn-sm btn-outline-danger">Удалить</a>
+                                        {% url 'property:detail' property.pk as detail_url %}
+                                        {% include "includes/action_icon.html" with href=detail_url icon="details" label="Подробнее" %}
+                                        {% url 'property:update' property.pk as update_url %}
+                                        {% include "includes/action_icon.html" with href=update_url icon="edit" label="Редактировать" %}
+                                        {% url 'property:delete' property.pk as delete_url %}
+                                        {% include "includes/action_icon.html" with href=delete_url icon="delete" label="Удалить" variant_class="btn-outline-danger" %}
                                     </div>
                                 </td>
                             </tr>

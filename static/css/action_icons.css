@@ -1,0 +1,37 @@
+.action-icon-button {
+    align-items: center;
+    background-color: transparent;
+    border: 0;
+    box-shadow: none;
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 2rem;
+    justify-content: center;
+    padding: 0;
+    width: 2rem;
+}
+
+.action-icon-button:hover,
+.action-icon-button:active,
+.action-icon-button:focus {
+    background-color: transparent;
+    border: 0;
+    box-shadow: none;
+}
+
+.action-icon-image {
+    display: block;
+    height: 100%;
+    object-fit: contain;
+    width: 100%;
+}
+
+.action-icon-button-lg {
+    height: 2.375rem;
+    width: 2.375rem;
+}
+
+.action-icon-button-lg .action-icon-image {
+    height: 100%;
+    width: 100%;
+}
