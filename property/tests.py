@@ -53,7 +53,34 @@ def test_searchable_select_static_filters_options_by_partial_match():
     assert 'searchable-select-option-color' in script
     assert 'MutationObserver' in script
     assert 'includes(query)' in script
+    assert 'searchQuery' in script
+    assert 'resetSearch' in script
+    assert "state.input.value = ''" in script
+    assert 'skipNextSelectSync' in script
+    assert 'searchable-select-toggle' in script
     assert 'window.searchableSelect' in script
+
+
+def test_searchable_select_static_looks_like_dropdown():
+    script_path = Path(settings.BASE_DIR) / 'static/js/searchable_select.js'
+    style_path = Path(settings.BASE_DIR) / 'static/css/searchable_select.css'
+    script = script_path.read_text(encoding='utf-8')
+    styles = style_path.read_text(encoding='utf-8')
+
+    assert "const classes = ['form-select', 'searchable-select-input']" in script
+    assert 'form-select-sm' in script
+    assert 'form-select-lg' in script
+    assert '.searchable-select-toggle' in styles
+    assert 'border-top: 0.3em solid var(--bs-body-color)' in styles
+    assert 'padding-right: 2.25rem' in styles
+
+
+def test_base_template_cache_busts_searchable_select_assets():
+    template_path = Path(settings.BASE_DIR) / 'templates/base.html'
+    template = template_path.read_text(encoding='utf-8')
+
+    assert "css/searchable_select.css' %}?v=" in template
+    assert "js/searchable_select.js' %}?v=" in template
 
 
 def test_dependent_selects_static_supports_cascade_configuration():

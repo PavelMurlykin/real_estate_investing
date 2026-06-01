@@ -69,19 +69,19 @@
     }
 
     function getInputClassName(select) {
-        const classes = ['form-control', 'searchable-select-input'];
+        const classes = ['form-select', 'searchable-select-input'];
 
         if (
             select.classList.contains('form-control-sm')
             || select.classList.contains('form-select-sm')
         ) {
-            classes.push('form-control-sm');
+            classes.push('form-select-sm');
         }
         if (
             select.classList.contains('form-control-lg')
             || select.classList.contains('form-select-lg')
         ) {
-            classes.push('form-control-lg');
+            classes.push('form-select-lg');
         }
         if (select.classList.contains('is-invalid')) {
             classes.push('is-invalid');
@@ -140,6 +140,7 @@
     function chooseOption(state, option) {
         const previousValue = state.select.value;
         state.select.value = option.value;
+        state.searchQuery = '';
         state.input.value = option.value ? getOptionText(option) : '';
         syncSelectedColor(state);
         closeMenu(state);
@@ -150,7 +151,7 @@
     }
 
     function renderOptions(state) {
-        const query = normalize(state.input.value);
+        const query = normalize(state.searchQuery);
         const selectedValue = state.select.value;
         const options = getOptions(state.select).filter(function (option) {
             if (!query) {
@@ -208,12 +209,19 @@
         setActiveOption(state, selectedIndex >= 0 ? selectedIndex : 0);
     }
 
-    function openMenu(state) {
+    function openMenu(state, options) {
+        const settings = options || {};
         if (openState && openState !== state) {
-            closeMenu(openState);
+            const previousState = openState;
+            closeMenu(previousState);
+            syncInputFromSelect(previousState);
         }
 
         openState = state;
+        if (settings.resetSearch) {
+            state.searchQuery = '';
+            state.input.value = '';
+        }
         renderOptions(state);
         positionMenu(state);
         state.menu.classList.remove('d-none');
@@ -222,6 +230,7 @@
 
     function syncInputFromSelect(state) {
         state.input.placeholder = getPlaceholder(state.select);
+        state.searchQuery = '';
         state.input.value = getInputValue(state.select);
         syncSelectedColor(state);
         syncValidity(state);
@@ -249,14 +258,32 @@
         state.selectedColor.style.backgroundColor = color || 'transparent';
     }
 
+    function shouldResetSearchOnClick(state) {
+        return (
+            state.menu.classList.contains('d-none')
+            || !state.searchQuery
+            || normalize(state.input.value) === normalize(
+                getInputValue(state.select)
+            )
+        );
+    }
+
     function handleInput(state) {
+        state.searchQuery = state.input.value;
         const selectedText = getInputValue(state.select);
         if (
             state.select.value
             && normalize(state.input.value) !== normalize(selectedText)
         ) {
             state.select.value = '';
-            state.select.dispatchEvent(new Event('change', {bubbles: true}));
+            state.skipNextSelectSync = true;
+            try {
+                state.select.dispatchEvent(new Event('change', {bubbles: true}));
+            } finally {
+                state.skipNextSelectSync = false;
+            }
+            syncSelectedColor(state);
+            syncValidity(state);
         }
         openMenu(state);
     }
@@ -269,7 +296,7 @@
         if (event.key === 'ArrowDown') {
             event.preventDefault();
             if (state.menu.classList.contains('d-none')) {
-                openMenu(state);
+                openMenu(state, {resetSearch: true});
                 return;
             }
             setActiveOption(
@@ -282,7 +309,7 @@
         if (event.key === 'ArrowUp') {
             event.preventDefault();
             if (state.menu.classList.contains('d-none')) {
-                openMenu(state);
+                openMenu(state, {resetSearch: true});
                 return;
             }
             setActiveOption(state, Math.max(state.activeIndex - 1, 0));
@@ -341,6 +368,10 @@
         selectedColor.className = 'searchable-select-selected-color';
         selectedColor.setAttribute('aria-hidden', 'true');
 
+        const toggle = document.createElement('span');
+        toggle.className = 'searchable-select-toggle';
+        toggle.setAttribute('aria-hidden', 'true');
+
         const menu = document.createElement('div');
         menu.className = 'searchable-select-menu d-none';
         menu.id = `searchable-select-menu-${nextId}`;
@@ -350,6 +381,7 @@
         input.setAttribute('aria-controls', menu.id);
         wrapper.appendChild(input);
         wrapper.appendChild(selectedColor);
+        wrapper.appendChild(toggle);
         document.body.appendChild(menu);
 
         select.classList.add('searchable-select-source');
@@ -363,8 +395,10 @@
             matches: [],
             menu: menu,
             observer: null,
+            searchQuery: '',
             select: select,
             selectedColor: selectedColor,
+            skipNextSelectSync: false,
             wrapper: wrapper,
         };
         instances.set(select, state);
@@ -379,10 +413,15 @@
         });
 
         input.addEventListener('focus', function () {
-            openMenu(state);
+            openMenu(state, {resetSearch: true});
+            state.input.select();
         });
         input.addEventListener('click', function () {
-            openMenu(state);
+            const resetSearch = shouldResetSearchOnClick(state);
+            openMenu(state, {resetSearch: resetSearch});
+            if (resetSearch) {
+                state.input.select();
+            }
         });
         input.addEventListener('input', function () {
             handleInput(state);
@@ -391,6 +430,9 @@
             handleKeydown(state, event);
         });
         select.addEventListener('change', function () {
+            if (state.skipNextSelectSync) {
+                return;
+            }
             syncInputFromSelect(state);
         });
 

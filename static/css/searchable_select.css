@@ -25,6 +25,11 @@
     z-index: 1080;
 }
 
+.searchable-select-input {
+    background-image: none;
+    padding-right: 2.25rem;
+}
+
 .searchable-select.has-selected-color .searchable-select-input {
     padding-left: 2rem;
 }
@@ -43,6 +48,18 @@
 
 .searchable-select.has-selected-color .searchable-select-selected-color {
     display: block;
+}
+
+.searchable-select-toggle {
+    border-left: 0.3em solid transparent;
+    border-right: 0.3em solid transparent;
+    border-top: 0.3em solid var(--bs-body-color);
+    opacity: 0.65;
+    pointer-events: none;
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-35%);
 }
 
 .searchable-select-option,
