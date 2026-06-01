@@ -129,8 +129,13 @@ class RealEstateComplexFormLocationTests(TestCase):
         response = self.client.get(reverse('property:complex_create'))
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'enctype="multipart/form-data"')
         self.assertContains(response, 'id_region')
         self.assertContains(response, 'id_city')
+        self.assertContains(response, 'id_investment_potential')
+        self.assertContains(response, 'id_photo')
+        self.assertContains(response, 'Инвестиционный потенциал')
+        self.assertContains(response, 'Фото ЖК')
         self.assertContains(response, 'location-cities-data')
         self.assertContains(response, 'metro-0-metro')
         self.assertContains(response, 'static/js/searchable_select.js')
@@ -309,6 +314,163 @@ class RealEstateComplexFormLocationTests(TestCase):
         )
         self.assertEqual(availability.metro, self.metro)
         self.assertEqual(availability.walking_time_minutes, 12)
+
+    def test_create_view_saves_investment_potential_and_photo(self):
+        with TemporaryDirectory() as media_root:
+            with override_settings(MEDIA_ROOT=media_root):
+                response = self.client.post(
+                    reverse('property:complex_create'),
+                    self._complex_create_post_data(
+                        investment_potential='Высокий спрос на аренду.',
+                        photo=SimpleUploadedFile(
+                            'complex.gif',
+                            SIMPLE_GIF,
+                            content_type='image/gif',
+                        ),
+                    ),
+                )
+
+                self.assertRedirects(
+                    response, reverse('property:complex_list')
+                )
+                complex_obj = RealEstateComplex.objects.get(name='Complex 1')
+                self.assertEqual(
+                    complex_obj.investment_potential,
+                    'Высокий спрос на аренду.',
+                )
+                self.assertTrue(
+                    complex_obj.photo.name.startswith(
+                        'property/complexes/complex'
+                    )
+                )
+                self.assertTrue(
+                    (Path(media_root) / complex_obj.photo.name).exists()
+                )
+
+    def test_update_view_shows_current_complex_photo(self):
+        complex_obj = RealEstateComplex.objects.create(
+            name='Complex 1',
+            developer=self.developer,
+            district=self.district,
+            real_estate_class=self.estate_class,
+            real_estate_type=self.estate_type,
+            photo='property/complexes/complex.gif',
+        )
+
+        response = self.client.get(
+            reverse('property:complex_update', kwargs={'pk': complex_obj.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'complex.gif')
+        self.assertContains(response, '/media/property/complexes/complex.gif')
+        self.assertContains(response, 'id_clear_photo')
+        self.assertContains(response, 'data-clear-file-button')
+        self.assertContains(response, 'data-image-modal="true"')
+
+    def test_update_view_clears_current_complex_photo(self):
+        with TemporaryDirectory() as media_root:
+            media_root_path = Path(media_root)
+            photo_path = media_root_path / 'property/complexes/complex.gif'
+            photo_path.parent.mkdir(parents=True)
+            photo_path.write_bytes(SIMPLE_GIF)
+
+            with override_settings(MEDIA_ROOT=media_root):
+                complex_obj = RealEstateComplex.objects.create(
+                    name='Complex 1',
+                    developer=self.developer,
+                    district=self.district,
+                    real_estate_class=self.estate_class,
+                    real_estate_type=self.estate_type,
+                    photo='property/complexes/complex.gif',
+                )
+                data = self._form_data(
+                    city=self.city.pk,
+                    region=self.region.pk,
+                    district=self.district.pk,
+                    clear_photo='on',
+                )
+                data.update(
+                    {
+                        'buildings-TOTAL_FORMS': '0',
+                        'buildings-INITIAL_FORMS': '0',
+                        'buildings-MIN_NUM_FORMS': '0',
+                        'buildings-MAX_NUM_FORMS': '1000',
+                        'metro-TOTAL_FORMS': '0',
+                        'metro-INITIAL_FORMS': '0',
+                        'metro-MIN_NUM_FORMS': '0',
+                        'metro-MAX_NUM_FORMS': '1000',
+                    }
+                )
+
+                response = self.client.post(
+                    reverse(
+                        'property:complex_update',
+                        kwargs={'pk': complex_obj.pk},
+                    ),
+                    data,
+                )
+
+                self.assertRedirects(
+                    response, reverse('property:complex_list')
+                )
+                complex_obj.refresh_from_db()
+                self.assertFalse(complex_obj.photo)
+                self.assertFalse(photo_path.exists())
+
+    def test_complex_list_has_detail_action(self):
+        complex_obj = RealEstateComplex.objects.create(
+            name='Complex 1',
+            developer=self.developer,
+            district=self.district,
+            real_estate_class=self.estate_class,
+            real_estate_type=self.estate_type,
+        )
+
+        response = self.client.get(reverse('property:complex_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Подробнее')
+        self.assertContains(
+            response,
+            reverse('property:complex_detail', kwargs={'pk': complex_obj.pk}),
+        )
+
+    def test_complex_detail_shows_card_fields_photo_and_related_data(self):
+        complex_obj = RealEstateComplex.objects.create(
+            name='Complex 1',
+            description='Описание комплекса.',
+            investment_potential='Высокий спрос на аренду.',
+            photo='property/complexes/complex.gif',
+            developer=self.developer,
+            district=self.district,
+            real_estate_class=self.estate_class,
+            real_estate_type=self.estate_type,
+        )
+        RealEstateComplexBuilding.objects.create(
+            number='1',
+            address='Address 1',
+            real_estate_complex=complex_obj,
+        )
+        RealEstateComplexMetroAvailability.objects.create(
+            real_estate_complex=complex_obj,
+            metro=self.metro,
+            walking_time_minutes=12,
+        )
+
+        response = self.client.get(
+            reverse('property:complex_detail', kwargs={'pk': complex_obj.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Complex 1')
+        self.assertContains(response, 'Фото ЖК')
+        self.assertContains(response, 'Инвестиционный потенциал')
+        self.assertContains(response, 'Высокий спрос на аренду.')
+        self.assertContains(response, 'src="/media/property/complexes/complex.gif"')
+        self.assertContains(response, 'data-image-modal="true"')
+        self.assertContains(response, 'Station 1')
+        self.assertContains(response, 'Address 1')
 
     def test_create_view_saves_building_quarter_periods(self):
         response = self.client.post(

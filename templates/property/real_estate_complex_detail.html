@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}{{ complex.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ complex.name }}</h1>
+        <div class="d-flex gap-2">
+            <a href="{% url 'property:complex_update' complex.pk %}" class="btn btn-primary">Редактировать</a>
+            <a href="{% url 'property:complex_list' %}" class="btn btn-secondary">Назад к списку</a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-header">Фото ЖК</div>
+                <div class="card-body">
+                    {% if complex.photo %}
+                        <a href="{{ complex.photo.url }}" data-image-modal="true" data-image-modal-title="Фото ЖК">
+                            <img src="{{ complex.photo.url }}" alt="Фото ЖК {{ complex.name }}" class="img-fluid rounded">
+                        </a>
+                    {% else %}
+                        <div class="text-muted">Фото ЖК не загружено.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card h-100">
+                <div class="card-header">Данные ЖК</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered mb-0">
+                            <tbody>
+                                <tr>
+                                    <th scope="row" class="w-50">Застройщик</th>
+                                    <td>{{ complex.developer.name }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Регион</th>
+                                    <td>{{ complex.district.city.region.name }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Город</th>
+                                    <td>{{ complex.district.city.name }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Район</th>
+                                    <td>{{ complex.district.name }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Класс ЖК</th>
+                                    <td>{{ complex.real_estate_class.name }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Тип недвижимости</th>
+                                    <td>{{ complex.real_estate_type.name }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Активен</th>
+                                    <td>{% if complex.is_active %}Да{% else %}Нет{% endif %}</td>
+                                </tr>
+                                {% if complex.map_link %}
+                                    <tr>
+                                        <th scope="row">Ссылка на картах</th>
+                                        <td><a href="{{ complex.map_link }}" target="_blank" rel="noopener">Открыть</a></td>
+                                    </tr>
+                                {% endif %}
+                                {% if complex.presentation_link %}
+                                    <tr>
+                                        <th scope="row">Ссылка на презентацию</th>
+                                        <td><a href="{{ complex.presentation_link }}" target="_blank" rel="noopener">Открыть</a></td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">Описание</div>
+        <div class="card-body">
+            {% if complex.description %}
+                <p class="mb-0">{{ complex.description|linebreaksbr }}</p>
+            {% else %}
+                <p class="text-muted mb-0">Описание не заполнено.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">Инвестиционный потенциал</div>
+        <div class="card-body">
+            {% if complex.investment_potential %}
+                <p class="mb-0">{{ complex.investment_potential|linebreaksbr }}</p>
+            {% else %}
+                <p class="text-muted mb-0">Инвестиционный потенциал не заполнен.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">Доступность метро</div>
+                <div class="card-body">
+                    {% if complex.metro_availability.all %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Станция метро</th>
+                                        <th>Пешком, мин.</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for availability in complex.metro_availability.all %}
+                                        <tr>
+                                            <td>{{ availability.metro.station }}</td>
+                                            <td>{{ availability.walking_time_minutes }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">Доступность метро не заполнена.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">Корпуса</div>
+                <div class="card-body">
+                    {% if complex.realestatecomplexbuilding_set.all %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Корпус</th>
+                                        <th>Адрес</th>
+                                        <th>Ввод</th>
+                                        <th>Ключи</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for building in complex.realestatecomplexbuilding_set.all %}
+                                        <tr>
+                                            <td>{{ building.number }}</td>
+                                            <td>{{ building.address|default:"-" }}</td>
+                                            <td>{{ building.get_commissioning_display|default:"-" }}</td>
+                                            <td>{{ building.get_key_handover_display|default:"-" }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">Корпуса не добавлены.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

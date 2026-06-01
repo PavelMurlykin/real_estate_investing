@@ -1083,6 +1083,29 @@ class RealEstateComplexUpdateView(RealEstateComplexFormsetMixin, UpdateView):
     pass
 
 
+class RealEstateComplexDetailView(DetailView):
+    """Карточка жилого комплекса."""
+
+    model = RealEstateComplex
+    template_name = 'property/real_estate_complex_detail.html'
+    context_object_name = 'complex'
+
+    def get_queryset(self):
+        """Return complex details with related dictionaries loaded."""
+        return (
+            RealEstateComplex.objects.select_related(
+                'developer',
+                'district__city__region',
+                'real_estate_class',
+                'real_estate_type',
+            )
+            .prefetch_related(
+                'realestatecomplexbuilding_set',
+                'metro_availability__metro',
+            )
+        )
+
+
 class RealEstateComplexDeleteView(ProtectedDeleteMixin, DeleteView):
     """Описание класса RealEstateComplexDeleteView.
 

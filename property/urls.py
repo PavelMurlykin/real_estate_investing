@@ -44,6 +44,11 @@ urlpatterns = [
         name='complex_update',
     ),
     path(
+        'complexes/<int:pk>/',
+        views.RealEstateComplexDetailView.as_view(),
+        name='complex_detail',
+    ),
+    path(
         'complexes/<int:pk>/delete/',
         views.RealEstateComplexDeleteView.as_view(),
         name='complex_delete',

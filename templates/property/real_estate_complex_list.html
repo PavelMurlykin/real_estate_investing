@@ -104,6 +104,7 @@
                                 {% endfor %}
                                 <td class="align-middle text-nowrap">
                                     <div class="d-flex gap-2 flex-nowrap">
+                                        <a href="{% url 'property:complex_detail' complex.pk %}" class="btn btn-sm btn-outline-primary">Подробнее</a>
                                         <a href="{% url 'property:complex_update' complex.pk %}" class="btn btn-sm btn-outline-primary">Редактировать</a>
                                         <a href="{% url 'property:complex_delete' complex.pk %}" class="btn btn-sm btn-outline-danger">Удалить</a>
                                     </div>

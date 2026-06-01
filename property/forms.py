@@ -202,6 +202,10 @@ class RealEstateComplexForm(forms.ModelForm):
     в данном модуле.
     """
 
+    clear_photo = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'd-none'}),
+    )
     region = forms.ModelChoiceField(
         queryset=Region.objects.none(),
         required=False,
@@ -216,7 +220,6 @@ class RealEstateComplexForm(forms.ModelForm):
         label='Город',
         widget=forms.Select(attrs={'class': 'form-control'}),
     )
-
 
     class Meta:
         """Описание служебного класса Meta.
@@ -235,6 +238,8 @@ class RealEstateComplexForm(forms.ModelForm):
             'district',
             'map_link',
             'presentation_link',
+            'investment_potential',
+            'photo',
             'real_estate_class',
             'real_estate_type',
             'is_active',
@@ -250,6 +255,10 @@ class RealEstateComplexForm(forms.ModelForm):
             'presentation_link': forms.Textarea(
                 attrs={'class': 'form-control', 'rows': 2}
             ),
+            'investment_potential': forms.Textarea(
+                attrs={'class': 'form-control', 'rows': 4}
+            ),
+            'photo': forms.FileInput(attrs={'class': 'form-control'}),
             'developer': forms.Select(attrs={'class': 'form-control'}),
             'district': forms.Select(attrs={'class': 'form-control'}),
             'real_estate_class': forms.Select(attrs={'class': 'form-control'}),
@@ -262,6 +271,8 @@ class RealEstateComplexForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         """Prepare location helper fields from the selected district."""
         super().__init__(*args, **kwargs)
+        photo = getattr(self.instance, 'photo', None)
+        self.initial_photo_name = photo.name if photo else ''
 
         self.fields['region'].queryset = Region.objects.order_by('name')
         self.fields['city'].queryset = City.objects.select_related(
@@ -315,6 +326,34 @@ class RealEstateComplexForm(forms.ModelForm):
                 cleaned_data['region'] = city_region
 
         return cleaned_data
+
+    def save(self, commit=True):
+        """Save complex fields and remove the photo marked for deletion."""
+        instance = super().save(commit=False)
+        photo_name_to_delete = ''
+
+        if self.cleaned_data.get('clear_photo'):
+            photo_name_to_delete = self.initial_photo_name
+            if 'photo' not in self.files:
+                instance.photo = None
+
+        if commit:
+            instance.save()
+            self.delete_saved_photo(photo_name_to_delete, instance)
+
+        return instance
+
+    def delete_saved_photo(self, photo_name_to_delete, instance):
+        """Delete a cleared complex photo from storage after saving."""
+        if not photo_name_to_delete:
+            return
+
+        if instance.photo and instance.photo.name == photo_name_to_delete:
+            return
+
+        storage = instance._meta.get_field('photo').storage
+        if storage.exists(photo_name_to_delete):
+            storage.delete(photo_name_to_delete)
 
 
 class RealEstateComplexBuildingForm(forms.ModelForm):

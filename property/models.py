@@ -127,6 +127,17 @@ class RealEstateComplex(BaseModel):
     presentation_link = models.TextField(
         blank=True, null=True, verbose_name='Ссылка на презентацию'
     )
+    investment_potential = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Инвестиционный потенциал',
+    )
+    photo = models.ImageField(
+        upload_to='property/complexes/',
+        blank=True,
+        null=True,
+        verbose_name='Фото ЖК',
+    )
 
     developer = models.ForeignKey(
         Developer, on_delete=models.PROTECT, verbose_name='Застройщик'
@@ -153,6 +164,12 @@ class RealEstateComplex(BaseModel):
         verbose_name_plural = 'ЖК'
         unique_together = ('name', 'developer')
         ordering = ['name']
+
+    def get_photo_filename(self):
+        """Return the saved complex photo filename."""
+        if not self.photo:
+            return ''
+        return self.photo.name.rsplit('/', 1)[-1]
 
     def __str__(self):
         """Описание метода __str__.

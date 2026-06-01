@@ -9,7 +9,7 @@
         <a href="{% url 'property:complex_list' %}" class="btn btn-secondary">Назад к списку</a>
     </div>
 
-    <form method="post" novalidate>
+    <form method="post" enctype="multipart/form-data" novalidate>
         {% csrf_token %}
 
         <div class="card mb-4">
@@ -82,6 +82,34 @@
                     <label for="{{ form.presentation_link.id_for_label }}" class="form-label">{{ form.presentation_link.label }}</label>
                     {{ form.presentation_link }}
                     {% for error in form.presentation_link.errors %}
+                        <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.investment_potential.id_for_label }}" class="form-label">{{ form.investment_potential.label }}</label>
+                    {{ form.investment_potential }}
+                    {% for error in form.investment_potential.errors %}
+                        <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.photo.id_for_label }}" class="form-label">{{ form.photo.label }}</label>
+                    {% if object and object.photo %}
+                        <div class="small text-muted mb-1 d-flex align-items-center gap-2" data-current-file-row>
+                            <span>
+                                Текущий файл:
+                                <a href="{{ object.photo.url }}" data-image-modal="true" data-image-modal-title="Фото ЖК">
+                                    {{ object.get_photo_filename }}
+                                </a>
+                            </span>
+                            {{ form.clear_photo }}
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-clear-file-button aria-label="Удалить файл">&times;</button>
+                        </div>
+                    {% endif %}
+                    {{ form.photo }}
+                    {% for error in form.photo.errors %}
                         <div class="text-danger">{{ error }}</div>
                     {% endfor %}
                 </div>
@@ -772,6 +800,22 @@ document.addEventListener('DOMContentLoaded', function () {
     developerSelect.addEventListener('change', syncDuplicateComplexWarning);
     addMetroRowButton.addEventListener('click', addMetroRow);
     addBuildingRowButton.addEventListener('click', addBuildingRow);
+    document.querySelectorAll('[data-clear-file-button]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const row = button.closest('[data-current-file-row]');
+            if (!row) {
+                return;
+            }
+
+            const checkbox = row.querySelector('input[type="checkbox"]');
+            if (!checkbox) {
+                return;
+            }
+
+            checkbox.checked = true;
+            row.classList.add('d-none');
+        });
+    });
     metroFormsetBody.querySelectorAll('[data-metro-form-row]').forEach(bindMetroRow);
     buildingFormsetBody.querySelectorAll('[data-building-form-row]').forEach(bindBuildingRow);
 
