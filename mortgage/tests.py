@@ -439,6 +439,45 @@ class MortgageCalculatorViewTests(TestCase):
             response,
             f'{reverse("mortgage:mortgage_calculator")}?sample={calculation.pk}',
         )
+        self.assertContains(response, 'Сохранить в Excel')
+        self.assertContains(response, 'name="export"')
+        self.assertContains(response, 'value="market"')
+
+    def test_calculation_detail_export_returns_excel_file(self):
+        calculation = self._create_calculation()
+        url = reverse(
+            'mortgage:calculation_detail', kwargs={'pk': calculation.pk}
+        )
+
+        response = self.client.post(url, {'export': 'market'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        self.assertIn(
+            'attachment; filename="mortgage_calculation.xlsx"',
+            response['Content-Disposition'],
+        )
+        workbook = load_workbook(BytesIO(response.content))
+        worksheet = workbook.active
+        self.assertEqual(worksheet.title, 'Ипотечный расчет')
+        self.assertEqual(
+            worksheet['A1'].value,
+            'Ипотечный калькулятор - результаты расчета',
+        )
+        values = [
+            cell.value
+            for row in worksheet.iter_rows()
+            for cell in row
+            if cell.value is not None
+        ]
+        self.assertIn('Данные объекта:', values)
+        self.assertIn('Параметры ипотеки:', values)
+        self.assertIn('Результаты расчета:', values)
+        self.assertIn('График платежей:', values)
+        self.assertIn('Сумма платежа, руб.', values)
 
     def test_mortgage_form_prefills_fields_from_sample_calculation(self):
         calculation = self._create_calculation()
