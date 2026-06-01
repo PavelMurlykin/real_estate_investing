@@ -33,6 +33,7 @@ Use this skill for backend work in the Django/PostgreSQL application.
 - Prefer existing local patterns over new architecture.
 - Keep business logic out of templates; use forms, model methods, queryset helpers, or service functions when the surrounding app already has that shape.
 - When developing Django templates, inspect `static/js` first and reuse existing JavaScript functions before adding new scripts, inline handlers, or duplicate client-side behavior.
+- Preserve correct UTF-8 Cyrillic text in forms, templates, model labels, messages, and generated files such as Excel exports. Avoid editing paths with tools or encodings that can introduce mojibake, and verify Russian labels render/read correctly whenever UI or export text changes.
 - Use Django forms and validators for user input. Do not trust request data.
 - Use `get_object_or_404`, permission checks, and ownership filters for object access.
 - Wrap multi-row writes in `transaction.atomic()` when partial writes would corrupt state.
