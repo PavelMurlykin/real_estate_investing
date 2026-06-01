@@ -356,7 +356,7 @@ def _parse_trench_inputs(
             ):
                 computed_amount = trench_amount
                 if loan_amount_decimal <= 0:
-                    errors.append('РЎСѓРјРјР° РєСЂРµРґРёС‚Р° РґРѕР»Р¶РЅР° Р±С‹С‚СЊ Р±РѕР»СЊС€Рµ 0.')
+                    errors.append('Сумма кредита должна быть больше 0.')
                     continue
                 computed_percent = (
                     computed_amount / loan_amount_decimal

@@ -640,6 +640,24 @@ class MortgageCalculatorViewTests(TestCase):
             'trench_mortgage_calculation.xlsx',
             response['Content-Disposition'],
         )
+        workbook = load_workbook(BytesIO(response.content))
+        worksheet = workbook.active
+        self.assertEqual(worksheet.title, 'Траншевая ипотека')
+        self.assertEqual(
+            worksheet['A1'].value,
+            'Траншевая ипотека - результаты расчета',
+        )
+        values = [
+            cell.value
+            for row in worksheet.iter_rows()
+            for cell in row
+            if cell.value is not None
+        ]
+        self.assertIn('Данные объекта', values)
+        self.assertIn('Параметры траншевой ипотеки', values)
+        self.assertIn('Транши', values)
+        self.assertIn('График платежей', values)
+        self.assertIn('Ежемесячный платеж, руб.', values)
 
     def test_trench_calculate_saves_trench_calculation_from_mortgage_form(self):
         payload = self._base_payload()
@@ -870,12 +888,22 @@ class MortgageCalculatorViewTests(TestCase):
         )
         workbook = load_workbook(BytesIO(response.content))
         worksheet = workbook.active
+        self.assertEqual(worksheet.title, 'Ипотечный расчет')
+        self.assertEqual(
+            worksheet['A1'].value,
+            'Ипотечный калькулятор - результаты расчета',
+        )
+        self.assertEqual(worksheet['A3'].value, 'Данные объекта:')
         values = [
             cell.value
             for row in worksheet.iter_rows()
             for cell in row
             if cell.value is not None
         ]
+        self.assertIn('Параметры ипотеки:', values)
+        self.assertIn('Результаты расчета:', values)
+        self.assertIn('График платежей:', values)
+        self.assertIn('Сумма платежа, руб.', values)
         self.assertNotIn('Корректировка цены', values)
         self.assertNotIn('Наличие льготного периода', values)
 

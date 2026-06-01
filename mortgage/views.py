@@ -70,7 +70,7 @@ def _attach_calculation_to_customer(customer, calculation):
 
 
 def _normalize_discount_markup_values(cleaned_data):
-    """Р’РѕР·РІСЂР°С‰Р°РµС‚ РїСЂРѕС†РµРЅС‚, СЂСѓР±Р»Рё Рё РёС‚РѕРіРѕРІСѓСЋ СЃС‚РѕРёРјРѕСЃС‚СЊ РїРѕСЃР»Рµ РєРѕСЂСЂРµРєС‚РёСЂРѕРІРєРё."""
+    """Возвращает процент, рубли и итоговую стоимость после корректировки."""
     property_cost = float(cleaned_data['PROPERTY_COST'])
     discount_markup_percent = float(
         cleaned_data.get('DISCOUNT_MARKUP_VALUE', 0) or 0
@@ -105,7 +105,7 @@ def _normalize_discount_markup_values(cleaned_data):
 
 
 def _normalize_initial_payment_values(cleaned_data, final_property_cost):
-    """Р’РѕР·РІСЂР°С‰Р°РµС‚ СЃРѕРіР»Р°СЃРѕРІР°РЅРЅС‹Рµ Р·РЅР°С‡РµРЅРёСЏ РїРµСЂРІРѕРЅР°С‡Р°Р»СЊРЅРѕРіРѕ РІР·РЅРѕСЃР°."""
+    """Возвращает согласованные значения первоначального взноса."""
     initial_payment_percent = float(
         cleaned_data.get('INITIAL_PAYMENT_PERCENT', 0) or 0
     )
@@ -227,11 +227,11 @@ def _populate_trench_report_context(
 
 
 def _get_discount_markup_labels(discount_markup_type):
-    """Р’РѕР·РІСЂР°С‰Р°РµС‚ РїРѕРґРїРёСЃРё РґР»СЏ РєРѕСЂСЂРµРєС‚РёСЂРѕРІРєРё С†РµРЅС‹ РІ РїСЂРѕС†РµРЅС‚Р°С… Рё СЂСѓР±Р»СЏС…."""
+    """Возвращает подписи для корректировки цены в процентах и рублях."""
     if discount_markup_type == 'discount':
-        return 'РЎРєРёРґРєР°, %', 'РЎРєРёРґРєР°, СЂСѓР±.'
+        return 'Скидка, %', 'Скидка, руб.'
 
-    return 'РЈРґРѕСЂРѕР¶Р°РЅРёРµ, %', 'РЈРґРѕСЂРѕР¶Р°РЅРёРµ, СЂСѓР±.'
+    return 'Удорожание, %', 'Удорожание, руб.'
 
 
 def _get_property_initial(property_obj):
@@ -405,7 +405,7 @@ def _build_calculation(property_obj, data, result, values):
 
 
 def _get_sample_calculation(request):
-    """Р’РѕР·РІСЂР°С‰Р°РµС‚ СЂР°СЃС‡РµС‚-РѕР±СЂР°Р·РµС† РґР»СЏ РїСЂРµРґР·Р°РїРѕР»РЅРµРЅРёСЏ С„РѕСЂРјС‹ РєР°Р»СЊРєСѓР»СЏС‚РѕСЂР°."""
+    """Возвращает расчет-образец для предзаполнения формы калькулятора."""
     sample_calculation_id = (request.GET.get('sample') or '').strip()
     if not sample_calculation_id or not sample_calculation_id.isdecimal():
         return None
@@ -424,7 +424,7 @@ def _get_sample_calculation(request):
 
 
 def _get_calculation_form_initial(calculation):
-    """Р¤РѕСЂРјРёСЂСѓРµС‚ initial-РґР°РЅРЅС‹Рµ С„РѕСЂРјС‹ РёР· СЃРѕС…СЂР°РЅРµРЅРЅРѕРіРѕ СЂР°СЃС‡РµС‚Р°."""
+    """Формирует initial-данные формы из сохраненного расчета."""
     discount_markup_rubles = (
         calculation.base_property_cost
         * calculation.discount_markup_value
@@ -458,16 +458,16 @@ def _get_calculation_form_initial(calculation):
 
 
 def mortgage_calculator(request):
-    # РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ С„РѕСЂРјС‹
-    """РћРїРёСЃР°РЅРёРµ РјРµС‚РѕРґР° mortgage_calculator.
+    # Инициализация формы
+    """Описание метода mortgage_calculator.
 
-    Р’С‹РїРѕР»РЅСЏРµС‚ РїСЂРёРєР»Р°РґРЅСѓСЋ РѕРїРµСЂР°С†РёСЋ С‚РµРєСѓС‰РµРіРѕ РјРѕРґСѓР»СЏ.
+    Выполняет прикладную операцию текущего модуля.
 
-    РђСЂРіСѓРјРµРЅС‚С‹:
-        request: Р’С…РѕРґРЅРѕР№ РїР°СЂР°РјРµС‚СЂ, РІР»РёСЏСЋС‰РёР№ РЅР° СЂР°Р±РѕС‚Сѓ РјРµС‚РѕРґР°.
+    Аргументы:
+        request: Входной параметр, влияющий на работу метода.
 
-    Р’РѕР·РІСЂР°С‰Р°РµС‚:
-        Any: РўРёРї СЂРµР·СѓР»СЊС‚Р°С‚Р° РѕРїСЂРµРґРµР»СЏРµС‚СЃСЏ РІС‹Р·С‹РІР°СЋС‰РёРј РєРѕРґРѕРј.
+    Возвращает:
+        Any: Тип результата определяется вызывающим кодом.
     """
     target_customer = _get_target_customer(request)
     sample_calculation = (
@@ -537,7 +537,7 @@ def mortgage_calculator(request):
     if request.method == 'POST':
         if 'calculate' in request.POST:
             if mortgage_form.is_valid():
-                # РџРѕР»СѓС‡Р°РµРј РґР°РЅРЅС‹Рµ РёР· С„РѕСЂРјС‹
+                # Получаем данные из формы
                 data = mortgage_form.cleaned_data
                 selected_calculation_type = request.POST.get('calculate')
                 if selected_calculation_type not in ('market', 'trench'):
@@ -547,10 +547,10 @@ def mortgage_calculator(request):
                 data['CALCULATION_TYPE'] = selected_calculation_type
                 context['active_calculation_type'] = selected_calculation_type
 
-                # РџРѕР»СѓС‡Р°РµРј РІС‹Р±СЂР°РЅРЅС‹Р№ РѕР±СЉРµРєС‚ РЅРµРґРІРёР¶РёРјРѕСЃС‚Рё
+                # Получаем выбранный объект недвижимости
                 property_obj = data['PROPERTY']
 
-                # РџРѕР»СѓС‡Р°РµРј Р±Р°Р·РѕРІСѓСЋ СЃС‚РѕРёРјРѕСЃС‚СЊ РёР· СЃРєСЂС‹С‚РѕРіРѕ РїРѕР»СЏ
+                # Получаем базовую стоимость из скрытого поля
                 base_property_cost = float(data['PROPERTY_COST'])
 
                 (
@@ -565,8 +565,8 @@ def mortgage_calculator(request):
                     data, final_property_cost
                 )
 
-                # РЎРѕР·РґР°РµРј СЌРєР·РµРјРїР»СЏСЂ РєР°Р»СЊРєСѓР»СЏС‚РѕСЂР°.
-                # Р’СЃРµ Р·РЅР°С‡РµРЅРёСЏ РїСЂРµРѕР±СЂР°Р·СѓРµРј Рє float.
+                # Создаем экземпляр калькулятора.
+                # Все значения преобразуем к float.
                 if data.get('CALCULATION_TYPE') == 'trench':
                     trench_mortgage_data, prep_errors = (
                         _prepare_trench_mortgage_data(data)
@@ -673,25 +673,25 @@ def mortgage_calculator(request):
                     grace_period_rate=float(data['GRACE_PERIOD_RATE'] or 0),
                 )
 
-                # Р’С‹РїРѕР»РЅСЏРµРј СЂР°СЃС‡РµС‚
+                # Выполняем расчет
                 result = calculator.calculate()
 
-                # Р¤РѕСЂРјР°С‚РёСЂСѓРµРј С‡РёСЃР»РѕРІС‹Рµ Р·РЅР°С‡РµРЅРёСЏ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ
+                # Форматируем числовые значения для отображения
                 formatted_result = {}
                 for key, value in result.items():
                     if key in ['grace_payments_count', 'main_payments_count']:
-                        # Р¦РµР»С‹Рµ С‡РёСЃР»Р°
+                        # Целые числа
                         formatted_result[key] = int(value) if value else 0
                     elif isinstance(value, (int, float, decimal.Decimal)):
-                        # Р”РµРЅРµР¶РЅС‹Рµ Р·РЅР°С‡РµРЅРёСЏ
+                        # Денежные значения
                         formatted_result[key] = format_currency(value)
                     else:
                         formatted_result[key] = value
 
-                # РџРѕР»СѓС‡Р°РµРј РіСЂР°С„РёРє РїР»Р°С‚РµР¶РµР№
+                # Получаем график платежей
                 payment_schedule = calculator.get_payment_schedule()
 
-                # Р¤РѕСЂРјР°С‚РёСЂСѓРµРј С‡РёСЃР»РѕРІС‹Рµ Р·РЅР°С‡РµРЅРёСЏ РІ РіСЂР°С„РёРєРµ РїР»Р°С‚РµР¶РµР№
+                # Форматируем числовые значения в графике платежей
                 for payment in payment_schedule:
                     for key in [
                         'payment_amount',
@@ -735,10 +735,10 @@ def mortgage_calculator(request):
                     if target_customer is not None:
                         messages.success(
                             request,
-                            'Р Р°СЃС‡РµС‚ СЃРѕС…СЂР°РЅРµРЅ Рё РїСЂРёРІСЏР·Р°РЅ Рє РєР»РёРµРЅС‚Сѓ.',
+                            'Расчет сохранен и привязан к клиенту.',
                         )
 
-                # РЎРѕС…СЂР°РЅСЏРµРј СЂР°СЃС‡РµС‚ РІ РєРѕРЅС‚РµРєСЃС‚
+                # Сохраняем расчет в контекст
                 context['result'] = formatted_result
                 context['market_result'] = formatted_result
                 context['has_grace_period'] = data['HAS_GRACE_PERIOD'] == 'yes'
@@ -755,7 +755,7 @@ def mortgage_calculator(request):
                 context['initial_payment_percent'] = initial_payment_percent
                 context['initial_payment_rubles'] = initial_payment_rubles
 
-                # РџРµСЂРµРґР°РµРј Р·Р°РїРѕР»РЅРµРЅРЅСѓСЋ С„РѕСЂРјСѓ РІ РєРѕРЅС‚РµРєСЃС‚
+                # Передаем заполненную форму в контекст
                 _populate_trench_report_context(
                     context,
                     request,
@@ -767,9 +767,9 @@ def mortgage_calculator(request):
                 context['mortgage_form'] = mortgage_form
 
         elif 'export' in request.POST:
-            # РђРЅР°Р»РѕРіРёС‡РЅС‹Рµ РёР·РјРµРЅРµРЅРёСЏ РґР»СЏ Р±Р»РѕРєР° СЌРєСЃРїРѕСЂС‚Р°
+            # Аналогичные изменения для блока экспорта
             if mortgage_form.is_valid():
-                # РџРѕР»СѓС‡Р°РµРј РґР°РЅРЅС‹Рµ РёР· С„РѕСЂРјС‹
+                # Получаем данные из формы
                 mortgage_data = mortgage_form.cleaned_data
                 selected_export_type = request.POST.get('export')
                 if selected_export_type not in ('market', 'trench'):
@@ -779,10 +779,10 @@ def mortgage_calculator(request):
                 mortgage_data['CALCULATION_TYPE'] = selected_export_type
                 context['active_calculation_type'] = selected_export_type
 
-                # РџРѕР»СѓС‡Р°РµРј РІС‹Р±СЂР°РЅРЅС‹Р№ РѕР±СЉРµРєС‚ РЅРµРґРІРёР¶РёРјРѕСЃС‚Рё
+                # Получаем выбранный объект недвижимости
                 property_obj = mortgage_data['PROPERTY']
 
-                # РџРѕР»СѓС‡Р°РµРј СЃС‚РѕРёРјРѕСЃС‚СЊ РёР· С„РѕСЂРјС‹ Рё РїСЂРµРѕР±СЂР°Р·СѓРµРј РІ float
+                # Получаем стоимость из формы и преобразуем в float
                 property_cost = float(mortgage_data['PROPERTY_COST'])
 
                 (
@@ -797,8 +797,8 @@ def mortgage_calculator(request):
                     mortgage_data, final_property_cost
                 )
 
-                # РЎРѕР·РґР°РµРј СЌРєР·РµРјРїР»СЏСЂ РєР°Р»СЊРєСѓР»СЏС‚РѕСЂР°.
-                # Р’СЃРµ Р·РЅР°С‡РµРЅРёСЏ РїСЂРµРѕР±СЂР°Р·СѓРµРј Рє float.
+                # Создаем экземпляр калькулятора.
+                # Все значения преобразуем к float.
                 if mortgage_data.get('CALCULATION_TYPE') == 'trench':
                     trench_mortgage_data, prep_errors = (
                         _prepare_trench_mortgage_data(mortgage_data)
@@ -860,11 +860,11 @@ def mortgage_calculator(request):
                     ),
                 )
 
-                # Р’С‹РїРѕР»РЅСЏРµРј СЂР°СЃС‡РµС‚
+                # Выполняем расчет
                 result = calculator.calculate()
                 payment_schedule = calculator.get_payment_schedule()
 
-                # РЎРѕР·РґР°РµРј Excel-С„Р°Р№Р»
+                # Создаем Excel-файл
                 response = HttpResponse(
                     content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                 )
@@ -874,26 +874,26 @@ def mortgage_calculator(request):
 
                 wb = openpyxl.Workbook()
                 ws = wb.active
-                ws.title = 'РРїРѕС‚РµС‡РЅС‹Р№ СЂР°СЃС‡РµС‚'
+                ws.title = 'Ипотечный расчет'
 
-                # РЎРѕР·РґР°РµРј СЃС‚РёР»СЊ РґР»СЏ С‡РёСЃРµР» СЃ СЂР°Р·РґРµР»РёС‚РµР»СЏРјРё
+                # Создаем стиль для чисел с разделителями
                 number_style = NamedStyle(name='number_style')
                 number_style.number_format = '# ##0.00'
                 wb.add_named_style(number_style)
 
-                # РЎРѕР·РґР°РµРј СЃС‚РёР»СЊ РґР»СЏ С†РµР»С‹С… С‡РёСЃРµР»
+                # Создаем стиль для целых чисел
                 integer_style = NamedStyle(name='integer_style')
                 integer_style.number_format = '# ##0'
                 wb.add_named_style(integer_style)
 
-                # Р—Р°РіРѕР»РѕРІРѕРє
+                # Заголовок
                 ws.merge_cells('A1:B1')
-                ws['A1'] = 'РРїРѕС‚РµС‡РЅС‹Р№ РєР°Р»СЊРєСѓР»СЏС‚РѕСЂ - СЂРµР·СѓР»СЊС‚Р°С‚С‹ СЂР°СЃС‡РµС‚Р°'
+                ws['A1'] = 'Ипотечный калькулятор - результаты расчета'
                 ws['A1'].font = Font(bold=True, size=14)
                 ws['A1'].alignment = Alignment(horizontal='center')
 
-                # Р”Р°РЅРЅС‹Рµ РѕР±СЉРµРєС‚Р°
-                ws['A3'] = 'Р”Р°РЅРЅС‹Рµ РѕР±СЉРµРєС‚Р°:'
+                # Данные объекта
+                ws['A3'] = 'Данные объекта:'
                 ws['A3'].font = Font(bold=True)
 
                 (
@@ -911,54 +911,54 @@ def mortgage_calculator(request):
                     property_data_list.extend(
                         [
                             [
-                                'Р“РѕСЂРѕРґ',
+                                'Город',
                                 real_estate_complex.district.city.name,
                             ],
-                            ['Р Р°Р№РѕРЅ', real_estate_complex.district.name],
+                            ['Район', real_estate_complex.district.name],
                             [
-                                'Р—Р°СЃС‚СЂРѕР№С‰РёРє',
+                                'Застройщик',
                                 real_estate_complex.developer.name,
                             ],
-                            ['Р–РёР»РѕР№ РєРѕРјРїР»РµРєСЃ', real_estate_complex.name],
-                            ['РљРѕСЂРїСѓСЃ', property_obj.building.number],
-                            ['РќРѕРјРµСЂ РєРІР°СЂС‚РёСЂС‹', property_obj.apartment_number],
-                            ['РџР»РѕС‰Р°РґСЊ, Рј2', float(property_obj.area)],
-                            ['РџР»Р°РЅРёСЂРѕРІРєР°', property_obj.layout.name],
-                            ['Р­С‚Р°Р¶', property_obj.floor],
-                            ['РћС‚РґРµР»РєР°', property_obj.decoration.name],
+                            ['Жилой комплекс', real_estate_complex.name],
+                            ['Корпус', property_obj.building.number],
+                            ['Номер квартиры', property_obj.apartment_number],
+                            ['Площадь, м2', float(property_obj.area)],
+                            ['Планировка', property_obj.layout.name],
+                            ['Этаж', property_obj.floor],
+                            ['Отделка', property_obj.decoration.name],
                         ]
                     )
                 elif mortgage_form.has_manual_property_data():
                     property_data_list.extend(
                         [
-                            ['Р“РѕСЂРѕРґ', mortgage_data['OBJECT_CITY'].name],
-                            ['Р Р°Р№РѕРЅ', mortgage_data['OBJECT_DISTRICT'].name],
+                            ['Город', mortgage_data['OBJECT_CITY'].name],
+                            ['Район', mortgage_data['OBJECT_DISTRICT'].name],
                             [
-                                'Р—Р°СЃС‚СЂРѕР№С‰РёРє',
+                                'Застройщик',
                                 mortgage_data['OBJECT_DEVELOPER'].name,
                             ],
                             [
-                                'Р–РёР»РѕР№ РєРѕРјРїР»РµРєСЃ',
+                                'Жилой комплекс',
                                 mortgage_data['OBJECT_COMPLEX'].name,
                             ],
-                            ['РљРѕСЂРїСѓСЃ', mortgage_data['OBJECT_BUILDING'].number],
+                            ['Корпус', mortgage_data['OBJECT_BUILDING'].number],
                             [
-                                'РќРѕРјРµСЂ РєРІР°СЂС‚РёСЂС‹',
+                                'Номер квартиры',
                                 mortgage_data['OBJECT_APARTMENT_NUMBER'],
                             ],
-                            ['РџР»РѕС‰Р°РґСЊ, Рј2', float(mortgage_data['OBJECT_AREA'])],
-                            ['РџР»Р°РЅРёСЂРѕРІРєР°', mortgage_data['OBJECT_LAYOUT'].name],
-                            ['Р­С‚Р°Р¶', mortgage_data['OBJECT_FLOOR']],
-                            ['РћС‚РґРµР»РєР°', mortgage_data['OBJECT_DECORATION'].name],
+                            ['Площадь, м2', float(mortgage_data['OBJECT_AREA'])],
+                            ['Планировка', mortgage_data['OBJECT_LAYOUT'].name],
+                            ['Этаж', mortgage_data['OBJECT_FLOOR']],
+                            ['Отделка', mortgage_data['OBJECT_DECORATION'].name],
                         ]
                     )
 
                 property_data_list.extend(
                     [
-                        ['Р‘Р°Р·РѕРІР°СЏ СЃС‚РѕРёРјРѕСЃС‚СЊ РѕР±СЉРµРєС‚Р°, СЂСѓР±.', property_cost],
+                        ['Базовая стоимость объекта, руб.', property_cost],
                         [discount_markup_percent_label, discount_markup_value],
                         [discount_markup_rubles_label, discount_markup_rubles],
-                        ['РС‚РѕРіРѕРІР°СЏ СЃС‚РѕРёРјРѕСЃС‚СЊ РѕР±СЉРµРєС‚Р°, СЂСѓР±.', final_property_cost],
+                        ['Итоговая стоимость объекта, руб.', final_property_cost],
                     ]
                 )
 
@@ -968,21 +968,21 @@ def mortgage_calculator(request):
                     ws[f'A{i}'] = param
                     cell = ws[f'B{i}']
 
-                    # РџСЂРёРјРµРЅСЏРµРј С„РѕСЂРјР°С‚РёСЂРѕРІР°РЅРёРµ Рє С‡РёСЃР»Р°Рј
+                    # Применяем форматирование к числам
                     if isinstance(value, (int, float)):
-                        if param == 'Р­С‚Р°Р¶':
+                        if param == 'Этаж':
                             cell.value = int(value)
                             cell.style = integer_style
                         elif param in [
-                            'РџР»РѕС‰Р°РґСЊ, Рј2',
+                            'Площадь, м2',
                             discount_markup_percent_label,
                             discount_markup_rubles_label,
                         ]:
                             cell.value = value
                             cell.style = number_style
                         elif param in [
-                            'Р‘Р°Р·РѕРІР°СЏ СЃС‚РѕРёРјРѕСЃС‚СЊ РѕР±СЉРµРєС‚Р°, СЂСѓР±.',
-                            'РС‚РѕРіРѕРІР°СЏ СЃС‚РѕРёРјРѕСЃС‚СЊ РѕР±СЉРµРєС‚Р°, СЂСѓР±.',
+                            'Базовая стоимость объекта, руб.',
+                            'Итоговая стоимость объекта, руб.',
                         ]:
                             cell.value = value
                             cell.style = number_style
@@ -991,53 +991,53 @@ def mortgage_calculator(request):
                     else:
                         cell.value = value
 
-                    # Р’С‹СЂР°РІРЅРёРІР°РЅРёРµ РїРѕ С†РµРЅС‚СЂСѓ РґР»СЏ СЃС‚РѕР»Р±С†Р° B
+                    # Выравнивание по центру для столбца B
                     cell.alignment = Alignment(horizontal='center')
 
-                # Р’С…РѕРґРЅС‹Рµ РїР°СЂР°РјРµС‚СЂС‹ РёРїРѕС‚РµРєРё
+                # Входные параметры ипотеки
                 start_row = len(property_data_list) + 5
-                ws[f'A{start_row}'] = 'РџР°СЂР°РјРµС‚СЂС‹ РёРїРѕС‚РµРєРё:'
+                ws[f'A{start_row}'] = 'Параметры ипотеки:'
                 ws[f'A{start_row}'].font = Font(bold=True)
 
                 mortgage_data_list = [
-                    ['РџРµСЂРІРѕРЅР°С‡Р°Р»СЊРЅС‹Р№ РІР·РЅРѕСЃ, %', initial_payment_percent],
+                    ['Первоначальный взнос, %', initial_payment_percent],
                     [
-                        'РџРµСЂРІРѕРЅР°С‡Р°Р»СЊРЅС‹Р№ РІР·РЅРѕСЃ, СЂСѓР±.',
+                        'Первоначальный взнос, руб.',
                         final_property_cost * initial_payment_percent / 100,
                     ],
                     [
-                        'Р”Р°С‚Р° РїРµСЂРІРѕРЅР°С‡Р°Р»СЊРЅРѕРіРѕ РІР·РЅРѕСЃР°',
+                        'Дата первоначального взноса',
                         mortgage_data['INITIAL_PAYMENT_DATE'].strftime(
                             '%d.%m.%Y'
                         ),
                     ],
                     [
-                        'РЎСЂРѕРє РёРїРѕС‚РµРєРё, РіРѕРґС‹',
+                        'Срок ипотеки, годы',
                         int(mortgage_data['MORTGAGE_TERM_YEARS']),
                     ],
                     [
-                        'РЎСЂРѕРє РёРїРѕС‚РµРєРё, РјРµСЃ.',
+                        'Срок ипотеки, мес.',
                         int(mortgage_data['MORTGAGE_TERM']),
                     ],
-                    ['Р“РѕРґРѕРІР°СЏ СЃС‚Р°РІРєР°, %', float(mortgage_data['ANNUAL_RATE'])],
+                    ['Годовая ставка, %', float(mortgage_data['ANNUAL_RATE'])],
                 ]
 
                 if mortgage_data['HAS_GRACE_PERIOD'] == 'yes':
                     mortgage_data_list.extend(
                         [
                             [
-                                'РЎСЂРѕРє Р»СЊРіРѕС‚РЅРѕРіРѕ РїРµСЂРёРѕРґР°, РіРѕРґС‹',
+                                'Срок льготного периода, годы',
                                 int(
                                     mortgage_data['GRACE_PERIOD_TERM_YEARS']
                                     or 0
                                 ),
                             ],
                             [
-                                'РЎСЂРѕРє Р»СЊРіРѕС‚РЅРѕРіРѕ РїРµСЂРёРѕРґР°, РјРµСЃ.',
+                                'Срок льготного периода, мес.',
                                 int(mortgage_data['GRACE_PERIOD_TERM'] or 0),
                             ],
                             [
-                                'Р“РѕРґРѕРІР°СЏ СЃС‚Р°РІРєР° РІ Р»СЊРіРѕС‚РЅС‹Р№ РїРµСЂРёРѕРґ, %',
+                                'Годовая ставка в льготный период, %',
                                 float(mortgage_data['GRACE_PERIOD_RATE']),
                             ],
                         ]
@@ -1049,13 +1049,13 @@ def mortgage_calculator(request):
                     ws[f'A{i}'] = param
                     cell = ws[f'B{i}']
 
-                    # РџСЂРёРјРµРЅСЏРµРј С„РѕСЂРјР°С‚РёСЂРѕРІР°РЅРёРµ Рє С‡РёСЃР»Р°Рј
+                    # Применяем форматирование к числам
                     if isinstance(value, (int, float)):
                         if param in [
-                            'РЎСЂРѕРє РёРїРѕС‚РµРєРё, РіРѕРґС‹',
-                            'РЎСЂРѕРє РёРїРѕС‚РµРєРё, РјРµСЃ.',
-                            'РЎСЂРѕРє Р»СЊРіРѕС‚РЅРѕРіРѕ РїРµСЂРёРѕРґР°, РіРѕРґС‹',
-                            'РЎСЂРѕРє Р»СЊРіРѕС‚РЅРѕРіРѕ РїРµСЂРёРѕРґР°, РјРµСЃ.',
+                            'Срок ипотеки, годы',
+                            'Срок ипотеки, мес.',
+                            'Срок льготного периода, годы',
+                            'Срок льготного периода, мес.',
                         ]:
                             cell.value = int(value)
                             cell.style = integer_style
@@ -1065,15 +1065,15 @@ def mortgage_calculator(request):
                     else:
                         cell.value = value
 
-                    # Р’С‹СЂР°РІРЅРёРІР°РЅРёРµ РїРѕ С†РµРЅС‚СЂСѓ РґР»СЏ СЃС‚РѕР»Р±С†Р° B
+                    # Выравнивание по центру для столбца B
                     cell.alignment = Alignment(horizontal='center')
 
-                # Р РµР·СѓР»СЊС‚Р°С‚С‹ СЂР°СЃС‡РµС‚Р°
+                # Результаты расчета
                 result_start = start_row + len(mortgage_data_list) + 2
-                ws[f'A{result_start}'] = 'Р РµР·СѓР»СЊС‚Р°С‚С‹ СЂР°СЃС‡РµС‚Р°:'
+                ws[f'A{result_start}'] = 'Результаты расчета:'
                 ws[f'A{result_start}'].font = Font(bold=True)
 
-                # Р¤РѕСЂРјР°С‚РёСЂСѓРµРј РґР°С‚Сѓ Р»СЊРіРѕС‚РЅРѕРіРѕ РїРµСЂРёРѕРґР° СЃ РїСЂРѕРІРµСЂРєРѕР№ РЅР° None
+                # Форматируем дату льготного периода с проверкой на None
                 grace_period_end_date_str = ''
                 if result['grace_period_end_date']:
                     grace_period_end_date_str = result[
@@ -1086,25 +1086,25 @@ def mortgage_calculator(request):
                     result_data.extend(
                         [
                             [
-                                'Р§РёСЃР»Рѕ РїР»Р°С‚РµР¶РµР№ Р·Р° Р»СЊРіРѕС‚РЅС‹Р№ РїРµСЂРёРѕРґ',
+                                'Число платежей за льготный период',
                                 result['grace_payments_count'],
                             ],
                             [
-                                'Р”Р°С‚Р° РїРѕСЃР»РµРґРЅРµРіРѕ РїР»Р°С‚РµР¶Р° РїРѕ Р»СЊРіРѕС‚РЅРѕРјСѓ РїРµСЂРёРѕРґСѓ',
+                                'Дата последнего платежа по льготному периоду',
                                 grace_period_end_date_str,
                             ],
                             [
                                 (
-                                    'РЎСѓРјРјР° РµР¶РµРјРµСЃСЏС‡РЅРѕРіРѕ РїР»Р°С‚РµР¶Р° '
-                                    'РІРѕ РІСЂРµРјСЏ Р»СЊРіРѕС‚РЅРѕРіРѕ РїРµСЂРёРѕРґР°, '
-                                    'СЂСѓР±.'
+                                    'Сумма ежемесячного платежа '
+                                    'во время льготного периода, '
+                                    'руб.'
                                 ),
                                 float(result['grace_monthly_payment']),
                             ],
                             [
                                 (
-                                    'РЎСѓРјРјР° РєСЂРµРґРёС‚Р° РїРѕСЃР»Рµ РѕРєРѕРЅС‡Р°РЅРёСЏ '
-                                    'Р»СЊРіРѕС‚РЅРѕРіРѕ РїРµСЂРёРѕРґР°, СЂСѓР±.'
+                                    'Сумма кредита после окончания '
+                                    'льготного периода, руб.'
                                 ),
                                 float(result['loan_after_grace']),
                             ],
@@ -1114,26 +1114,26 @@ def mortgage_calculator(request):
                 result_data.extend(
                     [
                         [
-                            'Р§РёСЃР»Рѕ РїР»Р°С‚РµР¶РµР№ Р·Р° РѕСЃРЅРѕРІРЅРѕР№ РїРµСЂРёРѕРґ',
+                            'Число платежей за основной период',
                             result['main_payments_count'],
                         ],
                         [
-                            'Р”Р°С‚Р° РїРѕСЃР»РµРґРЅРµРіРѕ РїР»Р°С‚РµР¶Р° РїРѕ РёРїРѕС‚РµРєРµ',
+                            'Дата последнего платежа по ипотеке',
                             result['mortgage_end_date'].strftime('%d.%m.%Y'),
                         ],
                         [
                             (
-                                'РЎСѓРјРјР° РµР¶РµРјРµСЃСЏС‡РЅРѕРіРѕ РїР»Р°С‚РµР¶Р° '
-                                'Р·Р° РѕСЃРЅРѕРІРЅРѕР№ РїРµСЂРёРѕРґ, СЂСѓР±.'
+                                'Сумма ежемесячного платежа '
+                                'за основной период, руб.'
                             ),
                             float(result['main_monthly_payment']),
                         ],
                         [
-                            'РЎСѓРјРјР° РєСЂРµРґРёС‚Р°, СЂСѓР±.',
+                            'Сумма кредита, руб.',
                             float(result['total_loan_amount']),
                         ],
                         [
-                            'РЎСѓРјРјР° РїРµСЂРµРїР»Р°С‚ РїРѕ РєСЂРµРґРёС‚Сѓ, СЂСѓР±.',
+                            'Сумма переплат по кредиту, руб.',
                             float(result['total_overpayment']),
                         ],
                     ]
@@ -1145,11 +1145,11 @@ def mortgage_calculator(request):
                     ws[f'A{i}'] = param
                     cell = ws[f'B{i}']
 
-                    # РџСЂРёРјРµРЅСЏРµРј С„РѕСЂРјР°С‚РёСЂРѕРІР°РЅРёРµ Рє С‡РёСЃР»Р°Рј
+                    # Применяем форматирование к числам
                     if isinstance(value, (int, float)):
                         if param in [
-                            'Р§РёСЃР»Рѕ РїР»Р°С‚РµР¶РµР№ Р·Р° Р»СЊРіРѕС‚РЅС‹Р№ РїРµСЂРёРѕРґ',
-                            'Р§РёСЃР»Рѕ РїР»Р°С‚РµР¶РµР№ Р·Р° РѕСЃРЅРѕРІРЅРѕР№ РїРµСЂРёРѕРґ',
+                            'Число платежей за льготный период',
+                            'Число платежей за основной период',
                         ]:
                             cell.value = int(value)
                             cell.style = integer_style
@@ -1159,21 +1159,21 @@ def mortgage_calculator(request):
                     else:
                         cell.value = value
 
-                    # Р’С‹СЂР°РІРЅРёРІР°РЅРёРµ РїРѕ С†РµРЅС‚СЂСѓ РґР»СЏ СЃС‚РѕР»Р±С†Р° B
+                    # Выравнивание по центру для столбца B
                     cell.alignment = Alignment(horizontal='center')
 
-                # Р“СЂР°С„РёРє РїР»Р°С‚РµР¶РµР№
+                # График платежей
                 schedule_start = result_start + len(result_data) + 2
-                ws[f'A{schedule_start}'] = 'Р“СЂР°С„РёРє РїР»Р°С‚РµР¶РµР№:'
+                ws[f'A{schedule_start}'] = 'График платежей:'
                 ws[f'A{schedule_start}'].font = Font(bold=True)
 
                 headers = [
                     'в„–',
-                    'Р”Р°С‚Р° РїР»Р°С‚РµР¶Р°',
-                    'РЎСѓРјРјР° РїР»Р°С‚РµР¶Р°, СЂСѓР±.',
-                    'Р’ С‚РѕРј С‡РёСЃР»Рµ РїСЂРѕС†РµРЅС‚С‹, СЂСѓР±.',
-                    'Р’ С‚РѕРј С‡РёСЃР»Рµ РѕСЃРЅРѕРІРЅРѕР№ РґРѕР»Рі, СЂСѓР±.',
-                    'РћСЃС‚Р°С‚РѕРє РґРѕР»РіР°, СЂСѓР±.',
+                    'Дата платежа',
+                    'Сумма платежа, руб.',
+                    'В том числе проценты, руб.',
+                    'В том числе основной долг, руб.',
+                    'Остаток долга, руб.',
                 ]
 
                 for col, header in enumerate(headers, start=1):
@@ -1193,7 +1193,7 @@ def mortgage_calculator(request):
                         value=payment['payment_date'].strftime('%d.%m.%Y'),
                     )
 
-                    # РСЃРїРѕР»СЊР·СѓРµРј РёСЃС…РѕРґРЅС‹Рµ С‡РёСЃР»РѕРІС‹Рµ Р·РЅР°С‡РµРЅРёСЏ
+                    # Используем исходные числовые значения
                     for col_idx, key in enumerate(
                         [
                             'payment_amount',
@@ -1204,7 +1204,7 @@ def mortgage_calculator(request):
                         start=3,
                     ):
                         value = payment[key]
-                        # Р•СЃР»Рё Р·РЅР°С‡РµРЅРёРµ - СЃС‚СЂРѕРєР°, РїСЂРµРѕР±СЂР°Р·СѓРµРј РµРіРѕ РІ С‡РёСЃР»Рѕ
+                        # Если значение - строка, преобразуем его в число
                         if isinstance(value, str):
                             numeric_value = float(
                                 value.replace(' ', '').replace(',', '.')
@@ -1217,7 +1217,7 @@ def mortgage_calculator(request):
                         cell.style = number_style
                         cell.alignment = Alignment(horizontal='center')
 
-                # Р¤РѕСЂРјР°С‚РёСЂРѕРІР°РЅРёРµ
+                # Форматирование
                 for column in ws.columns:
                     max_length = 0
                     column_letter = get_column_letter(column[0].column)
@@ -1227,7 +1227,7 @@ def mortgage_calculator(request):
                     adjusted_width = min(max_length + 2, 50)
                     ws.column_dimensions[column_letter].width = adjusted_width
 
-                # РЎРѕС…СЂР°РЅСЏРµРј С„Р°Р№Р»
+                # Сохраняем файл
                 wb.save(response)
                 return response
 
@@ -1235,16 +1235,16 @@ def mortgage_calculator(request):
 
 
 def property_cost_api(request, pk):
-    """РћРїРёСЃР°РЅРёРµ РјРµС‚РѕРґР° property_cost_api.
+    """Описание метода property_cost_api.
 
-    Р’С‹РїРѕР»РЅСЏРµС‚ РїСЂРёРєР»Р°РґРЅСѓСЋ РѕРїРµСЂР°С†РёСЋ С‚РµРєСѓС‰РµРіРѕ РјРѕРґСѓР»СЏ.
+    Выполняет прикладную операцию текущего модуля.
 
-    РђСЂРіСѓРјРµРЅС‚С‹:
-        request: Р’С…РѕРґРЅРѕР№ РїР°СЂР°РјРµС‚СЂ, РІР»РёСЏСЋС‰РёР№ РЅР° СЂР°Р±РѕС‚Сѓ РјРµС‚РѕРґР°.
-        pk: Р’С…РѕРґРЅРѕР№ РїР°СЂР°РјРµС‚СЂ, РІР»РёСЏСЋС‰РёР№ РЅР° СЂР°Р±РѕС‚Сѓ РјРµС‚РѕРґР°.
+    Аргументы:
+        request: Входной параметр, влияющий на работу метода.
+        pk: Входной параметр, влияющий на работу метода.
 
-    Р’РѕР·РІСЂР°С‰Р°РµС‚:
-        Any: РўРёРї СЂРµР·СѓР»СЊС‚Р°С‚Р° РѕРїСЂРµРґРµР»СЏРµС‚СЃСЏ РІС‹Р·С‹РІР°СЋС‰РёРј РєРѕРґРѕРј.
+    Возвращает:
+        Any: Тип результата определяется вызывающим кодом.
     """
     property_obj = get_object_or_404(
         Property.objects.select_related(
@@ -1260,7 +1260,7 @@ def property_cost_api(request, pk):
 
 
 def calculation_list(request):
-    """РЎРїРёСЃРѕРє РІСЃРµС… СЂР°СЃС‡РµС‚РѕРІ"""
+    """Список всех расчетов"""
     target_customer = _get_target_customer(request)
 
     if request.method == 'POST' and target_customer is not None:
@@ -1273,10 +1273,10 @@ def calculation_list(request):
         if selected_ids:
             messages.success(
                 request,
-                'Р’С‹Р±СЂР°РЅРЅС‹Рµ СЂР°СЃС‡РµС‚С‹ РґРѕР±Р°РІР»РµРЅС‹ РІ РєР°СЂС‚РѕС‡РєСѓ РєР»РёРµРЅС‚Р°.',
+                'Выбранные расчеты добавлены в карточку клиента.',
             )
         else:
-            messages.info(request, 'Р Р°СЃС‡РµС‚С‹ РґР»СЏ РґРѕР±Р°РІР»РµРЅРёСЏ РЅРµ РІС‹Р±СЂР°РЅС‹.')
+            messages.info(request, 'Расчеты для добавления не выбраны.')
         return redirect('customer:detail', pk=target_customer.pk)
 
     calculation_filters = get_calculation_filters(request)
@@ -1332,14 +1332,14 @@ def calculation_list(request):
 
 @require_POST
 def calculation_delete(request, pk):
-    """РЈРґР°Р»РµРЅРёРµ СЃРѕС…СЂР°РЅРµРЅРЅРѕРіРѕ РёРїРѕС‚РµС‡РЅРѕРіРѕ СЂР°СЃС‡РµС‚Р°."""
+    """Удаление сохраненного ипотечного расчета."""
     calculation = get_object_or_404(MortgageCalculation, pk=pk)
     calculation.delete()
     return redirect('mortgage:calculation_list')
 
 
 def calculation_detail(request, pk):
-    """Р”РµС‚Р°Р»СЊРЅР°СЏ РёРЅС„РѕСЂРјР°С†РёСЏ Рѕ СЂР°СЃС‡РµС‚Рµ"""
+    """Детальная информация о расчете"""
     calculation = get_object_or_404(
         MortgageCalculation.objects.select_related(
             'property',
