@@ -1,6 +1,8 @@
 from datetime import date
 from decimal import Decimal
 from io import BytesIO
+import re
+from zipfile import ZipFile
 
 from openpyxl import load_workbook
 from django.test import TestCase
@@ -70,6 +72,7 @@ class MortgageCalculatorViewTests(TestCase):
         )
         complex_obj = RealEstateComplex.objects.create(
             name=complex_name,
+            map_link='https://maps.example.com/complex',
             developer=developer,
             district=district,
             real_estate_class=estate_class,
@@ -160,6 +163,28 @@ class MortgageCalculatorViewTests(TestCase):
             remaining_debt=Decimal('0.00'),
         )
         return calculation
+
+    def _extract_docx_text(self, content):
+        """Возвращает текстовую часть DOCX-файла из HTTP-ответа."""
+        document_xml = self._extract_docx_document_xml(content)
+        return re.sub(r'<[^>]+>', '', document_xml)
+
+    def _extract_docx_document_xml(self, content):
+        """Возвращает XML тела Word-документа."""
+        with ZipFile(BytesIO(content)) as archive:
+            return archive.read('word/document.xml').decode('utf-8')
+
+    def _extract_docx_relationships(self, content):
+        """Возвращает relationships Word-документа."""
+        with ZipFile(BytesIO(content)) as archive:
+            return archive.read(
+                'word/_rels/document.xml.rels'
+            ).decode('utf-8')
+
+    def _extract_docx_file_names(self, content):
+        """Возвращает имена файлов внутри DOCX."""
+        with ZipFile(BytesIO(content)) as archive:
+            return archive.namelist()
 
     def _base_payload(self) -> dict:
         """Описание метода _base_payload.
@@ -496,6 +521,9 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, 'Сохранить в Excel')
         self.assertContains(response, 'name="export"')
         self.assertContains(response, 'value="market"')
+        self.assertContains(response, 'Сохранить в Word')
+        self.assertContains(response, 'name="export_word"')
+        self.assertContains(response, 'value="market"')
 
     def test_calculation_detail_export_returns_excel_file(self):
         calculation = self._create_calculation()
@@ -535,6 +563,87 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertIn('Результаты расчета:', values)
         self.assertIn('График платежей:', values)
         self.assertIn('Сумма платежа, руб.', values)
+
+    def test_calculation_detail_export_returns_word_file(self):
+        calculation = self._create_calculation()
+        url = reverse(
+            'mortgage:calculation_detail', kwargs={'pk': calculation.pk}
+        )
+
+        response = self.client.post(url, {'export_word': 'market'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['Content-Type'],
+            (
+                'application/vnd.openxmlformats-officedocument.'
+                'wordprocessingml.document'
+            ),
+        )
+        self.assertIn(
+            'attachment; filename="mortgage_calculation.docx"',
+            response['Content-Disposition'],
+        )
+        document_text = self._extract_docx_text(response.content)
+        self.assertIn('Ипотека - результаты расчета', document_text)
+        self.assertIn('Локация', document_text)
+        self.assertIn('Жилой комплекс', document_text)
+        self.assertIn('Параметры объекта недвижимости', document_text)
+        self.assertIn('Планировка', document_text)
+        self.assertIn('На этаже', document_text)
+        self.assertIn('Вид из окна', document_text)
+        self.assertIn('ЖК Тест', document_text)
+        self.assertIn('Открыть карту ЖК', document_text)
+        self.assertIn(
+            'Ежемесячный платеж на 240 месяцев (до 01.12.2045)',
+            document_text,
+        )
+        self.assertNotIn('График платежей', document_text)
+        self.assertNotIn('Годовая ставка', document_text)
+        self.assertNotIn('Скидка', document_text)
+        self.assertNotIn('Сумма кредита', document_text)
+        self.assertNotIn('Сумма переплаты', document_text)
+        self.assertIn(
+            'word/media/',
+            ' '.join(self._extract_docx_file_names(response.content)),
+        )
+        relationships = self._extract_docx_relationships(response.content)
+        self.assertIn('https://maps.example.com/complex', relationships)
+        document_xml = self._extract_docx_document_xml(response.content)
+        self.assertIn('w:left="864"', document_xml)
+        self.assertIn('w:right="864"', document_xml)
+
+    def test_calculation_detail_word_export_shows_grace_period_payment_row(self):
+        calculation = self._create_calculation()
+        calculation.has_grace_period = True
+        calculation.grace_period_term = 24
+        calculation.grace_period_rate = Decimal('6.00')
+        calculation.grace_payments_count = 24
+        calculation.grace_period_end_date = date(2028, 1, 1)
+        calculation.grace_monthly_payment = Decimal('30000.00')
+        calculation.loan_after_grace = Decimal('3500000.00')
+        calculation.main_payments_count = 216
+        calculation.save()
+        url = reverse(
+            'mortgage:calculation_detail', kwargs={'pk': calculation.pk}
+        )
+
+        response = self.client.post(url, {'export_word': 'market'})
+
+        self.assertEqual(response.status_code, 200)
+        document_text = self._extract_docx_text(response.content)
+        grace_label = (
+            'Ежемесячный платеж на 24 месяца (до 01.12.2027)'
+        )
+        main_label = (
+            'Ежемесячный платеж на 216 месяцев (до 01.12.2045)'
+        )
+        self.assertIn(grace_label, document_text)
+        self.assertIn(main_label, document_text)
+        self.assertLess(
+            document_text.index(grace_label),
+            document_text.index(main_label),
+        )
 
     def test_trench_calculation_list_shows_saved_calculations(self):
         calculation = self._create_trench_calculation()
@@ -577,6 +686,9 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, 'Сохранить в Excel')
         self.assertContains(response, 'name="export"')
         self.assertContains(response, 'value="trench"')
+        self.assertContains(response, 'Сохранить в Word')
+        self.assertContains(response, 'name="export_word"')
+        self.assertContains(response, 'value="trench"')
 
     def test_trench_calculation_detail_export_returns_excel_file(self):
         calculation = self._create_trench_calculation()
@@ -609,6 +721,101 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertIn('Параметры траншевой ипотеки', values)
         self.assertIn('Транши', values)
         self.assertIn('График платежей', values)
+
+    def test_word_payment_month_label_uses_russian_plural_forms(self):
+        payload = self._base_payload()
+        payload.update(
+            {
+                'export_word': 'trench',
+                'CALCULATION_TYPE': 'trench',
+                'PROPERTY_COST': '5000000',
+                'MORTGAGE_TERM': '8',
+                'MORTGAGE_TERM_YEARS': '',
+                'TRENCH_COUNT': '3',
+                'trench_date_1': '2026-01-01',
+                'trench_percent_1': '10',
+                'trench_amount_1': '',
+                'trench_amount_source_1': 'percent',
+                'annual_rate_1': '12',
+                'trench_date_2': '2026-02-01',
+                'trench_percent_2': '10',
+                'trench_amount_2': '',
+                'trench_amount_source_2': 'percent',
+                'annual_rate_2': '12',
+                'trench_date_3': '2026-04-01',
+                'trench_percent_3': '',
+                'trench_amount_3': '',
+                'trench_amount_source_3': 'rubles',
+                'annual_rate_3': '12',
+            }
+        )
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, 200)
+        document_text = self._extract_docx_text(response.content)
+        self.assertIn(
+            'Ежемесячный платеж на 1 месяц (до 01.01.2026)',
+            document_text,
+        )
+        self.assertIn(
+            'Ежемесячный платеж на 2 месяца (до 01.03.2026)',
+            document_text,
+        )
+        self.assertIn(
+            'Ежемесячный платеж на 5 месяцев (до 01.08.2026)',
+            document_text,
+        )
+
+    def test_trench_calculation_detail_export_returns_word_file(self):
+        calculation = self._create_trench_calculation()
+        url = reverse(
+            'mortgage:trench_calculation_detail',
+            kwargs={'pk': calculation.pk},
+        )
+
+        response = self.client.post(url, {'export_word': 'trench'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['Content-Type'],
+            (
+                'application/vnd.openxmlformats-officedocument.'
+                'wordprocessingml.document'
+            ),
+        )
+        self.assertIn(
+            'trench_mortgage_calculation.docx',
+            response['Content-Disposition'],
+        )
+        document_text = self._extract_docx_text(response.content)
+        self.assertIn('Ипотека траншевая - результаты расчета', document_text)
+        self.assertIn('Локация', document_text)
+        self.assertIn('Жилой комплекс', document_text)
+        self.assertIn('Параметры объекта недвижимости', document_text)
+        self.assertIn('Планировка', document_text)
+        self.assertIn(
+            'Ежемесячный платеж на 12 месяцев (до 01.12.2026)',
+            document_text,
+        )
+        self.assertIn(
+            'Ежемесячный платеж на 228 месяцев (до 01.12.2045)',
+            document_text,
+        )
+        self.assertLess(
+            document_text.index(
+                'Ежемесячный платеж на 12 месяцев (до 01.12.2026)'
+            ),
+            document_text.index(
+                'Ежемесячный платеж на 228 месяцев (до 01.12.2045)'
+            ),
+        )
+        self.assertIn('ЖК Тест', document_text)
+        self.assertNotIn('График платежей', document_text)
+        self.assertNotIn('Годовая ставка', document_text)
+        self.assertNotIn('Количество траншей', document_text)
+        self.assertNotIn('Сумма кредита', document_text)
+        self.assertNotIn('Сумма переплаты', document_text)
 
     def test_trench_calculation_delete_removes_saved_calculation(self):
         calculation = self._create_trench_calculation()
@@ -798,6 +1005,7 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertIn('trench_result', response.context)
         self.assertEqual(response.context['active_calculation_type'], 'trench')
         self.assertContains(response, 'name="export"')
+        self.assertContains(response, 'name="export_word"')
         self.assertFalse(TrenchMortgageCalculation.objects.exists())
         self.assertFalse(MortgageCalculation.objects.exists())
 
@@ -1095,6 +1303,92 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertIn('Сумма платежа, руб.', values)
         self.assertNotIn('Корректировка цены', values)
         self.assertNotIn('Наличие льготного периода', values)
+
+    def test_export_returns_word_file(self):
+        payload = self._base_payload()
+        payload.update(
+            {
+                'export_word': 'market',
+                'PROPERTY_COST': '5100000',
+                'DISCOUNT_MARKUP_TYPE': 'markup',
+                'DISCOUNT_MARKUP_VALUE': '5',
+            }
+        )
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['Content-Type'],
+            (
+                'application/vnd.openxmlformats-officedocument.'
+                'wordprocessingml.document'
+            ),
+        )
+        self.assertIn(
+            'mortgage_calculation.docx',
+            response['Content-Disposition'],
+        )
+        document_text = self._extract_docx_text(response.content)
+        self.assertIn('Локация', document_text)
+        self.assertIn('Жилой комплекс', document_text)
+        self.assertIn('Параметры объекта недвижимости', document_text)
+        self.assertIn('Ипотека - результаты расчета', document_text)
+        self.assertIn('ЖК Тест', document_text)
+        self.assertIn(
+            'Ежемесячный платеж на 240 месяцев (до 01.12.2045)',
+            document_text,
+        )
+        self.assertNotIn('График платежей', document_text)
+        self.assertNotIn('Годовая ставка', document_text)
+        self.assertNotIn('Удорожание, %', document_text)
+        self.assertNotIn('Сумма кредита', document_text)
+        self.assertNotIn('Сумма переплаты', document_text)
+
+    def test_trench_export_returns_word_file(self):
+        payload = self._base_payload()
+        payload.update(
+            {
+                'export_word': 'trench',
+                'CALCULATION_TYPE': 'trench',
+                'PROPERTY_COST': '5000000',
+                'TRENCH_COUNT': '1',
+                'trench_date_1': '2026-01-01',
+                'trench_percent_1': '',
+                'trench_amount_1': '',
+                'trench_amount_source_1': 'rubles',
+                'annual_rate_1': '12',
+            }
+        )
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['Content-Type'],
+            (
+                'application/vnd.openxmlformats-officedocument.'
+                'wordprocessingml.document'
+            ),
+        )
+        self.assertIn(
+            'trench_mortgage_calculation.docx',
+            response['Content-Disposition'],
+        )
+        document_text = self._extract_docx_text(response.content)
+        self.assertIn('Ипотека траншевая - результаты расчета', document_text)
+        self.assertIn('Локация', document_text)
+        self.assertIn('Жилой комплекс', document_text)
+        self.assertIn('Параметры объекта недвижимости', document_text)
+        self.assertIn(
+            'Ежемесячный платеж на 240 месяцев (до 01.12.2045)',
+            document_text,
+        )
+        self.assertNotIn('График платежей', document_text)
+        self.assertNotIn('Годовая ставка', document_text)
+        self.assertNotIn('Количество траншей', document_text)
+        self.assertNotIn('Сумма кредита', document_text)
+        self.assertNotIn('Сумма переплаты', document_text)
 
     def test_property_cost_api_returns_cost_from_database(self):
         """Описание метода test_property_cost_api_returns_cost_from_database.

@@ -47,11 +47,11 @@ def export_mortgage_excel(excel_data):
     return response
 
 
-def export_saved_mortgage_calculation_excel(calculation, payment_schedule):
-    """Формирует Excel-файл для сохраненного ипотечного расчета."""
+def build_saved_mortgage_excel_data(calculation, payment_schedule):
+    """Формирует данные экспорта для сохраненного ипотечного расчета."""
     discount_markup_rubles = calculation.base_property_cost
     discount_markup_rubles *= calculation.discount_markup_value / 100
-    excel_data = MortgageExcelData(
+    return MortgageExcelData(
         property_obj=calculation.property,
         mortgage_data={
             'DISCOUNT_MARKUP_TYPE': calculation.discount_markup_type,
@@ -86,6 +86,14 @@ def export_saved_mortgage_calculation_excel(calculation, payment_schedule):
             'total_overpayment': calculation.total_overpayment or 0,
         },
         payment_schedule=payment_schedule,
+    )
+
+
+def export_saved_mortgage_calculation_excel(calculation, payment_schedule):
+    """Формирует Excel-файл для сохраненного ипотечного расчета."""
+    excel_data = build_saved_mortgage_excel_data(
+        calculation,
+        payment_schedule,
     )
     return export_mortgage_excel(excel_data)
 

@@ -50,6 +50,11 @@ from .utils import (
     get_calculation_filters,
     get_calculation_sort,
 )
+from .word import (
+    export_mortgage_word,
+    export_saved_mortgage_calculation_word,
+    export_trench_mortgage_word,
+)
 
 
 def _get_target_customer(request):
@@ -477,6 +482,7 @@ def mortgage_calculator(request):
         form_data = request.POST.copy()
         submitted_calculation_type = (
             form_data.get('calculate') or form_data.get('export')
+            or form_data.get('export_word')
         )
         if submitted_calculation_type in ('market', 'trench'):
             form_data['CALCULATION_TYPE'] = submitted_calculation_type
@@ -501,7 +507,9 @@ def mortgage_calculator(request):
         mortgage_form = MortgageForm()
 
     posted_calculation_type = (
-        request.POST.get('calculate') or request.POST.get('export')
+        request.POST.get('calculate')
+        or request.POST.get('export')
+        or request.POST.get('export_word')
     )
     active_calculation_type = (
         posted_calculation_type
@@ -763,12 +771,18 @@ def mortgage_calculator(request):
                 context['active_calculation_type'] = 'market'
                 context['mortgage_form'] = mortgage_form
 
-        elif 'export' in request.POST:
+        elif 'export' in request.POST or 'export_word' in request.POST:
             # Аналогичные изменения для блока экспорта
             if mortgage_form.is_valid():
                 # Получаем данные из формы
                 mortgage_data = mortgage_form.cleaned_data
-                selected_export_type = request.POST.get('export')
+                export_format = (
+                    'word' if 'export_word' in request.POST else 'excel'
+                )
+                selected_export_type = (
+                    request.POST.get('export')
+                    or request.POST.get('export_word')
+                )
                 if selected_export_type not in ('market', 'trench'):
                     selected_export_type = (
                         mortgage_data.get('CALCULATION_TYPE') or 'market'
@@ -840,6 +854,10 @@ def mortgage_calculator(request):
                             context,
                         )
                     trench_calculation['property_obj'] = property_obj
+                    if export_format == 'word':
+                        return export_trench_mortgage_word(
+                            trench_calculation
+                        )
                     return _export_trench_excel(trench_calculation)
                 calculator = MortgageCalculator(
                     property_cost=float(final_property_cost),
@@ -861,22 +879,23 @@ def mortgage_calculator(request):
                 result = calculator.calculate()
                 payment_schedule = calculator.get_payment_schedule()
 
-                return export_mortgage_excel(
-                    MortgageExcelData(
-                        property_obj=property_obj,
-                        mortgage_data=mortgage_data,
-                        property_cost=property_cost,
-                        discount_markup_value=discount_markup_value,
-                        discount_markup_rubles=discount_markup_rubles,
-                        final_property_cost=final_property_cost,
-                        initial_payment_percent=initial_payment_percent,
-                        result=result,
-                        payment_schedule=payment_schedule,
-                        has_manual_property_data=(
-                            mortgage_form.has_manual_property_data()
-                        ),
-                    )
+                report_data = MortgageExcelData(
+                    property_obj=property_obj,
+                    mortgage_data=mortgage_data,
+                    property_cost=property_cost,
+                    discount_markup_value=discount_markup_value,
+                    discount_markup_rubles=discount_markup_rubles,
+                    final_property_cost=final_property_cost,
+                    initial_payment_percent=initial_payment_percent,
+                    result=result,
+                    payment_schedule=payment_schedule,
+                    has_manual_property_data=(
+                        mortgage_form.has_manual_property_data()
+                    ),
                 )
+                if export_format == 'word':
+                    return export_mortgage_word(report_data)
+                return export_mortgage_excel(report_data)
 
     return render(request, 'mortgage/mortgage_form.html', context)
 
@@ -1016,6 +1035,14 @@ def calculation_detail(request, pk):
         return export_saved_mortgage_calculation_excel(
             calculation, payment_schedule
         )
+    if (
+        request.method == 'POST'
+        and request.POST.get('export_word') == 'market'
+    ):
+        return export_saved_mortgage_calculation_word(
+            calculation,
+            payment_schedule,
+        )
 
     return render(
         request,
@@ -1126,6 +1153,11 @@ def trench_calculation_detail(request, pk):
 
     if request.method == 'POST' and request.POST.get('export') == 'trench':
         return _export_trench_excel(calculation_data)
+    if (
+        request.method == 'POST'
+        and request.POST.get('export_word') == 'trench'
+    ):
+        return export_trench_mortgage_word(calculation_data)
 
     return render(
         request,

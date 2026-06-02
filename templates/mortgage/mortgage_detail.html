@@ -35,6 +35,12 @@
                     <i class="bi bi-file-earmark-excel"></i> Сохранить в Excel
                 </button>
             </form>
+            <form method="post" class="m-0">
+                {% csrf_token %}
+                <button type="submit" name="export_word" value="market" class="btn btn-outline-success">
+                    <i class="bi bi-file-earmark-word"></i> Сохранить в Word
+                </button>
+            </form>
             <a href="{% url 'mortgage:mortgage_calculator' %}?sample={{ calculation.pk }}" class="btn btn-primary">
                 <i class="bi bi-calculator"></i> Новый расчет по образцу
             </a>
