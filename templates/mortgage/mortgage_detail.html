@@ -31,15 +31,11 @@
         <div class="d-flex gap-2">
             <form method="post" class="m-0">
                 {% csrf_token %}
-                <button type="submit" name="export" value="market" class="btn btn-success">
-                    <i class="bi bi-file-earmark-excel"></i> Сохранить в Excel
-                </button>
+                {% include "includes/action_icon.html" with action_icon_is_button=True button_name="export" button_value="market" icon="excel_report" label="Сохранить в Excel" size_class="action-icon-button-lg" variant_class="btn-outline-success" %}
             </form>
             <form method="post" class="m-0">
                 {% csrf_token %}
-                <button type="submit" name="export_word" value="market" class="btn btn-outline-success">
-                    <i class="bi bi-file-earmark-word"></i> Сохранить в Word
-                </button>
+                {% include "includes/action_icon.html" with action_icon_is_button=True button_name="export_word" button_value="market" icon="word_report" label="Сохранить в Word" size_class="action-icon-button-lg" variant_class="btn-outline-success" %}
             </form>
             <a href="{% url 'mortgage:mortgage_calculator' %}?sample={{ calculation.pk }}" class="btn btn-primary">
                 <i class="bi bi-calculator"></i> Новый расчет по образцу
