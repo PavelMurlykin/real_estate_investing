@@ -1,5 +1,5 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.urls import reverse_lazy
 from django.views.generic import (
     CreateView,
@@ -9,6 +9,7 @@ from django.views.generic import (
     UpdateView,
 )
 
+from bank.models import MortgageProgram
 from mortgage.utils import (
     apply_calculation_filters,
     apply_calculation_sort,
@@ -47,7 +48,15 @@ class CustomerOwnedQuerysetMixin(LoginRequiredMixin):
                 'desired_city__region',
                 'desired_district',
             )
-            .prefetch_related('desired_layouts', 'preferential_programs')
+            .prefetch_related(
+                'desired_layouts',
+                Prefetch(
+                    'preferential_programs',
+                    queryset=MortgageProgram.objects.prefetch_related(
+                        'regional_credit_limits'
+                    ),
+                ),
+            )
         )
 
 

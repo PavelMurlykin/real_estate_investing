@@ -19,6 +19,7 @@ from django.views.generic import (
     UpdateView,
 )
 
+from core.forms import GroupedDecimalField, format_grouped_decimal_value
 from location.models import City, District, Metro, MetroLine, Region
 
 from .forms import (
@@ -82,6 +83,13 @@ class BaseCatalogView(TemplateView):
     url_name = ''
     default_model_key = ''
     model_configs: tuple[CatalogModelConfig, ...] = ()
+    grouped_decimal_field_name_parts = (
+        'amount',
+        'cost',
+        'limit',
+        'payment',
+        'price',
+    )
 
     def get_sort_field_map(self, config):
         """Return table columns that can be used for queryset sorting."""
@@ -171,6 +179,28 @@ class BaseCatalogView(TemplateView):
             return queryset.order_by(f'{sort_prefix}{sort_field}')
         return queryset.order_by(*config.order_by)
 
+    def is_grouped_decimal_field(self, model_field):
+        """Return whether a DecimalField should use grouped formatting."""
+        if not isinstance(model_field, django_models.DecimalField):
+            return False
+
+        if (model_field.max_digits or 0) >= 10:
+            return True
+
+        return any(
+            name_part in model_field.name
+            for name_part in self.grouped_decimal_field_name_parts
+        )
+
+    def get_form_field_classes(self, config):
+        """Build custom form field classes for catalog ModelForms."""
+        field_classes = {}
+        for field_name in config.form_fields:
+            model_field = self.get_field_by_path(config.model, field_name)
+            if self.is_grouped_decimal_field(model_field):
+                field_classes[field_name] = GroupedDecimalField
+        return field_classes
+
     def build_form(self, config, data=None, instance=None):
         """Описание метода build_form.
 
@@ -184,7 +214,11 @@ class BaseCatalogView(TemplateView):
         Возвращает:
             Any: Тип результата определяется вызывающим кодом.
         """
-        form_class = modelform_factory(config.model, fields=config.form_fields)
+        form_class = modelform_factory(
+            config.model,
+            fields=config.form_fields,
+            field_classes=self.get_form_field_classes(config),
+        )
         form = form_class(data=data, instance=instance)
 
         for field in form.fields.values():
@@ -229,10 +263,16 @@ class BaseCatalogView(TemplateView):
             return '-'
         return str(value)
 
-    def build_cell(self, value):
+    def format_model_field_value(self, model_field, value):
+        """Format a table value using model field metadata."""
+        if self.is_grouped_decimal_field(model_field):
+            return format_grouped_decimal_value(value)
+        return self.format_cell_value(value)
+
+    def build_cell(self, value, model_field=None):
         """Prepare a table cell for the catalog template."""
         cell = {
-            'value': self.format_cell_value(value),
+            'value': self.format_model_field_value(model_field, value),
             'is_long_text': False,
             'color': '',
         }
@@ -280,6 +320,7 @@ class BaseCatalogView(TemplateView):
                 {
                     'name': field_name,
                     'label': model_field.verbose_name,
+                    'model_field': model_field,
                     'is_long_text': model_field.get_internal_type()
                     == 'TextField',
                 }
@@ -304,7 +345,10 @@ class BaseCatalogView(TemplateView):
             cells = []
             for column in columns:
                 raw_value = self.get_value_by_path(obj, column['name'])
-                cell = self.build_cell(raw_value)
+                cell = self.build_cell(
+                    raw_value,
+                    model_field=column['model_field'],
+                )
                 cell['is_long_text'] = column['is_long_text']
                 cells.append(cell)
             rows.append(

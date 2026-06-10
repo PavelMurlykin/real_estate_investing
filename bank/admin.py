@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import Bank, BankProgram, KeyRate, MortgageProgram
+from .models import (
+    Bank,
+    BankProgram,
+    KeyRate,
+    MortgageProgram,
+    MortgageProgramRegionalCreditLimit,
+)
 
 
 @admin.register(Bank)
@@ -34,18 +40,38 @@ class MortgageProgramAdmin(admin.ModelAdmin):
     list_display = (
         'name',
         'is_preferential',
-        'preferential_program_type',
+        'credit_limit',
         'is_active',
         'created_at',
     )
     list_filter = (
         'is_preferential',
-        'preferential_program_type',
         'is_active',
         'created_at',
     )
     search_fields = ('name', 'condition')
     ordering = ('name',)
+
+
+@admin.register(MortgageProgramRegionalCreditLimit)
+class MortgageProgramRegionalCreditLimitAdmin(admin.ModelAdmin):
+    """Администрирование региональных лимитов ипотечных программ."""
+
+    list_display = (
+        'mortgage_program',
+        'region',
+        'credit_limit',
+        'is_active',
+        'created_at',
+    )
+    list_filter = (
+        'mortgage_program',
+        'region',
+        'is_active',
+        'created_at',
+    )
+    search_fields = ('mortgage_program__name', 'region__name')
+    ordering = ('mortgage_program__name', 'region__name')
 
 
 @admin.register(BankProgram)

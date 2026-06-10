@@ -1,8 +1,10 @@
 from decimal import Decimal
 
+from django.core.validators import MinValueValidator
 from django.db import models
 
 from core.models import BaseModel
+from location.models import Region
 
 
 class Bank(BaseModel):
@@ -61,30 +63,6 @@ class MortgageProgram(BaseModel):
     в данном модуле.
     """
 
-    PREFERENTIAL_PROGRAM_TYPE_INFORMATION_TECHNOLOGY = (
-        'information_technology'
-    )
-    PREFERENTIAL_PROGRAM_TYPE_FAMILY = 'family'
-    PREFERENTIAL_PROGRAM_TYPE_CHOICES = (
-        ('', 'Не указан'),
-        (
-            PREFERENTIAL_PROGRAM_TYPE_INFORMATION_TECHNOLOGY,
-            'IT-ипотека',
-        ),
-        (PREFERENTIAL_PROGRAM_TYPE_FAMILY, 'Семейная ипотека'),
-    )
-    INFORMATION_TECHNOLOGY_CREDIT_LIMIT = Decimal('9000000')
-    FAMILY_HIGH_COST_REGION_CREDIT_LIMIT = Decimal('12000000')
-    FAMILY_DEFAULT_CREDIT_LIMIT = Decimal('6000000')
-    FAMILY_HIGH_COST_REGION_NAMES = frozenset(
-        (
-            'Москва',
-            'Московская область',
-            'Санкт-Петербург',
-            'Ленинградская область',
-        )
-    )
-
     name = models.CharField(
         max_length=255, unique=True, verbose_name='Название'
     )
@@ -92,11 +70,13 @@ class MortgageProgram(BaseModel):
     is_preferential = models.BooleanField(
         default=False, verbose_name='Льготная программа'
     )
-    preferential_program_type = models.CharField(
-        max_length=32,
+    credit_limit = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        null=True,
         blank=True,
-        choices=PREFERENTIAL_PROGRAM_TYPE_CHOICES,
-        verbose_name='Тип льготной программы',
+        validators=[MinValueValidator(Decimal('0'))],
+        verbose_name='Кредитный лимит',
     )
 
     class Meta(BaseModel.Meta):
@@ -121,34 +101,83 @@ class MortgageProgram(BaseModel):
         """
         return self.name
 
-    @classmethod
-    def is_family_high_cost_region(cls, region):
-        """Возвращает признак региона с повышенным лимитом семейной ипотеки."""
-        region_name = getattr(region, 'name', region)
-        if not region_name:
-            return False
-        return str(region_name).strip() in cls.FAMILY_HIGH_COST_REGION_NAMES
-
     def get_credit_limit(self, region=None):
         """Возвращает лимит суммы кредита для льготной программы."""
         if not self.is_preferential:
             return None
 
-        if (
-            self.preferential_program_type
-            == self.PREFERENTIAL_PROGRAM_TYPE_INFORMATION_TECHNOLOGY
-        ):
-            return self.INFORMATION_TECHNOLOGY_CREDIT_LIMIT
+        if region is None:
+            return self.credit_limit
 
-        if (
-            self.preferential_program_type
-            == self.PREFERENTIAL_PROGRAM_TYPE_FAMILY
-        ):
-            if self.is_family_high_cost_region(region):
-                return self.FAMILY_HIGH_COST_REGION_CREDIT_LIMIT
-            return self.FAMILY_DEFAULT_CREDIT_LIMIT
+        region_id = getattr(region, 'pk', region)
+        prefetched_credit_limits = getattr(
+            self, '_prefetched_objects_cache', {}
+        ).get('regional_credit_limits')
+        if prefetched_credit_limits is not None:
+            for regional_credit_limit in prefetched_credit_limits:
+                if (
+                    regional_credit_limit.is_active
+                    and regional_credit_limit.region_id == region_id
+                ):
+                    return regional_credit_limit.credit_limit
+            return self.credit_limit
 
-        return None
+        regional_credit_limit = (
+            self.regional_credit_limits.filter(
+                region_id=region_id,
+                is_active=True,
+            )
+            .values_list('credit_limit', flat=True)
+            .first()
+        )
+        if regional_credit_limit is not None:
+            return regional_credit_limit
+
+        return self.credit_limit
+
+
+class MortgageProgramRegionalCreditLimit(BaseModel):
+    """Региональное исключение кредитного лимита ипотечной программы."""
+
+    mortgage_program = models.ForeignKey(
+        MortgageProgram,
+        on_delete=models.CASCADE,
+        related_name='regional_credit_limits',
+        verbose_name='Ипотечная программа',
+    )
+    region = models.ForeignKey(
+        Region,
+        on_delete=models.PROTECT,
+        related_name='mortgage_program_credit_limits',
+        verbose_name='Регион',
+    )
+    credit_limit = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0'))],
+        verbose_name='Кредитный лимит',
+    )
+
+    class Meta(BaseModel.Meta):
+        """Метаданные региональных исключений кредитного лимита."""
+
+        db_table = 'mortgage_program_regional_credit_limit'
+        verbose_name = 'Региональный лимит ипотечной программы'
+        verbose_name_plural = 'Региональные лимиты ипотечных программ'
+        ordering = ['mortgage_program__name', 'region__name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['mortgage_program', 'region'],
+                name='unique_mortgage_program_region_credit_limit',
+            )
+        ]
+
+    def __str__(self):
+        """Возвращает строковое представление регионального лимита."""
+        return (
+            f'{self.mortgage_program} - {self.region}: '
+            f'{self.credit_limit}'
+        )
 
 
 class BankProgram(BaseModel):

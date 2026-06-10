@@ -10,7 +10,13 @@ from property.views import BaseCatalogView, CatalogModelConfig
 
 from .forms import BankForm
 from .key_rate_sync import KeyRateSyncError, sync_key_rates
-from .models import Bank, BankProgram, KeyRate, MortgageProgram
+from .models import (
+    Bank,
+    BankProgram,
+    KeyRate,
+    MortgageProgram,
+    MortgageProgramRegionalCreditLimit,
+)
 
 
 class BankCatalogView(BaseCatalogView):
@@ -39,15 +45,23 @@ class BankCatalogView(BaseCatalogView):
                 'name',
                 'condition',
                 'is_preferential',
-                'preferential_program_type',
+                'credit_limit',
             ),
             table_fields=(
                 'name',
                 'condition',
                 'is_preferential',
-                'preferential_program_type',
+                'credit_limit',
             ),
             order_by=('name',),
+        ),
+        CatalogModelConfig(
+            key='mortgage_program_regional_credit_limit',
+            model=MortgageProgramRegionalCreditLimit,
+            form_fields=('mortgage_program', 'region', 'credit_limit'),
+            table_fields=('mortgage_program', 'region', 'credit_limit'),
+            order_by=('mortgage_program__name', 'region__name'),
+            select_related=('mortgage_program', 'region'),
         ),
         CatalogModelConfig(
             key='bank_program',
@@ -126,6 +140,12 @@ class BankCatalogView(BaseCatalogView):
             return {
                 'bank': 'bank__name',
                 'mortgage_program': 'mortgage_program__name',
+            }
+        if config.key == 'mortgage_program_regional_credit_limit':
+            return {
+                'mortgage_program': 'mortgage_program__name',
+                'region': 'region__name',
+                'credit_limit': 'credit_limit',
             }
         return {}
 
@@ -206,6 +226,12 @@ class BankCatalogView(BaseCatalogView):
                 return queryset.order_by(f'{sort_prefix}{sort_field}')
             return queryset.order_by(*config.order_by)
 
+        if config.key == 'mortgage_program_regional_credit_limit':
+            sort_field = self.get_sort_field_map(config).get(sort_by)
+            if sort_field:
+                return queryset.order_by(f'{sort_prefix}{sort_field}')
+            return queryset.order_by(*config.order_by)
+
         return queryset.order_by(*config.order_by)
 
     def build_columns(self, config):
@@ -242,38 +268,6 @@ class BankCatalogView(BaseCatalogView):
         Возвращает:
             Any: Тип результата определяется вызывающим кодом.
         """
-        if config.key == 'mortgage_program':
-            rows = []
-            queryset = self.get_queryset(config)
-            for obj in queryset:
-                cells = []
-                for column in columns:
-                    if column['name'] == 'preferential_program_type':
-                        raw_value = (
-                            obj.get_preferential_program_type_display()
-                        )
-                    else:
-                        raw_value = getattr(obj, column['name'])
-
-                    cells.append(
-                        {
-                            'value': self.format_cell_value(raw_value),
-                            'is_long_text': column['is_long_text'],
-                        }
-                    )
-
-                rows.append(
-                    {
-                        'pk': obj.pk,
-                        'cells': cells,
-                        'edit_url': self.get_model_url(
-                            config.key, edit_id=obj.pk
-                        ),
-                    }
-                )
-
-            return rows
-
         if config.key != 'bank':
             return super().build_rows(config, columns)
 

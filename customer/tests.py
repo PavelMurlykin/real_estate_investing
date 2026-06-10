@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from bank.models import MortgageProgram
+from bank.models import MortgageProgram, MortgageProgramRegionalCreditLimit
 from location.models import City, District, Region
 from mortgage.models import MortgageCalculation
 from mortgage.utils import format_currency
@@ -253,9 +253,12 @@ class CustomerDetailViewTests(TestCase):
             name='Семейная',
             condition='Льготные условия',
             is_preferential=True,
-            preferential_program_type=(
-                MortgageProgram.PREFERENTIAL_PROGRAM_TYPE_FAMILY
-            ),
+            credit_limit=Decimal('6000000'),
+        )
+        MortgageProgramRegionalCreditLimit.objects.create(
+            mortgage_program=preferential_program,
+            region=region,
+            credit_limit=Decimal('12000000'),
         )
         customer.preferential_programs.add(preferential_program)
 

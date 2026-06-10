@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}{{ section_title }}{% endblock %}
 
@@ -275,6 +276,7 @@
 {{ bank_program_map|json_script:"bank-program-map-data" }}
 {% endif %}
 
+<script src="{% static 'js/catalog.js' %}?v=20260610-grouped-decimals"></script>
 <script>
   (function () {
     const mapElement = document.getElementById('bank-program-map-data');
@@ -361,6 +363,7 @@
     });
 
     bindBankRows();
+    document.addEventListener('catalog:results-replaced', bindBankRows);
   })();
 </script>
 {% endblock %}
