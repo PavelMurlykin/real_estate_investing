@@ -79,7 +79,7 @@ def _build_market_mortgage_document(report_data):
         document,
         report_data.property_obj,
         _build_market_template_rows(report_data),
-        'Ипотека - результаты расчета',
+        'Ипотека',
     )
     return document
 
@@ -91,7 +91,7 @@ def _build_trench_mortgage_document(calculation):
         document,
         calculation.get('property_obj'),
         _build_trench_template_rows(calculation),
-        'Ипотека траншевая - результаты расчета',
+        'Ипотека траншевая',
     )
     return document
 
@@ -104,19 +104,10 @@ def _create_template_document():
 
 
 def _apply_document_defaults(document):
-    """Настраивает базовую геометрию и шрифты отчета."""
-    section = document.sections[0]
-    section.top_margin = Inches(0.65)
-    section.bottom_margin = Inches(0.65)
-    section.left_margin = Inches(0.6)
-    section.right_margin = Inches(0.6)
-
+    """Настраивает базовый шрифт, не меняя геометрию шаблона."""
     normal_style = document.styles['Normal']
     normal_style.font.name = 'Arial'
     normal_style.font.size = Pt(10)
-
-    for table in document.tables:
-        _apply_table_page_width(table, section)
 
 
 def _populate_template_document(
@@ -743,32 +734,6 @@ def _clear_cell_content(cell):
 def _cell_has_drawing(cell):
     """Проверяет, есть ли в ячейке изображение."""
     return bool(cell._tc.xpath('.//w:drawing'))
-
-
-def _apply_table_page_width(table, section):
-    """Выравнивает таблицу по странице с симметричными полями."""
-    usable_width = (
-        section.page_width.twips
-        - section.left_margin.twips
-        - section.right_margin.twips
-    )
-    table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    table.autofit = True
-    table.allow_autofit = True
-    table_pr = table._tbl.tblPr
-    table_width = table_pr.find(qn('w:tblW'))
-    if table_width is None:
-        table_width = OxmlElement('w:tblW')
-        table_pr.append(table_width)
-    table_width.set(qn('w:type'), 'dxa')
-    table_width.set(qn('w:w'), str(int(usable_width)))
-
-    table_indent = table_pr.find(qn('w:tblInd'))
-    if table_indent is None:
-        table_indent = OxmlElement('w:tblInd')
-        table_pr.append(table_indent)
-    table_indent.set(qn('w:type'), 'dxa')
-    table_indent.set(qn('w:w'), '0')
 
 
 def _split_complex_and_object_rows(rows):

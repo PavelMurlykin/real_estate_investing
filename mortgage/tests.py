@@ -174,6 +174,32 @@ class MortgageCalculatorViewTests(TestCase):
         with ZipFile(BytesIO(content)) as archive:
             return archive.read('word/document.xml').decode('utf-8')
 
+    def _extract_docx_table_properties(self, content):
+        """Возвращает XML-свойства таблиц Word-документа."""
+        document_xml = self._extract_docx_document_xml(content)
+        return re.findall(
+            r'<w:tblPr>.*?</w:tblPr>',
+            document_xml,
+            flags=re.DOTALL,
+        )
+
+    def _extract_docx_section_properties(self, content):
+        """Возвращает XML-свойства секции Word-документа."""
+        document_xml = self._extract_docx_document_xml(content)
+        return re.findall(
+            r'<w:sectPr.*?</w:sectPr>',
+            document_xml,
+            flags=re.DOTALL,
+        )
+
+    def _read_word_template_bytes(self):
+        """Возвращает содержимое текущего Word-шаблона отчета."""
+        with open(
+            'mortgage/word_templates/mortgage_report_template.docx',
+            'rb',
+        ) as template_file:
+            return template_file.read()
+
     def _extract_docx_relationships(self, content):
         """Возвращает relationships Word-документа."""
         with ZipFile(BytesIO(content)) as archive:
@@ -585,7 +611,8 @@ class MortgageCalculatorViewTests(TestCase):
             response['Content-Disposition'],
         )
         document_text = self._extract_docx_text(response.content)
-        self.assertIn('Ипотека - результаты расчета', document_text)
+        self.assertIn('Ипотека', document_text)
+        self.assertNotIn('Ипотека - результаты расчета', document_text)
         self.assertIn('Локация', document_text)
         self.assertIn('Жилой комплекс', document_text)
         self.assertIn('Параметры объекта недвижимости', document_text)
@@ -609,9 +636,15 @@ class MortgageCalculatorViewTests(TestCase):
         )
         relationships = self._extract_docx_relationships(response.content)
         self.assertIn('https://maps.example.com/complex', relationships)
-        document_xml = self._extract_docx_document_xml(response.content)
-        self.assertIn('w:left="864"', document_xml)
-        self.assertIn('w:right="864"', document_xml)
+        template_content = self._read_word_template_bytes()
+        self.assertEqual(
+            self._extract_docx_table_properties(response.content),
+            self._extract_docx_table_properties(template_content),
+        )
+        self.assertEqual(
+            self._extract_docx_section_properties(response.content),
+            self._extract_docx_section_properties(template_content),
+        )
 
     def test_calculation_detail_word_export_shows_grace_period_payment_row(self):
         calculation = self._create_calculation()
@@ -789,7 +822,11 @@ class MortgageCalculatorViewTests(TestCase):
             response['Content-Disposition'],
         )
         document_text = self._extract_docx_text(response.content)
-        self.assertIn('Ипотека траншевая - результаты расчета', document_text)
+        self.assertIn('Ипотека траншевая', document_text)
+        self.assertNotIn(
+            'Ипотека траншевая - результаты расчета',
+            document_text,
+        )
         self.assertIn('Локация', document_text)
         self.assertIn('Жилой комплекс', document_text)
         self.assertIn('Параметры объекта недвижимости', document_text)
@@ -1333,7 +1370,8 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertIn('Локация', document_text)
         self.assertIn('Жилой комплекс', document_text)
         self.assertIn('Параметры объекта недвижимости', document_text)
-        self.assertIn('Ипотека - результаты расчета', document_text)
+        self.assertIn('Ипотека', document_text)
+        self.assertNotIn('Ипотека - результаты расчета', document_text)
         self.assertIn('ЖК Тест', document_text)
         self.assertIn(
             'Ежемесячный платеж на 240 месяцев (до 01.12.2045)',
@@ -1376,7 +1414,11 @@ class MortgageCalculatorViewTests(TestCase):
             response['Content-Disposition'],
         )
         document_text = self._extract_docx_text(response.content)
-        self.assertIn('Ипотека траншевая - результаты расчета', document_text)
+        self.assertIn('Ипотека траншевая', document_text)
+        self.assertNotIn(
+            'Ипотека траншевая - результаты расчета',
+            document_text,
+        )
         self.assertIn('Локация', document_text)
         self.assertIn('Жилой комплекс', document_text)
         self.assertIn('Параметры объекта недвижимости', document_text)
