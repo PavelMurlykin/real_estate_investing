@@ -200,7 +200,7 @@ class BankProgram(BaseModel):
     """
 
     bank = models.ForeignKey(
-        Bank, on_delete=models.PROTECT, verbose_name='Банк'
+        Bank, on_delete=models.CASCADE, verbose_name='Банк'
     )
     mortgage_program = models.ForeignKey(
         MortgageProgram,

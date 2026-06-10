@@ -424,6 +424,40 @@ class BankProgramCatalogTests(TestCase):
         self.assertIn(first_bank.name, row_values)
         self.assertNotIn(second_bank.name, row_values)
 
+    def test_bank_catalog_delete_cascades_bank_program_links(self):
+        """Checks deleting a bank removes its program links without an error."""
+        bank = Bank.objects.create(
+            name='Alpha Bank',
+            interest_rate=Decimal('11.50'),
+            salary_client_discount=Decimal('0.50'),
+        )
+        program = MortgageProgram.objects.create(
+            name='Market mortgage',
+            condition='Regular terms',
+        )
+        BankProgram.objects.create(
+            bank=bank,
+            mortgage_program=program,
+            interest_rate=Decimal('11.50'),
+            minimum_initial_payment_percent=Decimal('20.00'),
+        )
+
+        response = self.client.post(
+            reverse('bank:catalog'),
+            {
+                'action': 'delete',
+                'model': 'bank',
+                'object_id': str(bank.pk),
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Bank.objects.filter(pk=bank.pk).exists())
+        self.assertFalse(BankProgram.objects.filter(bank=bank).exists())
+        self.assertTrue(MortgageProgram.objects.filter(pk=program.pk).exists())
+        self.assertNotContains(response, 'есть связанные записи')
+
 
 class BankMortgageOfferSyncTests(TestCase):
     """Checks parsing and synchronization of bank mortgage offers."""
