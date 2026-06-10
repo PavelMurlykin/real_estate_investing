@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import csv
 import html
+import io
 import logging
 import re
 from dataclasses import dataclass
@@ -18,6 +20,27 @@ logger = logging.getLogger(__name__)
 
 CBR_BANKS_URL = 'https://www.cbr.ru/banking_sector/credit/FullCoList/'
 BANKI_MORTGAGE_URL = 'https://www.banki.ru/products/hypothec/?place=all_programm'
+GOOGLE_SHEET_ID = '1or19DcE4LruFcb8WpDOpRLoTyvTc3T73HYBaUcp4Z9E'
+GOOGLE_SHEET_CSV_URL_TEMPLATE = (
+    'https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?'
+    'tqx=out:csv&gid={gid}'
+)
+GOOGLE_SHEET_MORTGAGE_PROGRAM_SOURCES = (
+    {
+        'program_name': 'Семейная ипотека',
+        'gid': '175597907',
+        'bank_column_index': 2,
+        'rate_column_index': 6,
+        'initial_payment_column_index': 7,
+    },
+    {
+        'program_name': 'IT-ипотека',
+        'gid': '1390280621',
+        'bank_column_index': 1,
+        'rate_column_index': 5,
+        'initial_payment_column_index': 6,
+    },
+)
 BANKI_TIMEOUT_SECONDS = 30
 BANKI_MAX_PAGES = 20
 BANK_NAME_MAX_LENGTH = Bank._meta.get_field('name').max_length
@@ -610,6 +633,55 @@ def parse_banki_mortgage_offers(raw_html, source_url=BANKI_MORTGAGE_URL):
     return offers
 
 
+def parse_google_sheet_mortgage_offers(
+    raw_csv,
+    program_name,
+    bank_column_index,
+    rate_column_index,
+    initial_payment_column_index,
+):
+    """Parse mortgage offers from a Google Sheets CSV export."""
+    rows = csv.reader(io.StringIO(raw_csv))
+    offers = []
+    minimum_columns_count = max(
+        bank_column_index,
+        rate_column_index,
+        initial_payment_column_index,
+    ) + 1
+
+    for row in rows:
+        if len(row) < minimum_columns_count:
+            continue
+
+        bank_name = normalize_bank_name_for_storage(row[bank_column_index])
+        interest_rate = _parse_decimal(
+            row[rate_column_index],
+            use_maximum=True,
+        )
+        minimum_initial_payment_percent = _parse_decimal(
+            row[initial_payment_column_index],
+        )
+        if (
+            not _is_valid_bank_name(bank_name)
+            or interest_rate is None
+            or minimum_initial_payment_percent is None
+        ):
+            continue
+
+        offers.append(
+            BankMortgageOffer(
+                bank_name=bank_name,
+                program_name=program_name,
+                interest_rate=interest_rate,
+                minimum_initial_payment_percent=(
+                    minimum_initial_payment_percent
+                ),
+            )
+        )
+
+    return offers
+
+
 def _download_payload(source_url):
     """Download an HTML page from an external source."""
     request = Request(
@@ -631,6 +703,11 @@ def _download_cbr_bank_list_payload(source_url):
 
 def _download_banki_mortgage_payload(source_url):
     """Download a mortgage offers page from the configured source."""
+    return _download_payload(source_url)
+
+
+def _download_google_sheet_mortgage_payload(source_url):
+    """Download a Google Sheets CSV export for mortgage offers."""
     return _download_payload(source_url)
 
 
@@ -744,6 +821,65 @@ def _find_matching_bank(bank_name, bank_lookup):
     return None
 
 
+def _sync_mortgage_offers_to_bank_programs(offers, bank_lookup):
+    """Synchronize normalized offers to BankProgram rows."""
+    updated = 0
+    processed = 0
+    skipped = 0
+
+    for offer in offers:
+        bank = _find_matching_bank(offer.bank_name, bank_lookup)
+        if bank is None:
+            skipped += 1
+            logger.warning(
+                'Skipped mortgage offer for bank absent from CBR list: %s',
+                offer.bank_name,
+            )
+            continue
+
+        if offer.logo_url and bank.logo_url != offer.logo_url:
+            bank.logo_url = offer.logo_url
+            bank.save(update_fields=['logo_url', 'updated_at'])
+            updated += 1
+
+        mortgage_program, _ = MortgageProgram.objects.get_or_create(
+            name=offer.program_name,
+            defaults={
+                'condition': 'Программа импортирована из внешнего источника.',
+                'is_preferential': _is_preferential_program(
+                    offer.program_name
+                ),
+            },
+        )
+
+        bank_program_defaults = {
+            'interest_rate': offer.interest_rate,
+            'minimum_initial_payment_percent': (
+                offer.minimum_initial_payment_percent
+            ),
+        }
+        if offer.maximum_loan_term_years is not None:
+            bank_program_defaults['maximum_loan_term_years'] = (
+                offer.maximum_loan_term_years
+            )
+
+        bank_program, was_created = BankProgram.objects.update_or_create(
+            bank=bank,
+            mortgage_program=mortgage_program,
+            defaults=bank_program_defaults,
+        )
+        if not was_created:
+            updated += 1
+        logger.debug('Synced bank program %s', bank_program.pk)
+        processed += 1
+
+    return {
+        'updated': updated,
+        'processed': processed,
+        'skipped': skipped,
+    }
+
+
 def _sync_cbr_banks(records):
     """Create and reactivate banks from the Bank of Russia registry."""
     created = 0
@@ -787,8 +923,55 @@ def _sync_cbr_banks(records):
     return created, updated, synced_banks
 
 
+def _get_google_sheet_source_value(source, key, default=None):
+    """Return a Google Sheets source setting from a dict or object."""
+    if isinstance(source, dict):
+        return source.get(key, default)
+    return getattr(source, key, default)
+
+
+def _build_google_sheet_csv_url(source):
+    """Build a Google Sheets CSV export URL from source settings."""
+    source_url = _get_google_sheet_source_value(source, 'source_url')
+    if source_url:
+        return source_url
+
+    sheet_id = _get_google_sheet_source_value(
+        source,
+        'sheet_id',
+        GOOGLE_SHEET_ID,
+    )
+    gid = _get_google_sheet_source_value(source, 'gid')
+    return GOOGLE_SHEET_CSV_URL_TEMPLATE.format(sheet_id=sheet_id, gid=gid)
+
+
+def _download_google_sheet_mortgage_offers(source):
+    """Download and parse one Google Sheets mortgage program source."""
+    source_url = _build_google_sheet_csv_url(source)
+    return parse_google_sheet_mortgage_offers(
+        _download_google_sheet_mortgage_payload(source_url),
+        program_name=_get_google_sheet_source_value(source, 'program_name'),
+        bank_column_index=_get_google_sheet_source_value(
+            source,
+            'bank_column_index',
+        ),
+        rate_column_index=_get_google_sheet_source_value(
+            source,
+            'rate_column_index',
+        ),
+        initial_payment_column_index=_get_google_sheet_source_value(
+            source,
+            'initial_payment_column_index',
+        ),
+    )
+
+
 @transaction.atomic
-def sync_bank_mortgage_offers(source_url=None, cbr_source_url=None):
+def sync_bank_mortgage_offers(
+    source_url=None,
+    cbr_source_url=None,
+    google_sheet_sources=None,
+):
     """Synchronize CBR banks and Banki.ru mortgage program conditions."""
     resolved_source_url = (
         source_url
@@ -804,6 +987,15 @@ def sync_bank_mortgage_offers(source_url=None, cbr_source_url=None):
     )
     created, updated, cbr_banks = _sync_cbr_banks(cbr_records)
     bank_lookup = _build_bank_lookup(cbr_banks)
+    resolved_google_sheet_sources = (
+        google_sheet_sources
+        if google_sheet_sources is not None
+        else getattr(
+            settings,
+            'BANK_MORTGAGE_GOOGLE_SHEET_SOURCES',
+            GOOGLE_SHEET_MORTGAGE_PROGRAM_SOURCES,
+        )
+    )
 
     all_offers = []
     for page_url, raw_html in _download_banki_mortgage_payloads(
@@ -827,60 +1019,39 @@ def sync_bank_mortgage_offers(source_url=None, cbr_source_url=None):
         )
 
     offers = _select_best_program_offers(all_offers)
-    processed = 0
-    skipped = 0
+    banki_result = _sync_mortgage_offers_to_bank_programs(
+        offers,
+        bank_lookup,
+    )
+    updated += banki_result['updated']
 
-    for offer in offers:
-        bank = _find_matching_bank(offer.bank_name, bank_lookup)
-        if bank is None:
-            skipped += 1
+    google_sheet_offers = []
+    for google_sheet_source in resolved_google_sheet_sources:
+        try:
+            google_sheet_offers.extend(
+                _download_google_sheet_mortgage_offers(google_sheet_source)
+            )
+        except (BankMortgageSyncError, OSError, ValueError) as error:
             logger.warning(
-                'Skipped mortgage offer for bank absent from CBR list: %s',
-                offer.bank_name,
-            )
-            continue
-
-        if offer.logo_url and bank.logo_url != offer.logo_url:
-            bank.logo_url = offer.logo_url
-            bank.save(update_fields=['logo_url', 'updated_at'])
-            updated += 1
-
-        mortgage_program, _ = MortgageProgram.objects.get_or_create(
-            name=offer.program_name,
-            defaults={
-                'condition': 'Программа импортирована с Banki.ru.',
-                'is_preferential': _is_preferential_program(
-                    offer.program_name
-                ),
-            },
-        )
-
-        bank_program_defaults = {
-            'interest_rate': offer.interest_rate,
-            'minimum_initial_payment_percent': (
-                offer.minimum_initial_payment_percent
-            ),
-        }
-        if offer.maximum_loan_term_years is not None:
-            bank_program_defaults['maximum_loan_term_years'] = (
-                offer.maximum_loan_term_years
+                'Could not parse Google Sheets mortgage source: %s',
+                error,
             )
 
-        bank_program, was_created = BankProgram.objects.update_or_create(
-            bank=bank,
-            mortgage_program=mortgage_program,
-            defaults=bank_program_defaults,
-        )
-        if not was_created:
-            updated += 1
-        logger.debug('Synced bank program %s', bank_program.pk)
-        processed += 1
+    google_sheet_offers = _select_best_program_offers(google_sheet_offers)
+    google_sheet_result = _sync_mortgage_offers_to_bank_programs(
+        google_sheet_offers,
+        bank_lookup,
+    )
+    updated += google_sheet_result['updated']
 
     return {
         'created': created,
         'updated': updated,
-        'processed': processed,
+        'processed': (
+            banki_result['processed'] + google_sheet_result['processed']
+        ),
         'banks_processed': len(cbr_records),
-        'offers_processed': len(offers),
-        'skipped': skipped,
+        'offers_processed': len(offers) + len(google_sheet_offers),
+        'google_sheet_offers_processed': len(google_sheet_offers),
+        'skipped': banki_result['skipped'] + google_sheet_result['skipped'],
     }

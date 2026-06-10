@@ -13,6 +13,7 @@ from .mortgage_offer_sync import (
     normalize_bank_name_for_storage,
     parse_cbr_bank_records,
     parse_banki_mortgage_offers,
+    parse_google_sheet_mortgage_offers,
     sync_bank_mortgage_offers,
 )
 from .models import (
@@ -197,6 +198,18 @@ SAMPLE_BANKI_MORTGAGE_SECOND_PAGE_HTML = '''
     </article>
   </body>
 </html>
+'''
+
+SAMPLE_GOOGLE_FAMILY_MORTGAGE_CSV = '''
+"Описание","Условия","Банк","Регион","Прием заявок","Выдачи","Ставка","Мин ПВ"
+"","","Банк ВТБ","МСК","да","да","6,00%","40,10%"
+"","","Альфа-Банк","МСК","да","да","5,90%–6,20%","20,10%"
+'''
+
+SAMPLE_GOOGLE_IT_MORTGAGE_CSV = '''
+"Описание","Банк","Регион","Прием заявок","Выдачи","Ставка","Мин ПВ"
+"","Альфа-Банк","МСК","да","да","5,70%","20,01%"
+"","Газпромбанк","МСК","да","да","5,99%","20,10%"
 '''
 
 
@@ -794,6 +807,27 @@ class BankMortgageOfferSyncTests(TestCase):
         self.assertEqual(len(offers), 1)
         self.assertEqual(offers[0].bank_name, 'Надежный Банк')
 
+    def test_parse_google_sheet_mortgage_offers_extracts_configured_columns(self):
+        """Checks Google Sheets parser uses configured column indexes."""
+        offers = parse_google_sheet_mortgage_offers(
+            SAMPLE_GOOGLE_FAMILY_MORTGAGE_CSV,
+            program_name='Семейная ипотека',
+            bank_column_index=2,
+            rate_column_index=6,
+            initial_payment_column_index=7,
+        )
+
+        self.assertEqual(len(offers), 2)
+        self.assertEqual(offers[0].bank_name, 'Банк ВТБ')
+        self.assertEqual(offers[0].program_name, 'Семейная ипотека')
+        self.assertEqual(offers[0].interest_rate, Decimal('6.00'))
+        self.assertEqual(
+            offers[0].minimum_initial_payment_percent,
+            Decimal('40.10'),
+        )
+        self.assertEqual(offers[1].bank_name, 'Альфа-Банк')
+        self.assertEqual(offers[1].interest_rate, Decimal('6.20'))
+
     def test_sync_bank_mortgage_offers_creates_banks_and_program_links(self):
         """Checks synchronization loads CBR banks and Banki.ru programs."""
         def fake_download(source_url):
@@ -811,6 +845,7 @@ class BankMortgageOfferSyncTests(TestCase):
             result = sync_bank_mortgage_offers(
                 source_url='https://www.banki.ru/products/hypothec/',
                 cbr_source_url='https://www.cbr.ru/banking_sector/credit/FullCoList/',
+                google_sheet_sources=(),
             )
 
         self.assertEqual(result['created'], 5)
@@ -857,6 +892,7 @@ class BankMortgageOfferSyncTests(TestCase):
             result = sync_bank_mortgage_offers(
                 source_url='https://www.banki.ru/products/hypothec/',
                 cbr_source_url='https://www.cbr.ru/banking_sector/credit/FullCoList/',
+                google_sheet_sources=(),
             )
 
         self.assertEqual(result['processed'], 3)
@@ -866,6 +902,64 @@ class BankMortgageOfferSyncTests(TestCase):
                 bank__name='Банк без логотипа',
                 mortgage_program__name='Готовое жилье',
             ).exists()
+        )
+
+    def test_sync_bank_mortgage_offers_loads_google_sheet_programs(self):
+        """Checks Google Sheets sources update family and IT mortgages."""
+        def fake_download_google_sheet(source_url):
+            if source_url == 'https://example.test/family.csv':
+                return SAMPLE_GOOGLE_FAMILY_MORTGAGE_CSV
+            return SAMPLE_GOOGLE_IT_MORTGAGE_CSV
+
+        with patch(
+            'bank.mortgage_offer_sync._download_cbr_bank_list_payload',
+            return_value=SAMPLE_CBR_BANK_LIST_HTML,
+        ), patch(
+            'bank.mortgage_offer_sync._download_banki_mortgage_payload',
+            return_value=SAMPLE_BANKI_MORTGAGE_HTML,
+        ), patch(
+            'bank.mortgage_offer_sync._download_google_sheet_mortgage_payload',
+            side_effect=fake_download_google_sheet,
+        ):
+            result = sync_bank_mortgage_offers(
+                source_url='https://www.banki.ru/products/hypothec/',
+                cbr_source_url='https://www.cbr.ru/banking_sector/credit/FullCoList/',
+                google_sheet_sources=(
+                    {
+                        'program_name': 'Семейная ипотека',
+                        'source_url': 'https://example.test/family.csv',
+                        'bank_column_index': 2,
+                        'rate_column_index': 6,
+                        'initial_payment_column_index': 7,
+                    },
+                    {
+                        'program_name': 'IT-ипотека',
+                        'source_url': 'https://example.test/it.csv',
+                        'bank_column_index': 1,
+                        'rate_column_index': 5,
+                        'initial_payment_column_index': 6,
+                    },
+                ),
+            )
+
+        self.assertEqual(result['google_sheet_offers_processed'], 4)
+        family_program = BankProgram.objects.get(
+            bank__name='Банк ВТБ',
+            mortgage_program__name='Семейная ипотека',
+        )
+        self.assertEqual(family_program.interest_rate, Decimal('6.00'))
+        self.assertEqual(
+            family_program.minimum_initial_payment_percent,
+            Decimal('40.10'),
+        )
+        it_program = BankProgram.objects.get(
+            bank__name='Альфа-Банк',
+            mortgage_program__name='IT-ипотека',
+        )
+        self.assertEqual(it_program.interest_rate, Decimal('5.70'))
+        self.assertEqual(
+            it_program.minimum_initial_payment_percent,
+            Decimal('20.01'),
         )
 
     def test_sync_bank_mortgage_offers_renames_existing_raw_bank_name(self):
@@ -882,6 +976,7 @@ class BankMortgageOfferSyncTests(TestCase):
             result = sync_bank_mortgage_offers(
                 source_url='https://www.banki.ru/products/hypothec/',
                 cbr_source_url='https://www.cbr.ru/banking_sector/credit/FullCoList/',
+                google_sheet_sources=(),
             )
 
         self.assertEqual(result['created'], 4)
