@@ -1144,6 +1144,24 @@ class PropertyFormCascadeTests(TestCase):
             reverse('property:detail', kwargs={'pk': property_obj.pk}),
         )
 
+    def test_property_list_formats_property_cost_with_spaces(self):
+        """The property list should group price thousands with spaces."""
+        Property.objects.create(
+            apartment_number='101',
+            building=self.building,
+            decoration=self.decoration,
+            layout=self.layout,
+            area=Decimal('42.00'),
+            floor=10,
+            property_cost=Decimal('1000000.00'),
+        )
+
+        response = self.client.get(reverse('property:list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '1 000 000,00')
+        self.assertNotContains(response, '>1000000.00<')
+
     def test_property_detail_shows_title_window_views_and_images(self):
         """The property detail page should show new view and image fields."""
         property_obj = Property.objects.create(

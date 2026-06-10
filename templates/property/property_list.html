@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load mortgage_filters %}
 
 {% block title %}Объекты недвижимости{% endblock %}
 
@@ -115,7 +116,7 @@
                                     {% elif column.key == 'area' %}
                                         {{ property.area }}
                                     {% elif column.key == 'property_cost' %}
-                                        {{ property.property_cost }}
+                                        {{ property.property_cost|currency }}
                                     {% endif %}
                                 </td>
                                 {% endfor %}
