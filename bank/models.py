@@ -23,21 +23,6 @@ class Bank(BaseModel):
         default='',
         verbose_name='Логотип',
     )
-    interest_rate = models.DecimalField(
-        max_digits=5, decimal_places=2, verbose_name='Процентная ставка, %'
-    )
-    salary_client_discount = models.DecimalField(
-        max_digits=4,
-        decimal_places=2,
-        default=0,
-        verbose_name='Дисконт по ставке для зарплатных клиентов, п.п.',
-    )
-    maximum_loan_term_years = models.PositiveSmallIntegerField(
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(1)],
-        verbose_name='Максимальный срок кредита, лет',
-    )
     mortgage_programs = models.ManyToManyField(
         'MortgageProgram',
         through='BankProgram',

@@ -26,7 +26,6 @@ MARKET_MORTGAGE_CONDITION = (
 )
 RATE_LABEL = 'Ставка'
 INITIAL_PAYMENT_LABEL = 'Первоначальный взнос'
-DISCOUNT_LABEL = 'Пониженная ставка'
 TERM_LABEL = 'Срок'
 DETAILS_LABEL = 'Подробнее'
 
@@ -61,7 +60,6 @@ class BankMortgageOffer:
     program_name: str
     interest_rate: Decimal
     minimum_initial_payment_percent: Decimal
-    salary_client_discount: Decimal
     maximum_loan_term_years: int | None = None
     logo_url: str = ''
 
@@ -218,33 +216,6 @@ def _find_next_decimal(
     return None
 
 
-def _extract_discount(text_items, start_index, stop_index):
-    """Extract a salary/client discount from offer text."""
-    segment = ' '.join(text_items[start_index:stop_index])
-
-    salary_discount = re.search(
-        r'зарплатн.{0,120}?\+(\d+(?:[,.]\d+)?)\s*п',
-        segment,
-        flags=re.IGNORECASE,
-    )
-    if salary_discount:
-        return Decimal(salary_discount.group(1).replace(',', '.'))
-
-    for index in range(start_index, stop_index):
-        if text_items[index] != DISCOUNT_LABEL:
-            continue
-
-        decimal_value = _find_next_decimal(
-            text_items,
-            index + 1,
-            min(index + 4, stop_index),
-        )
-        if decimal_value is not None:
-            return decimal_value
-
-    return Decimal('0')
-
-
 def _extract_maximum_loan_term_years(text_items, start_index, stop_index):
     """Extract a maximum loan term from offer text."""
     for index in range(start_index, stop_index):
@@ -294,7 +265,6 @@ def _looks_like_offer_start(text_items, index):
     if bank_name in {
         RATE_LABEL,
         INITIAL_PAYMENT_LABEL,
-        DISCOUNT_LABEL,
         TERM_LABEL,
         DETAILS_LABEL,
     }:
@@ -410,11 +380,6 @@ def parse_banki_mortgage_offers(raw_html, source_url=BANKI_MORTGAGE_URL):
                 interest_rate=interest_rate,
                 minimum_initial_payment_percent=(
                     minimum_initial_payment_percent
-                ),
-                salary_client_discount=_extract_discount(
-                    text_items,
-                    bank_index + 1,
-                    next_bank_index,
                 ),
                 maximum_loan_term_years=_extract_maximum_loan_term_years(
                     text_items,
@@ -566,35 +531,16 @@ def sync_bank_mortgage_offers(source_url=None):
         bank, was_created = Bank.objects.get_or_create(
             name=offer.bank_name,
             defaults={
-                'interest_rate': offer.interest_rate,
-                'salary_client_discount': offer.salary_client_discount,
                 'logo_url': offer.logo_url,
-                'maximum_loan_term_years': offer.maximum_loan_term_years,
             },
         )
         if was_created:
             created += 1
         else:
             changed_fields = []
-            field_updates = (
-                ('interest_rate', offer.interest_rate),
-                ('salary_client_discount', offer.salary_client_discount),
-            )
-            for field_name, value in field_updates:
-                if getattr(bank, field_name) != value:
-                    setattr(bank, field_name, value)
-                    changed_fields.append(field_name)
-
             if offer.logo_url and bank.logo_url != offer.logo_url:
                 bank.logo_url = offer.logo_url
                 changed_fields.append('logo_url')
-            if (
-                offer.maximum_loan_term_years is not None
-                and bank.maximum_loan_term_years
-                != offer.maximum_loan_term_years
-            ):
-                bank.maximum_loan_term_years = offer.maximum_loan_term_years
-                changed_fields.append('maximum_loan_term_years')
 
             if changed_fields:
                 bank.save(update_fields=[*changed_fields, 'updated_at'])

@@ -20,9 +20,6 @@ class BankAdmin(admin.ModelAdmin):
     list_display = (
         'name',
         'logo_url',
-        'interest_rate',
-        'salary_client_discount',
-        'maximum_loan_term_years',
         'is_active',
         'created_at',
     )
