@@ -66,8 +66,18 @@ class BankCatalogView(BaseCatalogView):
         CatalogModelConfig(
             key='bank_program',
             model=BankProgram,
-            form_fields=('bank', 'mortgage_program'),
-            table_fields=('bank', 'mortgage_program'),
+            form_fields=(
+                'bank',
+                'mortgage_program',
+                'interest_rate',
+                'minimum_initial_payment_percent',
+            ),
+            table_fields=(
+                'bank',
+                'mortgage_program',
+                'interest_rate',
+                'minimum_initial_payment_percent',
+            ),
             order_by=('bank__name', 'mortgage_program__name'),
             select_related=('bank', 'mortgage_program'),
         ),
@@ -140,6 +150,10 @@ class BankCatalogView(BaseCatalogView):
             return {
                 'bank': 'bank__name',
                 'mortgage_program': 'mortgage_program__name',
+                'interest_rate': 'interest_rate',
+                'minimum_initial_payment_percent': (
+                    'minimum_initial_payment_percent'
+                ),
             }
         if config.key == 'mortgage_program_regional_credit_limit':
             return {
@@ -213,11 +227,11 @@ class BankCatalogView(BaseCatalogView):
             return queryset.order_by(*config.order_by)
 
         if config.key == 'bank_program':
-            bank_name = (self.request.GET.get('filter_bank') or '').strip()
+            bank_id = self.request.GET.get('filter_bank')
             program_id = self.request.GET.get('filter_program')
 
-            if bank_name:
-                queryset = queryset.filter(bank__name__icontains=bank_name)
+            if bank_id and bank_id.isdecimal():
+                queryset = queryset.filter(bank_id=bank_id)
             if program_id:
                 queryset = queryset.filter(mortgage_program_id=program_id)
 
@@ -354,6 +368,7 @@ class BankCatalogView(BaseCatalogView):
                 'bank': self.request.GET.get('filter_bank', ''),
                 'program': self.request.GET.get('filter_program', ''),
             }
+            context['banks_for_filter'] = Bank.objects.order_by('name')
             context['programs_for_filter'] = MortgageProgram.objects.order_by(
                 'name'
             )

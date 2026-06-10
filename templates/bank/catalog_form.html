@@ -70,7 +70,14 @@
 
                         <div class="col-md-6">
                             <label class="form-label">Банк</label>
-                            <input type="text" name="filter_bank" value="{{ bank_program_filters.bank }}" class="form-control" placeholder="Частичное совпадение">
+                            <select name="filter_bank" class="form-select">
+                                <option value="">Все банки</option>
+                                {% for bank in banks_for_filter %}
+                                <option value="{{ bank.id }}" {% if bank_program_filters.bank == bank.id|stringformat:'s' %}selected{% endif %}>
+                                    {{ bank.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Программа</label>

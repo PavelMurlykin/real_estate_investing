@@ -82,7 +82,14 @@ class BankProgramAdmin(admin.ModelAdmin):
     в данном модуле.
     """
 
-    list_display = ('bank', 'mortgage_program', 'is_active', 'created_at')
+    list_display = (
+        'bank',
+        'mortgage_program',
+        'interest_rate',
+        'minimum_initial_payment_percent',
+        'is_active',
+        'created_at',
+    )
     list_filter = ('bank', 'mortgage_program', 'is_active', 'created_at')
     search_fields = ('bank__name', 'mortgage_program__name')
     ordering = ('bank__name', 'mortgage_program__name')

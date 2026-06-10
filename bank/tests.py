@@ -8,7 +8,12 @@ from django.urls import reverse
 from location.models import Region
 
 from .key_rate_sync import KeyRateSyncError
-from .models import MortgageProgram, MortgageProgramRegionalCreditLimit
+from .models import (
+    Bank,
+    BankProgram,
+    MortgageProgram,
+    MortgageProgramRegionalCreditLimit,
+)
 
 
 class MortgageProgramCreditLimitTests(TestCase):
@@ -214,6 +219,123 @@ class MortgageProgramCreditLimitTests(TestCase):
             regional_credit_limit.credit_limit,
             Decimal('12000000.00'),
         )
+
+
+class BankProgramCatalogTests(TestCase):
+    """Checks bank mortgage program catalog behavior."""
+
+    def test_bank_program_catalog_shows_rate_and_initial_payment_fields(self):
+        """Checks new bank program fields are visible in the catalog."""
+        bank = Bank.objects.create(
+            name='Alpha Bank',
+            interest_rate=Decimal('11.50'),
+            salary_client_discount=Decimal('0.50'),
+        )
+        program = MortgageProgram.objects.create(
+            name='Family mortgage',
+            condition='Preferential terms',
+        )
+        BankProgram.objects.create(
+            bank=bank,
+            mortgage_program=program,
+            interest_rate=Decimal('7.20'),
+            minimum_initial_payment_percent=Decimal('20.00'),
+        )
+
+        response = self.client.get(
+            f'{reverse("bank:catalog")}?model=bank_program'
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Процентная ставка, %')
+        self.assertContains(response, 'Минимальный первый взнос, %')
+        self.assertContains(response, '7.20')
+        self.assertContains(response, '20.00')
+
+    def test_bank_program_catalog_saves_rate_and_initial_payment_fields(self):
+        """Checks saving bank program rate and initial payment values."""
+        bank = Bank.objects.create(
+            name='Alpha Bank',
+            interest_rate=Decimal('11.50'),
+            salary_client_discount=Decimal('0.50'),
+        )
+        program = MortgageProgram.objects.create(
+            name='Family mortgage',
+            condition='Preferential terms',
+        )
+
+        response = self.client.post(
+            reverse('bank:catalog'),
+            {
+                'action': 'save',
+                'model': 'bank_program',
+                'bank': str(bank.pk),
+                'mortgage_program': str(program.pk),
+                'interest_rate': '7.20',
+                'minimum_initial_payment_percent': '20.00',
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            f'{reverse("bank:catalog")}?model=bank_program',
+        )
+        bank_program = BankProgram.objects.get(
+            bank=bank,
+            mortgage_program=program,
+        )
+        self.assertEqual(bank_program.interest_rate, Decimal('7.20'))
+        self.assertEqual(
+            bank_program.minimum_initial_payment_percent,
+            Decimal('20.00'),
+        )
+
+    def test_bank_program_bank_filter_uses_select_and_filters_rows(self):
+        """Checks the bank program bank filter is a select control."""
+        first_bank = Bank.objects.create(
+            name='Alpha Bank',
+            interest_rate=Decimal('11.50'),
+            salary_client_discount=Decimal('0.50'),
+        )
+        second_bank = Bank.objects.create(
+            name='Beta Bank',
+            interest_rate=Decimal('12.50'),
+            salary_client_discount=Decimal('0.50'),
+        )
+        program = MortgageProgram.objects.create(
+            name='Family mortgage',
+            condition='Preferential terms',
+        )
+        BankProgram.objects.create(
+            bank=first_bank,
+            mortgage_program=program,
+            interest_rate=Decimal('7.20'),
+            minimum_initial_payment_percent=Decimal('20.00'),
+        )
+        BankProgram.objects.create(
+            bank=second_bank,
+            mortgage_program=program,
+            interest_rate=Decimal('8.10'),
+            minimum_initial_payment_percent=Decimal('25.00'),
+        )
+
+        response = self.client.get(
+            (
+                f'{reverse("bank:catalog")}'
+                f'?model=bank_program&filter_bank={first_bank.pk}'
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="filter_bank"')
+        self.assertContains(response, '<select name="filter_bank"')
+        self.assertEqual(len(response.context['rows']), 1)
+        row_values = [
+            cell['value']
+            for cell in response.context['rows'][0]['cells']
+        ]
+        self.assertIn(first_bank.name, row_values)
+        self.assertNotIn(second_bank.name, row_values)
 
 
 class KeyRateListViewTests(TestCase):

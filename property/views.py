@@ -184,6 +184,12 @@ class BaseCatalogView(TemplateView):
         if not isinstance(model_field, django_models.DecimalField):
             return False
 
+        if (
+            'percent' in model_field.name
+            or '%' in str(model_field.verbose_name)
+        ):
+            return False
+
         if (model_field.max_digits or 0) >= 10:
             return True
 

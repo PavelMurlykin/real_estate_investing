@@ -195,6 +195,20 @@ class BankProgram(BaseModel):
         on_delete=models.PROTECT,
         verbose_name='Ипотечная программа',
     )
+    interest_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('0'),
+        validators=[MinValueValidator(Decimal('0'))],
+        verbose_name='Процентная ставка, %',
+    )
+    minimum_initial_payment_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('0'),
+        validators=[MinValueValidator(Decimal('0'))],
+        verbose_name='Минимальный первый взнос, %',
+    )
 
     class Meta(BaseModel.Meta):
         """Описание служебного класса Meta.
