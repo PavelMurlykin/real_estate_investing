@@ -16,40 +16,84 @@ from .models import Bank, BankProgram, MortgageProgram
 
 logger = logging.getLogger(__name__)
 
+CBR_BANKS_URL = 'https://www.cbr.ru/banking_sector/credit/FullCoList/'
 BANKI_MORTGAGE_URL = 'https://www.banki.ru/products/hypothec/?place=all_programm'
 BANKI_TIMEOUT_SECONDS = 30
 BANKI_MAX_PAGES = 20
 BANK_NAME_MAX_LENGTH = Bank._meta.get_field('name').max_length
-MARKET_MORTGAGE_PROGRAM_NAME = 'Рыночная ипотека'
-MARKET_MORTGAGE_CONDITION = (
-    'Классическая ипотечная программа без государственных субсидий.'
-)
 RATE_LABEL = 'Ставка'
 INITIAL_PAYMENT_LABEL = 'Первоначальный взнос'
 TERM_LABEL = 'Срок'
 DETAILS_LABEL = 'Подробнее'
 
-MARKET_PROGRAM_KEYWORDS = (
-    'вторич',
-    'готовое жиль',
-    'ипотека',
-    'квартира',
-    'новострой',
-    'рыноч',
-)
 PREFERENTIAL_PROGRAM_KEYWORDS = (
     'аркти',
     'дальневост',
     'господдерж',
     'ит-',
     'it-',
+    'it ',
     'семей',
     'сельск',
 )
+SKIPPED_OFFER_TEXTS = {
+    RATE_LABEL,
+    INITIAL_PAYMENT_LABEL,
+    TERM_LABEL,
+    DETAILS_LABEL,
+    'ПСК',
+    'Платёж',
+    'Пониженная ставка',
+    'Отправить заявку',
+}
+LEGAL_NAME_PATTERNS = (
+    r'публичное акционерное общество',
+    r'акционерное общество',
+    r'непубличное акционерное общество',
+    r'общество с ограниченной ответственностью',
+    r'общество с дополнительной ответственностью',
+    r'коммерческий банк',
+    r'кредитный банк',
+    r'\bпао\b',
+    r'\bоао\b',
+    r'\bао\b',
+    r'\bзао\b',
+    r'\bнпао\b',
+    r'\bооо\b',
+    r'\bодо\b',
+    r'\bтоо\b',
+    r'\bкб\b',
+    r'\bакб\b',
+    r'\bбанк\b',
+)
+STORAGE_LEGAL_FORM_PATTERNS = (
+    r'публичное акционерное общество',
+    r'акционерное общество',
+    r'непубличное акционерное общество',
+    r'общество с ограниченной ответственностью',
+    r'общество с дополнительной ответственностью',
+    r'\bпао\b',
+    r'\bоао\b',
+    r'\bао\b',
+    r'\bзао\b',
+    r'\bнпао\b',
+    r'\bооо\b',
+    r'\bодо\b',
+    r'\bтоо\b',
+)
+QUOTE_CHARACTERS_PATTERN = r'[«»"\'„“”‟‹›‚‘’′″＂]'
+BRACKET_CHARACTERS_PATTERN = r'[\(\)\[\]\{\}<>〈〉《》「」『』【】〔〕]'
 
 
 class BankMortgageSyncError(Exception):
     """Raised when bank mortgage offer synchronization cannot continue."""
+
+
+@dataclass(frozen=True)
+class CbrBankRecord:
+    """Normalized active bank row from the Bank of Russia registry."""
+
+    name: str
 
 
 @dataclass(frozen=True)
@@ -76,9 +120,13 @@ def _extract_image_source(attrs_dict):
         if not source_set:
             continue
 
-        first_source = source_set.split(',', 1)[0].strip()
-        if first_source:
-            return first_source.split()[0]
+        sources = [
+            source.strip()
+            for source in source_set.split(',')
+            if source.strip()
+        ]
+        if sources:
+            return sources[-1].split()[0]
 
     return ''
 
@@ -104,7 +152,12 @@ class _MortgageOfferHtmlParser(HTMLParser):
         if tag != 'img':
             return
 
-        alt_text = (attrs_dict.get('alt') or '').strip()
+        alt_text = (
+            attrs_dict.get('alt')
+            or attrs_dict.get('title')
+            or attrs_dict.get('aria-label')
+            or ''
+        ).strip()
         source_url = _extract_image_source(attrs_dict)
 
         if alt_text:
@@ -132,9 +185,102 @@ class _MortgageOfferHtmlParser(HTMLParser):
             self.text_items.append(text)
 
 
+class _CbrBankListHtmlParser(HTMLParser):
+    """Collect table cells from the Bank of Russia bank registry page."""
+
+    def __init__(self):
+        """Initialize parser state."""
+        super().__init__(convert_charrefs=True)
+        self.rows = []
+        self._current_row = None
+        self._current_cell = None
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        """Start collecting table rows and cells."""
+        if tag in {'script', 'style', 'noscript'}:
+            self._skip_depth += 1
+            return
+        if self._skip_depth:
+            return
+        if tag == 'tr':
+            self._current_row = []
+            return
+        if tag in {'td', 'th'} and self._current_row is not None:
+            self._current_cell = []
+
+    def handle_endtag(self, tag):
+        """Finish collecting table rows and cells."""
+        if tag in {'script', 'style', 'noscript'} and self._skip_depth:
+            self._skip_depth -= 1
+            return
+        if self._skip_depth:
+            return
+        if tag in {'td', 'th'} and self._current_cell is not None:
+            self._current_row.append(
+                ' '.join(' '.join(self._current_cell).split())
+            )
+            self._current_cell = None
+            return
+        if tag == 'tr' and self._current_row is not None:
+            if self._current_row:
+                self.rows.append(self._current_row)
+            self._current_row = None
+
+    def handle_data(self, data):
+        """Collect table cell text."""
+        if self._skip_depth or self._current_cell is None:
+            return
+        text = ' '.join(data.split())
+        if text:
+            self._current_cell.append(text)
+
+
 def _normalize_name(value):
-    """Normalize a bank or program name for comparisons."""
+    """Normalize a bank or program name for exact text comparisons."""
     return re.sub(r'\s+', ' ', value).strip().lower()
+
+
+def normalize_bank_name_for_storage(value):
+    """Normalize an imported bank name before saving it."""
+    normalized_value = re.sub(QUOTE_CHARACTERS_PATTERN, '', value or '')
+    normalized_value = re.sub(BRACKET_CHARACTERS_PATTERN, ' ', normalized_value)
+
+    for pattern in STORAGE_LEGAL_FORM_PATTERNS:
+        normalized_value = re.sub(
+            pattern,
+            ' ',
+            normalized_value,
+            flags=re.IGNORECASE,
+        )
+
+    return re.sub(r'\s+', ' ', normalized_value).strip()
+
+
+def _normalize_bank_match_name(value):
+    """Normalize a bank name for CBR-to-Banki.ru matching."""
+    normalized_value = _normalize_name(value).replace('ё', 'е')
+    normalized_value = normalized_value.replace('&quot;', '').replace(
+        '&nbsp;',
+        ' ',
+    )
+    normalized_value = re.sub(r'[«»"“”„]', '', normalized_value)
+    normalized_value = re.sub(r'\([^)]*\)', ' ', normalized_value)
+
+    for pattern in LEGAL_NAME_PATTERNS:
+        normalized_value = re.sub(pattern, ' ', normalized_value)
+
+    normalized_value = re.sub(r'[^a-zа-я0-9]+', '', normalized_value)
+    aliases = {
+        'сбер': 'сбербанк',
+        'сбербанкроссии': 'сбербанк',
+        'тбанк': 'тбанк',
+        'тинькофф': 'тбанк',
+        'тинькоффбанк': 'тбанк',
+        'домрф': 'домрф',
+        'россельхоз': 'россельхозбанк',
+    }
+    return aliases.get(normalized_value, normalized_value)
 
 
 def _is_valid_bank_name(value):
@@ -142,9 +288,35 @@ def _is_valid_bank_name(value):
     normalized_value = re.sub(r'\s+', ' ', value or '').strip()
     if not normalized_value:
         return False
+    normalized_lower_value = normalized_value.lower()
+    if normalized_lower_value.startswith(('от ', 'до ')):
+        return False
+    if re.search(
+        r'\b(?:лет|года|год|дней|дня|день)\b',
+        normalized_lower_value,
+    ):
+        return False
     if len(normalized_value) > BANK_NAME_MAX_LENGTH:
         return False
     if '%' in normalized_value or '₽' in normalized_value:
+        return False
+    return True
+
+
+def _looks_like_program_name(value):
+    """Return whether a text fragment can be a mortgage program name."""
+    normalized_value = re.sub(r'\s+', ' ', value or '').strip()
+    if not normalized_value:
+        return False
+    if normalized_value in SKIPPED_OFFER_TEXTS:
+        return False
+    if len(normalized_value) > 140:
+        return False
+    if '%' in normalized_value or '₽' in normalized_value:
+        return False
+    if re.fullmatch(r'[\d\s.,–—-]+', normalized_value):
+        return False
+    if normalized_value.lower().startswith('ещё '):
         return False
     return True
 
@@ -191,15 +363,13 @@ def _parse_maximum_years(value):
     return None
 
 
-def _is_market_mortgage_program(program_name):
-    """Return whether a source program looks like market mortgage."""
-    normalized_name = _normalize_name(program_name)
-    if any(
+def _is_preferential_program(program_name):
+    """Return whether a source program looks like a preferential mortgage."""
+    normalized_name = _normalize_name(program_name).replace('ё', 'е')
+    return any(
         keyword in normalized_name
         for keyword in PREFERENTIAL_PROGRAM_KEYWORDS
-    ):
-        return False
-    return any(keyword in normalized_name for keyword in MARKET_PROGRAM_KEYWORDS)
+    )
 
 
 def _find_next_decimal(
@@ -255,40 +425,41 @@ def _find_label_index(text_items, label, start_index, stop_index):
 
 def _looks_like_offer_start(text_items, index):
     """Return whether text at index looks like the start of an offer card."""
-    if index + 1 >= len(text_items):
+    if index + 2 >= len(text_items):
         return False
 
     bank_name = text_items[index]
     program_name = text_items[index + 1]
-    if not _is_valid_bank_name(bank_name) or not program_name:
+    if not _is_valid_bank_name(bank_name):
         return False
-    if bank_name in {
-        RATE_LABEL,
-        INITIAL_PAYMENT_LABEL,
-        TERM_LABEL,
+    if bank_name in SKIPPED_OFFER_TEXTS:
+        return False
+    if not _looks_like_program_name(program_name):
+        return False
+
+    stop_index = min(index + 45, len(text_items))
+    details_index = _find_label_index(
+        text_items,
         DETAILS_LABEL,
-    }:
-        return False
-    if not _is_market_mortgage_program(program_name):
+        index + 2,
+        min(index + 8, stop_index),
+    )
+    if details_index is None:
         return False
 
-    stop_index = min(index + 40, len(text_items))
-    has_rate = _find_label_index(
+    rate_index = _find_label_index(
         text_items,
         RATE_LABEL,
         index + 2,
         stop_index,
     )
-    has_initial_payment = _find_label_index(
+    initial_payment_index = _find_label_index(
         text_items,
         INITIAL_PAYMENT_LABEL,
         index + 2,
         stop_index,
     )
-    if has_rate is None or has_initial_payment is None:
-        return False
-
-    return True
+    return rate_index is not None and initial_payment_index is not None
 
 
 def _find_offer_card_indexes(text_items, images):
@@ -310,8 +481,51 @@ def _find_offer_card_indexes(text_items, images):
     return sorted(indexes)
 
 
+def parse_cbr_bank_records(raw_html):
+    """Parse active bank records from the Bank of Russia registry page."""
+    parser = _CbrBankListHtmlParser()
+    parser.feed(raw_html)
+    records = []
+
+    for cells in parser.rows:
+        if len(cells) < 8:
+            continue
+        if cells[0] == '№ п/п' or cells[4] == 'Наименование':
+            continue
+
+        credit_organization_type = cells[1]
+        name = cells[4]
+        license_status = cells[7]
+        if credit_organization_type:
+            continue
+        if license_status not in {'', 'Действующая'}:
+            continue
+        if not _is_valid_bank_name(name):
+            continue
+
+        normalized_name = normalize_bank_name_for_storage(name)
+        if not _is_valid_bank_name(normalized_name):
+            continue
+        records.append(CbrBankRecord(name=normalized_name))
+
+    if not records:
+        raise BankMortgageSyncError(
+            'Не удалось распарсить список банков Банка России.'
+        )
+
+    unique_records = []
+    seen_names = set()
+    for record in records:
+        if record.name in seen_names:
+            continue
+        unique_records.append(record)
+        seen_names.add(record.name)
+
+    return unique_records
+
+
 def parse_banki_mortgage_offers(raw_html, source_url=BANKI_MORTGAGE_URL):
-    """Parse market mortgage bank offers from Banki.ru HTML."""
+    """Parse mortgage bank offers from Banki.ru HTML."""
     parser = _MortgageOfferHtmlParser(source_url)
     parser.feed(raw_html)
 
@@ -340,8 +554,6 @@ def parse_banki_mortgage_offers(raw_html, source_url=BANKI_MORTGAGE_URL):
                 'Skipped mortgage offer with invalid bank name: %r',
                 bank_name,
             )
-            continue
-        if not _is_market_mortgage_program(program_name):
             continue
 
         rate_label_index = _find_label_index(
@@ -398,8 +610,8 @@ def parse_banki_mortgage_offers(raw_html, source_url=BANKI_MORTGAGE_URL):
     return offers
 
 
-def _download_banki_mortgage_payload(source_url):
-    """Download a mortgage offers page from the configured source."""
+def _download_payload(source_url):
+    """Download an HTML page from an external source."""
     request = Request(
         source_url,
         headers={
@@ -410,6 +622,16 @@ def _download_banki_mortgage_payload(source_url):
     )
     with urlopen(request, timeout=BANKI_TIMEOUT_SECONDS) as response:
         return response.read().decode('utf-8', errors='ignore')
+
+
+def _download_cbr_bank_list_payload(source_url):
+    """Download the Bank of Russia bank registry page."""
+    return _download_payload(source_url)
+
+
+def _download_banki_mortgage_payload(source_url):
+    """Download a mortgage offers page from the configured source."""
+    return _download_payload(source_url)
 
 
 def _get_page_number(source_url):
@@ -473,26 +695,116 @@ def _download_banki_mortgage_payloads(source_url):
     return payloads
 
 
-def _select_best_offers(offers):
-    """Select the best market mortgage offer per bank."""
+def _select_best_program_offers(offers):
+    """Select the best offer per bank and mortgage program."""
     best_offers = {}
     for offer in offers:
-        stored_offer = best_offers.get(offer.bank_name)
+        key = (
+            _normalize_bank_match_name(offer.bank_name),
+            _normalize_name(offer.program_name),
+        )
+        stored_offer = best_offers.get(key)
         if (
             stored_offer is None
             or offer.interest_rate < stored_offer.interest_rate
         ):
-            best_offers[offer.bank_name] = offer
+            best_offers[key] = offer
     return list(best_offers.values())
 
 
+def _build_bank_lookup(banks):
+    """Build normalized lookup keys for active banks."""
+    lookup = {}
+    for bank in banks:
+        key = _normalize_bank_match_name(bank.name)
+        if key and key not in lookup:
+            lookup[key] = bank
+    return lookup
+
+
+def _find_matching_bank(bank_name, bank_lookup):
+    """Find a CBR bank by a Banki.ru bank name."""
+    bank_key = _normalize_bank_match_name(bank_name)
+    if bank_key in bank_lookup:
+        return bank_lookup[bank_key]
+
+    if len(bank_key) < 4:
+        return None
+
+    matching_banks = [
+        bank
+        for cbr_key, bank in bank_lookup.items()
+        if (
+            len(cbr_key) >= 4
+            and (bank_key in cbr_key or cbr_key in bank_key)
+        )
+    ]
+    if len(matching_banks) == 1:
+        return matching_banks[0]
+    return None
+
+
+def _sync_cbr_banks(records):
+    """Create and reactivate banks from the Bank of Russia registry."""
+    created = 0
+    updated = 0
+    synced_banks = []
+    existing_banks_by_normalized_name = {}
+
+    for bank in Bank.objects.all():
+        normalized_name = normalize_bank_name_for_storage(bank.name)
+        if not normalized_name:
+            continue
+        if bank.name == normalized_name:
+            existing_banks_by_normalized_name[normalized_name] = bank
+        elif normalized_name not in existing_banks_by_normalized_name:
+            existing_banks_by_normalized_name[normalized_name] = bank
+
+    for record in records:
+        bank = existing_banks_by_normalized_name.get(record.name)
+        if bank is None:
+            bank = Bank.objects.create(name=record.name)
+            created += 1
+            existing_banks_by_normalized_name[record.name] = bank
+        else:
+            changed_fields = []
+            if bank.name != record.name:
+                bank.name = record.name
+                changed_fields.append('name')
+            if not bank.is_active:
+                bank.is_active = True
+                changed_fields.append('is_active')
+            if changed_fields:
+                bank.save(update_fields=[*changed_fields, 'updated_at'])
+                updated += 1
+
+        if not bank.is_active:
+            bank.is_active = True
+            bank.save(update_fields=['is_active', 'updated_at'])
+            updated += 1
+        synced_banks.append(bank)
+
+    return created, updated, synced_banks
+
+
 @transaction.atomic
-def sync_bank_mortgage_offers(source_url=None):
-    """Synchronize banks and market mortgage conditions from a source page."""
+def sync_bank_mortgage_offers(source_url=None, cbr_source_url=None):
+    """Synchronize CBR banks and Banki.ru mortgage program conditions."""
     resolved_source_url = (
         source_url
         or getattr(settings, 'BANK_MORTGAGE_OFFERS_URL', BANKI_MORTGAGE_URL)
     )
+    resolved_cbr_source_url = (
+        cbr_source_url
+        or getattr(settings, 'BANK_LIST_SOURCE_URL', CBR_BANKS_URL)
+    )
+
+    cbr_records = parse_cbr_bank_records(
+        _download_cbr_bank_list_payload(resolved_cbr_source_url)
+    )
+    created, updated, cbr_banks = _sync_cbr_banks(cbr_records)
+    bank_lookup = _build_bank_lookup(cbr_banks)
+
     all_offers = []
     for page_url, raw_html in _download_banki_mortgage_payloads(
         resolved_source_url
@@ -514,37 +826,34 @@ def sync_bank_mortgage_offers(source_url=None):
             'Не удалось распарсить ипотечные предложения банков.'
         )
 
-    offers = _select_best_offers(all_offers)
-
-    mortgage_program, _ = MortgageProgram.objects.get_or_create(
-        name=MARKET_MORTGAGE_PROGRAM_NAME,
-        defaults={
-            'condition': MARKET_MORTGAGE_CONDITION,
-            'is_preferential': False,
-        },
-    )
-
-    created = 0
-    updated = 0
+    offers = _select_best_program_offers(all_offers)
+    processed = 0
+    skipped = 0
 
     for offer in offers:
-        bank, was_created = Bank.objects.get_or_create(
-            name=offer.bank_name,
+        bank = _find_matching_bank(offer.bank_name, bank_lookup)
+        if bank is None:
+            skipped += 1
+            logger.warning(
+                'Skipped mortgage offer for bank absent from CBR list: %s',
+                offer.bank_name,
+            )
+            continue
+
+        if offer.logo_url and bank.logo_url != offer.logo_url:
+            bank.logo_url = offer.logo_url
+            bank.save(update_fields=['logo_url', 'updated_at'])
+            updated += 1
+
+        mortgage_program, _ = MortgageProgram.objects.get_or_create(
+            name=offer.program_name,
             defaults={
-                'logo_url': offer.logo_url,
+                'condition': 'Программа импортирована с Banki.ru.',
+                'is_preferential': _is_preferential_program(
+                    offer.program_name
+                ),
             },
         )
-        if was_created:
-            created += 1
-        else:
-            changed_fields = []
-            if offer.logo_url and bank.logo_url != offer.logo_url:
-                bank.logo_url = offer.logo_url
-                changed_fields.append('logo_url')
-
-            if changed_fields:
-                bank.save(update_fields=[*changed_fields, 'updated_at'])
-                updated += 1
 
         bank_program_defaults = {
             'interest_rate': offer.interest_rate,
@@ -557,15 +866,21 @@ def sync_bank_mortgage_offers(source_url=None):
                 offer.maximum_loan_term_years
             )
 
-        bank_program, _ = BankProgram.objects.update_or_create(
+        bank_program, was_created = BankProgram.objects.update_or_create(
             bank=bank,
             mortgage_program=mortgage_program,
             defaults=bank_program_defaults,
         )
+        if not was_created:
+            updated += 1
         logger.debug('Synced bank program %s', bank_program.pk)
+        processed += 1
 
     return {
         'created': created,
         'updated': updated,
-        'processed': len(offers),
+        'processed': processed,
+        'banks_processed': len(cbr_records),
+        'offers_processed': len(offers),
+        'skipped': skipped,
     }

@@ -70,11 +70,20 @@
                 <div class="card-body">
                     <form method="get" class="row g-2 mb-4" data-catalog-filter-form data-catalog-results-target="#catalog-results">
                         <input type="hidden" name="model" value="bank">
-                        <div class="col-md-9">
+                        <div class="col-md-5">
                             <label class="form-label">Название</label>
                             <input type="text" name="filter_name" value="{{ bank_filters.name }}" class="form-control" data-catalog-filter-control>
                         </div>
-                        <div class="col-md-3 d-flex align-items-end">
+                        <div class="col-md-5">
+                            <label class="form-label">Список банков</label>
+                            <div class="btn-group w-100" role="group" aria-label="Список банков">
+                                <input type="radio" class="btn-check" name="filter_bank_scope" id="filter-bank-scope-all" value="all" autocomplete="off" data-catalog-filter-control data-catalog-filter-event="change" {% if bank_filters.scope != 'with_programs' %}checked{% endif %}>
+                                <label class="btn btn-outline-primary" for="filter-bank-scope-all">Все банки</label>
+                                <input type="radio" class="btn-check" name="filter_bank_scope" id="filter-bank-scope-with-programs" value="with_programs" autocomplete="off" data-catalog-filter-control data-catalog-filter-event="change" {% if bank_filters.scope == 'with_programs' %}checked{% endif %}>
+                                <label class="btn btn-outline-primary" for="filter-bank-scope-with-programs">С ипотечными программами</label>
+                            </div>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
                             <a href="?model=bank" class="btn btn-outline-secondary">Сбросить</a>
                         </div>
                     </form>

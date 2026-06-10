@@ -187,6 +187,12 @@ class BankCatalogView(BaseCatalogView):
             if name:
                 queryset = queryset.filter(name__icontains=name)
 
+            bank_scope = self.request.GET.get('filter_bank_scope', 'all')
+            if bank_scope == 'with_programs':
+                queryset = queryset.filter(
+                    mortgage_programs__isnull=False,
+                ).distinct()
+
             sort_field = self.get_sort_field_map(config).get(sort_by)
             if sort_field:
                 return queryset.order_by(f'{sort_prefix}{sort_field}')
@@ -257,7 +263,9 @@ class BankCatalogView(BaseCatalogView):
         """Return the selected bank for the side program table."""
         selected_bank_id = self.request.GET.get('selected_bank')
         if selected_bank_id and selected_bank_id.isdecimal():
-            selected_bank = Bank.objects.filter(pk=selected_bank_id).first()
+            selected_bank = bank_page.paginator.object_list.filter(
+                pk=selected_bank_id,
+            ).first()
             if selected_bank is not None:
                 return selected_bank
 
@@ -301,6 +309,7 @@ class BankCatalogView(BaseCatalogView):
             context['rows'] = self.build_rows(config, context['columns'])
             context['bank_filters'] = {
                 'name': self.request.GET.get('filter_name', ''),
+                'scope': self.request.GET.get('filter_bank_scope', 'all'),
             }
             context['page_obj'] = bank_page
             context['pagination_querystring'] = (

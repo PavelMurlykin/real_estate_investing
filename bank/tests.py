@@ -10,7 +10,8 @@ from location.models import Region
 from .forms import BankForm
 from .key_rate_sync import KeyRateSyncError
 from .mortgage_offer_sync import (
-    MARKET_MORTGAGE_PROGRAM_NAME,
+    normalize_bank_name_for_storage,
+    parse_cbr_bank_records,
     parse_banki_mortgage_offers,
     sync_bank_mortgage_offers,
 )
@@ -28,6 +29,7 @@ SAMPLE_BANKI_MORTGAGE_HTML = '''
       <img alt="ВТБ" srcset="/logos/vtb-small.svg 1x, /logos/vtb.svg 2x">
       <h2>ВТБ</h2>
       <div>Вторичное жилье</div>
+      <div>Подробнее</div>
       <div>ПСК</div>
       <div>23.446%–31.458%</div>
       <div>Ставка</div>
@@ -45,6 +47,7 @@ SAMPLE_BANKI_MORTGAGE_HTML = '''
       <img alt="Альфа-Банк" data-srcset="https://img.example/alpha.svg 1x">
       <h2>Альфа-Банк</h2>
       <div>На вторичное жильё</div>
+      <div>Подробнее</div>
       <div>Ставка</div>
       <div>19.99%–20.39%</div>
       <div>Первоначальный взнос</div>
@@ -69,12 +72,110 @@ SAMPLE_BANKI_MORTGAGE_HTML = '''
       <img alt="Т-Банк" src="/logos/tbank.svg">
       <h2>Т-Банк</h2>
       <div>Семейная ипотека</div>
+      <div>Подробнее</div>
       <div>Ставка</div>
       <div>4%</div>
       <div>Первоначальный взнос</div>
       <div>от 20%</div>
     </article>
     <a href="/products/hypothec/?page=2">Показать ещё</a>
+  </body>
+</html>
+'''
+
+SAMPLE_CBR_BANK_LIST_HTML = '''
+<html>
+  <body>
+    <table>
+      <tr>
+        <th>№ п/п</th>
+        <th>Вид</th>
+        <th>Регистрационный номер</th>
+        <th>ОГРН</th>
+        <th>Наименование</th>
+        <th>Организационно-правовая форма</th>
+        <th>Дата регистрации Банком России</th>
+        <th>Статус лицензии</th>
+        <th>Местонахождение</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td></td>
+        <td>1000</td>
+        <td>1020000000001</td>
+        <td>Банк ВТБ (ПАО)</td>
+        <td>ПАО</td>
+        <td>01.01.1990</td>
+        <td>Действующая</td>
+        <td>Москва</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td></td>
+        <td>2000</td>
+        <td>1020000000002</td>
+        <td>АО «Альфа-Банк»</td>
+        <td>НПАО</td>
+        <td>01.01.1990</td>
+        <td>Действующая</td>
+        <td>Москва</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td></td>
+        <td>3000</td>
+        <td>1020000000003</td>
+        <td>Банк без логотипа</td>
+        <td>ПАО</td>
+        <td>01.01.1990</td>
+        <td>Действующая</td>
+        <td>Москва</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td></td>
+        <td>4000</td>
+        <td>1020000000004</td>
+        <td>Т-Банк</td>
+        <td>НПАО</td>
+        <td>01.01.1990</td>
+        <td>Действующая</td>
+        <td>Москва</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td></td>
+        <td>5000</td>
+        <td>1020000000005</td>
+        <td>Газпромбанк</td>
+        <td>ПАО</td>
+        <td>01.01.1990</td>
+        <td>Действующая</td>
+        <td>Москва</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>Расчетная НКО</td>
+        <td>6000</td>
+        <td>1020000000006</td>
+        <td>НКО «Платежный Центр»</td>
+        <td>ООО</td>
+        <td>01.01.1990</td>
+        <td>Действующая</td>
+        <td>Москва</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td></td>
+        <td>7000</td>
+        <td>1020000000007</td>
+        <td>Отозванный Банк</td>
+        <td>ПАО</td>
+        <td>01.01.1990</td>
+        <td>Отозванная</td>
+        <td>Москва</td>
+      </tr>
+    </table>
   </body>
 </html>
 '''
@@ -342,7 +443,38 @@ class BankProgramCatalogTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-catalog-filter-form')
         self.assertContains(response, 'data-catalog-filter-control')
+        self.assertContains(response, 'name="filter_bank_scope"')
+        self.assertContains(response, 'Все банки')
+        self.assertContains(response, 'С ипотечными программами')
         self.assertNotContains(response, '>Применить</button>')
+
+    def test_bank_catalog_scope_filter_shows_banks_with_programs(self):
+        """Checks bank scope filter hides banks without mortgage programs."""
+        bank_with_program = Bank.objects.create(name='Alpha Bank')
+        bank_without_program = Bank.objects.create(name='Beta Bank')
+        program = MortgageProgram.objects.create(
+            name='Market mortgage',
+            condition='Regular terms',
+        )
+        BankProgram.objects.create(
+            bank=bank_with_program,
+            mortgage_program=program,
+            interest_rate=Decimal('12.50'),
+            minimum_initial_payment_percent=Decimal('20.00'),
+        )
+
+        response = self.client.get(
+            (
+                f'{reverse("bank:catalog")}'
+                '?model=bank&filter_bank_scope=with_programs'
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['selected_bank'], bank_with_program)
+        self.assertEqual(len(response.context['rows']), 1)
+        self.assertContains(response, bank_with_program.name)
+        self.assertNotContains(response, bank_without_program.name)
 
     def test_bank_catalog_shows_selected_bank_programs_and_detail_action(self):
         """Checks bank catalog side table and bank card action."""
@@ -573,14 +705,38 @@ class BankProgramCatalogTests(TestCase):
 class BankMortgageOfferSyncTests(TestCase):
     """Checks parsing and synchronization of bank mortgage offers."""
 
-    def test_parse_banki_mortgage_offers_extracts_market_offers(self):
-        """Checks parser extracts market offers and skips preferential ones."""
+    def test_normalize_bank_name_for_storage_removes_legal_wrappers(self):
+        """Checks imported bank names are cleaned before saving."""
+        self.assertEqual(
+            normalize_bank_name_for_storage(
+                '  ПАО «„Тестовый Банк“» [АО] {ООО}  '
+            ),
+            'Тестовый Банк',
+        )
+
+    def test_parse_cbr_bank_records_extracts_active_banks_only(self):
+        """Checks CBR parser skips non-banks and inactive banks."""
+        records = parse_cbr_bank_records(SAMPLE_CBR_BANK_LIST_HTML)
+
+        self.assertEqual(
+            [record.name for record in records],
+            [
+                'Банк ВТБ',
+                'Альфа-Банк',
+                'Банк без логотипа',
+                'Т-Банк',
+                'Газпромбанк',
+            ],
+        )
+
+    def test_parse_banki_mortgage_offers_extracts_all_program_types(self):
+        """Checks parser extracts market and preferential mortgage offers."""
         offers = parse_banki_mortgage_offers(
             SAMPLE_BANKI_MORTGAGE_HTML,
             source_url='https://www.banki.ru/products/hypothec/',
         )
 
-        self.assertEqual(len(offers), 3)
+        self.assertEqual(len(offers), 4)
         self.assertEqual(offers[0].bank_name, 'ВТБ')
         self.assertEqual(offers[0].interest_rate, Decimal('23.2'))
         self.assertEqual(
@@ -590,7 +746,7 @@ class BankMortgageOfferSyncTests(TestCase):
         self.assertEqual(offers[0].maximum_loan_term_years, 30)
         self.assertEqual(
             offers[0].logo_url,
-            'https://www.banki.ru/logos/vtb-small.svg',
+            'https://www.banki.ru/logos/vtb.svg',
         )
         self.assertEqual(offers[1].bank_name, 'Альфа-Банк')
         self.assertEqual(offers[1].interest_rate, Decimal('20.39'))
@@ -598,6 +754,9 @@ class BankMortgageOfferSyncTests(TestCase):
         self.assertEqual(offers[2].interest_rate, Decimal('19.99'))
         self.assertEqual(offers[2].maximum_loan_term_years, 20)
         self.assertEqual(offers[2].logo_url, '')
+        self.assertEqual(offers[3].bank_name, 'Т-Банк')
+        self.assertEqual(offers[3].program_name, 'Семейная ипотека')
+        self.assertEqual(offers[3].interest_rate, Decimal('4'))
 
     def test_parse_banki_mortgage_offers_skips_too_long_bank_name(self):
         """Checks parser rejects text fragments that cannot fit Bank.name."""
@@ -636,31 +795,37 @@ class BankMortgageOfferSyncTests(TestCase):
         self.assertEqual(offers[0].bank_name, 'Надежный Банк')
 
     def test_sync_bank_mortgage_offers_creates_banks_and_program_links(self):
-        """Checks synchronization loads banks and market mortgage conditions."""
+        """Checks synchronization loads CBR banks and Banki.ru programs."""
         def fake_download(source_url):
             if 'page=2' in source_url:
                 return SAMPLE_BANKI_MORTGAGE_SECOND_PAGE_HTML
             return SAMPLE_BANKI_MORTGAGE_HTML
 
         with patch(
+            'bank.mortgage_offer_sync._download_cbr_bank_list_payload',
+            return_value=SAMPLE_CBR_BANK_LIST_HTML,
+        ), patch(
             'bank.mortgage_offer_sync._download_banki_mortgage_payload',
             side_effect=fake_download,
         ):
             result = sync_bank_mortgage_offers(
-                source_url='https://www.banki.ru/products/hypothec/'
+                source_url='https://www.banki.ru/products/hypothec/',
+                cbr_source_url='https://www.cbr.ru/banking_sector/credit/FullCoList/',
             )
 
-        self.assertEqual(result['created'], 4)
-        self.assertEqual(result['processed'], 4)
-        bank = Bank.objects.get(name='ВТБ')
+        self.assertEqual(result['created'], 5)
+        self.assertEqual(result['processed'], 5)
+        self.assertEqual(result['skipped'], 0)
+        bank = Bank.objects.get(name='Банк ВТБ')
         self.assertEqual(
             bank.logo_url,
-            'https://www.banki.ru/logos/vtb-small.svg',
+            'https://www.banki.ru/logos/vtb.svg',
         )
         self.assertTrue(Bank.objects.filter(name='Газпромбанк').exists())
+        self.assertFalse(Bank.objects.filter(name='Отозванный Банк').exists())
         bank_program = BankProgram.objects.get(
             bank=bank,
-            mortgage_program__name=MARKET_MORTGAGE_PROGRAM_NAME,
+            mortgage_program__name='Вторичное жилье',
         )
         self.assertEqual(bank_program.interest_rate, Decimal('23.2'))
         self.assertEqual(
@@ -668,6 +833,61 @@ class BankMortgageOfferSyncTests(TestCase):
             Decimal('20.1'),
         )
         self.assertEqual(bank_program.maximum_loan_term_years, 30)
+        self.assertTrue(
+            BankProgram.objects.filter(
+                bank__name='Т-Банк',
+                mortgage_program__name='Семейная ипотека',
+            ).exists()
+        )
+
+    def test_sync_bank_mortgage_offers_skips_unknown_banki_banks(self):
+        """Checks Banki.ru offers are not added when absent from CBR list."""
+        cbr_html = SAMPLE_CBR_BANK_LIST_HTML.replace(
+            '<td>Банк без логотипа</td>',
+            '<td>Другой Банк</td>',
+        )
+
+        with patch(
+            'bank.mortgage_offer_sync._download_cbr_bank_list_payload',
+            return_value=cbr_html,
+        ), patch(
+            'bank.mortgage_offer_sync._download_banki_mortgage_payload',
+            return_value=SAMPLE_BANKI_MORTGAGE_HTML,
+        ):
+            result = sync_bank_mortgage_offers(
+                source_url='https://www.banki.ru/products/hypothec/',
+                cbr_source_url='https://www.cbr.ru/banking_sector/credit/FullCoList/',
+            )
+
+        self.assertEqual(result['processed'], 3)
+        self.assertEqual(result['skipped'], 1)
+        self.assertFalse(
+            BankProgram.objects.filter(
+                bank__name='Банк без логотипа',
+                mortgage_program__name='Готовое жилье',
+            ).exists()
+        )
+
+    def test_sync_bank_mortgage_offers_renames_existing_raw_bank_name(self):
+        """Checks sync updates a previously imported unnormalized bank name."""
+        Bank.objects.create(name='Банк ВТБ (ПАО)')
+
+        with patch(
+            'bank.mortgage_offer_sync._download_cbr_bank_list_payload',
+            return_value=SAMPLE_CBR_BANK_LIST_HTML,
+        ), patch(
+            'bank.mortgage_offer_sync._download_banki_mortgage_payload',
+            return_value=SAMPLE_BANKI_MORTGAGE_HTML,
+        ):
+            result = sync_bank_mortgage_offers(
+                source_url='https://www.banki.ru/products/hypothec/',
+                cbr_source_url='https://www.cbr.ru/banking_sector/credit/FullCoList/',
+            )
+
+        self.assertEqual(result['created'], 4)
+        self.assertGreaterEqual(result['updated'], 1)
+        self.assertTrue(Bank.objects.filter(name='Банк ВТБ').exists())
+        self.assertFalse(Bank.objects.filter(name='Банк ВТБ (ПАО)').exists())
 
     def test_bank_catalog_shows_bank_logo_before_name(self):
         """Checks bank logo is rendered in the bank catalog name column."""
