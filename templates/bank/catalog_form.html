@@ -3,10 +3,46 @@
 
 {% block title %}{{ section_title }}{% endblock %}
 
+{% block extra_css %}
+<style>
+  .bank-logo-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .bank-logo {
+    width: 2rem;
+    height: 2rem;
+    object-fit: contain;
+    border-radius: 0.25rem;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>{{ section_title }}</h1>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <h1 class="mb-0">{{ section_title }}</h1>
+        {% if model_key == 'bank' %}
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            {% if last_synced_at %}
+            <span class="text-body-secondary small">
+                Обновлено: {{ last_synced_at|date:"d.m.Y H:i" }}
+            </span>
+            {% endif %}
+            <form method="post" action="{{ form_action_url }}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="sync_bank_mortgage_offers">
+                <input type="hidden" name="model" value="bank">
+                <button type="submit" class="btn btn-outline-primary">
+                    Обновить данные банков
+                </button>
+            </form>
+        </div>
+        {% endif %}
     </div>
 
     <ul class="nav nav-tabs mb-4">
@@ -122,6 +158,11 @@
                                         <td>
                                             {% if cell.is_long_text %}
                                                 {{ cell.value|truncatechars:100 }}
+                                            {% elif cell.logo_url %}
+                                                <span class="bank-logo-cell">
+                                                    <img src="{{ cell.logo_url }}" alt="{{ cell.value }}" class="bank-logo">
+                                                    <span>{{ cell.value }}</span>
+                                                </span>
                                             {% else %}
                                                 {{ cell.value }}
                                             {% endif %}

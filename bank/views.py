@@ -10,6 +10,10 @@ from property.views import BaseCatalogView, CatalogModelConfig
 
 from .forms import BankForm
 from .key_rate_sync import KeyRateSyncError, sync_key_rates
+from .mortgage_offer_sync import (
+    BankMortgageSyncError,
+    sync_bank_mortgage_offers,
+)
 from .models import (
     Bank,
     BankProgram,
@@ -34,8 +38,18 @@ class BankCatalogView(BaseCatalogView):
         CatalogModelConfig(
             key='bank',
             model=Bank,
-            form_fields=('name', 'interest_rate', 'salary_client_discount'),
-            table_fields=('name', 'interest_rate', 'salary_client_discount'),
+            form_fields=(
+                'name',
+                'interest_rate',
+                'salary_client_discount',
+                'maximum_loan_term_years',
+            ),
+            table_fields=(
+                'name',
+                'interest_rate',
+                'salary_client_discount',
+                'maximum_loan_term_years',
+            ),
             order_by=('name',),
         ),
         CatalogModelConfig(
@@ -71,17 +85,50 @@ class BankCatalogView(BaseCatalogView):
                 'mortgage_program',
                 'interest_rate',
                 'minimum_initial_payment_percent',
+                'maximum_loan_term_years',
             ),
             table_fields=(
                 'bank',
                 'mortgage_program',
                 'interest_rate',
                 'minimum_initial_payment_percent',
+                'maximum_loan_term_years',
             ),
             order_by=('bank__name', 'mortgage_program__name'),
             select_related=('bank', 'mortgage_program'),
         ),
     )
+
+    def post(self, request, *args, **kwargs):
+        """Handle bank catalog updates and regular catalog actions."""
+        config = self.get_config()
+        action = request.POST.get('action', 'save')
+        if config.key == 'bank' and action == 'sync_bank_mortgage_offers':
+            return self.handle_bank_mortgage_sync()
+
+        return super().post(request, *args, **kwargs)
+
+    def handle_bank_mortgage_sync(self):
+        """Synchronize bank mortgage offer data from the external source."""
+        try:
+            result = sync_bank_mortgage_offers()
+        except BankMortgageSyncError as error:
+            messages.error(
+                self.request,
+                f'Не удалось обновить данные банков: {error}',
+            )
+        else:
+            messages.success(
+                self.request,
+                (
+                    'Обновление данных банков завершено: '
+                    f'создано={result["created"]}, '
+                    f'обновлено={result["updated"]}, '
+                    f'обработано={result["processed"]}.'
+                ),
+            )
+
+        return redirect(self.get_model_url('bank'))
 
     def _safe_decimal(self, value):
         """Описание метода _safe_decimal.
@@ -145,6 +192,7 @@ class BankCatalogView(BaseCatalogView):
                 'name': 'name',
                 'interest_rate': 'interest_rate',
                 'salary_client_discount': 'salary_client_rate',
+                'maximum_loan_term_years': 'maximum_loan_term_years',
             }
         if config.key == 'bank_program':
             return {
@@ -154,6 +202,7 @@ class BankCatalogView(BaseCatalogView):
                 'minimum_initial_payment_percent': (
                     'minimum_initial_payment_percent'
                 ),
+                'maximum_loan_term_years': 'maximum_loan_term_years',
             }
         if config.key == 'mortgage_program_regional_credit_limit':
             return {
@@ -299,6 +348,11 @@ class BankCatalogView(BaseCatalogView):
                     {
                         'value': self.format_cell_value(raw_value),
                         'is_long_text': column['is_long_text'],
+                        'logo_url': (
+                            obj.logo_url
+                            if column['name'] == 'name'
+                            else ''
+                        ),
                     }
                 )
 
@@ -362,6 +416,11 @@ class BankCatalogView(BaseCatalogView):
                     relation.mortgage_program.name
                 )
             context['bank_program_map'] = bank_program_map
+            context['last_synced_at'] = (
+                Bank.objects.order_by('-updated_at')
+                .values_list('updated_at', flat=True)
+                .first()
+            )
 
         if config.key == 'bank_program':
             context['bank_program_filters'] = {

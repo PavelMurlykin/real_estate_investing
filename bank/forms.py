@@ -27,7 +27,7 @@ class BankForm(forms.ModelForm):
         """
 
         model = Bank
-        fields = ('name', 'interest_rate')
+        fields = ('name', 'interest_rate', 'maximum_loan_term_years')
         labels = {
             'name': 'Название',
             'interest_rate': 'Процентная ставка, %',

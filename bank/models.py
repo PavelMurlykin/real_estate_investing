@@ -17,6 +17,12 @@ class Bank(BaseModel):
     name = models.CharField(
         max_length=255, unique=True, verbose_name='Название'
     )
+    logo_url = models.URLField(
+        max_length=1000,
+        blank=True,
+        default='',
+        verbose_name='Логотип',
+    )
     interest_rate = models.DecimalField(
         max_digits=5, decimal_places=2, verbose_name='Процентная ставка, %'
     )
@@ -25,6 +31,12 @@ class Bank(BaseModel):
         decimal_places=2,
         default=0,
         verbose_name='Дисконт по ставке для зарплатных клиентов, п.п.',
+    )
+    maximum_loan_term_years = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        verbose_name='Максимальный срок кредита, лет',
     )
     mortgage_programs = models.ManyToManyField(
         'MortgageProgram',
@@ -208,6 +220,12 @@ class BankProgram(BaseModel):
         default=Decimal('0'),
         validators=[MinValueValidator(Decimal('0'))],
         verbose_name='Минимальный первый взнос, %',
+    )
+    maximum_loan_term_years = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        verbose_name='Максимальный срок кредита, лет',
     )
 
     class Meta(BaseModel.Meta):
