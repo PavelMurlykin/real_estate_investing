@@ -42,7 +42,10 @@ class CustomerOwnedQuerysetMixin(LoginRequiredMixin):
         return (
             Customer.objects.filter(user=self.request.user)
             .select_related(
-                'residence_city', 'desired_city', 'desired_district'
+                'residence_city',
+                'desired_city',
+                'desired_city__region',
+                'desired_district',
             )
             .prefetch_related('desired_layouts', 'preferential_programs')
         )
@@ -167,11 +170,16 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
             customer.has_selected_preferential_program()
         )
         preferential_max_property_cost = None
+        preferential_credit_limit = None
         if has_preferential_program:
+            preferential_credit_limit = (
+                customer.get_preferential_credit_limit()
+            )
             preferential_max_property_cost = (
                 customer.calculate_max_property_cost(
                     annual_rate=Customer.DEFAULT_PREFERENTIAL_ANNUAL_RATE,
                     max_term_years=max_term_years,
+                    credit_limit=preferential_credit_limit,
                 )
             )
 
@@ -190,6 +198,11 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
                 preferential_max_property_cost
             )
             if preferential_max_property_cost is not None
+            else '',
+            'preferential_credit_limit': format_currency(
+                preferential_credit_limit
+            )
+            if preferential_credit_limit is not None
             else '',
         }
         calculation_filters = get_calculation_filters(self.request)

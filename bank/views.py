@@ -35,8 +35,18 @@ class BankCatalogView(BaseCatalogView):
         CatalogModelConfig(
             key='mortgage_program',
             model=MortgageProgram,
-            form_fields=('name', 'condition', 'is_preferential'),
-            table_fields=('name', 'condition', 'is_preferential'),
+            form_fields=(
+                'name',
+                'condition',
+                'is_preferential',
+                'preferential_program_type',
+            ),
+            table_fields=(
+                'name',
+                'condition',
+                'is_preferential',
+                'preferential_program_type',
+            ),
             order_by=('name',),
         ),
         CatalogModelConfig(
@@ -232,6 +242,38 @@ class BankCatalogView(BaseCatalogView):
         Возвращает:
             Any: Тип результата определяется вызывающим кодом.
         """
+        if config.key == 'mortgage_program':
+            rows = []
+            queryset = self.get_queryset(config)
+            for obj in queryset:
+                cells = []
+                for column in columns:
+                    if column['name'] == 'preferential_program_type':
+                        raw_value = (
+                            obj.get_preferential_program_type_display()
+                        )
+                    else:
+                        raw_value = getattr(obj, column['name'])
+
+                    cells.append(
+                        {
+                            'value': self.format_cell_value(raw_value),
+                            'is_long_text': column['is_long_text'],
+                        }
+                    )
+
+                rows.append(
+                    {
+                        'pk': obj.pk,
+                        'cells': cells,
+                        'edit_url': self.get_model_url(
+                            config.key, edit_id=obj.pk
+                        ),
+                    }
+                )
+
+            return rows
+
         if config.key != 'bank':
             return super().build_rows(config, columns)
 

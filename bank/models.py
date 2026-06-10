@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 
 from core.models import BaseModel
@@ -59,12 +61,42 @@ class MortgageProgram(BaseModel):
     в данном модуле.
     """
 
+    PREFERENTIAL_PROGRAM_TYPE_INFORMATION_TECHNOLOGY = (
+        'information_technology'
+    )
+    PREFERENTIAL_PROGRAM_TYPE_FAMILY = 'family'
+    PREFERENTIAL_PROGRAM_TYPE_CHOICES = (
+        ('', 'Не указан'),
+        (
+            PREFERENTIAL_PROGRAM_TYPE_INFORMATION_TECHNOLOGY,
+            'IT-ипотека',
+        ),
+        (PREFERENTIAL_PROGRAM_TYPE_FAMILY, 'Семейная ипотека'),
+    )
+    INFORMATION_TECHNOLOGY_CREDIT_LIMIT = Decimal('9000000')
+    FAMILY_HIGH_COST_REGION_CREDIT_LIMIT = Decimal('12000000')
+    FAMILY_DEFAULT_CREDIT_LIMIT = Decimal('6000000')
+    FAMILY_HIGH_COST_REGION_NAMES = frozenset(
+        (
+            'Москва',
+            'Московская область',
+            'Санкт-Петербург',
+            'Ленинградская область',
+        )
+    )
+
     name = models.CharField(
         max_length=255, unique=True, verbose_name='Название'
     )
     condition = models.TextField(verbose_name='Условие')
     is_preferential = models.BooleanField(
         default=False, verbose_name='Льготная программа'
+    )
+    preferential_program_type = models.CharField(
+        max_length=32,
+        blank=True,
+        choices=PREFERENTIAL_PROGRAM_TYPE_CHOICES,
+        verbose_name='Тип льготной программы',
     )
 
     class Meta(BaseModel.Meta):
@@ -88,6 +120,35 @@ class MortgageProgram(BaseModel):
             str: Человекочитаемое представление текущего объекта.
         """
         return self.name
+
+    @classmethod
+    def is_family_high_cost_region(cls, region):
+        """Возвращает признак региона с повышенным лимитом семейной ипотеки."""
+        region_name = getattr(region, 'name', region)
+        if not region_name:
+            return False
+        return str(region_name).strip() in cls.FAMILY_HIGH_COST_REGION_NAMES
+
+    def get_credit_limit(self, region=None):
+        """Возвращает лимит суммы кредита для льготной программы."""
+        if not self.is_preferential:
+            return None
+
+        if (
+            self.preferential_program_type
+            == self.PREFERENTIAL_PROGRAM_TYPE_INFORMATION_TECHNOLOGY
+        ):
+            return self.INFORMATION_TECHNOLOGY_CREDIT_LIMIT
+
+        if (
+            self.preferential_program_type
+            == self.PREFERENTIAL_PROGRAM_TYPE_FAMILY
+        ):
+            if self.is_family_high_cost_region(region):
+                return self.FAMILY_HIGH_COST_REGION_CREDIT_LIMIT
+            return self.FAMILY_DEFAULT_CREDIT_LIMIT
+
+        return None
 
 
 class BankProgram(BaseModel):

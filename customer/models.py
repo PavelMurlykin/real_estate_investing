@@ -365,7 +365,7 @@ class Customer(BaseModel):
         return min(self.MAX_MORTGAGE_TERM_YEARS, remaining_years)
 
     def calculate_max_property_cost(
-        self, annual_rate=None, max_term_years=None
+        self, annual_rate=None, max_term_years=None, credit_limit=None
     ):
         """Описание метода calculate_max_property_cost.
 
@@ -374,6 +374,7 @@ class Customer(BaseModel):
         Аргументы:
             annual_rate: Входной параметр, влияющий на работу метода.
             max_term_years: Входной параметр, влияющий на работу метода.
+            credit_limit: Максимальная сумма кредита.
 
         Возвращает:
             Any: Тип результата определяется вызывающим кодом.
@@ -410,12 +411,38 @@ class Customer(BaseModel):
                     / monthly_rate
                 )
 
+        if credit_limit is not None:
+            credit_amount = min(credit_amount, Decimal(str(credit_limit)))
+
         total_property_cost = down_payment + credit_amount
         if total_property_cost <= 0:
             return None
         return total_property_cost.quantize(
             Decimal('0.01'), rounding=ROUND_HALF_UP
         )
+
+    def get_desired_region(self):
+        """Возвращает регион желаемого города покупки."""
+        if not self.desired_city_id:
+            return None
+        return self.desired_city.region
+
+    def get_preferential_credit_limit(self):
+        """Возвращает максимальный лимит кредита среди выбранных льготных программ."""
+        region = self.get_desired_region()
+        credit_limits = [
+            program.get_credit_limit(region)
+            for program in self.preferential_programs.all()
+            if program.is_preferential
+        ]
+        known_credit_limits = [
+            credit_limit
+            for credit_limit in credit_limits
+            if credit_limit is not None
+        ]
+        if not known_credit_limits:
+            return None
+        return max(known_credit_limits)
 
     def has_selected_preferential_program(self):
         """Проверяет наличие выбранной льготной программы."""

@@ -1,10 +1,69 @@
+from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.messages import get_messages
 from django.test import TestCase
 from django.urls import reverse
 
+from location.models import Region
+
 from .key_rate_sync import KeyRateSyncError
+from .models import MortgageProgram
+
+
+class MortgageProgramCreditLimitTests(TestCase):
+    """Проверяет лимиты кредита по льготным ипотечным программам."""
+
+    def test_information_technology_mortgage_credit_limit_is_nine_million(
+        self,
+    ):
+        """Проверяет лимит IT-ипотеки."""
+        program_type = (
+            MortgageProgram.PREFERENTIAL_PROGRAM_TYPE_INFORMATION_TECHNOLOGY
+        )
+        program = MortgageProgram.objects.create(
+            name='IT-ипотека',
+            condition='Льготные условия',
+            is_preferential=True,
+            preferential_program_type=program_type,
+        )
+
+        self.assertEqual(
+            program.get_credit_limit(),
+            Decimal('9000000'),
+        )
+
+    def test_family_mortgage_uses_high_cost_region_credit_limit(self):
+        """Проверяет повышенный лимит семейной ипотеки для Москвы."""
+        program_type = MortgageProgram.PREFERENTIAL_PROGRAM_TYPE_FAMILY
+        program = MortgageProgram.objects.create(
+            name='Семейная',
+            condition='Льготные условия',
+            is_preferential=True,
+            preferential_program_type=program_type,
+        )
+        region = Region.objects.create(name='Москва', code='77')
+
+        self.assertEqual(
+            program.get_credit_limit(region),
+            Decimal('12000000'),
+        )
+
+    def test_family_mortgage_uses_default_region_credit_limit(self):
+        """Проверяет базовый лимит семейной ипотеки для остальных регионов."""
+        program_type = MortgageProgram.PREFERENTIAL_PROGRAM_TYPE_FAMILY
+        program = MortgageProgram.objects.create(
+            name='Семейная',
+            condition='Льготные условия',
+            is_preferential=True,
+            preferential_program_type=program_type,
+        )
+        region = Region.objects.create(name='Татарстан', code='16')
+
+        self.assertEqual(
+            program.get_credit_limit(region),
+            Decimal('6000000'),
+        )
 
 
 class KeyRateListViewTests(TestCase):

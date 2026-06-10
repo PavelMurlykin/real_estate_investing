@@ -31,8 +31,19 @@ class MortgageProgramAdmin(admin.ModelAdmin):
     в данном модуле.
     """
 
-    list_display = ('name', 'is_preferential', 'is_active', 'created_at')
-    list_filter = ('is_preferential', 'is_active', 'created_at')
+    list_display = (
+        'name',
+        'is_preferential',
+        'preferential_program_type',
+        'is_active',
+        'created_at',
+    )
+    list_filter = (
+        'is_preferential',
+        'preferential_program_type',
+        'is_active',
+        'created_at',
+    )
     search_fields = ('name', 'condition')
     ordering = ('name',)
 
