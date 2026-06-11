@@ -25,13 +25,7 @@ class Region(BaseModel):
         ordering = ['name']
 
     def __str__(self):
-        """Описание метода __str__.
-
-        Возвращает строковое представление объекта для отображения.
-
-        Возвращает:
-            str: Человекочитаемое представление текущего объекта.
-        """
+        """Возвращает название региона."""
         return self.name
 
 
@@ -53,17 +47,16 @@ class City(BaseModel):
         db_table = 'city'
         verbose_name = 'Город'
         verbose_name_plural = 'Города'
-        unique_together = ('name', 'region')
         ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'region'],
+                name='unique_city_name_region',
+            ),
+        ]
 
     def __str__(self):
-        """Описание метода __str__.
-
-        Возвращает строковое представление объекта для отображения.
-
-        Возвращает:
-            str: Человекочитаемое представление текущего объекта.
-        """
+        """Возвращает название города."""
         return self.name
 
 
@@ -85,17 +78,16 @@ class District(BaseModel):
         db_table = 'district'
         verbose_name = 'Район'
         verbose_name_plural = 'Районы'
-        unique_together = ('name', 'city')
         ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'city'],
+                name='unique_district_name_city',
+            ),
+        ]
 
     def __str__(self):
-        """Описание метода __str__.
-
-        Возвращает строковое представление объекта для отображения.
-
-        Возвращает:
-            str: Человекочитаемое представление текущего объекта.
-        """
+        """Возвращает название района."""
         return self.name
 
 
@@ -128,8 +120,13 @@ class MetroLine(BaseModel):
         db_table = 'metro_line'
         verbose_name = 'Линия метро'
         verbose_name_plural = 'Линии метро'
-        unique_together = ('line', 'city')
         ordering = ['city__name', 'line']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['line', 'city'],
+                name='unique_metro_line_line_city',
+            ),
+        ]
 
     def __str__(self):
         """Возвращает строковое представление линии метро."""
@@ -154,8 +151,13 @@ class Metro(BaseModel):
         db_table = 'metro'
         verbose_name = 'Метро'
         verbose_name_plural = 'Метро'
-        unique_together = ('station', 'metro_line')
         ordering = ['metro_line__city__name', 'metro_line__line', 'station']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['station', 'metro_line'],
+                name='unique_metro_station_line',
+            ),
+        ]
 
     def __str__(self):
         """Возвращает строковое представление станции метро."""

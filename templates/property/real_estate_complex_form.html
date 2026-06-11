@@ -199,40 +199,7 @@
                             <tbody data-metro-formset-body>
                                 {% for metro_form in metro_availability_formset %}
                                 <tr data-metro-form-row>
-                                    {% for hidden in metro_form.hidden_fields %}
-                                        {{ hidden }}
-                                    {% endfor %}
-                                    <td>
-                                        {{ metro_form.metro }}
-                                        {% for error in metro_form.metro.errors %}
-                                            <div class="text-danger">{{ error }}</div>
-                                        {% endfor %}
-                                    </td>
-                                    <td>
-                                        {{ metro_form.transport_accessibility_type }}
-                                        {% for error in metro_form.transport_accessibility_type.errors %}
-                                            <div class="text-danger">{{ error }}</div>
-                                        {% endfor %}
-                                    </td>
-                                    <td>
-                                        {{ metro_form.walking_time_minutes }}
-                                        {% for error in metro_form.walking_time_minutes.errors %}
-                                            <div class="text-danger">{{ error }}</div>
-                                        {% endfor %}
-                                    </td>
-                                    <td class="text-center">
-                                        {{ metro_form.is_active }}
-                                        {% for error in metro_form.is_active.errors %}
-                                            <div class="text-danger">{{ error }}</div>
-                                        {% endfor %}
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="d-none">{{ metro_form.DELETE }}</span>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" data-remove-metro-row>-</button>
-                                        {% for error in metro_form.DELETE.errors %}
-                                            <div class="text-danger">{{ error }}</div>
-                                        {% endfor %}
-                                    </td>
+                                    {% include "property/includes/metro_availability_form_row.html" %}
                                 </tr>
                                 {% if metro_form.non_field_errors %}
                                 <tr>
@@ -389,40 +356,7 @@
 <template id="metro-availability-empty-form-template">
     <tr data-metro-form-row>
         {% with metro_form=metro_availability_formset.empty_form %}
-            {% for hidden in metro_form.hidden_fields %}
-                {{ hidden }}
-            {% endfor %}
-            <td>
-                {{ metro_form.metro }}
-                {% for error in metro_form.metro.errors %}
-                    <div class="text-danger">{{ error }}</div>
-                {% endfor %}
-            </td>
-            <td>
-                {{ metro_form.transport_accessibility_type }}
-                {% for error in metro_form.transport_accessibility_type.errors %}
-                    <div class="text-danger">{{ error }}</div>
-                {% endfor %}
-            </td>
-            <td>
-                {{ metro_form.walking_time_minutes }}
-                {% for error in metro_form.walking_time_minutes.errors %}
-                    <div class="text-danger">{{ error }}</div>
-                {% endfor %}
-            </td>
-            <td class="text-center">
-                {{ metro_form.is_active }}
-                {% for error in metro_form.is_active.errors %}
-                    <div class="text-danger">{{ error }}</div>
-                {% endfor %}
-            </td>
-            <td class="text-center">
-                <span class="d-none">{{ metro_form.DELETE }}</span>
-                <button type="button" class="btn btn-sm btn-outline-danger" data-remove-metro-row>-</button>
-                {% for error in metro_form.DELETE.errors %}
-                    <div class="text-danger">{{ error }}</div>
-                {% endfor %}
-            </td>
+            {% include "property/includes/metro_availability_form_row.html" %}
         {% endwith %}
     </tr>
 </template>

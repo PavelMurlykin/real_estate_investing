@@ -33,13 +33,7 @@ class Developer(BaseModel):
         ordering = ['name']
 
     def __str__(self):
-        """Описание метода __str__.
-
-        Возвращает строковое представление объекта для отображения.
-
-        Возвращает:
-            str: Человекочитаемое представление текущего объекта.
-        """
+        """Возвращает название застройщика."""
         return self.name
 
 
@@ -66,13 +60,7 @@ class RealEstateType(BaseModel):
         ordering = ['name']
 
     def __str__(self):
-        """Описание метода __str__.
-
-        Возвращает строковое представление объекта для отображения.
-
-        Возвращает:
-            str: Человекочитаемое представление текущего объекта.
-        """
+        """Возвращает название типа недвижимости."""
         return self.name
 
 
@@ -102,13 +90,7 @@ class RealEstateClass(BaseModel):
         ordering = ['weight']
 
     def __str__(self):
-        """Описание метода __str__.
-
-        Возвращает строковое представление объекта для отображения.
-
-        Возвращает:
-            str: Человекочитаемое представление текущего объекта.
-        """
+        """Возвращает название класса ЖК."""
         return self.name
 
 
@@ -162,8 +144,13 @@ class RealEstateComplex(BaseModel):
         db_table = 'real_estate_complex'
         verbose_name = 'ЖК'
         verbose_name_plural = 'ЖК'
-        unique_together = ('name', 'developer')
         ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'developer'],
+                name='unique_complex_name_developer',
+            ),
+        ]
 
     def get_photo_filename(self):
         """Return the saved complex photo filename."""
@@ -172,13 +159,7 @@ class RealEstateComplex(BaseModel):
         return self.photo.name.rsplit('/', 1)[-1]
 
     def __str__(self):
-        """Описание метода __str__.
-
-        Возвращает строковое представление объекта для отображения.
-
-        Возвращает:
-            str: Человекочитаемое представление текущего объекта.
-        """
+        """Возвращает название ЖК."""
         return self.name
 
 
@@ -246,8 +227,13 @@ class RealEstateComplexMetroAvailability(BaseModel):
         db_table = 'real_estate_complex_metro_availability'
         verbose_name = 'Доступность метро ЖК'
         verbose_name_plural = 'Доступность метро ЖК'
-        unique_together = ('real_estate_complex', 'metro')
         ordering = ['walking_time_minutes', 'metro__station']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['real_estate_complex', 'metro'],
+                name='unique_complex_metro_station',
+            ),
+        ]
 
     def __str__(self):
         """Возвращает строковое представление доступности метро."""
@@ -308,17 +294,16 @@ class RealEstateComplexBuilding(BaseModel):
         db_table = 'real_estate_complex_building'
         verbose_name = 'Корпус ЖК'
         verbose_name_plural = 'Корпуса ЖК'
-        unique_together = ('number', 'real_estate_complex')
         ordering = ['number']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['number', 'real_estate_complex'],
+                name='unique_complex_building_number',
+            ),
+        ]
 
     def __str__(self):
-        """Описание метода __str__.
-
-        Возвращает строковое представление объекта для отображения.
-
-        Возвращает:
-            str: Человекочитаемое представление текущего объекта.
-        """
+        """Возвращает номер корпуса."""
         return self.number
 
     def clean(self):
@@ -399,13 +384,7 @@ class ApartmentLayout(BaseModel):
         ordering = ['name']
 
     def __str__(self):
-        """Описание метода __str__.
-
-        Возвращает строковое представление объекта для отображения.
-
-        Возвращает:
-            str: Человекочитаемое представление текущего объекта.
-        """
+        """Возвращает название планировки."""
         return self.name
 
 
@@ -432,13 +411,7 @@ class ApartmentDecoration(BaseModel):
         ordering = ['name']
 
     def __str__(self):
-        """Описание метода __str__.
-
-        Возвращает строковое представление объекта для отображения.
-
-        Возвращает:
-            str: Человекочитаемое представление текущего объекта.
-        """
+        """Возвращает название отделки."""
         return self.name
 
 
@@ -556,13 +529,7 @@ class Property(BaseModel):
         return self._get_image_filename(self.window_view_image)
 
     def __str__(self):
-        """Описание метода __str__.
-
-        Возвращает строковое представление объекта для отображения.
-
-        Возвращает:
-            str: Человекочитаемое представление текущего объекта.
-        """
+        """Возвращает адресное описание объекта недвижимости."""
         complex_name = self.building.real_estate_complex.name
         building_number = self.building.number
         return (
@@ -592,8 +559,13 @@ class PropertyWindowView(BaseModel):
         db_table = 'property_window_view'
         verbose_name = 'Вид из окна объекта недвижимости'
         verbose_name_plural = 'Виды из окна объектов недвижимости'
-        unique_together = ('property', 'window_view')
         ordering = ['property', 'window_view__name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['property', 'window_view'],
+                name='unique_property_window_view',
+            ),
+        ]
 
     def __str__(self):
         """Return a readable property window view link."""

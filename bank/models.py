@@ -10,11 +10,7 @@ from .program_matching import normalize_mortgage_program_match_name
 
 
 class Bank(BaseModel):
-    """Описание класса Bank.
-
-    Инкапсулирует данные и поведение, необходимые для работы компонента
-    в данном модуле.
-    """
+    """Банк, выдающий ипотечные программы."""
 
     name = models.CharField(
         max_length=255, unique=True, verbose_name='Название'
@@ -33,11 +29,7 @@ class Bank(BaseModel):
     )
 
     class Meta(BaseModel.Meta):
-        """Описание служебного класса Meta.
-
-        Определяет метаданные и параметры конфигурации для родительского
-        класса Django.
-        """
+        """Метаданные таблицы банков."""
 
         db_table = 'bank'
         verbose_name = 'Банк'
@@ -45,22 +37,12 @@ class Bank(BaseModel):
         ordering = ['name']
 
     def __str__(self):
-        """Описание метода __str__.
-
-        Возвращает строковое представление объекта для отображения.
-
-        Возвращает:
-            str: Человекочитаемое представление текущего объекта.
-        """
+        """Возвращает название банка."""
         return self.name
 
 
 class MortgageProgram(BaseModel):
-    """Описание класса MortgageProgram.
-
-    Инкапсулирует данные и поведение, необходимые для работы компонента
-    в данном модуле.
-    """
+    """Ипотечная программа банка."""
 
     name = models.CharField(
         max_length=255, unique=True, verbose_name='Название'
@@ -79,11 +61,7 @@ class MortgageProgram(BaseModel):
     )
 
     class Meta(BaseModel.Meta):
-        """Описание служебного класса Meta.
-
-        Определяет метаданные и параметры конфигурации для родительского
-        класса Django.
-        """
+        """Метаданные таблицы ипотечных программ."""
 
         db_table = 'mortgage_program'
         verbose_name = 'Ипотечная программа'
@@ -91,13 +69,7 @@ class MortgageProgram(BaseModel):
         ordering = ['name']
 
     def __str__(self):
-        """Описание метода __str__.
-
-        Возвращает строковое представление объекта для отображения.
-
-        Возвращает:
-            str: Человекочитаемое представление текущего объекта.
-        """
+        """Возвращает название ипотечной программы."""
         return self.name
 
     def get_credit_limit(self, region=None):
@@ -226,11 +198,7 @@ class MortgageProgramAlias(BaseModel):
 
 
 class BankProgram(BaseModel):
-    """Описание класса BankProgram.
-
-    Инкапсулирует данные и поведение, необходимые для работы компонента
-    в данном модуле.
-    """
+    """Связь банка с доступной ипотечной программой."""
 
     bank = models.ForeignKey(
         Bank, on_delete=models.CASCADE, verbose_name='Банк'
@@ -262,35 +230,26 @@ class BankProgram(BaseModel):
     )
 
     class Meta(BaseModel.Meta):
-        """Описание служебного класса Meta.
-
-        Определяет метаданные и параметры конфигурации для родительского
-        класса Django.
-        """
+        """Метаданные таблицы программ банков."""
 
         db_table = 'bank_program'
         verbose_name = 'Программа банка'
         verbose_name_plural = 'Программы банков'
-        unique_together = ('bank', 'mortgage_program')
         ordering = ['bank__name', 'mortgage_program__name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['bank', 'mortgage_program'],
+                name='unique_bank_program_pair',
+            ),
+        ]
 
     def __str__(self):
-        """Описание метода __str__.
-
-        Возвращает строковое представление объекта для отображения.
-
-        Возвращает:
-            str: Человекочитаемое представление текущего объекта.
-        """
+        """Возвращает связку банка и ипотечной программы."""
         return f'{self.bank} - {self.mortgage_program}'
 
 
 class KeyRate(BaseModel):
-    """Описание класса KeyRate.
-
-    Инкапсулирует данные и поведение, необходимые для работы компонента
-    в данном модуле.
-    """
+    """Ключевая ставка на дату заседания."""
 
     meeting_date = models.DateField(unique=True, verbose_name='Дата заседания')
     key_rate = models.DecimalField(
@@ -298,11 +257,7 @@ class KeyRate(BaseModel):
     )
 
     class Meta(BaseModel.Meta):
-        """Описание служебного класса Meta.
-
-        Определяет метаданные и параметры конфигурации для родительского
-        класса Django.
-        """
+        """Метаданные таблицы ключевых ставок."""
 
         db_table = 'key_rate'
         verbose_name = 'Ключевая ставка'
@@ -310,11 +265,5 @@ class KeyRate(BaseModel):
         ordering = ['-meeting_date']
 
     def __str__(self):
-        """Описание метода __str__.
-
-        Возвращает строковое представление объекта для отображения.
-
-        Возвращает:
-            str: Человекочитаемое представление текущего объекта.
-        """
+        """Возвращает дату и размер ключевой ставки."""
         return f'{self.meeting_date}: {self.key_rate}%'
