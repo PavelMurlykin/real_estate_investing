@@ -65,6 +65,10 @@
         return document.getElementById('mortgage-program-limit-options');
     }
 
+    function getMortgageProgramChoiceId(program) {
+        return String(program.program_id || program.id || '');
+    }
+
     function refreshSearchableSelect(select) {
         if (window.searchableSelect) {
             window.searchableSelect.refresh(select);
@@ -72,13 +76,24 @@
     }
 
     function getSelectedMortgageProgram() {
+        const bankSelect = getMortgageBankSelect();
         const programSelect = getMortgageProgramSelect();
-        if (!programSelect || !programSelect.value) {
+        if (
+            !bankSelect
+            || !bankSelect.value
+            || !programSelect
+            || !programSelect.value
+        ) {
             return null;
         }
 
         return mortgageProgramFormData.programs.find(function (program) {
-            return String(program.id) === String(programSelect.value);
+            return (
+                String(program.bank_id) === String(bankSelect.value)
+                && getMortgageProgramChoiceId(program) === (
+                    String(programSelect.value)
+                )
+            );
         }) || null;
     }
 
@@ -367,29 +382,119 @@
         container.classList.remove('d-none');
     }
 
-    function renderMortgagePrograms() {
+    function appendSelectOption(select, value, label, imageUrl) {
+        const option = document.createElement('option');
+        option.value = String(value);
+        option.textContent = label;
+        if (imageUrl) {
+            option.dataset.searchableSelectImage = imageUrl;
+        }
+        select.appendChild(option);
+    }
+
+    function renderMortgageBankOptions(selectedProgramId) {
         const bankSelect = getMortgageBankSelect();
-        const programSelect = getMortgageProgramSelect();
-        if (!bankSelect || !programSelect) {
-            return;
+        if (!bankSelect) {
+            return '';
         }
 
         const selectedBankId = String(bankSelect.value || '');
-        const availablePrograms = (mortgageProgramFormData.programs || [])
-            .filter(function (program) {
-                return String(program.bank_id) === selectedBankId;
-            });
+        const allowedBankIds = new Set();
+        if (selectedProgramId) {
+            (mortgageProgramFormData.programs || []).forEach(
+                function (program) {
+                    if (
+                        getMortgageProgramChoiceId(program)
+                        === selectedProgramId
+                    ) {
+                        allowedBankIds.add(String(program.bank_id));
+                    }
+                }
+            );
+        }
 
-        programSelect.innerHTML = '<option value="">Выберите программу</option>';
-        availablePrograms.forEach(function (program) {
-            const option = document.createElement('option');
-            option.value = String(program.id);
-            option.textContent = program.program_name;
-            programSelect.appendChild(option);
+        bankSelect.innerHTML = '';
+        appendSelectOption(bankSelect, '', 'Выберите банк');
+        (mortgageProgramFormData.banks || []).forEach(function (bank) {
+            const bankId = String(bank.id);
+            if (selectedProgramId && !allowedBankIds.has(bankId)) {
+                return;
+            }
+            appendSelectOption(bankSelect, bankId, bank.name, bank.logo_url);
         });
-        programSelect.disabled = !selectedBankId || !availablePrograms.length;
+
+        if (
+            selectedBankId
+            && Array.from(bankSelect.options).some(function (option) {
+                return option.value === selectedBankId;
+            })
+        ) {
+            bankSelect.value = selectedBankId;
+        } else {
+            bankSelect.value = '';
+        }
+
+        refreshSearchableSelect(bankSelect);
+        return String(bankSelect.value || '');
+    }
+
+    function renderMortgageProgramOptions(selectedBankId) {
+        const programSelect = getMortgageProgramSelect();
+        if (!programSelect) {
+            return '';
+        }
+
+        const selectedProgramId = String(programSelect.value || '');
+        const seenProgramIds = new Set();
+
+        programSelect.innerHTML = '';
+        appendSelectOption(programSelect, '', 'Выберите программу');
+        (mortgageProgramFormData.programs || []).forEach(function (program) {
+            const programId = getMortgageProgramChoiceId(program);
+            if (!programId || seenProgramIds.has(programId)) {
+                return;
+            }
+            if (selectedBankId && String(program.bank_id) !== selectedBankId) {
+                return;
+            }
+            seenProgramIds.add(programId);
+            appendSelectOption(programSelect, programId, program.program_name);
+        });
+
+        if (
+            selectedProgramId
+            && Array.from(programSelect.options).some(function (option) {
+                return option.value === selectedProgramId;
+            })
+        ) {
+            programSelect.value = selectedProgramId;
+        } else {
+            programSelect.value = '';
+        }
+
+        programSelect.disabled = false;
         refreshSearchableSelect(programSelect);
+        return String(programSelect.value || '');
+    }
+
+    function syncMortgageProgramSelectors() {
+        const programSelect = getMortgageProgramSelect();
+        const selectedProgramId = programSelect
+            ? String(programSelect.value || '')
+            : '';
+        const selectedBankId = renderMortgageBankOptions(selectedProgramId);
+        const nextSelectedProgramId = renderMortgageProgramOptions(
+            selectedBankId
+        );
+        if (selectedProgramId !== nextSelectedProgramId) {
+            renderMortgageBankOptions(nextSelectedProgramId);
+        }
         updateMortgageProgramLimitOptions();
+    }
+
+    function handleMortgageProgramSelectionChange() {
+        syncMortgageProgramSelectors();
+        applyMortgageProgram();
     }
 
     function applyMortgageProgram() {
@@ -1222,11 +1327,15 @@
         bindInput('district-select', 'change', scheduleApartmentSelectionSync);
         bindInput('developer-select', 'change', scheduleApartmentSelectionSync);
         bindInput('complex-select', 'change', scheduleApartmentSelectionSync);
-        bindInput('mortgage-bank-select', 'change', renderMortgagePrograms);
+        bindInput(
+            'mortgage-bank-select',
+            'change',
+            handleMortgageProgramSelectionChange
+        );
         bindInput(
             'mortgage-program-select',
             'change',
-            applyMortgageProgram
+            handleMortgageProgramSelectionChange
         );
         bindApartmentNumberInput('input', handleApartmentNumberInput);
         bindApartmentNumberInput('change', handleApartmentNumberInput);
@@ -1356,7 +1465,7 @@
         syncFirstTrenchDateFromInitialPayment();
         syncAnnualRateToAllTrenches();
         updateTrenchRows();
-        renderMortgagePrograms();
+        syncMortgageProgramSelectors();
         updateMortgageProgramLimitOptions();
         const selectedPropertyInput = getSelectedPropertyInput();
         const selectedPropertyId = selectedPropertyInput

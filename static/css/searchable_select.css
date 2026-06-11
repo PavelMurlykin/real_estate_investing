@@ -34,6 +34,10 @@
     padding-left: 2rem;
 }
 
+.searchable-select.has-selected-image .searchable-select-input {
+    padding-left: 2.75rem;
+}
+
 .searchable-select-selected-color {
     border-radius: 999px;
     display: none;
@@ -47,6 +51,25 @@
 }
 
 .searchable-select.has-selected-color .searchable-select-selected-color {
+    display: block;
+}
+
+.searchable-select-selected-image {
+    background: #fff;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.25rem;
+    display: none;
+    height: 1.5rem;
+    left: 0.75rem;
+    object-fit: contain;
+    pointer-events: none;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.5rem;
+}
+
+.searchable-select.has-selected-image .searchable-select-selected-image {
     display: block;
 }
 
@@ -79,6 +102,16 @@
     flex: 0 0 auto;
     height: 1rem;
     width: 0.25rem;
+}
+
+.searchable-select-option-image {
+    background: #fff;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.25rem;
+    flex: 0 0 auto;
+    height: 1.5rem;
+    object-fit: contain;
+    width: 1.5rem;
 }
 
 .searchable-select-option:hover,

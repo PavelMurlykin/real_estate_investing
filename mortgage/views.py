@@ -353,7 +353,7 @@ def _get_mortgage_program_form_data():
 
     return {
         'key_rate': _decimal_to_json_value(_get_latest_key_rate()),
-        'banks': list(banks.values('id', 'name')),
+        'banks': list(banks.values('id', 'name', 'logo_url')),
         'programs': [
             {
                 'id': bank_program.pk,

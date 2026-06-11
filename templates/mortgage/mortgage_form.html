@@ -244,13 +244,13 @@
                                 <select id="mortgage-bank-select" name="MORTGAGE_BANK" class="form-select">
                                     <option value="">Выберите банк</option>
                                     {% for bank in mortgage_program_form_data.banks %}
-                                        <option value="{{ bank.id }}">{{ bank.name }}</option>
+                                        <option value="{{ bank.id }}"{% if bank.logo_url %} data-searchable-select-image="{{ bank.logo_url }}"{% endif %}>{{ bank.name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
                             <div class="col-md-6">
                                 <label for="mortgage-program-select" class="form-label">Ипотечная программа</label>
-                                <select id="mortgage-program-select" name="MORTGAGE_BANK_PROGRAM" class="form-select" disabled>
+                                <select id="mortgage-program-select" name="MORTGAGE_BANK_PROGRAM" class="form-select">
                                     <option value="">Выберите программу</option>
                                 </select>
                             </div>
@@ -859,5 +859,5 @@
 
 {% block extra_scripts %}
 <script src="{% static 'js/dependent_selects.js' %}"></script>
-<script src="{% static 'js/mortgage_form.js' %}?v=20260611-mortgage-programs-2" data-property-cost-api-template="{% url 'mortgage:property_cost_api' 0 %}"></script>
+<script src="{% static 'js/mortgage_form.js' %}?v=20260611-mortgage-programs-4" data-property-cost-api-template="{% url 'mortgage:property_cost_api' 0 %}"></script>
 {% endblock %}

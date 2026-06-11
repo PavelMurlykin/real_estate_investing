@@ -272,6 +272,11 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, 'Ипотечная программа')
         self.assertContains(response, 'mortgage-bank-select')
         self.assertContains(response, 'mortgage-program-select')
+        self.assertNotContains(
+            response,
+            'id="mortgage-program-select" name="MORTGAGE_BANK_PROGRAM" '
+            'class="form-select" disabled',
+        )
         self.assertContains(response, 'mortgage-program-limit-options')
         self.assertContains(response, 'mortgage-program-form-data')
         self.assertContains(response, 'calculation_type')
@@ -304,7 +309,10 @@ class MortgageCalculatorViewTests(TestCase):
 
     def test_mortgage_program_block_uses_banks_with_programs(self):
         """Checks mortgage program selector data and credit limits."""
-        bank_with_program = Bank.objects.create(name='Alpha Bank')
+        bank_with_program = Bank.objects.create(
+            name='Alpha Bank',
+            logo_url='https://img.example/alpha.svg',
+        )
         bank_without_program = Bank.objects.create(name='Empty Bank')
         preferential_program = MortgageProgram.objects.create(
             name='Семейная ипотека',
@@ -333,9 +341,17 @@ class MortgageCalculatorViewTests(TestCase):
         program_data = response.context['mortgage_program_form_data']
 
         self.assertContains(response, 'Alpha Bank')
+        self.assertContains(
+            response,
+            'data-searchable-select-image="https://img.example/alpha.svg"',
+        )
         self.assertNotContains(response, 'Empty Bank')
         self.assertEqual(program_data['key_rate'], '16.00')
         self.assertEqual(program_data['banks'][0]['name'], 'Alpha Bank')
+        self.assertEqual(
+            program_data['banks'][0]['logo_url'],
+            'https://img.example/alpha.svg',
+        )
         self.assertEqual(
             program_data['programs'][0]['program_name'],
             'Семейная ипотека',

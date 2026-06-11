@@ -11,6 +11,7 @@ from .forms import BankForm
 from .key_rate_sync import KeyRateSyncError
 from .mortgage_offer_sync import (
     _normalize_bank_match_name,
+    FEDERAL_REFERENCE_MORTGAGE_PROGRAM_NAMES,
     FEDERAL_REFERENCE_SOURCE_NAME,
     normalize_bank_name_for_storage,
     parse_reference_mortgage_programs,
@@ -832,7 +833,10 @@ class BankMortgageOfferSyncTests(TestCase):
                 google_sheet_sources=(),
             )
 
-        self.assertEqual(result['reference_programs_processed'], 6)
+        self.assertEqual(
+            result['reference_programs_processed'],
+            len(FEDERAL_REFERENCE_MORTGAGE_PROGRAM_NAMES),
+        )
         self.assertTrue(
             any(
                 'Эталонный источник ипотечных программ не обработан'

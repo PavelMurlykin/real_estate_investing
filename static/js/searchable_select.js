@@ -22,6 +22,10 @@
         return option ? option.dataset.searchableSelectColor || '' : '';
     }
 
+    function getOptionImage(option) {
+        return option ? option.dataset.searchableSelectImage || '' : '';
+    }
+
     function getSelectedOption(select) {
         return select.selectedOptions && select.selectedOptions.length
             ? select.selectedOptions[0]
@@ -143,6 +147,7 @@
         state.searchQuery = '';
         state.input.value = option.value ? getOptionText(option) : '';
         syncSelectedColor(state);
+        syncSelectedImage(state);
         closeMenu(state);
 
         if (state.select.value !== previousValue) {
@@ -191,6 +196,17 @@
                 item.appendChild(colorLine);
             }
 
+            const image = getOptionImage(option);
+            if (image) {
+                const logo = document.createElement('img');
+                logo.className = 'searchable-select-option-image';
+                logo.src = image;
+                logo.alt = '';
+                logo.loading = 'lazy';
+                logo.setAttribute('aria-hidden', 'true');
+                item.appendChild(logo);
+            }
+
             const label = document.createElement('span');
             label.textContent = getOptionText(option);
             item.appendChild(label);
@@ -233,6 +249,7 @@
         state.searchQuery = '';
         state.input.value = getInputValue(state.select);
         syncSelectedColor(state);
+        syncSelectedImage(state);
         syncValidity(state);
         if (!state.menu.classList.contains('d-none')) {
             renderOptions(state);
@@ -256,6 +273,12 @@
         const color = getOptionColor(getSelectedOption(state.select));
         state.wrapper.classList.toggle('has-selected-color', Boolean(color));
         state.selectedColor.style.backgroundColor = color || 'transparent';
+    }
+
+    function syncSelectedImage(state) {
+        const image = getOptionImage(getSelectedOption(state.select));
+        state.wrapper.classList.toggle('has-selected-image', Boolean(image));
+        state.selectedImage.src = image || '';
     }
 
     function shouldResetSearchOnClick(state) {
@@ -283,6 +306,7 @@
                 state.skipNextSelectSync = false;
             }
             syncSelectedColor(state);
+            syncSelectedImage(state);
             syncValidity(state);
         }
         openMenu(state);
@@ -368,6 +392,11 @@
         selectedColor.className = 'searchable-select-selected-color';
         selectedColor.setAttribute('aria-hidden', 'true');
 
+        const selectedImage = document.createElement('img');
+        selectedImage.className = 'searchable-select-selected-image';
+        selectedImage.alt = '';
+        selectedImage.setAttribute('aria-hidden', 'true');
+
         const toggle = document.createElement('span');
         toggle.className = 'searchable-select-toggle';
         toggle.setAttribute('aria-hidden', 'true');
@@ -381,6 +410,7 @@
         input.setAttribute('aria-controls', menu.id);
         wrapper.appendChild(input);
         wrapper.appendChild(selectedColor);
+        wrapper.appendChild(selectedImage);
         wrapper.appendChild(toggle);
         document.body.appendChild(menu);
 
@@ -398,6 +428,7 @@
             searchQuery: '',
             select: select,
             selectedColor: selectedColor,
+            selectedImage: selectedImage,
             skipNextSelectSync: false,
             wrapper: wrapper,
         };
@@ -448,6 +479,7 @@
         state.input.disabled = select.disabled;
         state.input.className = getInputClassName(select);
         state.input.required = state.isRequired;
+        syncSelectedImage(state);
         syncInputFromSelect(state);
     }
 
