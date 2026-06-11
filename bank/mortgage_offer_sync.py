@@ -14,12 +14,25 @@ from urllib.request import Request, urlopen
 from django.conf import settings
 from django.db import transaction
 
-from .models import Bank, BankProgram, MortgageProgram
+from .models import Bank, BankProgram, MortgageProgram, MortgageProgramAlias
+from .program_matching import normalize_mortgage_program_match_name
 
 logger = logging.getLogger(__name__)
 
 CBR_BANKS_URL = 'https://www.cbr.ru/banking_sector/credit/FullCoList/'
 BANKI_MORTGAGE_URL = 'https://www.banki.ru/products/hypothec/?place=all_programm'
+DOMRF_REFERENCE_MORTGAGE_PROGRAMS_URL = (
+    'https://xn--h1alcedd.xn--d1aqf.xn--p1ai/catalog/'
+    'program-is-lgoty-po-ipoteke/scope-is-federal/?filter=Y&'
+)
+FEDERAL_REFERENCE_MORTGAGE_PROGRAM_NAMES = (
+    'Семейная ипотека',
+    'IT-ипотека',
+    'Дальневосточная и арктическая ипотека',
+    'Сельская ипотека',
+    'Военная ипотека',
+    'Льготная ипотека',
+)
 GOOGLE_SHEET_ID = '1or19DcE4LruFcb8WpDOpRLoTyvTc3T73HYBaUcp4Z9E'
 GOOGLE_SHEET_CSV_URL_TEMPLATE = (
     'https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?'
@@ -42,7 +55,10 @@ GOOGLE_SHEET_MORTGAGE_PROGRAM_SOURCES = (
     },
 )
 BANKI_TIMEOUT_SECONDS = 30
+DOMRF_TIMEOUT_SECONDS = 30
 BANKI_MAX_PAGES = 20
+DOMRF_REFERENCE_SOURCE_NAME = 'спроси.дом.рф'
+FEDERAL_REFERENCE_SOURCE_NAME = 'федеральный справочник программ'
 BANK_NAME_MAX_LENGTH = Bank._meta.get_field('name').max_length
 RATE_LABEL = 'Ставка'
 INITIAL_PAYMENT_LABEL = 'Первоначальный взнос'
@@ -56,6 +72,7 @@ PREFERENTIAL_PROGRAM_KEYWORDS = (
     'ит-',
     'it-',
     'it ',
+    'льгот',
     'семей',
     'сельск',
 )
@@ -115,6 +132,13 @@ class BankMortgageSyncError(Exception):
 @dataclass(frozen=True)
 class CbrBankRecord:
     """Normalized active bank row from the Bank of Russia registry."""
+
+    name: str
+
+
+@dataclass(frozen=True)
+class ReferenceMortgageProgramRecord:
+    """Canonical mortgage program parsed from a reference source."""
 
     name: str
 
@@ -291,9 +315,14 @@ def _normalize_bank_match_name(value):
     normalized_value = re.sub(r'\([^)]*\)', ' ', normalized_value)
 
     for pattern in LEGAL_NAME_PATTERNS:
+        if pattern == r'\bбанк\b':
+            continue
         normalized_value = re.sub(pattern, ' ', normalized_value)
 
     normalized_value = re.sub(r'[^a-zа-я0-9]+', '', normalized_value)
+    if normalized_value.startswith('банк') and len(normalized_value) > 4:
+        normalized_value = normalized_value[4:]
+
     aliases = {
         'сбер': 'сбербанк',
         'сбербанкроссии': 'сбербанк',
@@ -304,6 +333,11 @@ def _normalize_bank_match_name(value):
         'россельхоз': 'россельхозбанк',
     }
     return aliases.get(normalized_value, normalized_value)
+
+
+def _normalize_program_match_name(value):
+    """Normalize a mortgage program name for duplicate-safe matching."""
+    return normalize_mortgage_program_match_name(value)
 
 
 def _is_valid_bank_name(value):
@@ -392,6 +426,25 @@ def _is_preferential_program(program_name):
     return any(
         keyword in normalized_name
         for keyword in PREFERENTIAL_PROGRAM_KEYWORDS
+    )
+
+
+def _looks_like_reference_mortgage_program_name(value):
+    """Return whether reference source text can be a program name."""
+    if not _looks_like_program_name(value):
+        return False
+
+    normalized_name = _normalize_name(value).replace('ё', 'е')
+    skipped_names = {
+        'льготы по ипотеке',
+        'федеральные программы',
+        'все программы',
+    }
+    if normalized_name in skipped_names:
+        return False
+
+    return 'ипотек' in normalized_name and _is_preferential_program(
+        normalized_name
     )
 
 
@@ -545,6 +598,41 @@ def parse_cbr_bank_records(raw_html):
         seen_names.add(record.name)
 
     return unique_records
+
+
+def parse_reference_mortgage_programs(raw_html):
+    """Parse canonical mortgage program names from a reference HTML page."""
+    parser = _MortgageOfferHtmlParser(DOMRF_REFERENCE_MORTGAGE_PROGRAMS_URL)
+    parser.feed(raw_html or '')
+
+    records = []
+    seen_keys = set()
+    for text in parser.text_items:
+        program_name = re.sub(r'\s+', ' ', text or '').strip()
+        program_key = _normalize_program_match_name(program_name)
+        if (
+            not program_key
+            or program_key in seen_keys
+            or not _looks_like_reference_mortgage_program_name(program_name)
+        ):
+            continue
+        seen_keys.add(program_key)
+        records.append(ReferenceMortgageProgramRecord(name=program_name))
+
+    if not records:
+        raise BankMortgageSyncError(
+            'Не удалось распарсить эталонный справочник ипотечных программ.'
+        )
+
+    return records
+
+
+def get_federal_reference_mortgage_programs():
+    """Return built-in federal mortgage program reference records."""
+    return [
+        ReferenceMortgageProgramRecord(name=program_name)
+        for program_name in FEDERAL_REFERENCE_MORTGAGE_PROGRAM_NAMES
+    ]
 
 
 def parse_banki_mortgage_offers(raw_html, source_url=BANKI_MORTGAGE_URL):
@@ -711,6 +799,20 @@ def _download_google_sheet_mortgage_payload(source_url):
     return _download_payload(source_url)
 
 
+def _download_reference_mortgage_programs_payload(source_url):
+    """Download the reference mortgage program catalog page."""
+    request = Request(
+        source_url,
+        headers={
+            'User-Agent': (
+                'Mozilla/5.0 (compatible; real-estate-investing/1.0)'
+            ),
+        },
+    )
+    with urlopen(request, timeout=DOMRF_TIMEOUT_SECONDS) as response:
+        return response.read().decode('utf-8', errors='ignore')
+
+
 def _get_page_number(source_url):
     """Return a Banki.ru page number from URL query params."""
     parsed_url = urlparse(source_url)
@@ -778,7 +880,7 @@ def _select_best_program_offers(offers):
     for offer in offers:
         key = (
             _normalize_bank_match_name(offer.bank_name),
-            _normalize_name(offer.program_name),
+            _normalize_program_match_name(offer.program_name),
         )
         stored_offer = best_offers.get(key)
         if (
@@ -797,6 +899,143 @@ def _build_bank_lookup(banks):
         if key and key not in lookup:
             lookup[key] = bank
     return lookup
+
+
+def _build_mortgage_program_lookup():
+    """Build normalized lookup keys for canonical mortgage programs."""
+    lookup = {}
+    for alias in MortgageProgramAlias.objects.select_related(
+        'mortgage_program'
+    ).filter(is_active=True):
+        if alias.normalized_name and alias.normalized_name not in lookup:
+            lookup[alias.normalized_name] = alias.mortgage_program
+
+    for mortgage_program in MortgageProgram.objects.order_by('pk'):
+        key = _normalize_program_match_name(mortgage_program.name)
+        if key and key not in lookup:
+            lookup[key] = mortgage_program
+
+    return lookup
+
+
+def _ensure_mortgage_program_alias(
+    mortgage_program,
+    source_name,
+    source='',
+):
+    """Ensure a source program name points to a canonical program."""
+    normalized_name = _normalize_program_match_name(source_name)
+    if not normalized_name:
+        return False
+
+    alias = MortgageProgramAlias.objects.filter(
+        normalized_name=normalized_name
+    ).first()
+    if alias is not None:
+        if alias.mortgage_program_id == mortgage_program.pk:
+            changed_fields = []
+            if source and not alias.source:
+                alias.source = source
+                changed_fields.append('source')
+            if changed_fields:
+                alias.save(update_fields=[*changed_fields, 'updated_at'])
+            return False
+        return False
+
+    MortgageProgramAlias.objects.create(
+        mortgage_program=mortgage_program,
+        source_name=source_name,
+        source=source,
+    )
+    return True
+
+
+def _get_or_create_mapped_mortgage_program(
+    program_name,
+    program_lookup,
+    source='',
+):
+    """Return a canonical mortgage program for a source program name."""
+    program_key = _normalize_program_match_name(program_name)
+    mortgage_program = program_lookup.get(program_key)
+    if mortgage_program is None:
+        mortgage_program, _ = MortgageProgram.objects.get_or_create(
+            name=program_name,
+            defaults={
+                'condition': 'Программа импортирована из внешнего источника.',
+                'is_preferential': _is_preferential_program(program_name),
+            },
+        )
+        if program_key:
+            program_lookup[program_key] = mortgage_program
+
+    _ensure_mortgage_program_alias(
+        mortgage_program,
+        program_name,
+        source=source,
+    )
+    return mortgage_program
+
+
+def _remove_legacy_bank_program_link(bank, canonical_program, source_name):
+    """Remove a bank-program link created under a duplicate program name."""
+    legacy_program = MortgageProgram.objects.filter(name=source_name).exclude(
+        pk=canonical_program.pk
+    ).first()
+    if legacy_program is None:
+        return False
+
+    deleted_count, _ = BankProgram.objects.filter(
+        bank=bank,
+        mortgage_program=legacy_program,
+    ).delete()
+    return bool(deleted_count)
+
+
+def _sync_reference_mortgage_programs(
+    records,
+    program_lookup,
+    source_name=DOMRF_REFERENCE_SOURCE_NAME,
+):
+    """Synchronize canonical mortgage programs from reference records."""
+    created = 0
+    aliases_created = 0
+    updated = 0
+
+    for record in records:
+        program_key = _normalize_program_match_name(record.name)
+        mortgage_program = program_lookup.get(program_key)
+        if mortgage_program is None:
+            mortgage_program = MortgageProgram.objects.create(
+                name=record.name,
+                condition=(
+                    'Эталонная льготная программа импортирована '
+                    'из внешнего источника.'
+                ),
+                is_preferential=True,
+            )
+            program_lookup[program_key] = mortgage_program
+            created += 1
+        elif not mortgage_program.is_preferential:
+            mortgage_program.is_preferential = True
+            mortgage_program.save(
+                update_fields=['is_preferential', 'updated_at']
+            )
+            updated += 1
+
+        if _ensure_mortgage_program_alias(
+            mortgage_program,
+            record.name,
+            source=source_name,
+        ):
+            aliases_created += 1
+
+    return {
+        'created': created,
+        'updated': updated,
+        'aliases_created': aliases_created,
+        'processed': len(records),
+    }
 
 
 def _find_matching_bank(bank_name, bank_lookup):
@@ -821,7 +1060,12 @@ def _find_matching_bank(bank_name, bank_lookup):
     return None
 
 
-def _sync_mortgage_offers_to_bank_programs(offers, bank_lookup):
+def _sync_mortgage_offers_to_bank_programs(
+    offers,
+    bank_lookup,
+    program_lookup,
+    source='',
+):
     """Synchronize normalized offers to BankProgram rows."""
     updated = 0
     processed = 0
@@ -842,15 +1086,17 @@ def _sync_mortgage_offers_to_bank_programs(offers, bank_lookup):
             bank.save(update_fields=['logo_url', 'updated_at'])
             updated += 1
 
-        mortgage_program, _ = MortgageProgram.objects.get_or_create(
-            name=offer.program_name,
-            defaults={
-                'condition': 'Программа импортирована из внешнего источника.',
-                'is_preferential': _is_preferential_program(
-                    offer.program_name
-                ),
-            },
+        mortgage_program = _get_or_create_mapped_mortgage_program(
+            offer.program_name,
+            program_lookup,
+            source=source,
         )
+        if _remove_legacy_bank_program_link(
+            bank,
+            mortgage_program,
+            offer.program_name,
+        ):
+            updated += 1
 
         bank_program_defaults = {
             'interest_rate': offer.interest_rate,
@@ -987,6 +1233,43 @@ def sync_bank_mortgage_offers(
     )
     created, updated, cbr_banks = _sync_cbr_banks(cbr_records)
     bank_lookup = _build_bank_lookup(cbr_banks)
+    program_lookup = _build_mortgage_program_lookup()
+    reference_result = {
+        'created': 0,
+        'updated': 0,
+        'aliases_created': 0,
+        'processed': 0,
+    }
+    reference_records = []
+    reference_source_name = DOMRF_REFERENCE_SOURCE_NAME
+    resolved_reference_program_source_url = (
+        getattr(
+            settings,
+            'BANK_MORTGAGE_REFERENCE_PROGRAM_SOURCE_URL',
+            DOMRF_REFERENCE_MORTGAGE_PROGRAMS_URL,
+        )
+    )
+    if resolved_reference_program_source_url:
+        try:
+            reference_records = parse_reference_mortgage_programs(
+                _download_reference_mortgage_programs_payload(
+                    resolved_reference_program_source_url
+                )
+            )
+        except (BankMortgageSyncError, OSError, ValueError) as error:
+            logger.warning(
+                'Could not parse reference mortgage program source: %s',
+                error,
+            )
+    if not reference_records:
+        reference_records = get_federal_reference_mortgage_programs()
+        reference_source_name = FEDERAL_REFERENCE_SOURCE_NAME
+
+    reference_result = _sync_reference_mortgage_programs(
+        reference_records,
+        program_lookup,
+        source_name=reference_source_name,
+    )
     resolved_google_sheet_sources = (
         google_sheet_sources
         if google_sheet_sources is not None
@@ -1022,6 +1305,8 @@ def sync_bank_mortgage_offers(
     banki_result = _sync_mortgage_offers_to_bank_programs(
         offers,
         bank_lookup,
+        program_lookup,
+        source='banki.ru',
     )
     updated += banki_result['updated']
 
@@ -1041,6 +1326,8 @@ def sync_bank_mortgage_offers(
     google_sheet_result = _sync_mortgage_offers_to_bank_programs(
         google_sheet_offers,
         bank_lookup,
+        program_lookup,
+        source='google sheets',
     )
     updated += google_sheet_result['updated']
 
@@ -1052,6 +1339,11 @@ def sync_bank_mortgage_offers(
         ),
         'banks_processed': len(cbr_records),
         'offers_processed': len(offers) + len(google_sheet_offers),
+        'reference_programs_processed': reference_result['processed'],
+        'reference_programs_created': reference_result['created'],
+        'reference_program_aliases_created': (
+            reference_result['aliases_created']
+        ),
         'google_sheet_offers_processed': len(google_sheet_offers),
         'skipped': banki_result['skipped'] + google_sheet_result['skipped'],
     }

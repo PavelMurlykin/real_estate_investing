@@ -10,7 +10,10 @@ from location.models import Region
 from .forms import BankForm
 from .key_rate_sync import KeyRateSyncError
 from .mortgage_offer_sync import (
+    _normalize_bank_match_name,
+    FEDERAL_REFERENCE_SOURCE_NAME,
     normalize_bank_name_for_storage,
+    parse_reference_mortgage_programs,
     parse_cbr_bank_records,
     parse_banki_mortgage_offers,
     parse_google_sheet_mortgage_offers,
@@ -20,6 +23,7 @@ from .models import (
     Bank,
     BankProgram,
     MortgageProgram,
+    MortgageProgramAlias,
     MortgageProgramRegionalCreditLimit,
 )
 
@@ -210,6 +214,38 @@ SAMPLE_GOOGLE_IT_MORTGAGE_CSV = '''
 "Описание","Банк","Регион","Прием заявок","Выдачи","Ставка","Мин ПВ"
 "","Альфа-Банк","МСК","да","да","5,70%","20,01%"
 "","Газпромбанк","МСК","да","да","5,99%","20,10%"
+'''
+
+SAMPLE_REFERENCE_MORTGAGE_PROGRAMS_HTML = '''
+<html>
+  <body>
+    <main>
+      <h1>Льготы по ипотеке</h1>
+      <a href="/catalog/family/">Семейная ипотека</a>
+      <a href="/catalog/it/">IT-ипотека</a>
+      <a href="/catalog/arctic/">Дальневосточная и арктическая ипотека</a>
+      <a href="/catalog/family-duplicate/">Семейная ипотека</a>
+    </main>
+  </body>
+</html>
+'''
+
+SAMPLE_BANKI_DUPLICATE_PROGRAM_NAME_HTML = '''
+<html>
+  <body>
+    <article>
+      <h2>Т-Банк</h2>
+      <div>Ипотека для семей с детьми</div>
+      <div>Подробнее</div>
+      <div>Ставка</div>
+      <div>6%</div>
+      <div>Первоначальный взнос</div>
+      <div>от 20%</div>
+      <div>Срок</div>
+      <div>до 30 лет</div>
+    </article>
+  </body>
+</html>
 '''
 
 
@@ -718,6 +754,19 @@ class BankProgramCatalogTests(TestCase):
 class BankMortgageOfferSyncTests(TestCase):
     """Checks parsing and synchronization of bank mortgage offers."""
 
+    def setUp(self):
+        """Patch external reference source downloads for sync tests."""
+        super().setUp()
+        self.reference_program_patch = patch(
+            'bank.mortgage_offer_sync.'
+            '_download_reference_mortgage_programs_payload',
+            return_value=SAMPLE_REFERENCE_MORTGAGE_PROGRAMS_HTML,
+        )
+        self.reference_program_download_mock = (
+            self.reference_program_patch.start()
+        )
+        self.addCleanup(self.reference_program_patch.stop)
+
     def test_normalize_bank_name_for_storage_removes_legal_wrappers(self):
         """Checks imported bank names are cleaned before saving."""
         self.assertEqual(
@@ -726,6 +775,15 @@ class BankMortgageOfferSyncTests(TestCase):
             ),
             'Тестовый Банк',
         )
+
+    def test_normalize_bank_match_name_ignores_spacing_and_punctuation(self):
+        """Checks bank matching ignores spaces and punctuation."""
+        expected_key = _normalize_bank_match_name('ТБанк')
+
+        self.assertEqual(_normalize_bank_match_name('Т - Банк'), expected_key)
+        self.assertEqual(_normalize_bank_match_name('Т — Банк'), expected_key)
+        self.assertEqual(_normalize_bank_match_name('Т. Банк'), expected_key)
+        self.assertEqual(_normalize_bank_match_name('Банк ВТБ'), 'втб')
 
     def test_parse_cbr_bank_records_extracts_active_banks_only(self):
         """Checks CBR parser skips non-banks and inactive banks."""
@@ -740,6 +798,47 @@ class BankMortgageOfferSyncTests(TestCase):
                 'Т-Банк',
                 'Газпромбанк',
             ],
+        )
+
+    def test_parse_reference_mortgage_programs_extracts_unique_names(self):
+        """Checks reference parser extracts unique preferential programs."""
+        records = parse_reference_mortgage_programs(
+            SAMPLE_REFERENCE_MORTGAGE_PROGRAMS_HTML
+        )
+
+        self.assertEqual(
+            [record.name for record in records],
+            [
+                'Семейная ипотека',
+                'IT-ипотека',
+                'Дальневосточная и арктическая ипотека',
+            ],
+        )
+
+    def test_sync_uses_federal_reference_when_source_is_unavailable(self):
+        """Checks sync falls back to federal program reference records."""
+        self.reference_program_download_mock.side_effect = OSError('403')
+
+        with patch(
+            'bank.mortgage_offer_sync._download_cbr_bank_list_payload',
+            return_value=SAMPLE_CBR_BANK_LIST_HTML,
+        ), patch(
+            'bank.mortgage_offer_sync._download_banki_mortgage_payload',
+            return_value=SAMPLE_BANKI_DUPLICATE_PROGRAM_NAME_HTML,
+        ):
+            result = sync_bank_mortgage_offers(
+                source_url='https://www.banki.ru/products/hypothec/',
+                cbr_source_url='https://www.cbr.ru/banking_sector/credit/FullCoList/',
+                google_sheet_sources=(),
+            )
+
+        self.assertEqual(result['reference_programs_processed'], 6)
+        self.assertTrue(
+            MortgageProgramAlias.objects.filter(
+                source=FEDERAL_REFERENCE_SOURCE_NAME,
+                source_name='Семейная ипотека',
+                mortgage_program__name='Семейная ипотека',
+            ).exists()
         )
 
     def test_parse_banki_mortgage_offers_extracts_all_program_types(self):
@@ -961,6 +1060,41 @@ class BankMortgageOfferSyncTests(TestCase):
             it_program.minimum_initial_payment_percent,
             Decimal('20.01'),
         )
+
+    def test_sync_bank_mortgage_offers_maps_duplicate_program_names(self):
+        """Checks imported duplicate program names use canonical program."""
+        with patch(
+            'bank.mortgage_offer_sync._download_cbr_bank_list_payload',
+            return_value=SAMPLE_CBR_BANK_LIST_HTML,
+        ), patch(
+            'bank.mortgage_offer_sync._download_banki_mortgage_payload',
+            return_value=SAMPLE_BANKI_DUPLICATE_PROGRAM_NAME_HTML,
+        ):
+            result = sync_bank_mortgage_offers(
+                source_url='https://www.banki.ru/products/hypothec/',
+                cbr_source_url='https://www.cbr.ru/banking_sector/credit/FullCoList/',
+                google_sheet_sources=(),
+            )
+
+        self.assertEqual(result['reference_programs_processed'], 3)
+        self.assertFalse(
+            MortgageProgram.objects.filter(
+                name='Ипотека для семей с детьми'
+            ).exists()
+        )
+        canonical_program = MortgageProgram.objects.get(
+            name='Семейная ипотека'
+        )
+        self.assertTrue(
+            BankProgram.objects.filter(
+                bank__name='Т-Банк',
+                mortgage_program=canonical_program,
+            ).exists()
+        )
+        alias = MortgageProgramAlias.objects.get(
+            source_name='Семейная ипотека'
+        )
+        self.assertEqual(alias.mortgage_program, canonical_program)
 
     def test_sync_bank_mortgage_offers_renames_existing_raw_bank_name(self):
         """Checks sync updates a previously imported unnormalized bank name."""

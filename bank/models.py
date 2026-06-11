@@ -6,6 +6,8 @@ from django.db import models
 from core.models import BaseModel
 from location.models import Region
 
+from .program_matching import normalize_mortgage_program_match_name
+
 
 class Bank(BaseModel):
     """Описание класса Bank.
@@ -175,6 +177,52 @@ class MortgageProgramRegionalCreditLimit(BaseModel):
             f'{self.mortgage_program} - {self.region}: '
             f'{self.credit_limit}'
         )
+
+
+class MortgageProgramAlias(BaseModel):
+    """Alias that maps imported program names to a canonical program."""
+
+    mortgage_program = models.ForeignKey(
+        MortgageProgram,
+        on_delete=models.CASCADE,
+        related_name='aliases',
+        verbose_name='Эталонная ипотечная программа',
+    )
+    source_name = models.CharField(
+        max_length=255,
+        verbose_name='Написание из источника',
+    )
+    normalized_name = models.CharField(
+        max_length=255,
+        unique=True,
+        editable=False,
+        verbose_name='Ключ сопоставления',
+    )
+    source = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        verbose_name='Источник',
+    )
+
+    class Meta(BaseModel.Meta):
+        """Метаданные алиасов ипотечных программ."""
+
+        db_table = 'mortgage_program_alias'
+        verbose_name = 'Алиас ипотечной программы'
+        verbose_name_plural = 'Алиасы ипотечных программ'
+        ordering = ['mortgage_program__name', 'source_name']
+
+    def save(self, *args, **kwargs):
+        """Populate the normalized matching key before saving."""
+        self.normalized_name = normalize_mortgage_program_match_name(
+            self.source_name
+        )
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        """Return a readable alias mapping."""
+        return f'{self.source_name} -> {self.mortgage_program}'
 
 
 class BankProgram(BaseModel):

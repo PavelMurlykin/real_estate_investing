@@ -22,6 +22,7 @@ from .models import (
     BankProgram,
     KeyRate,
     MortgageProgram,
+    MortgageProgramAlias,
     MortgageProgramRegionalCreditLimit,
 )
 
@@ -66,6 +67,19 @@ class BankCatalogView(BaseCatalogView):
             table_fields=('mortgage_program', 'region', 'credit_limit'),
             order_by=('mortgage_program__name', 'region__name'),
             select_related=('mortgage_program', 'region'),
+        ),
+        CatalogModelConfig(
+            key='mortgage_program_alias',
+            model=MortgageProgramAlias,
+            form_fields=('mortgage_program', 'source_name', 'source'),
+            table_fields=(
+                'mortgage_program',
+                'source_name',
+                'normalized_name',
+                'source',
+            ),
+            order_by=('mortgage_program__name', 'source_name'),
+            select_related=('mortgage_program',),
         ),
         CatalogModelConfig(
             key='bank_program',
@@ -116,7 +130,11 @@ class BankCatalogView(BaseCatalogView):
                     'Обновление данных банков завершено: '
                     f'создано={result["created"]}, '
                     f'обновлено={result["updated"]}, '
-                    f'обработано={result["processed"]}.'
+                    f'обработано={result["processed"]}, '
+                    'эталонных программ='
+                    f'{result.get("reference_programs_processed", 0)}, '
+                    'алиасов программ='
+                    f'{result.get("reference_program_aliases_created", 0)}.'
                 ),
             )
 
