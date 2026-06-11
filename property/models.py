@@ -182,6 +182,37 @@ class RealEstateComplex(BaseModel):
         return self.name
 
 
+class TransportAccessibilityType(BaseModel):
+    """
+    Справочник типов транспортной доступности.
+    """
+
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name='Тип транспортной доступности',
+    )
+    description = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Описание',
+    )
+
+    class Meta(BaseModel.Meta):
+        """
+        Метаданные таблицы.
+        """
+
+        db_table = 'transport_accessibility_type'
+        verbose_name = 'Тип транспортной доступности'
+        verbose_name_plural = 'Типы транспортной доступности'
+        ordering = ['id']
+
+    def __str__(self):
+        """Возвращает название типа транспортной доступности."""
+        return self.name
+
+
 class RealEstateComplexMetroAvailability(BaseModel):
     """
     Доступность метро относительно ЖК.
@@ -198,8 +229,13 @@ class RealEstateComplexMetroAvailability(BaseModel):
         on_delete=models.PROTECT,
         verbose_name='Станция метро',
     )
+    transport_accessibility_type = models.ForeignKey(
+        TransportAccessibilityType,
+        on_delete=models.PROTECT,
+        verbose_name='Способ',
+    )
     walking_time_minutes = models.PositiveSmallIntegerField(
-        verbose_name='Время до метро, мин. пешком'
+        verbose_name='Время, мин'
     )
 
     class Meta(BaseModel.Meta):
@@ -217,7 +253,8 @@ class RealEstateComplexMetroAvailability(BaseModel):
         """Возвращает строковое представление доступности метро."""
         return (
             f'{self.real_estate_complex}: {self.metro} '
-            f'({self.walking_time_minutes} мин.)'
+            f'({self.transport_accessibility_type}, '
+            f'{self.walking_time_minutes} мин.)'
         )
 
 

@@ -9,6 +9,7 @@ from .models import (
     RealEstateComplex,
     RealEstateComplexBuilding,
     RealEstateComplexMetroAvailability,
+    TransportAccessibilityType,
     WindowView,
 )
 
@@ -420,11 +421,15 @@ class RealEstateComplexMetroAvailabilityForm(forms.ModelForm):
         model = RealEstateComplexMetroAvailability
         fields = [
             'metro',
+            'transport_accessibility_type',
             'walking_time_minutes',
             'is_active',
         ]
         widgets = {
             'metro': forms.Select(attrs={'class': 'form-control'}),
+            'transport_accessibility_type': forms.Select(
+                attrs={'class': 'form-control'}
+            ),
             'walking_time_minutes': forms.NumberInput(
                 attrs={'class': 'form-control', 'min': 1}
             ),
@@ -434,17 +439,26 @@ class RealEstateComplexMetroAvailabilityForm(forms.ModelForm):
         }
         labels = {
             'metro': 'Станция метро',
-            'walking_time_minutes': 'Пешком, мин.',
+            'transport_accessibility_type': 'Способ',
+            'walking_time_minutes': 'Время, мин',
             'is_active': 'Активен',
         }
 
     def __init__(self, *args, **kwargs):
+        """Prepare dictionary querysets for metro availability rows."""
         super().__init__(*args, **kwargs)
         self.fields['metro'].queryset = Metro.objects.select_related(
             'metro_line__city'
         ).order_by('metro_line__city__name', 'metro_line__line', 'station')
         self.fields['metro'].empty_label = 'Выберите станцию'
         self.fields['metro'].label_from_instance = lambda metro: metro.station
+        transport_accessibility_type_field = self.fields[
+            'transport_accessibility_type'
+        ]
+        transport_accessibility_type_field.queryset = (
+            TransportAccessibilityType.objects.order_by('id')
+        )
+        transport_accessibility_type_field.empty_label = 'Выберите способ'
 
 
 class BaseRealEstateComplexMetroAvailabilityInlineFormSet(BaseInlineFormSet):
@@ -461,14 +475,24 @@ class BaseRealEstateComplexMetroAvailabilityInlineFormSet(BaseInlineFormSet):
                 continue
 
             metro = form.cleaned_data.get('metro')
+            transport_accessibility_type = form.cleaned_data.get(
+                'transport_accessibility_type'
+            )
             walking_time = form.cleaned_data.get('walking_time_minutes')
-            has_any_data = bool(metro or walking_time)
+            has_any_data = bool(
+                metro or transport_accessibility_type or walking_time
+            )
 
             if not has_any_data:
                 continue
 
             if not metro:
                 form.add_error('metro', 'Выберите станцию метро.')
+            if not transport_accessibility_type:
+                form.add_error(
+                    'transport_accessibility_type',
+                    'Выберите способ.',
+                )
             if walking_time in (None, ''):
                 form.add_error(
                     'walking_time_minutes',

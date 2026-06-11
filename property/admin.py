@@ -12,6 +12,7 @@ from .models import (
     RealEstateComplexBuilding,
     RealEstateComplexMetroAvailability,
     RealEstateType,
+    TransportAccessibilityType,
     WindowView,
 )
 
@@ -89,7 +90,12 @@ class RealEstateComplexMetroAvailabilityInline(admin.TabularInline):
 
     model = RealEstateComplexMetroAvailability
     extra = 1
-    fields = ('metro', 'walking_time_minutes', 'is_active')
+    fields = (
+        'metro',
+        'transport_accessibility_type',
+        'walking_time_minutes',
+        'is_active',
+    )
     show_change_link = True
 
 
@@ -216,11 +222,13 @@ class RealEstateComplexMetroAvailabilityAdmin(admin.ModelAdmin):
     list_display = (
         'real_estate_complex',
         'metro',
+        'transport_accessibility_type',
         'walking_time_minutes',
         'is_active',
     )
     list_filter = (
         'is_active',
+        'transport_accessibility_type',
         'metro__metro_line__city',
         'metro__metro_line',
         'created_at',
@@ -233,19 +241,33 @@ class RealEstateComplexMetroAvailabilityAdmin(admin.ModelAdmin):
     list_editable = ('is_active',)
     ordering = (
         'real_estate_complex__name',
+        'transport_accessibility_type_id',
         'walking_time_minutes',
         'metro__station',
     )
 
     def get_queryset(self, request):
+        """Return metro availability rows with related dictionaries loaded."""
         return (
             super()
             .get_queryset(request)
             .select_related(
                 'real_estate_complex',
                 'metro__metro_line__city',
+                'transport_accessibility_type',
             )
         )
+
+
+@admin.register(TransportAccessibilityType)
+class TransportAccessibilityTypeAdmin(admin.ModelAdmin):
+    """Admin for transport accessibility type dictionary."""
+
+    list_display = ('name', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name', 'description')
+    list_editable = ('is_active',)
+    ordering = ('id',)
 
 
 @admin.register(ApartmentLayout)

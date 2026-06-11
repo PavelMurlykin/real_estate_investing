@@ -118,13 +118,15 @@
                                 <thead>
                                     <tr>
                                         <th>Станция метро</th>
-                                        <th>Пешком, мин.</th>
+                                        <th>Способ</th>
+                                        <th>Время, мин</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for availability in complex.metro_availability.all %}
                                         <tr>
                                             <td>{{ availability.metro.station }}</td>
+                                            <td>{{ availability.transport_accessibility_type.name }}</td>
                                             <td>{{ availability.walking_time_minutes }}</td>
                                         </tr>
                                     {% endfor %}

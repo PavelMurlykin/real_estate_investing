@@ -25,6 +25,7 @@ from .models import (
     RealEstateComplexBuilding,
     RealEstateComplexMetroAvailability,
     RealEstateType,
+    TransportAccessibilityType,
     WindowView,
 )
 
@@ -40,6 +41,20 @@ def test_metro_availability_select_uses_bootstrap_class_for_auto_search():
     form = RealEstateComplexMetroAvailabilityForm()
 
     assert form.fields['metro'].widget.attrs.get('class') == 'form-control'
+
+
+def test_metro_availability_form_fields_use_requested_order():
+    form = RealEstateComplexMetroAvailabilityForm()
+
+    assert list(form.fields)[:3] == [
+        'metro',
+        'transport_accessibility_type',
+        'walking_time_minutes',
+    ]
+    assert (
+        form.fields['transport_accessibility_type'].widget.attrs.get('class')
+        == 'form-control'
+    )
 
 
 def test_searchable_select_static_filters_options_by_partial_match():
@@ -119,6 +134,14 @@ class RealEstateComplexFormLocationTests(TestCase):
             station='Station 1',
             metro_line=self.metro_line,
         )
+        self.walking_accessibility_type = (
+            TransportAccessibilityType.objects.get_or_create(name='Пешком')[0]
+        )
+        self.transport_accessibility_type = (
+            TransportAccessibilityType.objects.get_or_create(
+                name='На транспорте'
+            )[0]
+        )
 
     def _form_data(self, **overrides):
         data = {
@@ -165,11 +188,14 @@ class RealEstateComplexFormLocationTests(TestCase):
         self.assertContains(response, 'Фото ЖК')
         self.assertContains(response, 'location-cities-data')
         self.assertContains(response, 'metro-0-metro')
+        self.assertContains(response, 'metro-0-transport_accessibility_type')
         self.assertContains(response, 'static/js/searchable_select.js')
         self.assertContains(response, 'location-metro-stations-data')
         self.assertContains(response, 'duplicate-complex-warning')
         self.assertContains(response, 'existing-complexes-data')
         self.assertContains(response, 'Доступность метро')
+        self.assertContains(response, 'Способ')
+        self.assertContains(response, 'Время, мин')
         self.assertNotContains(response, 'Метро рядом с ЖК')
         self.assertContains(response, 'data-add-metro-row')
         self.assertContains(response, 'data-remove-metro-row')
@@ -197,6 +223,16 @@ class RealEstateComplexFormLocationTests(TestCase):
 
         self.assertEqual(metro_choices[str(self.metro.pk)], 'Station 1')
         self.assertNotIn('Line 1', metro_choices[str(self.metro.pk)])
+
+    def test_dictionary_catalog_renders_transport_accessibility_type(self):
+        response = self.client.get(
+            reverse('property:dictionary_catalog'),
+            {'model': 'transport_accessibility_type'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Типы транспортной доступности')
+        self.assertContains(response, 'Пешком')
 
     def test_building_address_input_disables_browser_autocomplete(self):
         form = RealEstateComplexBuildingForm()
@@ -261,6 +297,7 @@ class RealEstateComplexFormLocationTests(TestCase):
         RealEstateComplexMetroAvailability.objects.create(
             real_estate_complex=complex_obj,
             metro=self.metro,
+            transport_accessibility_type=self.walking_accessibility_type,
             walking_time_minutes=12,
         )
 
@@ -321,6 +358,9 @@ class RealEstateComplexFormLocationTests(TestCase):
                 'metro-MIN_NUM_FORMS': '0',
                 'metro-MAX_NUM_FORMS': '1000',
                 'metro-0-metro': self.metro.pk,
+                'metro-0-transport_accessibility_type': (
+                    self.transport_accessibility_type.pk
+                ),
                 'metro-0-walking_time_minutes': '12',
                 'metro-0-is_active': 'on',
             }
@@ -340,6 +380,10 @@ class RealEstateComplexFormLocationTests(TestCase):
             real_estate_complex=complex_obj
         )
         self.assertEqual(availability.metro, self.metro)
+        self.assertEqual(
+            availability.transport_accessibility_type,
+            self.transport_accessibility_type,
+        )
         self.assertEqual(availability.walking_time_minutes, 12)
 
     def test_create_view_saves_investment_potential_and_photo(self):
@@ -482,6 +526,7 @@ class RealEstateComplexFormLocationTests(TestCase):
         RealEstateComplexMetroAvailability.objects.create(
             real_estate_complex=complex_obj,
             metro=self.metro,
+            transport_accessibility_type=self.walking_accessibility_type,
             walking_time_minutes=12,
         )
 
@@ -497,6 +542,7 @@ class RealEstateComplexFormLocationTests(TestCase):
         self.assertContains(response, 'src="/media/property/complexes/complex.gif"')
         self.assertContains(response, 'data-image-modal="true"')
         self.assertContains(response, 'Station 1')
+        self.assertContains(response, 'Пешком')
         self.assertContains(response, 'Address 1')
 
     def test_create_view_saves_building_quarter_periods(self):

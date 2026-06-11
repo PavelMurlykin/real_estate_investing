@@ -190,7 +190,8 @@
                             <thead>
                                 <tr>
                                     <th>Станция метро</th>
-                                    <th style="width: 180px;">Пешком, мин.</th>
+                                    <th style="width: 180px;">Способ</th>
+                                    <th style="width: 160px;">Время, мин</th>
                                     <th style="width: 110px;">Активен</th>
                                     <th style="width: 110px;">Удалить</th>
                                 </tr>
@@ -204,6 +205,12 @@
                                     <td>
                                         {{ metro_form.metro }}
                                         {% for error in metro_form.metro.errors %}
+                                            <div class="text-danger">{{ error }}</div>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {{ metro_form.transport_accessibility_type }}
+                                        {% for error in metro_form.transport_accessibility_type.errors %}
                                             <div class="text-danger">{{ error }}</div>
                                         {% endfor %}
                                     </td>
@@ -229,7 +236,7 @@
                                 </tr>
                                 {% if metro_form.non_field_errors %}
                                 <tr>
-                                    <td colspan="4">
+                                    <td colspan="5">
                                         {% for error in metro_form.non_field_errors %}
                                             <div class="text-danger">{{ error }}</div>
                                         {% endfor %}
@@ -388,6 +395,12 @@
             <td>
                 {{ metro_form.metro }}
                 {% for error in metro_form.metro.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </td>
+            <td>
+                {{ metro_form.transport_accessibility_type }}
+                {% for error in metro_form.transport_accessibility_type.errors %}
                     <div class="text-danger">{{ error }}</div>
                 {% endfor %}
             </td>

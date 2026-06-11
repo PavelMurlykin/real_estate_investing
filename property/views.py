@@ -40,6 +40,7 @@ from .models import (
     RealEstateComplex,
     RealEstateComplexBuilding,
     RealEstateType,
+    TransportAccessibilityType,
     WindowView,
 )
 
@@ -617,6 +618,13 @@ class DictionaryCatalogView(BaseCatalogView):
             table_fields=('name', 'description', 'is_active'),
             order_by=('name',),
         ),
+        CatalogModelConfig(
+            key='transport_accessibility_type',
+            model=TransportAccessibilityType,
+            form_fields=('name', 'description', 'is_active'),
+            table_fields=('name', 'description', 'is_active'),
+            order_by=('id',),
+        ),
     )
 
 
@@ -1152,6 +1160,7 @@ class RealEstateComplexDetailView(DetailView):
             .prefetch_related(
                 'realestatecomplexbuilding_set',
                 'metro_availability__metro',
+                'metro_availability__transport_accessibility_type',
             )
         )
 
