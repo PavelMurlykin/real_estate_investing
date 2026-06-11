@@ -133,6 +133,12 @@
                                 -
                             {% endif %}
                         </p>
+                        {% if calculated.preferential_credit_limit %}
+                            <p>
+                                <strong>Лимит кредита по льготной программе:</strong>
+                                {{ calculated.preferential_credit_limit }} руб.
+                            </p>
+                        {% endif %}
                     {% endif %}
                     <hr>
                     <p class="mb-1"><strong>Ставка ЦБ РФ:</strong> {{ calculated.actual_key_rate }}%</p>

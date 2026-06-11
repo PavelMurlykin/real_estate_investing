@@ -31,6 +31,45 @@
         }
     }
 
+    function parseGroupedDecimal(value) {
+        if (value === null || value === undefined) {
+            return null;
+        }
+
+        const normalizedValue = String(value)
+            .replace(/\s/g, '')
+            .replace(',', '.');
+        if (!normalizedValue) {
+            return null;
+        }
+
+        const parsedValue = Number(normalizedValue);
+        return Number.isFinite(parsedValue) ? parsedValue : null;
+    }
+
+    function formatGroupedDecimal(value) {
+        const parsedValue = parseGroupedDecimal(value);
+        if (parsedValue === null) {
+            return '';
+        }
+
+        return parsedValue.toLocaleString('ru-RU', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+    }
+
+    function initGroupedDecimalInputs(root) {
+        root.querySelectorAll('[data-grouped-decimal-input]').forEach(function (input) {
+            input.addEventListener('blur', function () {
+                const formattedValue = formatGroupedDecimal(input.value);
+                if (formattedValue || !input.value.trim()) {
+                    input.value = formattedValue;
+                }
+            });
+        });
+    }
+
     function getCatalogResultsTarget(element) {
         if (element.dataset.catalogResultsTarget) {
             return element.dataset.catalogResultsTarget;
@@ -112,6 +151,7 @@
 
         if (nextResults && currentResults) {
             currentResults.innerHTML = nextResults.innerHTML;
+            initGroupedDecimalInputs(currentResults);
             currentResults.dispatchEvent(
                 new CustomEvent('catalog:results-replaced', { bubbles: true })
             );
@@ -220,6 +260,7 @@
 
     onReady(function () {
         initSelectSwatches();
+        initGroupedDecimalInputs(document);
         initCatalogFilterForms();
         initCatalogSortLinks();
     });

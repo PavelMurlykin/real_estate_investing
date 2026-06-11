@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from .models import Bank, BankProgram, KeyRate, MortgageProgram
+from .models import (
+    Bank,
+    BankProgram,
+    KeyRate,
+    MortgageProgramAlias,
+    MortgageProgram,
+    MortgageProgramRegionalCreditLimit,
+)
 
 
 @admin.register(Bank)
@@ -13,8 +20,7 @@ class BankAdmin(admin.ModelAdmin):
 
     list_display = (
         'name',
-        'interest_rate',
-        'salary_client_discount',
+        'logo_url',
         'is_active',
         'created_at',
     )
@@ -31,10 +37,62 @@ class MortgageProgramAdmin(admin.ModelAdmin):
     в данном модуле.
     """
 
-    list_display = ('name', 'is_preferential', 'is_active', 'created_at')
-    list_filter = ('is_preferential', 'is_active', 'created_at')
+    list_display = (
+        'name',
+        'is_preferential',
+        'credit_limit',
+        'is_active',
+        'created_at',
+    )
+    list_filter = (
+        'is_preferential',
+        'is_active',
+        'created_at',
+    )
     search_fields = ('name', 'condition')
     ordering = ('name',)
+
+
+@admin.register(MortgageProgramRegionalCreditLimit)
+class MortgageProgramRegionalCreditLimitAdmin(admin.ModelAdmin):
+    """Администрирование региональных лимитов ипотечных программ."""
+
+    list_display = (
+        'mortgage_program',
+        'region',
+        'credit_limit',
+        'is_active',
+        'created_at',
+    )
+    list_filter = (
+        'mortgage_program',
+        'region',
+        'is_active',
+        'created_at',
+    )
+    search_fields = ('mortgage_program__name', 'region__name')
+    ordering = ('mortgage_program__name', 'region__name')
+
+
+@admin.register(MortgageProgramAlias)
+class MortgageProgramAliasAdmin(admin.ModelAdmin):
+    """Администрирование алиасов ипотечных программ."""
+
+    list_display = (
+        'source_name',
+        'mortgage_program',
+        'normalized_name',
+        'source',
+        'is_active',
+        'created_at',
+    )
+    list_filter = ('mortgage_program', 'source', 'is_active', 'created_at')
+    search_fields = (
+        'source_name',
+        'normalized_name',
+        'mortgage_program__name',
+    )
+    ordering = ('mortgage_program__name', 'source_name')
 
 
 @admin.register(BankProgram)
@@ -45,7 +103,15 @@ class BankProgramAdmin(admin.ModelAdmin):
     в данном модуле.
     """
 
-    list_display = ('bank', 'mortgage_program', 'is_active', 'created_at')
+    list_display = (
+        'bank',
+        'mortgage_program',
+        'interest_rate',
+        'minimum_initial_payment_percent',
+        'maximum_loan_term_years',
+        'is_active',
+        'created_at',
+    )
     list_filter = ('bank', 'mortgage_program', 'is_active', 'created_at')
     search_fields = ('bank__name', 'mortgage_program__name')
     ordering = ('bank__name', 'mortgage_program__name')

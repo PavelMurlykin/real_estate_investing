@@ -8,6 +8,11 @@
     let propertyFormData = {
         properties: [],
     };
+    let mortgageProgramFormData = {
+        banks: [],
+        programs: [],
+        key_rate: '0',
+    };
     let apartmentMenuItems = [];
     let activeApartmentMenuIndex = -1;
 
@@ -35,6 +40,107 @@
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         });
+    }
+
+    function formatPercent(value) {
+        return parseNumber(value).toLocaleString('ru-RU', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+    }
+
+    function getDefaultMarketRate() {
+        return parseNumber(mortgageProgramFormData.key_rate) + 2;
+    }
+
+    function getMortgageBankSelect() {
+        return document.getElementById('mortgage-bank-select');
+    }
+
+    function getMortgageProgramSelect() {
+        return document.getElementById('mortgage-program-select');
+    }
+
+    function getMortgageProgramLimitOptions() {
+        return document.getElementById('mortgage-program-limit-options');
+    }
+
+    function refreshSearchableSelect(select) {
+        if (window.searchableSelect) {
+            window.searchableSelect.refresh(select);
+        }
+    }
+
+    function getSelectedMortgageProgram() {
+        const programSelect = getMortgageProgramSelect();
+        if (!programSelect || !programSelect.value) {
+            return null;
+        }
+
+        return mortgageProgramFormData.programs.find(function (program) {
+            return String(program.id) === String(programSelect.value);
+        }) || null;
+    }
+
+    function getSelectedCityRegionId() {
+        const citySelect = document.getElementById('city-select');
+        const cityId = citySelect ? String(citySelect.value || '') : '';
+        if (!cityId || !Array.isArray(propertyFormData.cities)) {
+            return '';
+        }
+
+        const city = propertyFormData.cities.find(function (item) {
+            return String(item.id) === cityId;
+        });
+        return city ? String(city.region_id || '') : '';
+    }
+
+    function getProgramCreditLimit(program) {
+        if (!program || !program.is_preferential) {
+            return 0;
+        }
+
+        const regionId = getSelectedCityRegionId();
+        if (regionId && Array.isArray(program.regional_credit_limits)) {
+            const regionalLimit = program.regional_credit_limits.find(
+                function (item) {
+                    return String(item.region_id) === regionId;
+                }
+            );
+            if (regionalLimit) {
+                return parseNumber(regionalLimit.credit_limit);
+            }
+        }
+
+        return parseNumber(program.credit_limit);
+    }
+
+    function getProgramInitialPaymentPercent(program) {
+        const value = parseNumber(
+            program ? program.minimum_initial_payment_percent : 0
+        );
+        return value > 0 ? value : 20;
+    }
+
+    function getProgramTermYears(program) {
+        const value = Math.floor(
+            parseNumber(program ? program.maximum_loan_term_years : 0)
+        );
+        return value > 0 ? value : 30;
+    }
+
+    function getProgramAnnualRate(program) {
+        const value = parseNumber(program ? program.interest_rate : 0);
+        if (value > 0) {
+            return value;
+        }
+
+        return program && program.is_preferential ? 6 : getDefaultMarketRate();
+    }
+
+    function getCurrentInitialPaymentRubles() {
+        const rublesInput = document.getElementById('initial_payment_rubles');
+        return parseNumber(rublesInput ? rublesInput.value : 0);
     }
 
     function readJson(selector) {
@@ -197,6 +303,138 @@
         return Math.max(0, finalCost - initialPaymentRubles);
     }
 
+    function updateMortgageProgramLimitOptions() {
+        const container = getMortgageProgramLimitOptions();
+        if (!container) {
+            return;
+        }
+
+        const program = getSelectedMortgageProgram();
+        const creditLimit = getProgramCreditLimit(program);
+        const loanAmount = getLoanAmountNumber();
+
+        container.classList.add('d-none');
+        container.innerHTML = '';
+        if (
+            !program
+            || !program.is_preferential
+            || creditLimit <= 0
+            || loanAmount <= creditLimit
+        ) {
+            return;
+        }
+
+        const finalCost = getFinalPropertyCostNumber();
+        const requiredInitialPayment = Math.max(0, finalCost - creditLimit);
+        const requiredInitialPaymentPercent = finalCost > 0
+            ? requiredInitialPayment / finalCost * 100
+            : 0;
+        const currentInitialPayment = getCurrentInitialPaymentRubles();
+        const additionalInitialPayment = Math.max(
+            0,
+            requiredInitialPayment - currentInitialPayment
+        );
+        const preferentialRate = getProgramAnnualRate(program);
+        const marketRate = getDefaultMarketRate();
+        const marketLoanPart = loanAmount - creditLimit;
+        const combinedRate = loanAmount > 0
+            ? (
+                creditLimit * preferentialRate
+                + marketLoanPart * marketRate
+            ) / loanAmount
+            : 0;
+
+        container.innerHTML = `
+            <div class="alert alert-warning mb-0">
+                <div class="fw-semibold mb-2">
+                    Расчетная сумма кредита ${formatMoney(loanAmount)} руб. превышает лимит ${formatMoney(creditLimit)} руб.
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="fw-semibold">Увеличение первоначального взноса</div>
+                        <div>Необходимый взнос: ${formatMoney(requiredInitialPayment)} руб. (${formatPercent(requiredInitialPaymentPercent)}%).</div>
+                        <div>Дополнительно к текущему взносу: ${formatMoney(additionalInitialPayment)} руб.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="fw-semibold">Комбинированная ипотека</div>
+                        <div>Льготная часть: ${formatMoney(creditLimit)} руб. под ${formatPercent(preferentialRate)}%.</div>
+                        <div>Рыночная часть: ${formatMoney(marketLoanPart)} руб. под ${formatPercent(marketRate)}%.</div>
+                        <div>Итоговая ставка: ${formatPercent(combinedRate)}%.</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.classList.remove('d-none');
+    }
+
+    function renderMortgagePrograms() {
+        const bankSelect = getMortgageBankSelect();
+        const programSelect = getMortgageProgramSelect();
+        if (!bankSelect || !programSelect) {
+            return;
+        }
+
+        const selectedBankId = String(bankSelect.value || '');
+        const availablePrograms = (mortgageProgramFormData.programs || [])
+            .filter(function (program) {
+                return String(program.bank_id) === selectedBankId;
+            });
+
+        programSelect.innerHTML = '<option value="">Выберите программу</option>';
+        availablePrograms.forEach(function (program) {
+            const option = document.createElement('option');
+            option.value = String(program.id);
+            option.textContent = program.program_name;
+            programSelect.appendChild(option);
+        });
+        programSelect.disabled = !selectedBankId || !availablePrograms.length;
+        refreshSearchableSelect(programSelect);
+        updateMortgageProgramLimitOptions();
+    }
+
+    function applyMortgageProgram() {
+        const program = getSelectedMortgageProgram();
+        if (!program) {
+            updateMortgageProgramLimitOptions();
+            return;
+        }
+
+        const initialPaymentPercentInput = document.getElementById(
+            'initial_payment_percent'
+        );
+        const mortgageTermYearsInput = document.getElementById(
+            'mortgage_term_years'
+        );
+        const mortgageTermMonthsInput = document.getElementById(
+            'mortgage_term_months'
+        );
+        const annualRateInput = document.getElementById('id_ANNUAL_RATE');
+
+        setInitialPaymentSource('percent');
+        if (initialPaymentPercentInput) {
+            initialPaymentPercentInput.value = (
+                getProgramInitialPaymentPercent(program)
+            ).toFixed(2);
+        }
+        updateInitialPaymentRubles();
+
+        const termYears = getProgramTermYears(program);
+        if (mortgageTermYearsInput) {
+            mortgageTermYearsInput.value = termYears;
+        }
+        if (mortgageTermMonthsInput) {
+            mortgageTermMonthsInput.value = termYears * 12;
+        }
+
+        if (annualRateInput) {
+            annualRateInput.value = getProgramAnnualRate(program).toFixed(2);
+            syncAnnualRateToAllTrenches(true);
+        }
+
+        updateTrenchRows();
+        updateMortgageProgramLimitOptions();
+    }
+
     function updateInitialPaymentPercent() {
         const percentInput = document.getElementById('initial_payment_percent');
         const rublesInput = document.getElementById('initial_payment_rubles');
@@ -247,6 +485,7 @@
         const finalCost = getFinalPropertyCostNumber();
         finalField.value = formatMoney(finalCost);
         syncInitialPaymentValues();
+        updateMortgageProgramLimitOptions();
     }
 
     function handlePropertyCostChange() {
@@ -281,17 +520,20 @@
         setInitialPaymentSource('percent');
         updateInitialPaymentRubles();
         updateTrenchRows();
+        updateMortgageProgramLimitOptions();
     }
 
     function handleInitialPaymentRublesInput() {
         setInitialPaymentSource('rubles');
         updateInitialPaymentPercent();
         updateTrenchRows();
+        updateMortgageProgramLimitOptions();
     }
 
     function setInitialPaymentLock(source) {
         setInitialPaymentSource(source);
         syncInitialPaymentValues();
+        updateMortgageProgramLimitOptions();
     }
 
     function syncTermFromYears(yearsInputId, monthsInputId) {
@@ -976,9 +1218,16 @@
         );
         bindInput('id_building', 'change', handleBuildingChange);
         bindInput('city-select', 'change', scheduleApartmentSelectionSync);
+        bindInput('city-select', 'change', updateMortgageProgramLimitOptions);
         bindInput('district-select', 'change', scheduleApartmentSelectionSync);
         bindInput('developer-select', 'change', scheduleApartmentSelectionSync);
         bindInput('complex-select', 'change', scheduleApartmentSelectionSync);
+        bindInput('mortgage-bank-select', 'change', renderMortgagePrograms);
+        bindInput(
+            'mortgage-program-select',
+            'change',
+            applyMortgageProgram
+        );
         bindApartmentNumberInput('input', handleApartmentNumberInput);
         bindApartmentNumberInput('change', handleApartmentNumberInput);
         bindApartmentNumberInput('focus', handleApartmentNumberFocus);
@@ -1077,6 +1326,7 @@
 
     onReady(function () {
         propertyFormData = readJson('#mortgage-property-form-data');
+        mortgageProgramFormData = readJson('#mortgage-program-form-data');
         bindEvents();
         document.addEventListener('mousedown', function (event) {
             const menu = getApartmentMenu();
@@ -1106,6 +1356,8 @@
         syncFirstTrenchDateFromInitialPayment();
         syncAnnualRateToAllTrenches();
         updateTrenchRows();
+        renderMortgagePrograms();
+        updateMortgageProgramLimitOptions();
         const selectedPropertyInput = getSelectedPropertyInput();
         const selectedPropertyId = selectedPropertyInput
             ? selectedPropertyInput.value

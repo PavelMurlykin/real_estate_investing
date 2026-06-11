@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from bank.models import MortgageProgram
+from bank.models import MortgageProgram, MortgageProgramRegionalCreditLimit
 from location.models import City, District, Region
 from mortgage.models import MortgageCalculation
 from mortgage.utils import format_currency
@@ -237,6 +237,48 @@ class CustomerDetailViewTests(TestCase):
             response,
             'Максимальная стоимость объекта по льготной ставке 6%',
         )
+
+    def test_detail_page_limits_family_mortgage_credit_by_region(self):
+        """Проверяет региональный лимит кредита семейной ипотеки."""
+        region = Region.objects.create(name='Москва', code='77')
+        city = City.objects.create(name='Москва', region=region)
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            desired_city=city,
+            initial_payment_amount=Decimal('1000000'),
+            max_monthly_payment=Decimal('100000'),
+        )
+        preferential_program = MortgageProgram.objects.create(
+            name='Семейная',
+            condition='Льготные условия',
+            is_preferential=True,
+            credit_limit=Decimal('6000000'),
+        )
+        MortgageProgramRegionalCreditLimit.objects.create(
+            mortgage_program=preferential_program,
+            region=region,
+            credit_limit=Decimal('12000000'),
+        )
+        customer.preferential_programs.add(preferential_program)
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context['calculated']['preferential_credit_limit'],
+            format_currency(Decimal('12000000')),
+        )
+        self.assertEqual(
+            response.context['calculated'][
+                'preferential_max_property_cost'
+            ],
+            format_currency(Decimal('13000000')),
+        )
+        self.assertContains(response, 'Лимит кредита по льготной программе')
+        self.assertContains(response, '12 000 000,00 руб.')
 
     def test_detail_page_hides_preferential_calculation_without_program(self):
         """Проверяет скрытие льготного расчета без льготной программы."""

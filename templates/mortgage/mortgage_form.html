@@ -234,6 +234,32 @@
                 </div>
             </div>
 
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">Ипотечная программа</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="mortgage-bank-select" class="form-label">Банк</label>
+                                <select id="mortgage-bank-select" name="MORTGAGE_BANK" class="form-select">
+                                    <option value="">Выберите банк</option>
+                                    {% for bank in mortgage_program_form_data.banks %}
+                                        <option value="{{ bank.id }}">{{ bank.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="mortgage-program-select" class="form-label">Ипотечная программа</label>
+                                <select id="mortgage-program-select" name="MORTGAGE_BANK_PROGRAM" class="form-select" disabled>
+                                    <option value="">Выберите программу</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="mortgage-program-limit-options" class="mt-3 d-none"></div>
+                    </div>
+                </div>
+            </div>
+
             <div class="col-lg-6">
                 <div class="card h-100">
                     <div class="card-header">Стоимость объекта</div>
@@ -828,9 +854,10 @@
 </div>
 
 {{ property_form_data|json_script:"mortgage-property-form-data" }}
+{{ mortgage_program_form_data|json_script:"mortgage-program-form-data" }}
 {% endblock %}
 
 {% block extra_scripts %}
 <script src="{% static 'js/dependent_selects.js' %}"></script>
-<script src="{% static 'js/mortgage_form.js' %}?v=20260530-unified-mortgage" data-property-cost-api-template="{% url 'mortgage:property_cost_api' 0 %}"></script>
+<script src="{% static 'js/mortgage_form.js' %}?v=20260611-mortgage-programs-2" data-property-cost-api-template="{% url 'mortgage:property_cost_api' 0 %}"></script>
 {% endblock %}

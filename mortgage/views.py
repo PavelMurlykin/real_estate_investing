@@ -32,6 +32,8 @@ from trench_mortgage.views import (
 )
 from trench_mortgage.models import TrenchMortgageCalculation
 
+from bank.models import Bank, BankProgram, KeyRate
+
 from .excel import (
     MortgageExcelData,
     export_mortgage_excel,
@@ -295,7 +297,9 @@ def _get_property_form_data():
     ).order_by('building_id', 'apartment_number')
 
     return {
-        'cities': list(City.objects.order_by('name').values('id', 'name')),
+        'cities': list(
+            City.objects.order_by('name').values('id', 'name', 'region_id')
+        ),
         'districts': list(districts.values('id', 'name', 'city_id')),
         'complexes': list(
             complexes.values(
@@ -312,6 +316,80 @@ def _get_property_form_data():
         'properties': [
             _get_property_payload(property_obj)
             for property_obj in properties
+        ],
+    }
+
+
+def _get_latest_key_rate():
+    """Return the latest stored CBR key rate."""
+    return (
+        KeyRate.objects.filter(is_active=True)
+        .order_by('-meeting_date')
+        .values_list('key_rate', flat=True)
+        .first()
+        or decimal.Decimal('0')
+    )
+
+
+def _decimal_to_json_value(value):
+    """Convert decimal values to frontend-friendly strings."""
+    if value in (None, ''):
+        return ''
+    return str(value)
+
+
+def _get_mortgage_program_form_data():
+    """Build bank mortgage program data for the calculator UI."""
+    banks = Bank.objects.filter(
+        is_active=True,
+        mortgage_programs__isnull=False,
+    ).distinct().order_by('name')
+    bank_programs = (
+        BankProgram.objects.select_related('bank', 'mortgage_program')
+        .prefetch_related('mortgage_program__regional_credit_limits')
+        .filter(bank__in=banks, is_active=True)
+        .order_by('bank__name', 'mortgage_program__name')
+    )
+
+    return {
+        'key_rate': _decimal_to_json_value(_get_latest_key_rate()),
+        'banks': list(banks.values('id', 'name')),
+        'programs': [
+            {
+                'id': bank_program.pk,
+                'bank_id': bank_program.bank_id,
+                'program_id': bank_program.mortgage_program_id,
+                'program_name': bank_program.mortgage_program.name,
+                'interest_rate': _decimal_to_json_value(
+                    bank_program.interest_rate
+                ),
+                'minimum_initial_payment_percent': _decimal_to_json_value(
+                    bank_program.minimum_initial_payment_percent
+                ),
+                'maximum_loan_term_years': (
+                    bank_program.maximum_loan_term_years or ''
+                ),
+                'is_preferential': (
+                    bank_program.mortgage_program.is_preferential
+                ),
+                'credit_limit': _decimal_to_json_value(
+                    bank_program.mortgage_program.credit_limit
+                ),
+                'regional_credit_limits': [
+                    {
+                        'region_id': regional_limit.region_id,
+                        'credit_limit': _decimal_to_json_value(
+                            regional_limit.credit_limit
+                        ),
+                    }
+                    for regional_limit in (
+                        bank_program.mortgage_program
+                        .regional_credit_limits.all()
+                    )
+                    if regional_limit.is_active
+                ],
+            }
+            for bank_program in bank_programs
         ],
     }
 
@@ -530,6 +608,7 @@ def mortgage_calculator(request):
         'target_customer': target_customer,
         'sample_calculation': sample_calculation,
         'property_form_data': _get_property_form_data(),
+        'mortgage_program_form_data': _get_mortgage_program_form_data(),
         'active_calculation_type': active_calculation_type,
         'trench_count': trench_count,
         'trench_input_rows': _build_trench_input_rows(

@@ -8,6 +8,13 @@ from openpyxl import load_workbook
 from django.test import TestCase
 from django.urls import reverse
 
+from bank.models import (
+    Bank,
+    BankProgram,
+    KeyRate,
+    MortgageProgram,
+    MortgageProgramRegionalCreditLimit,
+)
 from location.models import City, District, Region
 from mortgage.models import MortgageCalculation
 from property.models import (
@@ -260,8 +267,13 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, 'property-apartment-menu')
         self.assertContains(
             response,
-            'mortgage_form.js?v=20260530-unified-mortgage',
+            'mortgage_form.js?v=20260611-mortgage-programs',
         )
+        self.assertContains(response, 'Ипотечная программа')
+        self.assertContains(response, 'mortgage-bank-select')
+        self.assertContains(response, 'mortgage-program-select')
+        self.assertContains(response, 'mortgage-program-limit-options')
+        self.assertContains(response, 'mortgage-program-form-data')
         self.assertContains(response, 'calculation_type')
         self.assertContains(response, 'market-mortgage-pane')
         self.assertContains(response, 'trench-mortgage-pane')
@@ -277,6 +289,10 @@ class MortgageCalculatorViewTests(TestCase):
             response.context['property_form_data']['properties'][0]['id'],
             self.property.pk,
         )
+        self.assertIn(
+            'region_id',
+            response.context['property_form_data']['cities'][0],
+        )
 
     def test_calculation_list_is_available_from_calculation_menu(self):
         response = self.client.get(self.url)
@@ -285,6 +301,56 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, 'Сохраненные расчеты ипотеки')
         self.assertContains(response, reverse('mortgage:calculation_list'))
         self.assertNotContains(response, '/trench-mortgage/')
+
+    def test_mortgage_program_block_uses_banks_with_programs(self):
+        """Checks mortgage program selector data and credit limits."""
+        bank_with_program = Bank.objects.create(name='Alpha Bank')
+        bank_without_program = Bank.objects.create(name='Empty Bank')
+        preferential_program = MortgageProgram.objects.create(
+            name='Семейная ипотека',
+            condition='Льготные условия',
+            is_preferential=True,
+            credit_limit=Decimal('6000000'),
+        )
+        MortgageProgramRegionalCreditLimit.objects.create(
+            mortgage_program=preferential_program,
+            region=self.property.building.real_estate_complex.district.city.region,
+            credit_limit=Decimal('12000000'),
+        )
+        BankProgram.objects.create(
+            bank=bank_with_program,
+            mortgage_program=preferential_program,
+            interest_rate=Decimal('5.90'),
+            minimum_initial_payment_percent=Decimal('15.00'),
+            maximum_loan_term_years=25,
+        )
+        KeyRate.objects.create(
+            meeting_date=date(2026, 6, 1),
+            key_rate=Decimal('16.00'),
+        )
+
+        response = self.client.get(self.url)
+        program_data = response.context['mortgage_program_form_data']
+
+        self.assertContains(response, 'Alpha Bank')
+        self.assertNotContains(response, 'Empty Bank')
+        self.assertEqual(program_data['key_rate'], '16.00')
+        self.assertEqual(program_data['banks'][0]['name'], 'Alpha Bank')
+        self.assertEqual(
+            program_data['programs'][0]['program_name'],
+            'Семейная ипотека',
+        )
+        self.assertEqual(
+            program_data['programs'][0]['minimum_initial_payment_percent'],
+            '15.00',
+        )
+        self.assertEqual(program_data['programs'][0]['interest_rate'], '5.90')
+        self.assertEqual(
+            program_data['programs'][0]['regional_credit_limits'][0][
+                'credit_limit'
+            ],
+            '12000000.00',
+        )
 
     def test_old_trench_mortgage_route_is_removed(self):
         response = self.client.get('/trench-mortgage/')
