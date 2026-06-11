@@ -21,6 +21,8 @@ from trench_mortgage.views import (
     _build_trench_payment_schedule,
     _build_trench_input_rows,
     _calculate_trench_mortgage,
+    _calculate_months_remaining,
+    _calculate_trench_overpayment,
     _export_trench_excel,
     _format_payment_schedule as _format_trench_payment_schedule,
     _format_result as _format_trench_result,
@@ -1153,13 +1155,20 @@ def _build_saved_trench_calculation_data(calculation):
     """Build an export/report payload from a saved trench calculation."""
     trenches = []
     previous_monthly_payment = 0.0
+    mortgage_end_date = calculation.initial_payment_date + relativedelta(
+        months=calculation.mortgage_term
+    )
     for trench in calculation.trenches.all():
         monthly_payment = float(trench.monthly_payment)
         trench_monthly_payment = monthly_payment - previous_monthly_payment
         previous_monthly_payment = monthly_payment
-        overpayment = (
-            trench_monthly_payment * trench.payments_count
-            - float(trench.trench_amount)
+        months_remaining = _calculate_months_remaining(
+            trench.trench_date, mortgage_end_date
+        )
+        overpayment = _calculate_trench_overpayment(
+            trench_monthly_payment,
+            float(trench.trench_amount),
+            months_remaining,
         )
         trenches.append(
             {
@@ -1176,9 +1185,6 @@ def _build_saved_trench_calculation_data(calculation):
             }
         )
 
-    mortgage_end_date = calculation.initial_payment_date + relativedelta(
-        months=calculation.mortgage_term
-    )
     return {
         'property_obj': calculation.property,
         'property_cost': float(calculation.final_property_cost),

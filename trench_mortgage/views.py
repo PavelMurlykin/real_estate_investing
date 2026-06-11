@@ -494,7 +494,9 @@ def _calculate_trench_mortgage(mortgage_data, trench_entries):
         else:
             monthly_payment = trench_amount / months_remaining
 
-        overpayment = (monthly_payment * months_remaining) - trench_amount
+        overpayment = _calculate_trench_overpayment(
+            monthly_payment, trench_amount, months_remaining
+        )
         if idx + 1 < len(trench_entries):
             period_end_date = trench_entries[idx + 1]['trench_date']
         else:
@@ -569,6 +571,13 @@ def _calculate_months_remaining(start_date, end_date):
     if end_date.day < start_date.day:
         months -= 1
     return months
+
+
+def _calculate_trench_overpayment(
+    trench_monthly_payment, trench_amount, payments_count
+):
+    """Return the tranche overpayment for its full repayment period."""
+    return (trench_monthly_payment * payments_count) - trench_amount
 
 
 def _calculate_payment_count_in_schedule(

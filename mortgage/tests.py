@@ -27,6 +27,7 @@ from property.models import (
     RealEstateComplexBuilding,
     RealEstateType,
 )
+from mortgage.views import _build_saved_trench_calculation_data
 from trench_mortgage.models import Trench, TrenchMortgageCalculation
 
 
@@ -804,6 +805,22 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, 'Сохранить в Word')
         self.assertContains(response, 'name="export_word"')
         self.assertContains(response, 'value="trench"')
+
+    def test_saved_trench_calculation_keeps_each_trench_overpayment_positive(
+        self,
+    ):
+        """Calculate saved tranche overpayment for the full repayment term."""
+        calculation = self._create_trench_calculation()
+
+        calculation_data = _build_saved_trench_calculation_data(calculation)
+
+        self.assertGreater(calculation_data['trenches'][0]['overpayment'], 0)
+        self.assertGreater(calculation_data['trenches'][1]['overpayment'], 0)
+        self.assertAlmostEqual(
+            calculation_data['trenches'][0]['overpayment'],
+            3_285_212.8,
+            places=1,
+        )
 
     def test_trench_calculation_detail_export_returns_excel_file(self):
         calculation = self._create_trench_calculation()
