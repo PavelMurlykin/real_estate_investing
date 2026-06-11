@@ -44,6 +44,14 @@
                     Обновить данные банков
                 </button>
             </form>
+            <form method="post" action="{{ form_action_url }}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="sync_existing_bank_mortgage_offers">
+                <input type="hidden" name="model" value="bank">
+                <button type="submit" class="btn btn-outline-primary">
+                    Обновить ипотечные программы
+                </button>
+            </form>
         </div>
         {% endif %}
     </div>

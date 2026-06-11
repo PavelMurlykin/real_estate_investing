@@ -834,11 +834,52 @@ class BankMortgageOfferSyncTests(TestCase):
 
         self.assertEqual(result['reference_programs_processed'], 6)
         self.assertTrue(
+            any(
+                'Эталонный источник ипотечных программ не обработан'
+                in warning
+                for warning in result['warnings']
+            )
+        )
+        self.assertTrue(
             MortgageProgramAlias.objects.filter(
                 source=FEDERAL_REFERENCE_SOURCE_NAME,
                 source_name='Семейная ипотека',
                 mortgage_program__name='Семейная ипотека',
             ).exists()
+        )
+
+    def test_sync_reports_google_sheet_source_errors(self):
+        """Checks Google Sheets errors do not stop successful sync."""
+        with patch(
+            'bank.mortgage_offer_sync._download_cbr_bank_list_payload',
+            return_value=SAMPLE_CBR_BANK_LIST_HTML,
+        ), patch(
+            'bank.mortgage_offer_sync._download_banki_mortgage_payload',
+            return_value=SAMPLE_BANKI_MORTGAGE_HTML,
+        ), patch(
+            'bank.mortgage_offer_sync._download_google_sheet_mortgage_payload',
+            side_effect=ConnectionResetError('connection reset'),
+        ):
+            result = sync_bank_mortgage_offers(
+                source_url='https://www.banki.ru/products/hypothec/',
+                cbr_source_url='https://www.cbr.ru/banking_sector/credit/FullCoList/',
+                google_sheet_sources=(
+                    {
+                        'program_name': 'Семейная ипотека',
+                        'source_url': 'https://example.test/family.csv',
+                        'bank_column_index': 2,
+                        'rate_column_index': 6,
+                        'initial_payment_column_index': 7,
+                    },
+                ),
+            )
+
+        self.assertGreater(result['processed'], 0)
+        self.assertTrue(
+            any(
+                'Google Sheets источник не обработан' in warning
+                for warning in result['warnings']
+            )
         )
 
     def test_parse_banki_mortgage_offers_extracts_all_program_types(self):
@@ -1096,6 +1137,93 @@ class BankMortgageOfferSyncTests(TestCase):
         )
         self.assertEqual(alias.mortgage_program, canonical_program)
 
+    def test_sync_bank_mortgage_offers_can_update_existing_banks_only(self):
+        """Checks program-only sync does not create missing banks."""
+        Bank.objects.create(name='Т-Банк')
+        raw_html = SAMPLE_BANKI_DUPLICATE_PROGRAM_NAME_HTML.replace(
+            '<h2>Т-Банк</h2>',
+            '<img alt="Т-Банк" src="/logos/tbank.svg"><h2>Т-Банк</h2>',
+        )
+
+        with patch(
+            'bank.mortgage_offer_sync._download_cbr_bank_list_payload',
+            side_effect=AssertionError('CBR source must not be called'),
+        ), patch(
+            'bank.mortgage_offer_sync._download_banki_mortgage_payload',
+            return_value=raw_html,
+        ):
+            result = sync_bank_mortgage_offers(
+                source_url='https://www.banki.ru/products/hypothec/',
+                cbr_source_url='https://www.cbr.ru/banking_sector/credit/FullCoList/',
+                google_sheet_sources=(),
+                update_bank_registry=False,
+            )
+
+        self.assertEqual(result['created'], 0)
+        self.assertEqual(result['banks_processed'], 0)
+        self.assertEqual(result['processed'], 1)
+        self.assertFalse(Bank.objects.filter(name='Банк ВТБ').exists())
+        bank = Bank.objects.get(name='Т-Банк')
+        self.assertEqual(
+            bank.logo_url,
+            'https://www.banki.ru/logos/tbank.svg',
+        )
+        self.assertTrue(
+            BankProgram.objects.filter(
+                bank=bank,
+                mortgage_program__name='Семейная ипотека',
+            ).exists()
+        )
+
+    def test_sync_bank_mortgage_offers_reports_banki_download_errors(self):
+        """Checks Banki.ru network errors are reported as warnings."""
+        with patch(
+            'bank.mortgage_offer_sync._download_cbr_bank_list_payload',
+            return_value=SAMPLE_CBR_BANK_LIST_HTML,
+        ), patch(
+            'bank.mortgage_offer_sync._download_banki_mortgage_payload',
+            side_effect=ConnectionResetError('connection reset'),
+        ):
+            result = sync_bank_mortgage_offers(
+                source_url='https://www.banki.ru/products/hypothec/',
+                cbr_source_url='https://www.cbr.ru/banking_sector/credit/FullCoList/',
+                google_sheet_sources=(),
+            )
+
+        self.assertEqual(result['processed'], 0)
+        self.assertTrue(
+            any(
+                'Banki.ru не обработан' in warning
+                for warning in result['warnings']
+            )
+        )
+
+    def test_sync_bank_mortgage_offers_reports_cbr_download_errors(self):
+        """Checks CBR errors do not stop mortgage offer updates."""
+        Bank.objects.create(name='Т-Банк')
+
+        with patch(
+            'bank.mortgage_offer_sync._download_cbr_bank_list_payload',
+            side_effect=ConnectionResetError('connection reset'),
+        ), patch(
+            'bank.mortgage_offer_sync._download_banki_mortgage_payload',
+            return_value=SAMPLE_BANKI_DUPLICATE_PROGRAM_NAME_HTML,
+        ):
+            result = sync_bank_mortgage_offers(
+                source_url='https://www.banki.ru/products/hypothec/',
+                cbr_source_url='https://www.cbr.ru/banking_sector/credit/FullCoList/',
+                google_sheet_sources=(),
+            )
+
+        self.assertEqual(result['created'], 0)
+        self.assertEqual(result['processed'], 1)
+        self.assertTrue(
+            any(
+                'Список банков ЦБ РФ не обновлен' in warning
+                for warning in result['warnings']
+            )
+        )
+
     def test_sync_bank_mortgage_offers_renames_existing_raw_bank_name(self):
         """Checks sync updates a previously imported unnormalized bank name."""
         Bank.objects.create(name='Банк ВТБ (ПАО)')
@@ -1147,7 +1275,7 @@ class BankMortgageOfferSyncTests(TestCase):
             )
 
         self.assertRedirects(response, f'{reverse("bank:catalog")}?model=bank')
-        sync_mock.assert_called_once_with()
+        sync_mock.assert_called_once_with(update_bank_registry=True)
         messages = [
             str(message)
             for message in get_messages(response.wsgi_request)
@@ -1156,6 +1284,73 @@ class BankMortgageOfferSyncTests(TestCase):
         self.assertIn('создано=1', messages[0])
         self.assertIn('обновлено=2', messages[0])
         self.assertIn('обработано=3', messages[0])
+
+    def test_bank_catalog_program_sync_button_runs_program_only_sync(self):
+        """Checks bank catalog has program-only sync action."""
+        response = self.client.get(f'{reverse("bank:catalog")}?model=bank')
+
+        self.assertContains(
+            response,
+            'value="sync_existing_bank_mortgage_offers"',
+        )
+        self.assertContains(response, 'Обновить ипотечные программы')
+
+        with patch(
+            'bank.views.sync_bank_mortgage_offers',
+            return_value={'created': 0, 'updated': 2, 'processed': 3},
+        ) as sync_mock:
+            response = self.client.post(
+                reverse('bank:catalog'),
+                {
+                    'action': 'sync_existing_bank_mortgage_offers',
+                    'model': 'bank',
+                },
+            )
+
+        self.assertRedirects(response, f'{reverse("bank:catalog")}?model=bank')
+        sync_mock.assert_called_once_with(update_bank_registry=False)
+        messages = [
+            str(message)
+            for message in get_messages(response.wsgi_request)
+        ]
+        self.assertEqual(len(messages), 1)
+        self.assertIn(
+            'Обновление ипотечных программ банков завершено',
+            messages[0],
+        )
+
+    def test_bank_catalog_program_sync_shows_warning_messages(self):
+        """Checks program-only sync warnings are rendered instead of 500."""
+        with patch(
+            'bank.views.sync_bank_mortgage_offers',
+            return_value={
+                'created': 0,
+                'updated': 0,
+                'processed': 0,
+                'reference_programs_processed': 0,
+                'reference_program_aliases_created': 0,
+                'warnings': ['Banki.ru не обработан'],
+            },
+        ):
+            response = self.client.post(
+                reverse('bank:catalog'),
+                {
+                    'action': 'sync_existing_bank_mortgage_offers',
+                    'model': 'bank',
+                },
+            )
+
+        self.assertRedirects(response, f'{reverse("bank:catalog")}?model=bank')
+        messages = [
+            str(message)
+            for message in get_messages(response.wsgi_request)
+        ]
+        self.assertEqual(len(messages), 2)
+        self.assertIn(
+            'Обновление ипотечных программ банков завершено',
+            messages[0],
+        )
+        self.assertIn('Banki.ru не обработан', messages[1])
 
     def test_bank_catalog_sync_message_is_rendered_once(self):
         """Checks bank sync message is not duplicated in the rendered page."""

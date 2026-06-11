@@ -23,6 +23,14 @@ class Command(BaseCommand):
             default=None,
             help='URL списка кредитных организаций Банка России.',
         )
+        parser.add_argument(
+            '--programs-only',
+            action='store_true',
+            help=(
+                'Обновить только ипотечные программы существующих банков '
+                'без загрузки новых банков из ЦБ РФ.'
+            ),
+        )
 
     def handle(self, *args, **options):
         """Run bank mortgage offer synchronization."""
@@ -30,6 +38,7 @@ class Command(BaseCommand):
             result = sync_bank_mortgage_offers(
                 source_url=options.get('source_url'),
                 cbr_source_url=options.get('cbr_source_url'),
+                update_bank_registry=not options.get('programs_only'),
             )
         except BankMortgageSyncError as error:
             raise CommandError(str(error)) from error
@@ -42,3 +51,5 @@ class Command(BaseCommand):
                 f'обработано={result["processed"]}.',
             )
         )
+        for warning in result.get('warnings', []):
+            self.stdout.write(self.style.WARNING(warning))

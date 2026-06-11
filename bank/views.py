@@ -109,25 +109,42 @@ class BankCatalogView(BaseCatalogView):
         action = request.POST.get('action', 'save')
         if config.key == 'bank' and action == 'sync_bank_mortgage_offers':
             return self.handle_bank_mortgage_sync()
+        if (
+            config.key == 'bank'
+            and action == 'sync_existing_bank_mortgage_offers'
+        ):
+            return self.handle_bank_mortgage_sync(update_bank_registry=False)
         if config.key == 'bank' and action == 'save':
             return redirect('bank:bank_create')
 
         return super().post(request, *args, **kwargs)
 
-    def handle_bank_mortgage_sync(self):
+    def handle_bank_mortgage_sync(self, update_bank_registry=True):
         """Synchronize bank mortgage offer data from the external source."""
+        sync_label = (
+            'данные банков'
+            if update_bank_registry
+            else 'ипотечные программы банков'
+        )
         try:
-            result = sync_bank_mortgage_offers()
+            result = sync_bank_mortgage_offers(
+                update_bank_registry=update_bank_registry
+            )
         except BankMortgageSyncError as error:
             messages.error(
                 self.request,
-                f'Не удалось обновить данные банков: {error}',
+                f'Не удалось обновить {sync_label}: {error}',
             )
         else:
+            success_label = (
+                'Обновление данных банков'
+                if update_bank_registry
+                else 'Обновление ипотечных программ банков'
+            )
             messages.success(
                 self.request,
                 (
-                    'Обновление данных банков завершено: '
+                    f'{success_label} завершено: '
                     f'создано={result["created"]}, '
                     f'обновлено={result["updated"]}, '
                     f'обработано={result["processed"]}, '
@@ -137,6 +154,8 @@ class BankCatalogView(BaseCatalogView):
                     f'{result.get("reference_program_aliases_created", 0)}.'
                 ),
             )
+            for warning in result.get('warnings', []):
+                messages.warning(self.request, warning)
 
         return redirect(self.get_model_url('bank'))
 

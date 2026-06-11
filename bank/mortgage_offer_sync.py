@@ -26,12 +26,18 @@ DOMRF_REFERENCE_MORTGAGE_PROGRAMS_URL = (
     'program-is-lgoty-po-ipoteke/scope-is-federal/?filter=Y&'
 )
 FEDERAL_REFERENCE_MORTGAGE_PROGRAM_NAMES = (
+    'Рыночная ипотека',
+    'Вторичное жилье',
+    'Траншевая ипотека',
     'Семейная ипотека',
+    'Комбо семейная ипотека',
     'IT-ипотека',
-    'Дальневосточная и арктическая ипотека',
+    'Комбо IT-ипотека',
+    'Дальневосточная ипотека',
+    'Арктическая ипотека',
     'Сельская ипотека',
     'Военная ипотека',
-    'Льготная ипотека',
+    'Льготный период',
 )
 GOOGLE_SHEET_ID = '1or19DcE4LruFcb8WpDOpRLoTyvTc3T73HYBaUcp4Z9E'
 GOOGLE_SHEET_CSV_URL_TEMPLATE = (
@@ -847,7 +853,7 @@ def _extract_next_page_url(raw_html, current_url):
     return min(candidates, key=lambda item: item[0])[1]
 
 
-def _download_banki_mortgage_payloads(source_url):
+def _download_banki_mortgage_payloads(source_url, sync_warnings=None):
     """Download all available paginated Banki.ru mortgage offer pages."""
     maximum_pages = getattr(
         settings,
@@ -863,7 +869,26 @@ def _download_banki_mortgage_payloads(source_url):
             break
 
         visited_urls.add(current_url)
-        raw_html = _download_banki_mortgage_payload(current_url)
+        try:
+            raw_html = _download_banki_mortgage_payload(current_url)
+        except OSError as error:
+            if payloads:
+                message = (
+                    f'Не загружена страница Banki.ru {current_url}: {error}'
+                )
+            else:
+                message = (
+                    'Banki.ru не обработан: не удалось загрузить '
+                    'ипотечные предложения.'
+                )
+            if sync_warnings is not None:
+                sync_warnings.append(message)
+            logger.warning(
+                'Could not download mortgage offers from %s: %s',
+                current_url,
+                error,
+            )
+            break
         payloads.append((current_url, raw_html))
 
         next_url = _extract_next_page_url(raw_html, current_url)
@@ -1217,22 +1242,40 @@ def sync_bank_mortgage_offers(
     source_url=None,
     cbr_source_url=None,
     google_sheet_sources=None,
+    update_bank_registry=True,
 ):
     """Synchronize CBR banks and Banki.ru mortgage program conditions."""
     resolved_source_url = (
         source_url
         or getattr(settings, 'BANK_MORTGAGE_OFFERS_URL', BANKI_MORTGAGE_URL)
     )
-    resolved_cbr_source_url = (
-        cbr_source_url
-        or getattr(settings, 'BANK_LIST_SOURCE_URL', CBR_BANKS_URL)
-    )
+    sync_warnings = []
+    if update_bank_registry:
+        resolved_cbr_source_url = (
+            cbr_source_url
+            or getattr(settings, 'BANK_LIST_SOURCE_URL', CBR_BANKS_URL)
+        )
+        try:
+            cbr_records = parse_cbr_bank_records(
+                _download_cbr_bank_list_payload(resolved_cbr_source_url)
+            )
+            created, updated, banks = _sync_cbr_banks(cbr_records)
+        except (BankMortgageSyncError, OSError, ValueError) as error:
+            sync_warnings.append(
+                f'Список банков ЦБ РФ не обновлен: {error}'
+            )
+            logger.warning('Could not parse CBR bank source: %s', error)
+            cbr_records = []
+            created = 0
+            updated = 0
+            banks = list(Bank.objects.filter(is_active=True))
+    else:
+        cbr_records = []
+        created = 0
+        updated = 0
+        banks = list(Bank.objects.filter(is_active=True))
 
-    cbr_records = parse_cbr_bank_records(
-        _download_cbr_bank_list_payload(resolved_cbr_source_url)
-    )
-    created, updated, cbr_banks = _sync_cbr_banks(cbr_records)
-    bank_lookup = _build_bank_lookup(cbr_banks)
+    bank_lookup = _build_bank_lookup(banks)
     program_lookup = _build_mortgage_program_lookup()
     reference_result = {
         'created': 0,
@@ -1257,6 +1300,9 @@ def sync_bank_mortgage_offers(
                 )
             )
         except (BankMortgageSyncError, OSError, ValueError) as error:
+            sync_warnings.append(
+                f'Эталонный источник ипотечных программ не обработан: {error}'
+            )
             logger.warning(
                 'Could not parse reference mortgage program source: %s',
                 error,
@@ -1281,9 +1327,11 @@ def sync_bank_mortgage_offers(
     )
 
     all_offers = []
-    for page_url, raw_html in _download_banki_mortgage_payloads(
-        resolved_source_url
-    ):
+    banki_payloads = _download_banki_mortgage_payloads(
+        resolved_source_url,
+        sync_warnings=sync_warnings,
+    )
+    for page_url, raw_html in banki_payloads:
         try:
             all_offers.extend(
                 parse_banki_mortgage_offers(
@@ -1291,14 +1339,19 @@ def sync_bank_mortgage_offers(
                     source_url=page_url,
                 )
             )
-        except BankMortgageSyncError:
-            if not all_offers:
-                raise
-            logger.warning('Could not parse mortgage offers from %s', page_url)
+        except BankMortgageSyncError as error:
+            sync_warnings.append(
+                f'Страница Banki.ru не обработана ({page_url}): {error}'
+            )
+            logger.warning(
+                'Could not parse mortgage offers from %s: %s',
+                page_url,
+                error,
+            )
 
-    if not all_offers:
-        raise BankMortgageSyncError(
-            'Не удалось распарсить ипотечные предложения банков.'
+    if banki_payloads and not all_offers:
+        sync_warnings.append(
+            'Banki.ru не дал пригодных ипотечных предложений.'
         )
 
     offers = _select_best_program_offers(all_offers)
@@ -1317,6 +1370,9 @@ def sync_bank_mortgage_offers(
                 _download_google_sheet_mortgage_offers(google_sheet_source)
             )
         except (BankMortgageSyncError, OSError, ValueError) as error:
+            sync_warnings.append(
+                f'Google Sheets источник не обработан: {error}'
+            )
             logger.warning(
                 'Could not parse Google Sheets mortgage source: %s',
                 error,
@@ -1346,4 +1402,5 @@ def sync_bank_mortgage_offers(
         ),
         'google_sheet_offers_processed': len(google_sheet_offers),
         'skipped': banki_result['skipped'] + google_sheet_result['skipped'],
+        'warnings': sync_warnings,
     }
