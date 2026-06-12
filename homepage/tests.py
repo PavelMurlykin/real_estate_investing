@@ -81,6 +81,7 @@ class HomepageIndexViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['selected_city'], self.city_spb)
+        self.assertEqual(response.context['selected_view'], 'list')
         self.assertEqual(response.context['headline_city'], 'Санкт-Петербурге')
         self.assertQuerySetEqual(
             response.context['complexes'],
@@ -88,6 +89,19 @@ class HomepageIndexViewTests(TestCase):
             transform=lambda item: item,
             ordered=False,
         )
+        self.assertContains(response, '<article class="homepage-complex-card">')
+        self.assertNotContains(response, 'id="complex-map"')
+
+    def test_index_shows_map_mode_when_requested(self):
+        """Проверяет переключение главной страницы в режим карты."""
+        response = self.client.get(
+            reverse('homepage:index'), {'city': self.city_spb.id, 'view': 'map'}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['selected_view'], 'map')
+        self.assertContains(response, 'id="complex-map"')
+        self.assertNotContains(response, '<article class="homepage-complex-card">')
 
     def test_index_filters_complexes_by_selected_city(self):
         """Описание метода test_index_filters_complexes_by_selected_city.

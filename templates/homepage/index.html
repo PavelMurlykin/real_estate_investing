@@ -6,6 +6,104 @@
 
 {% block extra_css %}
     <style>
+        .homepage-content-wrap {
+            max-width: 1120px;
+            margin: 0 auto;
+        }
+
+        .homepage-view-switcher {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .homepage-complex-cards {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .homepage-complex-card {
+            display: grid;
+            grid-template-columns: minmax(220px, 32%) 1fr;
+            min-height: 230px;
+            overflow: hidden;
+            border: 1px solid var(--bs-border-color);
+            border-radius: 0.5rem;
+            background-color: var(--bs-body-bg);
+            box-shadow: 0 0.25rem 1rem rgba(15, 23, 42, 0.06);
+        }
+
+        .homepage-complex-card__media {
+            min-height: 230px;
+            background-color: var(--bs-tertiary-bg);
+        }
+
+        .homepage-complex-card__image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .homepage-complex-card__placeholder {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            min-height: 230px;
+            align-items: center;
+            justify-content: center;
+            color: var(--bs-secondary-color);
+            background:
+                linear-gradient(135deg, rgba(13, 110, 253, 0.1), rgba(25, 135, 84, 0.08)),
+                var(--bs-tertiary-bg);
+            font-weight: 600;
+        }
+
+        .homepage-complex-card__body {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding: 1.25rem;
+        }
+
+        .homepage-complex-card__title {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+
+        .homepage-complex-card__meta {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem 1.25rem;
+            margin: 0;
+        }
+
+        .homepage-complex-card__label {
+            display: block;
+            margin-bottom: 0.15rem;
+            color: var(--bs-secondary-color);
+            font-size: 0.8125rem;
+        }
+
+        .homepage-complex-card__value {
+            display: block;
+            font-weight: 600;
+        }
+
+        .homepage-complex-card__description {
+            margin: 0;
+            color: var(--bs-secondary-color);
+        }
+
+        .homepage-complex-card__actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: auto;
+        }
+
         .homepage-map-wrap {
             max-width: 1040px;
             margin: 0 auto;
@@ -13,7 +111,7 @@
 
         .homepage-map-shell {
             border: 1px solid var(--bs-border-color);
-            border-radius: 1rem;
+            border-radius: 0.5rem;
             overflow: hidden;
             background: linear-gradient(135deg, rgba(0, 123, 255, 0.08), rgba(32, 201, 151, 0.08));
             padding: 0.75rem;
@@ -22,7 +120,7 @@
         .homepage-map {
             width: 100%;
             min-height: 520px;
-            border-radius: 0.75rem;
+            border-radius: 0.5rem;
             background-color: var(--bs-body-bg);
         }
 
@@ -30,12 +128,28 @@
             max-height: 220px;
             overflow-y: auto;
         }
+
+        @media (max-width: 767.98px) {
+            .homepage-complex-card {
+                grid-template-columns: 1fr;
+            }
+
+            .homepage-complex-card__media,
+            .homepage-complex-card__placeholder {
+                min-height: 210px;
+            }
+
+            .homepage-complex-card__meta {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 {% endblock %}
 
 {% block content %}
-    <div class="homepage-map-wrap">
+    <div class="homepage-content-wrap">
         <form method="get" class="row g-3 align-items-end mb-4">
+            <input type="hidden" name="view" value="{{ selected_view }}">
             <div class="col-12 col-md-6">
                 <label for="city-select" class="form-label">Город</label>
                 <select id="city-select" name="city" class="form-select" onchange="this.form.submit()">
@@ -53,6 +167,25 @@
             </div>
         </form>
 
+        <div class="homepage-view-switcher" aria-label="Режим отображения ЖК">
+            <div class="btn-group" role="group">
+                <a
+                    href="?{% if selected_city %}city={{ selected_city.id }}&amp;{% endif %}view=list"
+                    class="btn {% if selected_view == 'list' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                    {% if selected_view == 'list' %}aria-current="page"{% endif %}
+                >
+                    Списком
+                </a>
+                <a
+                    href="?{% if selected_city %}city={{ selected_city.id }}&amp;{% endif %}view=map"
+                    class="btn {% if selected_view == 'map' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                    {% if selected_view == 'map' %}aria-current="page"{% endif %}
+                >
+                    На карте
+                </a>
+            </div>
+        </div>
+
         <h1 class="h3 text-center mb-3">Доступные для расчета ЖК в {{ headline_city }}</h1>
 
         {% if selected_city %}
@@ -62,177 +195,243 @@
         {% endif %}
 
         {% if complexes %}
-            <div class="card shadow-sm mb-4">
-                <div class="card-header">Жилые комплексы</div>
-                <ul class="list-group list-group-flush homepage-complex-list">
+            {% if selected_view == 'map' %}
+                <div class="homepage-map-wrap">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header">Жилые комплексы</div>
+                        <ul class="list-group list-group-flush homepage-complex-list">
+                            {% for complex in complexes %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>{{ complex.name }}</span>
+                                    {% if complex.map_link %}
+                                        <a href="{{ complex.map_link }}" target="_blank" rel="noopener">Карта</a>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <div class="homepage-map-shell">
+                        <div
+                            id="complex-map"
+                            class="homepage-map"
+                            data-city-name="{% if selected_city %}{{ selected_city.name|escapejs }}{% endif %}"
+                        ></div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="homepage-complex-cards">
                     {% for complex in complexes %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>{{ complex.name }}</span>
-                            {% if complex.map_link %}
-                                <a href="{{ complex.map_link }}" target="_blank" rel="noopener">Карта</a>
-                            {% endif %}
-                        </li>
+                        <article class="homepage-complex-card">
+                            <div class="homepage-complex-card__media">
+                                {% if complex.photo %}
+                                    <a href="{{ complex.photo.url }}" data-image-modal="true" data-image-modal-title="Фото ЖК {{ complex.name }}">
+                                        <img
+                                            src="{{ complex.photo.url }}"
+                                            alt="Фото ЖК {{ complex.name }}"
+                                            class="homepage-complex-card__image"
+                                        >
+                                    </a>
+                                {% else %}
+                                    <div class="homepage-complex-card__placeholder" aria-hidden="true">
+                                        Фото ЖК
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="homepage-complex-card__body">
+                                <h2 class="homepage-complex-card__title">{{ complex.name }}</h2>
+
+                                <dl class="homepage-complex-card__meta">
+                                    <div>
+                                        <dt class="homepage-complex-card__label">Застройщик</dt>
+                                        <dd class="homepage-complex-card__value mb-0">{{ complex.developer.name }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="homepage-complex-card__label">Район</dt>
+                                        <dd class="homepage-complex-card__value mb-0">{{ complex.district.name }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="homepage-complex-card__label">Класс</dt>
+                                        <dd class="homepage-complex-card__value mb-0">{{ complex.real_estate_class.name }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="homepage-complex-card__label">Тип недвижимости</dt>
+                                        <dd class="homepage-complex-card__value mb-0">{{ complex.real_estate_type.name }}</dd>
+                                    </div>
+                                </dl>
+
+                                {% if complex.description %}
+                                    <p class="homepage-complex-card__description">
+                                        {{ complex.description|truncatechars:220 }}
+                                    </p>
+                                {% endif %}
+
+                                <div class="homepage-complex-card__actions">
+                                    <a href="{% url 'property:complex_detail' complex.pk %}" class="btn btn-primary btn-sm">Подробнее</a>
+                                    {% if complex.map_link %}
+                                        <a href="{{ complex.map_link }}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm">Карта</a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </article>
                     {% endfor %}
-                </ul>
-            </div>
+                </div>
+            {% endif %}
         {% else %}
             <div class="alert alert-secondary text-center" role="alert">
                 Для выбранного города пока нет доступных ЖК.
             </div>
         {% endif %}
-
-        <div class="homepage-map-shell">
-            <div
-                id="complex-map"
-                class="homepage-map"
-                data-city-name="{% if selected_city %}{{ selected_city.name|escapejs }}{% endif %}"
-            ></div>
-        </div>
     </div>
 
-    {{ complexes_map_data|json_script:"complexes-map-data" }}
+    {% if selected_view == 'map' %}
+        {{ complexes_map_data|json_script:"complexes-map-data" }}
+    {% endif %}
 {% endblock %}
 
 {% block extra_scripts %}
-    <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU"></script>
-    <script>
-        function escapeHtml(value) {
-            return (value || '')
-                .replaceAll('&', '&amp;')
-                .replaceAll('<', '&lt;')
-                .replaceAll('>', '&gt;')
-                .replaceAll('"', '&quot;')
-                .replaceAll("'", '&#039;');
-        }
-
-        function parseLonLat(value) {
-            if (!value) {
-                return null;
+    {% if selected_view == 'map' %}
+        <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU"></script>
+        <script>
+            function escapeHtml(value) {
+                return (value || '')
+                    .replaceAll('&', '&amp;')
+                    .replaceAll('<', '&lt;')
+                    .replaceAll('>', '&gt;')
+                    .replaceAll('"', '&quot;')
+                    .replaceAll("'", '&#039;');
             }
 
-            const match = value.match(/-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?/);
-            if (!match) {
-                return null;
-            }
-
-            const [lonRaw, latRaw] = match[0].split(',');
-            const lon = Number(lonRaw);
-            const lat = Number(latRaw);
-            if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-                return null;
-            }
-
-            return [lat, lon];
-        }
-
-        function extractCoordinatesFromMapLink(mapLink) {
-            if (!mapLink) {
-                return null;
-            }
-
-            try {
-                const mapUrl = new URL(mapLink);
-                const ll = mapUrl.searchParams.get('ll');
-                const pt = mapUrl.searchParams.get('pt');
-                return parseLonLat(ll || pt);
-            } catch (error) {
-                return null;
-            }
-        }
-
-        async function geocodeCoordinates(query) {
-            if (!query) {
-                return null;
-            }
-
-            try {
-                const geocodeResult = await ymaps.geocode(query, { results: 1 });
-                const firstObject = geocodeResult.geoObjects.get(0);
-                return firstObject ? firstObject.geometry.getCoordinates() : null;
-            } catch (error) {
-                return null;
-            }
-        }
-
-        async function resolveComplexCoordinates(complexItem, cityName) {
-            const coordinatesFromLink = extractCoordinatesFromMapLink(complexItem.map_link);
-            if (coordinatesFromLink) {
-                return coordinatesFromLink;
-            }
-
-            const coordinatesByMapLink = await geocodeCoordinates(complexItem.map_link);
-            if (coordinatesByMapLink) {
-                return coordinatesByMapLink;
-            }
-
-            return geocodeCoordinates(`${complexItem.name}, ${cityName}`);
-        }
-
-        async function initializeComplexMap() {
-            const mapElement = document.getElementById('complex-map');
-            const dataElement = document.getElementById('complexes-map-data');
-            if (!mapElement || !dataElement || typeof ymaps === 'undefined') {
-                return;
-            }
-
-            const cityName = mapElement.dataset.cityName || 'Санкт-Петербург';
-            const complexItems = JSON.parse(dataElement.textContent || '[]');
-            const map = new ymaps.Map(
-                'complex-map',
-                {
-                    center: [59.939095, 30.315868],
-                    zoom: 11,
-                    controls: ['zoomControl', 'fullscreenControl'],
-                },
-                {
-                    suppressMapOpenBlock: true,
-                }
-            );
-
-            for (const complexItem of complexItems) {
-                const coordinates = await resolveComplexCoordinates(complexItem, cityName);
-                if (!coordinates) {
-                    continue;
+            function parseLonLat(value) {
+                if (!value) {
+                    return null;
                 }
 
-                const mapLinkHtml = complexItem.map_link
-                    ? `<a href="${escapeHtml(complexItem.map_link)}" target="_blank" rel="noopener">Открыть на Яндекс Картах</a>`
-                    : '';
+                const match = value.match(/-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?/);
+                if (!match) {
+                    return null;
+                }
 
-                const placemark = new ymaps.Placemark(
-                    coordinates,
+                const [lonRaw, latRaw] = match[0].split(',');
+                const lon = Number(lonRaw);
+                const lat = Number(latRaw);
+                if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+                    return null;
+                }
+
+                return [lat, lon];
+            }
+
+            function extractCoordinatesFromMapLink(mapLink) {
+                if (!mapLink) {
+                    return null;
+                }
+
+                try {
+                    const mapUrl = new URL(mapLink);
+                    const ll = mapUrl.searchParams.get('ll');
+                    const pt = mapUrl.searchParams.get('pt');
+                    return parseLonLat(ll || pt);
+                } catch (error) {
+                    return null;
+                }
+            }
+
+            async function geocodeCoordinates(query) {
+                if (!query) {
+                    return null;
+                }
+
+                try {
+                    const geocodeResult = await ymaps.geocode(query, { results: 1 });
+                    const firstObject = geocodeResult.geoObjects.get(0);
+                    return firstObject ? firstObject.geometry.getCoordinates() : null;
+                } catch (error) {
+                    return null;
+                }
+            }
+
+            async function resolveComplexCoordinates(complexItem, cityName) {
+                const coordinatesFromLink = extractCoordinatesFromMapLink(complexItem.map_link);
+                if (coordinatesFromLink) {
+                    return coordinatesFromLink;
+                }
+
+                const coordinatesByMapLink = await geocodeCoordinates(complexItem.map_link);
+                if (coordinatesByMapLink) {
+                    return coordinatesByMapLink;
+                }
+
+                return geocodeCoordinates(`${complexItem.name}, ${cityName}`);
+            }
+
+            async function initializeComplexMap() {
+                const mapElement = document.getElementById('complex-map');
+                const dataElement = document.getElementById('complexes-map-data');
+                if (!mapElement || !dataElement || typeof ymaps === 'undefined') {
+                    return;
+                }
+
+                const cityName = mapElement.dataset.cityName || 'Санкт-Петербург';
+                const complexItems = JSON.parse(dataElement.textContent || '[]');
+                const map = new ymaps.Map(
+                    'complex-map',
                     {
-                        hintContent: complexItem.name,
-                        iconCaption: complexItem.name,
-                        balloonContent: `<strong>${escapeHtml(complexItem.name)}</strong><br>${mapLinkHtml}`,
+                        center: [59.939095, 30.315868],
+                        zoom: 11,
+                        controls: ['zoomControl', 'fullscreenControl'],
                     },
                     {
-                        preset: 'islands#blueCircleDotIconWithCaption',
-                        iconCaptionMaxWidth: 220,
+                        suppressMapOpenBlock: true,
                     }
                 );
 
-                map.geoObjects.add(placemark);
-            }
+                for (const complexItem of complexItems) {
+                    const coordinates = await resolveComplexCoordinates(complexItem, cityName);
+                    if (!coordinates) {
+                        continue;
+                    }
 
-            if (map.geoObjects.getLength()) {
-                map.setBounds(map.geoObjects.getBounds(), {
-                    checkZoomRange: true,
-                    zoomMargin: 32,
-                });
-            } else {
-                const cityCoordinates = await geocodeCoordinates(cityName);
-                if (cityCoordinates) {
-                    map.setCenter(cityCoordinates, 11);
+                    const mapLinkHtml = complexItem.map_link
+                        ? `<a href="${escapeHtml(complexItem.map_link)}" target="_blank" rel="noopener">Открыть на Яндекс Картах</a>`
+                        : '';
+
+                    const placemark = new ymaps.Placemark(
+                        coordinates,
+                        {
+                            hintContent: complexItem.name,
+                            iconCaption: complexItem.name,
+                            balloonContent: `<strong>${escapeHtml(complexItem.name)}</strong><br>${mapLinkHtml}`,
+                        },
+                        {
+                            preset: 'islands#blueCircleDotIconWithCaption',
+                            iconCaptionMaxWidth: 220,
+                        }
+                    );
+
+                    map.geoObjects.add(placemark);
+                }
+
+                if (map.geoObjects.getLength()) {
+                    map.setBounds(map.geoObjects.getBounds(), {
+                        checkZoomRange: true,
+                        zoomMargin: 32,
+                    });
+                } else {
+                    const cityCoordinates = await geocodeCoordinates(cityName);
+                    if (cityCoordinates) {
+                        map.setCenter(cityCoordinates, 11);
+                    }
                 }
             }
-        }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            if (typeof ymaps === 'undefined') {
-                return;
-            }
-            ymaps.ready(initializeComplexMap);
-        });
-    </script>
+            document.addEventListener('DOMContentLoaded', function () {
+                if (typeof ymaps === 'undefined') {
+                    return;
+                }
+                ymaps.ready(initializeComplexMap);
+            });
+        </script>
+    {% endif %}
 {% endblock %}

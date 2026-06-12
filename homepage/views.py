@@ -25,6 +25,10 @@ def index(request):
     selected_city = None
 
     city_id = request.GET.get('city')
+    selected_view = request.GET.get('view')
+    if selected_view not in ('list', 'map'):
+        selected_view = 'list'
+
     if city_id and city_id.isdigit():
         selected_city = cities.filter(pk=int(city_id)).first()
 
@@ -42,7 +46,12 @@ def index(request):
                 district__city=selected_city,
                 district__city__is_active=True,
             )
-            .select_related('district__city')
+            .select_related(
+                'developer',
+                'district__city__region',
+                'real_estate_class',
+                'real_estate_type',
+            )
             .order_by('name')
         )
 
@@ -58,6 +67,7 @@ def index(request):
     context = {
         'cities': cities,
         'selected_city': selected_city,
+        'selected_view': selected_view,
         'complexes': complexes,
         'complexes_map_data': complexes_map_data,
         'headline_city': (
