@@ -1,0 +1,4 @@
+interface:
+  display_name: "Security Review"
+  short_description: "Application security review workflow"
+  default_prompt: "Use $security-review to inspect application security risks and produce a structured remediation report."

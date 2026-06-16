@@ -1,0 +1,4 @@
+interface:
+  display_name: "Performance Review"
+  short_description: "Backend performance review workflow"
+  default_prompt: "Use $performance-review to inspect backend performance risks and produce a structured remediation report."
