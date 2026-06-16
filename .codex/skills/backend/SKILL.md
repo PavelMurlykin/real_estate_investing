@@ -63,6 +63,10 @@ Always check:
 - PostgreSQL constraints for invariants that must survive concurrency.
 - Bulk operations for large imports or mass updates.
 - Pagination or bounded result sets for user-facing lists.
+- Avoid full-table selector payloads in forms; use lazy endpoints, caching with invalidation, or explicit bounds for cascade dropdown data.
+- Avoid generating heavy Word/Excel/PDF files synchronously in request paths unless the data size is known to be small; prefer background jobs, cached artifacts, or explicit timing evidence.
+- Avoid per-row `get_or_create`, `save`, or relation writes in loops when `bulk_create`, `bulk_update`, set-based queries, or preloaded existing IDs can express the operation safely.
+- Add performance regression coverage for changes that touch list pages, catalog views, selector JSON, exports, search, filters, or bulk operations.
 
 ## Security
 

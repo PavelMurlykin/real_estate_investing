@@ -27,6 +27,12 @@ Use this checklist for model, migration, queryset, reporting, search, filtering,
 - Keep expensive calculated values out of templates unless they are precomputed or annotated.
 - For search/filter endpoints, verify the expected indexes exist and the query cannot scan unbounded data unnecessarily.
 - Avoid loading full model instances when `values()`, `values_list()`, or `exists()` answers the question.
+- For catalog and dictionary views, do not build rows by iterating an unbounded queryset; paginate before formatting table rows.
+- For cascade form controls, avoid serializing every row from every related dictionary on each GET. Prefer filtered JSON endpoints, cache stable payloads with clear invalidation, or bound the result set.
+- For report/export endpoints, check whether document generation can block web workers. Use a background job or cached generated file when schedules, images, or workbooks can grow.
+- For many-to-many or link-table updates, preload existing links and use `bulk_create(ignore_conflicts=True)` or another set-based write instead of `get_or_create()` inside a loop.
+- For repeated use of the same queryset in one request, materialize once intentionally or pass the same evaluated data structure through the context.
+- For index suggestions, validate with PostgreSQL query plans when data volume matters; use trigram or functional indexes for `icontains`/case-insensitive search instead of assuming a btree index will help.
 
 ## Migrations
 

@@ -85,7 +85,7 @@ class MortgageCalculation(models.Model):
         max_digits=15, decimal_places=2, null=True, blank=True
     )
 
-    timestamp = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
 
     def __str__(self):
         """Описание метода __str__.

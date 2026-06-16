@@ -1,8 +1,12 @@
+import logging
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 from django.db.models import Q
 
 from .utils import normalize_phone_number
+
+logger = logging.getLogger(__name__)
 
 
 class EmailOrPhoneBackend(ModelBackend):
@@ -36,7 +40,7 @@ class EmailOrPhoneBackend(ModelBackend):
 
         login_value = login_value.strip()
         user_model = get_user_model()
-        query = Q(email__iexact=login_value)
+        query = Q(email=login_value.lower())
 
         if '@' not in login_value:
             phone_number = normalize_phone_number(login_value)
@@ -49,11 +53,10 @@ class EmailOrPhoneBackend(ModelBackend):
             user_model().set_password(password)
             return None
         except user_model.MultipleObjectsReturned:
-            user = (
-                user_model._default_manager.filter(query)
-                .order_by('id')
-                .first()
+            logger.warning(
+                'Ambiguous login identifier matched multiple users.'
             )
+            return None
 
         if (
             user is not None
