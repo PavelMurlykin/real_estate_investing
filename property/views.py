@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
 from django import forms
+from django.core.cache import cache
+from django.core.paginator import Paginator
 from django.db import models as django_models
 from django.db import transaction
 from django.db.models import Count
@@ -45,6 +47,83 @@ from .models import (
 )
 
 
+FORM_DATA_CACHE_TIMEOUT = 600
+COMPLEX_FORM_LOCATION_CACHE_KEY = 'property:complex_form_location:v1'
+PROPERTY_FORM_LOCATION_CACHE_KEY = 'property:property_form_location:v1'
+
+
+def build_complex_form_location_payload():
+    """Build reusable location payload for real estate complex forms."""
+    return {
+        'location_cities': list(
+            City.objects.order_by('name').values('id', 'name', 'region_id')
+        ),
+        'location_districts': list(
+            District.objects.select_related('city__region')
+            .order_by('name')
+            .values('id', 'name', 'city_id', 'city__region_id')
+        ),
+        'location_metro_stations': list(
+            Metro.objects.select_related('metro_line__city')
+            .order_by(
+                'metro_line__city__name',
+                'metro_line__line',
+                'station',
+            )
+            .values(
+                'id',
+                'station',
+                'metro_line__line_color',
+                'metro_line__city_id',
+            )
+        ),
+    }
+
+
+def build_property_form_location_payload():
+    """Build reusable cascade payload for property forms."""
+    cities = City.objects.select_related('region').order_by('name')
+    districts = District.objects.select_related(
+        'city__region'
+    ).order_by('name')
+    complexes = RealEstateComplex.objects.select_related(
+        'developer',
+        'district__city__region',
+    ).order_by('name')
+    buildings = RealEstateComplexBuilding.objects.select_related(
+        'real_estate_complex'
+    ).order_by('real_estate_complex__name', 'number')
+
+    return {
+        'cities': list(cities.values('id', 'name', 'region_id')),
+        'districts': list(
+            districts.values(
+                'id',
+                'name',
+                'city_id',
+                'city__region_id',
+            )
+        ),
+        'complexes': list(
+            complexes.values(
+                'id',
+                'name',
+                'developer_id',
+                'district_id',
+                'district__city_id',
+                'district__city__region_id',
+            )
+        ),
+        'buildings': list(
+            buildings.values(
+                'id',
+                'number',
+                'real_estate_complex_id',
+            )
+        ),
+    }
+
+
 @dataclass(frozen=True)
 class CatalogModelConfig:
     """Описание класса CatalogModelConfig.
@@ -84,6 +163,7 @@ class BaseCatalogView(TemplateView):
     url_name = ''
     default_model_key = ''
     model_configs: tuple[CatalogModelConfig, ...] = ()
+    catalog_page_size = 20
     grouped_decimal_field_name_parts = (
         'amount',
         'cost',
@@ -334,7 +414,20 @@ class BaseCatalogView(TemplateView):
             )
         return columns
 
-    def build_rows(self, config, columns):
+    def get_page(self, config):
+        """Return a bounded page for the current catalog queryset."""
+        paginator = Paginator(self.get_queryset(config), self.catalog_page_size)
+        return paginator.get_page(self.request.GET.get('page'))
+
+    def build_pagination_querystring(self):
+        """Return current catalog query parameters without page/edit."""
+        params = self.request.GET.copy()
+        params['model'] = self.get_current_model_key()
+        params.pop('page', None)
+        params.pop('edit', None)
+        return params.urlencode()
+
+    def build_rows(self, config, columns, object_list=None):
         """Описание метода build_rows.
 
         Выполняет прикладную операцию текущего модуля.
@@ -347,8 +440,9 @@ class BaseCatalogView(TemplateView):
             Any: Тип результата определяется вызывающим кодом.
         """
         rows = []
-        queryset = self.get_queryset(config)
-        for obj in queryset:
+        if object_list is None:
+            object_list = self.get_queryset(config)
+        for obj in object_list:
             cells = []
             for column in columns:
                 raw_value = self.get_value_by_path(obj, column['name'])
@@ -405,6 +499,7 @@ class BaseCatalogView(TemplateView):
             Any: Тип результата определяется вызывающим кодом.
         """
         columns = self.build_columns(config)
+        page_obj = self.get_page(config)
         current_model_key = config.key
         context = {
             'section_title': self.section_title,
@@ -412,7 +507,12 @@ class BaseCatalogView(TemplateView):
             'current_model_title': config.title,
             'model_key': current_model_key,
             'columns': columns,
-            'rows': self.build_rows(config, columns),
+            'rows': self.build_rows(
+                config, columns, object_list=page_obj.object_list
+            ),
+            'page_obj': page_obj,
+            'is_paginated': page_obj.paginator.num_pages > 1,
+            'pagination_querystring': self.build_pagination_querystring(),
             'form': form,
             'is_editing': edit_object is not None,
             'edit_object': edit_object,
@@ -447,6 +547,7 @@ class BaseCatalogView(TemplateView):
             params['model'] = config.key
             params['sort_by'] = column_name
             params['sort_dir'] = next_sort_dir
+            params.pop('page', None)
             params.pop('edit', None)
             column['sort_url'] = f'?{params.urlencode()}'
 
@@ -1053,26 +1154,11 @@ class RealEstateComplexFormsetMixin:
             'metro_availability_formset',
             self.get_metro_availability_formset(),
         )
-        context['location_cities'] = list(
-            City.objects.order_by('name').values('id', 'name', 'region_id')
-        )
-        context['location_districts'] = list(
-            District.objects.select_related('city__region')
-            .order_by('name')
-            .values('id', 'name', 'city_id', 'city__region_id')
-        )
-        context['location_metro_stations'] = list(
-            Metro.objects.select_related('metro_line__city')
-            .order_by(
-                'metro_line__city__name',
-                'metro_line__line',
-                'station',
-            )
-            .values(
-                'id',
-                'station',
-                'metro_line__line_color',
-                'metro_line__city_id',
+        context.update(
+            cache.get_or_set(
+                COMPLEX_FORM_LOCATION_CACHE_KEY,
+                build_complex_form_location_payload,
+                FORM_DATA_CACHE_TIMEOUT,
             )
         )
         existing_complexes = RealEstateComplex.objects.all()
@@ -1450,34 +1536,11 @@ class PropertyFormContextMixin:
             'developers': developers,
             'complexes': complexes,
             'all_buildings': buildings,
-            'property_form_data': {
-                'cities': list(cities.values('id', 'name', 'region_id')),
-                'districts': list(
-                    districts.values(
-                        'id',
-                        'name',
-                        'city_id',
-                        'city__region_id',
-                    )
-                ),
-                'complexes': list(
-                    complexes.values(
-                        'id',
-                        'name',
-                        'developer_id',
-                        'district_id',
-                        'district__city_id',
-                        'district__city__region_id',
-                    )
-                ),
-                'buildings': list(
-                    buildings.values(
-                        'id',
-                        'number',
-                        'real_estate_complex_id',
-                    )
-                ),
-            },
+            'property_form_data': cache.get_or_set(
+                PROPERTY_FORM_LOCATION_CACHE_KEY,
+                build_property_form_location_payload,
+                FORM_DATA_CACHE_TIMEOUT,
+            ),
         }
 
     def apply_current_location_context(self, context, selected_building):

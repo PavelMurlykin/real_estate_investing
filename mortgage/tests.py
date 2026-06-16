@@ -568,6 +568,17 @@ class MortgageCalculatorViewTests(TestCase):
             all('#catalog-results' not in url for url in header_urls)
         )
 
+    def test_calculation_list_paginates_saved_calculations(self):
+        for _ in range(21):
+            self._create_calculation()
+
+        response = self.client.get(reverse('mortgage:calculation_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['calculations']), 20)
+        self.assertTrue(response.context['is_paginated'])
+        self.assertEqual(response.context['page_obj'].paginator.per_page, 20)
+
     def test_calculation_detail_matches_excel_sections(self):
         calculation = self._create_calculation()
 
@@ -779,6 +790,17 @@ class MortgageCalculatorViewTests(TestCase):
                 kwargs={'pk': calculation.pk},
             ),
         )
+
+    def test_trench_calculation_list_paginates_saved_calculations(self):
+        for _ in range(21):
+            self._create_trench_calculation()
+
+        response = self.client.get(reverse('mortgage:trench_calculation_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['calculations']), 20)
+        self.assertTrue(response.context['is_paginated'])
+        self.assertEqual(response.context['page_obj'].paginator.per_page, 20)
 
     def test_trench_calculation_detail_shows_report_sections(self):
         calculation = self._create_trench_calculation()

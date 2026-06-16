@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -23,6 +24,7 @@ from .mortgage_offer_sync import (
 from .models import (
     Bank,
     BankProgram,
+    KeyRate,
     MortgageProgram,
     MortgageProgramAlias,
     MortgageProgramRegionalCreditLimit,
@@ -1381,6 +1383,20 @@ class BankMortgageOfferSyncTests(TestCase):
 
 
 class KeyRateListViewTests(TestCase):
+    def test_key_rate_list_paginates_rows(self):
+        for index in range(21):
+            KeyRate.objects.create(
+                meeting_date=date(2026, 1, 1) + timedelta(days=index),
+                key_rate=Decimal('16.00'),
+            )
+
+        response = self.client.get(reverse('bank:key_rate_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['rows']), 20)
+        self.assertTrue(response.context['is_paginated'])
+        self.assertEqual(response.context['page_obj'].paginator.per_page, 20)
+
     def test_manual_sync_posts_to_key_rate_sync(self):
         with patch(
             'bank.views.sync_key_rates',

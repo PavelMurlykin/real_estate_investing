@@ -3,6 +3,8 @@ import decimal
 
 from dateutil.relativedelta import relativedelta
 from django.contrib import messages
+from django.core.cache import cache
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -61,6 +63,12 @@ from .word import (
 )
 
 
+CALCULATION_LIST_PAGE_SIZE = 20
+FORM_DATA_CACHE_TIMEOUT = 600
+PROPERTY_FORM_DATA_CACHE_KEY = 'mortgage:property_form_data:v1'
+MORTGAGE_PROGRAM_FORM_DATA_CACHE_KEY = 'mortgage:program_form_data:v1'
+
+
 def _get_target_customer(request):
     customer_id = request.POST.get('customer') or request.GET.get('customer')
     if not customer_id or not request.user.is_authenticated:
@@ -81,6 +89,43 @@ def _attach_calculation_to_customer(customer, calculation):
         customer=customer,
         calculation=calculation,
     )
+
+
+def _attach_calculations_to_customer(customer, calculations):
+    """Attach calculations to a customer using one read and one bulk insert."""
+    if customer is None:
+        return
+
+    from customer.models import CustomerCalculation
+
+    calculation_ids = [calculation.pk for calculation in calculations]
+    if not calculation_ids:
+        return
+
+    existing_calculation_ids = set(
+        CustomerCalculation.objects.filter(
+            customer=customer,
+            calculation_id__in=calculation_ids,
+        ).values_list('calculation_id', flat=True)
+    )
+    CustomerCalculation.objects.bulk_create(
+        [
+            CustomerCalculation(
+                customer=customer,
+                calculation=calculation,
+            )
+            for calculation in calculations
+            if calculation.pk not in existing_calculation_ids
+        ],
+        ignore_conflicts=True,
+    )
+
+
+def _build_pagination_querystring(request):
+    """Return current query parameters without the page parameter."""
+    query_parameters = request.GET.copy()
+    query_parameters.pop('page', None)
+    return query_parameters.urlencode()
 
 
 def _normalize_discount_markup_values(cleaned_data):
@@ -281,6 +326,15 @@ def _get_property_payload(property_obj):
 
 
 def _get_property_form_data():
+    """Return cached selector data for the mortgage object block."""
+    return cache.get_or_set(
+        PROPERTY_FORM_DATA_CACHE_KEY,
+        _build_property_form_data,
+        FORM_DATA_CACHE_TIMEOUT,
+    )
+
+
+def _build_property_form_data():
     """Build reusable selector data for the mortgage object block."""
     districts = District.objects.select_related('city').order_by('name')
     complexes = RealEstateComplex.objects.select_related(
@@ -341,6 +395,15 @@ def _decimal_to_json_value(value):
 
 
 def _get_mortgage_program_form_data():
+    """Return cached bank mortgage program selector data."""
+    return cache.get_or_set(
+        MORTGAGE_PROGRAM_FORM_DATA_CACHE_KEY,
+        _build_mortgage_program_form_data,
+        FORM_DATA_CACHE_TIMEOUT,
+    )
+
+
+def _build_mortgage_program_form_data():
     """Build bank mortgage program data for the calculator UI."""
     banks = Bank.objects.filter(
         is_active=True,
@@ -1014,8 +1077,7 @@ def calculation_list(request):
         selected_ids = request.POST.getlist('calculations')
         calculations = MortgageCalculation.objects.filter(pk__in=selected_ids)
 
-        for calculation in calculations:
-            _attach_calculation_to_customer(target_customer, calculation)
+        _attach_calculations_to_customer(target_customer, calculations)
 
         if selected_ids:
             messages.success(
@@ -1046,6 +1108,9 @@ def calculation_list(request):
     calculations = apply_calculation_sort(
         calculations, calculation_sort, calculation_order
     )
+    page_obj = Paginator(
+        calculations, CALCULATION_LIST_PAGE_SIZE
+    ).get_page(request.GET.get('page'))
     linked_calculation_ids = []
     if target_customer is not None:
         linked_calculation_ids = list(
@@ -1061,7 +1126,10 @@ def calculation_list(request):
         request,
         'mortgage/mortgage_list.html',
         {
-            'calculations': calculations,
+            'calculations': page_obj.object_list,
+            'page_obj': page_obj,
+            'is_paginated': page_obj.paginator.num_pages > 1,
+            'pagination_querystring': _build_pagination_querystring(request),
             'target_customer': target_customer,
             'linked_calculation_ids': linked_calculation_ids,
             'calculation_filters': calculation_filters,
@@ -1213,12 +1281,18 @@ def trench_calculation_list(request):
     calculations = annotate_calculation_table_values(
         _get_trench_calculation_queryset()
     ).order_by('-timestamp')
+    page_obj = Paginator(
+        calculations, CALCULATION_LIST_PAGE_SIZE
+    ).get_page(request.GET.get('page'))
 
     return render(
         request,
         'mortgage/trench_calculation_list.html',
         {
-            'calculations': calculations,
+            'calculations': page_obj.object_list,
+            'page_obj': page_obj,
+            'is_paginated': page_obj.paginator.num_pages > 1,
+            'pagination_querystring': _build_pagination_querystring(request),
         },
     )
 

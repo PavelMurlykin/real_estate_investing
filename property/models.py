@@ -295,6 +295,9 @@ class RealEstateComplexBuilding(BaseModel):
         verbose_name = 'Корпус ЖК'
         verbose_name_plural = 'Корпуса ЖК'
         ordering = ['number']
+        indexes = [
+            models.Index(fields=['number'], name='building_number_idx'),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=['number', 'real_estate_complex'],
@@ -503,6 +506,12 @@ class Property(BaseModel):
         verbose_name = 'Объект недвижимости'
         verbose_name_plural = 'Объекты недвижимости'
         ordering = ['apartment_number']
+        indexes = [
+            models.Index(
+                fields=['apartment_number'],
+                name='property_apartment_num_idx',
+            ),
+        ]
 
     def get_absolute_url(self):
         """

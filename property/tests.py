@@ -734,6 +734,22 @@ class LocationCatalogMetroTests(TestCase):
         self.assertNotContains(response, 'Применить')
         self.assertNotContains(response, 'Сбросить')
 
+    def test_location_catalog_paginates_metro_rows(self):
+        for index in range(21):
+            Metro.objects.create(
+                station=f'Station {index:02d}',
+                metro_line=self.metro_line,
+            )
+
+        response = self.client.get(
+            reverse('location:location_catalog'), {'model': 'metro'}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['rows']), 20)
+        self.assertTrue(response.context['is_paginated'])
+        self.assertEqual(response.context['page_obj'].paginator.per_page, 20)
+
     def test_location_catalog_creates_updates_and_deletes_metro(self):
         other_line = MetroLine.objects.create(
             line='Line 2',

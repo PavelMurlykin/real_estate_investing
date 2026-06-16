@@ -11,17 +11,8 @@ CITY_PREPOSITIONAL_CASE = {
 
 
 def index(request):
-    """Описание метода index.
-
-    Выполняет прикладную операцию текущего модуля.
-
-    Аргументы:
-        request: Входной параметр, влияющий на работу метода.
-
-    Возвращает:
-        Any: Тип результата определяется вызывающим кодом.
-    """
-    cities = City.objects.filter(is_active=True).order_by('name')
+    """Render the homepage with complexes for the selected city."""
+    cities = list(City.objects.filter(is_active=True).order_by('name'))
     selected_city = None
 
     city_id = request.GET.get('city')
@@ -30,16 +21,21 @@ def index(request):
         selected_view = 'list'
 
     if city_id and city_id.isdigit():
-        selected_city = cities.filter(pk=int(city_id)).first()
-
-    if selected_city is None:
-        selected_city = (
-            cities.filter(name='Санкт-Петербург').first() or cities.first()
+        selected_city_id = int(city_id)
+        selected_city = next(
+            (city for city in cities if city.pk == selected_city_id),
+            None,
         )
 
-    complexes = RealEstateComplex.objects.none()
+    if selected_city is None:
+        selected_city = next(
+            (city for city in cities if city.name == 'Санкт-Петербург'),
+            cities[0] if cities else None,
+        )
+
+    complexes = []
     if selected_city:
-        complexes = (
+        complexes = list(
             RealEstateComplex.objects.filter(
                 is_active=True,
                 district__is_active=True,

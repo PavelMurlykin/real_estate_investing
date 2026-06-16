@@ -270,10 +270,12 @@ class BankCatalogView(BaseCatalogView):
         params.pop('edit', None)
         return f'?{params.urlencode()}'
 
-    def build_rows(self, config, columns):
+    def build_rows(self, config, columns, object_list=None):
         """Build table rows with bank-specific actions when needed."""
         if config.key != 'bank':
-            return super().build_rows(config, columns)
+            return super().build_rows(
+                config, columns, object_list=object_list
+            )
 
         rows = []
         for bank in self.get_bank_page(config).object_list:
@@ -524,6 +526,7 @@ class KeyRateListView(TemplateView):
     """List and manually synchronize Central Bank key rates."""
 
     template_name = 'bank/key_rate_list.html'
+    paginate_by = 20
 
     def post(self, request, *args, **kwargs):
         """Run manual key rate synchronization."""
@@ -568,10 +571,14 @@ class KeyRateListView(TemplateView):
     def get_context_data(self, **kwargs):
         """Build key rate page context."""
         context = super().get_context_data(**kwargs)
-        rows = list(self.get_queryset())
+        page_obj = Paginator(
+            self.get_queryset(), self.paginate_by
+        ).get_page(self.request.GET.get('page'))
 
         context['section_title'] = 'Ключевая ставка'
-        context['rows'] = rows
+        context['rows'] = page_obj.object_list
+        context['page_obj'] = page_obj
+        context['is_paginated'] = page_obj.paginator.num_pages > 1
         context['last_synced_at'] = (
             KeyRate.objects.order_by('-updated_at')
             .values_list('updated_at', flat=True)
