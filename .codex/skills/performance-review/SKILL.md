@@ -47,6 +47,7 @@ When reviewing or changing backend code in this project, also follow the local `
 
 6. Report:
    - Use `references/report-template.md` for performance review reports.
+   - Save project-level audit reports in `.audit/` at the repository root.
    - Keep findings ordered by severity and practical impact.
    - Include file and line references for code-level findings.
    - Use stable finding IDs so humans and AI agents can refer to items unambiguously.
