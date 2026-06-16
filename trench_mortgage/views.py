@@ -764,7 +764,7 @@ def _format_payment_schedule(payment_schedule):
     return formatted_schedule
 
 
-def _save_trench_calculation(calculation):
+def _save_trench_calculation(calculation, user=None):
     """Описание метода _save_trench_calculation.
 
     Выполняет прикладную операцию текущего модуля.
@@ -776,6 +776,7 @@ def _save_trench_calculation(calculation):
         Any: Тип результата определяется вызывающим кодом.
     """
     calc_obj = TrenchMortgageCalculation.objects.create(
+        user=user,
         property=calculation['property_obj'],
         base_property_cost=Decimal(str(calculation['base_property_cost'])),
         discount_markup_type=calculation['discount_markup_type'],
@@ -812,6 +813,8 @@ def _save_trench_calculation(calculation):
 
     if trench_objects:
         Trench.objects.bulk_create(trench_objects)
+
+    return calc_obj
 
 
 def _export_trench_excel(calculation):

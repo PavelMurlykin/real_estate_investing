@@ -2,11 +2,17 @@ from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.contrib.messages import get_messages
 from django.test import TestCase
 from django.urls import reverse
 
 from location.models import Region
+from users.roles import (
+    APPLICATION_ADMINISTRATOR_GROUP_NAME,
+    MODERATOR_GROUP_NAME,
+)
 
 from .forms import BankForm
 from .key_rate_sync import KeyRateSyncError
@@ -29,6 +35,21 @@ from .models import (
     MortgageProgramAlias,
     MortgageProgramRegionalCreditLimit,
 )
+
+
+def create_user_with_role(email, phone_number, group_name=None):
+    """Create a test user and optionally add an application role group."""
+    user = get_user_model().objects.create_user(
+        email=email,
+        password='password',
+        phone_number=phone_number,
+        first_name='Test',
+        last_name='User',
+    )
+    if group_name:
+        group, _created = Group.objects.get_or_create(name=group_name)
+        user.groups.add(group)
+    return user
 
 SAMPLE_BANKI_MORTGAGE_HTML = '''
 <html>
@@ -255,6 +276,16 @@ SAMPLE_BANKI_DUPLICATE_PROGRAM_NAME_HTML = '''
 class MortgageProgramCreditLimitTests(TestCase):
     """Проверяет лимиты кредита по льготным ипотечным программам."""
 
+    def setUp(self):
+        """Log in as moderator for catalog mutation tests."""
+        self.client.force_login(
+            create_user_with_role(
+                'bank-moderator@example.com',
+                '+79991000000',
+                MODERATOR_GROUP_NAME,
+            )
+        )
+
     def test_preferential_mortgage_uses_program_credit_limit(self):
         """Проверяет базовый лимит кредита ипотечной программы."""
         program = MortgageProgram.objects.create(
@@ -459,6 +490,15 @@ class MortgageProgramCreditLimitTests(TestCase):
 
 class BankProgramCatalogTests(TestCase):
     """Checks bank mortgage program catalog behavior."""
+
+    def setUp(self):
+        """Log in as moderator for catalog mutation tests."""
+        self.moderator = create_user_with_role(
+            'bank-program-moderator@example.com',
+            '+79991000001',
+            MODERATOR_GROUP_NAME,
+        )
+        self.client.force_login(self.moderator)
 
     def test_bank_model_and_form_do_not_use_mortgage_condition_fields(self):
         """Checks bank conditions live only on bank programs."""
@@ -753,6 +793,42 @@ class BankProgramCatalogTests(TestCase):
         self.assertTrue(MortgageProgram.objects.filter(pk=program.pk).exists())
         self.assertNotContains(response, 'есть связанные записи')
 
+    def test_anonymous_bank_catalog_is_read_only(self):
+        """Checks anonymous users can read banks but cannot mutate catalogs."""
+        self.client.logout()
+        Bank.objects.create(name='Alpha Bank')
+
+        response = self.client.get(f'{reverse("bank:catalog")}?model=bank')
+        post_response = self.client.post(
+            reverse('bank:catalog'),
+            {
+                'action': 'save',
+                'model': 'bank',
+                'name': 'Beta Bank',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Alpha Bank')
+        self.assertNotContains(response, reverse('bank:bank_create'))
+        self.assertNotContains(response, 'sync_bank_mortgage_offers')
+        self.assertEqual(post_response.status_code, 403)
+        self.assertFalse(Bank.objects.filter(name='Beta Bank').exists())
+
+    def test_moderator_cannot_run_bank_sync(self):
+        """Checks external bank sync requires administrator role."""
+        with patch('bank.views.sync_bank_mortgage_offers') as sync_mock:
+            response = self.client.post(
+                reverse('bank:catalog'),
+                {
+                    'action': 'sync_bank_mortgage_offers',
+                    'model': 'bank',
+                },
+            )
+
+        self.assertEqual(response.status_code, 403)
+        sync_mock.assert_not_called()
+
 
 class BankMortgageOfferSyncTests(TestCase):
     """Checks parsing and synchronization of bank mortgage offers."""
@@ -760,6 +836,13 @@ class BankMortgageOfferSyncTests(TestCase):
     def setUp(self):
         """Patch external reference source downloads for sync tests."""
         super().setUp()
+        self.client.force_login(
+            create_user_with_role(
+                'bank-sync-admin@example.com',
+                '+79991000005',
+                APPLICATION_ADMINISTRATOR_GROUP_NAME,
+            )
+        )
         self.reference_program_patch = patch(
             'bank.mortgage_offer_sync.'
             '_download_reference_mortgage_programs_payload',
@@ -1383,6 +1466,16 @@ class BankMortgageOfferSyncTests(TestCase):
 
 
 class KeyRateListViewTests(TestCase):
+    def setUp(self):
+        """Log in as application administrator for key rate sync tests."""
+        self.client.force_login(
+            create_user_with_role(
+                'key-rate-admin@example.com',
+                '+79991000003',
+                APPLICATION_ADMINISTRATOR_GROUP_NAME,
+            )
+        )
+
     def test_key_rate_list_paginates_rows(self):
         for index in range(21):
             KeyRate.objects.create(
@@ -1450,3 +1543,18 @@ class KeyRateListViewTests(TestCase):
         ]
         self.assertEqual(len(messages), 1)
         self.assertIn('Не удалось обновить данные ключевой ставки', messages[0])
+
+    def test_moderator_cannot_run_key_rate_sync(self):
+        """Checks key rate sync requires administrator role."""
+        moderator = create_user_with_role(
+            'key-rate-moderator@example.com',
+            '+79991000004',
+            MODERATOR_GROUP_NAME,
+        )
+        self.client.force_login(moderator)
+
+        with patch('bank.views.sync_key_rates') as sync_key_rates_mock:
+            response = self.client.post(reverse('bank:key_rate_list'))
+
+        self.assertEqual(response.status_code, 403)
+        sync_key_rates_mock.assert_not_called()

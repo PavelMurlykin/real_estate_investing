@@ -209,6 +209,7 @@ docker compose cp db:/tmp/backup.dump ~/backups/real_estate_investing-$(date +%Y
 - `application_initial_setup.md` - первичная настройка приложения на сервере.
 - `manual_deployment.md` - ручной деплой после изменений в Git.
 - `backup_restore.md` - backup и восстановление PostgreSQL.
+- `role_model.md` - ролевая модель, матрица доступа и правила проверки прав.
 - `https_setup.md` - настройка HTTPS через Caddy.
 - `production_update_checklist.md` - checklist перед production-обновлением.
 - `troubleshooting.md` - типовые ошибки и диагностика.

@@ -4,11 +4,14 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from location.models import City, District, Metro, MetroLine, Region
+from users.roles import MODERATOR_GROUP_NAME
 
 from .forms import (
     RealEstateComplexBuildingForm,
@@ -35,6 +38,22 @@ SIMPLE_GIF = (
     b'\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00'
     b'\x00\x02\x02L\x01\x00;'
 )
+
+
+def create_moderator(email, phone_number):
+    """Create a test moderator user."""
+    user = get_user_model().objects.create_user(
+        email=email,
+        password='password',
+        phone_number=phone_number,
+        first_name='Test',
+        last_name='User',
+    )
+    group, _created = Group.objects.get_or_create(
+        name=MODERATOR_GROUP_NAME
+    )
+    user.groups.add(group)
+    return user
 
 
 def test_metro_availability_select_uses_bootstrap_class_for_auto_search():
@@ -111,6 +130,12 @@ def test_dependent_selects_static_supports_cascade_configuration():
 
 class RealEstateComplexFormLocationTests(TestCase):
     def setUp(self):
+        self.client.force_login(
+            create_moderator(
+                'complex-moderator@example.com',
+                '+79992000000',
+            )
+        )
         self.region = Region.objects.create(name='Region 1', code='R1')
         self.other_region = Region.objects.create(name='Region 2', code='R2')
         self.city = City.objects.create(name='City 1', region=self.region)
@@ -692,6 +717,12 @@ class RealEstateComplexFormLocationTests(TestCase):
 
 class LocationCatalogMetroTests(TestCase):
     def setUp(self):
+        self.client.force_login(
+            create_moderator(
+                'location-moderator@example.com',
+                '+79992000001',
+            )
+        )
         self.region = Region.objects.create(name='Region 1', code='R1')
         self.city = City.objects.create(name='City 1', region=self.region)
         self.metro_line = MetroLine.objects.create(
@@ -733,6 +764,28 @@ class LocationCatalogMetroTests(TestCase):
         self.assertNotContains(response, 'name="line_color"')
         self.assertNotContains(response, 'Применить')
         self.assertNotContains(response, 'Сбросить')
+
+    def test_anonymous_location_catalog_is_read_only(self):
+        """Checks anonymous users can read locations but cannot mutate them."""
+        self.client.logout()
+
+        response = self.client.get(
+            reverse('location:location_catalog'), {'model': 'metro'}
+        )
+        post_response = self.client.post(
+            reverse('location:location_catalog'),
+            {
+                'action': 'save',
+                'model': 'metro',
+                'station': 'Station 1',
+                'metro_line': self.metro_line.pk,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'name="station"')
+        self.assertEqual(post_response.status_code, 403)
+        self.assertFalse(Metro.objects.filter(station='Station 1').exists())
 
     def test_location_catalog_paginates_metro_rows(self):
         for index in range(21):
@@ -918,6 +971,15 @@ class RealEstateComplexDeleteViewTests(TestCase):
     в данном модуле.
     """
 
+    def setUp(self):
+        """Log in as moderator for complex delete tests."""
+        self.client.force_login(
+            create_moderator(
+                'complex-delete-moderator@example.com',
+                '+79992000002',
+            )
+        )
+
     def _create_complex(self) -> RealEstateComplex:
         """Описание метода _create_complex.
 
@@ -1049,6 +1111,12 @@ class PropertyFormCascadeTests(TestCase):
 
     def setUp(self):
         """Create related location, complex, and building records."""
+        self.client.force_login(
+            create_moderator(
+                'property-moderator@example.com',
+                '+79992000003',
+            )
+        )
         self.region = Region.objects.create(name='Region 1', code='R1')
         self.other_region = Region.objects.create(name='Region 2', code='R2')
         self.city = City.objects.create(name='City 1', region=self.region)
@@ -1205,6 +1273,46 @@ class PropertyFormCascadeTests(TestCase):
             response,
             reverse('property:detail', kwargs={'pk': property_obj.pk}),
         )
+
+    def test_anonymous_property_pages_are_read_only(self):
+        """Checks anonymous users can read property pages but cannot mutate."""
+        property_obj = Property.objects.create(
+            apartment_number='101',
+            building=self.building,
+            decoration=self.decoration,
+            layout=self.layout,
+            area=Decimal('42.00'),
+            floor=10,
+            property_cost=Decimal('1000000.00'),
+        )
+        self.client.logout()
+
+        list_response = self.client.get(reverse('property:list'))
+        detail_response = self.client.get(
+            reverse('property:detail', kwargs={'pk': property_obj.pk})
+        )
+        create_response = self.client.get(reverse('property:create'))
+
+        self.assertEqual(list_response.status_code, 200)
+        self.assertContains(
+            list_response,
+            reverse('property:detail', kwargs={'pk': property_obj.pk}),
+        )
+        self.assertNotContains(list_response, reverse('property:create'))
+        self.assertNotContains(
+            list_response,
+            reverse('property:update', kwargs={'pk': property_obj.pk}),
+        )
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertNotContains(
+            detail_response,
+            reverse('property:update', kwargs={'pk': property_obj.pk}),
+        )
+        self.assertNotContains(
+            detail_response,
+            reverse('property:delete', kwargs={'pk': property_obj.pk}),
+        )
+        self.assertEqual(create_response.status_code, 403)
 
     def test_property_list_formats_property_cost_with_spaces(self):
         """The property list should group price thousands with spaces."""

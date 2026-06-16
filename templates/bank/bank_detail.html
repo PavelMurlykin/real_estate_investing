@@ -12,7 +12,9 @@
             <h1 class="mb-0">{{ bank.name }}</h1>
         </div>
         <div class="d-flex gap-2">
+            {% if can_manage_catalogs %}
             {% include "includes/action_icon.html" with href=edit_url icon="edit" label="Редактировать" size_class="action-icon-button-lg" %}
+            {% endif %}
             {% include "includes/action_icon.html" with href=catalog_url icon="back" label="Назад к списку" size_class="action-icon-button-lg" variant_class="btn-outline-secondary" %}
         </div>
     </div>

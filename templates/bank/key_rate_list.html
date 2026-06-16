@@ -12,12 +12,14 @@
                 Обновлено: {{ last_synced_at|date:"d.m.Y H:i" }}
             </span>
             {% endif %}
+            {% if can_sync_external_data %}
             <form method="post">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-outline-primary">
                     Обновить из ЦБ РФ
                 </button>
             </form>
+            {% endif %}
         </div>
     </div>
 

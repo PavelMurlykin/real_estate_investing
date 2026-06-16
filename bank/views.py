@@ -1,6 +1,7 @@
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import DecimalField, ExpressionWrapper, F, Window
@@ -10,6 +11,11 @@ from django.urls import reverse
 from django.views.generic import TemplateView
 
 from property.views import BaseCatalogView, CatalogModelConfig
+from users.roles import (
+    CatalogManagementRequiredMixin,
+    can_manage_catalogs,
+    can_sync_external_data,
+)
 
 from .forms import BankForm, BankProgramFormSet
 from .key_rate_sync import KeyRateSyncError, sync_key_rates
@@ -108,12 +114,18 @@ class BankCatalogView(BaseCatalogView):
         config = self.get_config()
         action = request.POST.get('action', 'save')
         if config.key == 'bank' and action == 'sync_bank_mortgage_offers':
+            if not can_sync_external_data(request.user):
+                raise PermissionDenied
             return self.handle_bank_mortgage_sync()
         if (
             config.key == 'bank'
             and action == 'sync_existing_bank_mortgage_offers'
         ):
+            if not can_sync_external_data(request.user):
+                raise PermissionDenied
             return self.handle_bank_mortgage_sync(update_bank_registry=False)
+        if not can_manage_catalogs(request.user):
+            raise PermissionDenied
         if config.key == 'bank' and action == 'save':
             return redirect('bank:bank_create')
 
@@ -481,11 +493,15 @@ class BankProgramFormMixin:
         return self.render_to_response(context, status=400)
 
 
-class BankCreateView(BankProgramFormMixin, TemplateView):
+class BankCreateView(
+    CatalogManagementRequiredMixin, BankProgramFormMixin, TemplateView
+):
     """Create a bank with mortgage programs."""
 
 
-class BankUpdateView(BankProgramFormMixin, TemplateView):
+class BankUpdateView(
+    CatalogManagementRequiredMixin, BankProgramFormMixin, TemplateView
+):
     """Update a bank with mortgage programs."""
 
     def dispatch(self, request, *args, **kwargs):
@@ -530,6 +546,8 @@ class KeyRateListView(TemplateView):
 
     def post(self, request, *args, **kwargs):
         """Run manual key rate synchronization."""
+        if not can_sync_external_data(request.user):
+            raise PermissionDenied
         try:
             result = sync_key_rates()
         except KeyRateSyncError as error:

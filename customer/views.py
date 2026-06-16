@@ -20,6 +20,7 @@ from mortgage.utils import (
     get_calculation_filters,
     get_calculation_sort,
 )
+from users.roles import can_view_all_private_records
 
 from .forms import CustomerForm
 from .models import Customer, CustomerCalculation
@@ -40,8 +41,12 @@ class CustomerOwnedQuerysetMixin(LoginRequiredMixin):
         Возвращает:
             Any: Тип результата зависит от контекста использования.
         """
+        queryset = Customer.objects.all()
+        if not can_view_all_private_records(self.request.user):
+            queryset = queryset.filter(user=self.request.user)
+
         return (
-            Customer.objects.filter(user=self.request.user)
+            queryset
             .select_related(
                 'residence_city',
                 'desired_city',
@@ -221,6 +226,10 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
         base_customer_calculations = CustomerCalculation.objects.filter(
             customer=customer
         )
+        if not can_view_all_private_records(self.request.user):
+            base_customer_calculations = base_customer_calculations.filter(
+                calculation__user=self.request.user
+            )
         customer_calculations = (
             base_customer_calculations
             .select_related(
@@ -309,9 +318,13 @@ class CustomerCalculationDeleteView(LoginRequiredMixin, DeleteView):
 
     def get_queryset(self):
         """Возвращает связи расчетов для клиентов текущего пользователя."""
-        return CustomerCalculation.objects.filter(
-            customer__user=self.request.user
-        )
+        queryset = CustomerCalculation.objects.all()
+        if not can_view_all_private_records(self.request.user):
+            queryset = queryset.filter(
+                customer__user=self.request.user,
+                calculation__user=self.request.user,
+            )
+        return queryset
 
     def get_success_url(self):
         """Возвращает пользователя в карточку клиента после удаления связи."""

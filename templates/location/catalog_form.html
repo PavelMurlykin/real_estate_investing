@@ -114,7 +114,9 @@
                                         {% endif %}
                                     </th>
                                     {% endfor %}
+                                    {% if can_manage_catalogs %}
                                     <th class="text-nowrap">Действия</th>
+                                    {% endif %}
                                 </tr>
                             </thead>
                             <tbody>
@@ -136,6 +138,7 @@
                                         {% endif %}
                                     </td>
                                     {% endfor %}
+                                    {% if can_manage_catalogs %}
                                     <td class="text-nowrap">
                                         <div class="d-flex gap-2 flex-nowrap">
                                             {% include "includes/action_icon.html" with href=row.edit_url icon="edit" label="Редактировать" %}
@@ -148,10 +151,11 @@
                                             </form>
                                         </div>
                                     </td>
+                                    {% endif %}
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="{{ columns|length|add:1 }}" class="text-center">Записей пока нет</td>
+                                    <td colspan="{% if can_manage_catalogs %}{{ columns|length|add:1 }}{% else %}{{ columns|length }}{% endif %}" class="text-center">Записей пока нет</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -162,6 +166,7 @@
             </div>
         </div>
 
+        {% if can_manage_catalogs %}
         <div class="col-lg-4">
             <div class="card">
                 <div class="card-header">
@@ -229,6 +234,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

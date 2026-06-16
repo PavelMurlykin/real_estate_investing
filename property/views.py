@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
 from django import forms
+from django.core.exceptions import PermissionDenied
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db import models as django_models
@@ -23,6 +24,7 @@ from django.views.generic import (
 
 from core.forms import GroupedDecimalField, format_grouped_decimal_value
 from location.models import City, District, Metro, MetroLine, Region
+from users.roles import CatalogManagementRequiredMixin, can_manage_catalogs
 
 from .forms import (
     DeveloperForm,
@@ -520,6 +522,7 @@ class BaseCatalogView(TemplateView):
             'cancel_url': self.get_model_url(current_model_key),
             'delete_error': delete_error,
             'metro_line_options': self.get_metro_line_option_data(form),
+            'can_manage_catalogs': can_manage_catalogs(self.request.user),
         }
 
         context['sort_by'] = self.request.GET.get('sort_by', '')
@@ -567,6 +570,8 @@ class BaseCatalogView(TemplateView):
         edit_id = self.request.GET.get('edit')
         if not edit_id:
             return None
+        if not can_manage_catalogs(self.request.user):
+            raise PermissionDenied
         return get_object_or_404(config.model, pk=edit_id)
 
     def get(self, request, *args, **kwargs):
@@ -605,6 +610,9 @@ class BaseCatalogView(TemplateView):
         """
         config = self.get_config()
         action = request.POST.get('action', 'save')
+
+        if not can_manage_catalogs(request.user):
+            raise PermissionDenied
 
         if action == 'delete':
             return self.handle_delete(config)
@@ -863,7 +871,7 @@ class DeveloperListView(ListView):
         return context
 
 
-class DeveloperCreateView(CreateView):
+class DeveloperCreateView(CatalogManagementRequiredMixin, CreateView):
     """Описание класса DeveloperCreateView.
 
     Инкапсулирует данные и поведение, необходимые для работы компонента
@@ -876,7 +884,7 @@ class DeveloperCreateView(CreateView):
     success_url = reverse_lazy('property:developer_list')
 
 
-class DeveloperUpdateView(UpdateView):
+class DeveloperUpdateView(CatalogManagementRequiredMixin, UpdateView):
     """Описание класса DeveloperUpdateView.
 
     Инкапсулирует данные и поведение, необходимые для работы компонента
@@ -889,7 +897,9 @@ class DeveloperUpdateView(UpdateView):
     success_url = reverse_lazy('property:developer_list')
 
 
-class DeveloperDeleteView(ProtectedDeleteMixin, DeleteView):
+class DeveloperDeleteView(
+    CatalogManagementRequiredMixin, ProtectedDeleteMixin, DeleteView
+):
     """Описание класса DeveloperDeleteView.
 
     Инкапсулирует данные и поведение, необходимые для работы компонента
@@ -1207,7 +1217,9 @@ class RealEstateComplexFormsetMixin:
         return HttpResponseRedirect(self.get_success_url())
 
 
-class RealEstateComplexCreateView(RealEstateComplexFormsetMixin, CreateView):
+class RealEstateComplexCreateView(
+    CatalogManagementRequiredMixin, RealEstateComplexFormsetMixin, CreateView
+):
     """Описание класса RealEstateComplexCreateView.
 
     Инкапсулирует данные и поведение, необходимые для работы компонента
@@ -1217,7 +1229,9 @@ class RealEstateComplexCreateView(RealEstateComplexFormsetMixin, CreateView):
     pass
 
 
-class RealEstateComplexUpdateView(RealEstateComplexFormsetMixin, UpdateView):
+class RealEstateComplexUpdateView(
+    CatalogManagementRequiredMixin, RealEstateComplexFormsetMixin, UpdateView
+):
     """Описание класса RealEstateComplexUpdateView.
 
     Инкапсулирует данные и поведение, необходимые для работы компонента
@@ -1251,7 +1265,9 @@ class RealEstateComplexDetailView(DetailView):
         )
 
 
-class RealEstateComplexDeleteView(ProtectedDeleteMixin, DeleteView):
+class RealEstateComplexDeleteView(
+    CatalogManagementRequiredMixin, ProtectedDeleteMixin, DeleteView
+):
     """Описание класса RealEstateComplexDeleteView.
 
     Инкапсулирует данные и поведение, необходимые для работы компонента
@@ -1583,7 +1599,9 @@ class PropertyFormContextMixin:
         return context
 
 
-class PropertyCreateView(PropertyFormContextMixin, CreateView):
+class PropertyCreateView(
+    CatalogManagementRequiredMixin, PropertyFormContextMixin, CreateView
+):
     """Описание класса PropertyCreateView.
 
     Инкапсулирует данные и поведение, необходимые для работы компонента
@@ -1609,7 +1627,9 @@ class PropertyCreateView(PropertyFormContextMixin, CreateView):
         return super().get_context_data(**kwargs)
 
 
-class PropertyUpdateView(PropertyFormContextMixin, UpdateView):
+class PropertyUpdateView(
+    CatalogManagementRequiredMixin, PropertyFormContextMixin, UpdateView
+):
     """Описание класса PropertyUpdateView.
 
     Инкапсулирует данные и поведение, необходимые для работы компонента
@@ -1644,7 +1664,7 @@ class PropertyUpdateView(PropertyFormContextMixin, UpdateView):
         return super().get_context_data(**kwargs)
 
 
-class PropertyDeleteView(DeleteView):
+class PropertyDeleteView(CatalogManagementRequiredMixin, DeleteView):
     """Описание класса PropertyDeleteView.
 
     Инкапсулирует данные и поведение, необходимые для работы компонента

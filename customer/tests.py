@@ -4,6 +4,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import TestCase
 from django.urls import reverse
 
@@ -21,6 +22,7 @@ from property.models import (
     RealEstateComplexBuilding,
     RealEstateType,
 )
+from users.roles import APPLICATION_ADMINISTRATOR_GROUP_NAME
 
 from .forms import CustomerForm
 from .models import Customer, CustomerCalculation
@@ -324,6 +326,28 @@ class CustomerDeleteViewTests(TestCase):
         )
         self.client.force_login(self.user)
 
+    def _create_user(self, email, phone_number):
+        """Create a regular test user."""
+        return get_user_model().objects.create_user(
+            email=email,
+            password='password',
+            phone_number=phone_number,
+            first_name='Agent',
+            last_name='User',
+        )
+
+    def _create_application_administrator(self):
+        """Create an application administrator user."""
+        user = self._create_user(
+            'customer-admin@example.com',
+            '+79990000003',
+        )
+        group, _created = Group.objects.get_or_create(
+            name=APPLICATION_ADMINISTRATOR_GROUP_NAME
+        )
+        user.groups.add(group)
+        return user
+
     def _create_property(
         self,
         city_name='Город 1',
@@ -375,6 +399,7 @@ class CustomerDeleteViewTests(TestCase):
     ) -> MortgageCalculation:
         """Создает сохраненный ипотечный расчет."""
         return MortgageCalculation.objects.create(
+            user=self.user,
             property=self._create_property(
                 city_name=city_name,
                 complex_name=complex_name,
@@ -409,6 +434,55 @@ class CustomerDeleteViewTests(TestCase):
             response,
             reverse('customer:delete', kwargs={'pk': customer.pk}),
         )
+
+    def test_regular_user_cannot_access_other_user_customer(self):
+        """Checks customer detail and list are scoped to owner."""
+        other_user = self._create_user(
+            'other-customer-user@example.com',
+            '+79990000004',
+        )
+        customer = Customer.objects.create(
+            user=other_user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+
+        list_response = self.client.get(reverse('customer:list'))
+        detail_response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+        delete_response = self.client.post(
+            reverse('customer:delete', kwargs={'pk': customer.pk})
+        )
+
+        self.assertEqual(list_response.status_code, 200)
+        self.assertNotContains(list_response, customer.full_name)
+        self.assertEqual(detail_response.status_code, 404)
+        self.assertEqual(delete_response.status_code, 404)
+        self.assertTrue(Customer.objects.filter(pk=customer.pk).exists())
+
+    def test_application_administrator_can_access_all_customers(self):
+        """Checks administrators have global customer access."""
+        other_user = self._create_user(
+            'admin-visible-customer-user@example.com',
+            '+79990000005',
+        )
+        customer = Customer.objects.create(
+            user=other_user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        administrator = self._create_application_administrator()
+        self.client.force_login(administrator)
+
+        list_response = self.client.get(reverse('customer:list'))
+        detail_response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+
+        self.assertEqual(list_response.status_code, 200)
+        self.assertContains(list_response, customer.full_name)
+        self.assertEqual(detail_response.status_code, 200)
 
     def test_delete_customer_removes_link_and_keeps_calculation(self):
         """Проверяет, что удаление клиента не удаляет сам расчет."""

@@ -7,8 +7,10 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>{{ complex.name }}</h1>
         <div class="d-flex gap-2">
+            {% if can_manage_catalogs %}
             {% url 'property:complex_update' complex.pk as update_url %}
             {% include "includes/action_icon.html" with href=update_url icon="edit" label="Редактировать" size_class="action-icon-button-lg" %}
+            {% endif %}
             {% url 'property:complex_list' as list_url %}
             {% include "includes/action_icon.html" with href=list_url icon="back" label="Назад к списку" size_class="action-icon-button-lg" variant_class="btn-outline-secondary" %}
         </div>
