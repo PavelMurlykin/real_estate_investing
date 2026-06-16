@@ -18,6 +18,8 @@
 - `production_update_checklist.md` - краткий checklist перед production
   обновлением.
 - `backup_restore.md` - создание, проверка и восстановление backup PostgreSQL.
+- `role_model.md` - роли пользователей, матрица доступа и backend-контракт
+  проверок прав.
 
 ## Диагностика
 
