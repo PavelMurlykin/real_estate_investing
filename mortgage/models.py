@@ -1,6 +1,7 @@
 # mortgage/models.py
 import builtins
 
+from django.conf import settings
 from django.db import models
 
 from property.models import Property  # импортируем из нового приложения
@@ -20,6 +21,14 @@ class MortgageCalculation(models.Model):
     # Исходные данные
     property = models.ForeignKey(
         Property, on_delete=models.PROTECT, verbose_name='Объект'
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='mortgage_calculations',
+        verbose_name='Пользователь',
     )
     base_property_cost = models.DecimalField(
         max_digits=15,

@@ -33,9 +33,12 @@
                 Обновлено: {{ last_synced_at|date:"d.m.Y H:i" }}
             </span>
             {% endif %}
+            {% if can_manage_catalogs %}
             <a href="{{ bank_create_url }}" class="btn btn-primary">
                 Добавить банк
             </a>
+            {% endif %}
+            {% if can_sync_external_data %}
             <form method="post" action="{{ form_action_url }}">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="sync_bank_mortgage_offers">
@@ -52,6 +55,7 @@
                     Обновить ипотечные программы
                 </button>
             </form>
+            {% endif %}
         </div>
         {% endif %}
     </div>
@@ -121,6 +125,7 @@
                                     <td class="text-nowrap">
                                         <div class="d-flex gap-2 flex-nowrap">
                                             {% include "includes/action_icon.html" with href=row.detail_url icon="details" label="Открыть карточку" %}
+                                            {% if can_manage_catalogs %}
                                             {% include "includes/action_icon.html" with href=row.edit_url icon="edit" label="Редактировать" %}
                                             <form method="post" action="{{ form_action_url }}" onsubmit="return confirm('Удалить запись?');">
                                                 {% csrf_token %}
@@ -129,6 +134,7 @@
                                                 <input type="hidden" name="object_id" value="{{ row.pk }}">
                                                 {% include "includes/action_icon.html" with action_icon_is_button=True icon="delete" label="Удалить" variant_class="btn-outline-danger" %}
                                             </form>
+                                            {% endif %}
                                         </div>
                                     </td>
                                 </tr>
@@ -178,9 +184,11 @@
                     {% if selected_bank %}
                     <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
                         <h2 class="h5 mb-0">{{ selected_bank.name }}</h2>
+                        {% if can_manage_catalogs %}
                         <a href="{% url 'bank:bank_update' selected_bank.pk %}" class="btn btn-sm btn-outline-primary">
                             Редактировать
                         </a>
+                        {% endif %}
                     </div>
                     <div class="table-responsive">
                         <table class="table table-striped table-hover align-middle mb-0">
@@ -271,7 +279,9 @@
                                         {% endif %}
                                     </th>
                                     {% endfor %}
+                                    {% if can_manage_catalogs %}
                                     <th class="text-nowrap">Действия</th>
+                                    {% endif %}
                                 </tr>
                             </thead>
                             <tbody>
@@ -286,6 +296,7 @@
                                         {% endif %}
                                     </td>
                                     {% endfor %}
+                                    {% if can_manage_catalogs %}
                                     <td class="text-nowrap">
                                         <div class="d-flex gap-2 flex-nowrap">
                                             {% include "includes/action_icon.html" with href=row.edit_url icon="edit" label="Редактировать" %}
@@ -298,10 +309,11 @@
                                             </form>
                                         </div>
                                     </td>
+                                    {% endif %}
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="{{ columns|length|add:1 }}" class="text-center">Записей пока нет</td>
+                                    <td colspan="{% if can_manage_catalogs %}{{ columns|length|add:1 }}{% else %}{{ columns|length }}{% endif %}" class="text-center">Записей пока нет</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -336,6 +348,7 @@
             </div>
         </div>
 
+        {% if can_manage_catalogs %}
         <div class="col-lg-4">
             <div class="card">
                 <div class="card-header">
@@ -388,6 +401,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
     {% endif %}
 </div>

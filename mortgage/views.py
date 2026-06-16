@@ -3,6 +3,7 @@ import decimal
 
 from dateutil.relativedelta import relativedelta
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -35,6 +36,7 @@ from trench_mortgage.views import (
     _save_trench_calculation,
 )
 from trench_mortgage.models import TrenchMortgageCalculation
+from users.roles import can_manage_catalogs, can_view_all_private_records
 
 from bank.models import Bank, BankProgram, KeyRate
 
@@ -76,7 +78,38 @@ def _get_target_customer(request):
 
     from customer.models import Customer
 
-    return get_object_or_404(Customer, pk=customer_id, user=request.user)
+    queryset = Customer.objects.all()
+    if not can_view_all_private_records(request.user):
+        queryset = queryset.filter(user=request.user)
+    return get_object_or_404(queryset, pk=customer_id)
+
+
+def _filter_private_queryset_for_user(queryset, user):
+    """Scope private records to the current user unless they are admin."""
+    if not getattr(user, 'is_authenticated', False):
+        return queryset.none()
+    if can_view_all_private_records(user):
+        return queryset
+    return queryset.filter(user=user)
+
+
+def _get_calculation_owner(request, target_customer=None):
+    """Return the user who should own a newly saved calculation."""
+    if target_customer is not None:
+        return target_customer.user
+    return request.user
+
+
+def _can_save_calculation_for_property(request, property_obj, mortgage_form):
+    """Return whether the current request may persist a calculation."""
+    if not request.user.is_authenticated:
+        return False
+    if property_obj is not None:
+        return True
+    return (
+        mortgage_form.has_manual_property_data()
+        and can_manage_catalogs(request.user)
+    )
 
 
 def _attach_calculation_to_customer(customer, calculation):
@@ -510,9 +543,10 @@ def _create_manual_property(cleaned_data, property_cost):
     )
 
 
-def _build_calculation(property_obj, data, result, values):
+def _build_calculation(property_obj, data, result, values, user=None):
     """Build a saved mortgage calculation for a property-backed scenario."""
     return MortgageCalculation(
+        user=user,
         property=property_obj,
         base_property_cost=decimal.Decimal(str(values['base_property_cost'])),
         initial_payment_percent=decimal.Decimal(
@@ -555,15 +589,16 @@ def _get_sample_calculation(request):
     if not sample_calculation_id or not sample_calculation_id.isdecimal():
         return None
 
+    queryset = MortgageCalculation.objects.select_related(
+        'property',
+        'property__building',
+        'property__building__real_estate_complex',
+        'property__building__real_estate_complex__district',
+        'property__layout',
+        'property__decoration',
+    )
     return get_object_or_404(
-        MortgageCalculation.objects.select_related(
-            'property',
-            'property__building',
-            'property__building__real_estate_complex',
-            'property__building__real_estate_complex__district',
-            'property__layout',
-            'property__decoration',
-        ),
+        _filter_private_queryset_for_user(queryset, request.user),
         pk=sample_calculation_id,
     )
 
@@ -667,6 +702,7 @@ def mortgage_calculator(request):
         active_calculation_type = 'market'
     trench_count = _resolve_trench_count(mortgage_form)
     trench_default_rate = _resolve_trench_default_rate(mortgage_form)
+    can_save_calculations = request.user.is_authenticated
 
     context = {
         'mortgage_form': mortgage_form,
@@ -681,6 +717,7 @@ def mortgage_calculator(request):
             post_data=mortgage_form.data if mortgage_form.is_bound else None,
             default_annual_rate=trench_default_rate,
         ),
+        'can_save_calculations': can_save_calculations,
     }
 
     if request.method == 'POST':
@@ -761,10 +798,17 @@ def mortgage_calculator(request):
                         )
 
                     should_save_calculation = (
-                        property_obj is not None
-                        or mortgage_form.has_manual_property_data()
+                        _can_save_calculation_for_property(
+                            request,
+                            property_obj,
+                            mortgage_form,
+                        )
                     )
                     if should_save_calculation:
+                        calculation_owner = _get_calculation_owner(
+                            request,
+                            target_customer,
+                        )
                         with transaction.atomic():
                             if property_obj is None:
                                 property_obj = _create_manual_property(
@@ -772,7 +816,10 @@ def mortgage_calculator(request):
                                     base_property_cost,
                                 )
                             trench_calculation['property_obj'] = property_obj
-                            _save_trench_calculation(trench_calculation)
+                            _save_trench_calculation(
+                                trench_calculation,
+                                user=calculation_owner,
+                            )
 
                     context['trench_result'] = _format_trench_result(
                         trench_calculation
@@ -853,10 +900,17 @@ def mortgage_calculator(request):
 
                 calculation = None
                 should_save_calculation = (
-                    property_obj is not None
-                    or mortgage_form.has_manual_property_data()
+                    _can_save_calculation_for_property(
+                        request,
+                        property_obj,
+                        mortgage_form,
+                    )
                 )
                 if should_save_calculation:
+                    calculation_owner = _get_calculation_owner(
+                        request,
+                        target_customer,
+                    )
                     calculation_values = {
                         'base_property_cost': base_property_cost,
                         'initial_payment_percent': initial_payment_percent,
@@ -874,6 +928,7 @@ def mortgage_calculator(request):
                             data,
                             result,
                             calculation_values,
+                            user=calculation_owner,
                         )
                         calculation.save()
                         _attach_calculation_to_customer(
@@ -1069,13 +1124,17 @@ def property_cost_api(request, pk):
     return JsonResponse(_get_property_payload(property_obj))
 
 
+@login_required
 def calculation_list(request):
     """Список всех расчетов"""
     target_customer = _get_target_customer(request)
 
     if request.method == 'POST' and target_customer is not None:
         selected_ids = request.POST.getlist('calculations')
-        calculations = MortgageCalculation.objects.filter(pk__in=selected_ids)
+        calculations = _filter_private_queryset_for_user(
+            MortgageCalculation.objects.filter(pk__in=selected_ids),
+            request.user,
+        )
 
         _attach_calculations_to_customer(target_customer, calculations)
 
@@ -1090,7 +1149,7 @@ def calculation_list(request):
 
     calculation_filters = get_calculation_filters(request)
     calculation_sort, calculation_order = get_calculation_sort(request)
-    calculations = (
+    calculations = _filter_private_queryset_for_user(
         MortgageCalculation.objects.select_related(
             'property',
             'property__layout',
@@ -1098,8 +1157,8 @@ def calculation_list(request):
             'property__building__real_estate_complex',
             'property__building__real_estate_complex__district',
             'property__building__real_estate_complex__district__city',
-        )
-        .all()
+        ),
+        request.user,
     )
     calculation_cities = get_calculation_city_choices(calculations)
     calculations = apply_calculation_filters(
@@ -1146,26 +1205,35 @@ def calculation_list(request):
 
 
 @require_POST
+@login_required
 def calculation_delete(request, pk):
     """Удаление сохраненного ипотечного расчета."""
-    calculation = get_object_or_404(MortgageCalculation, pk=pk)
+    calculation = get_object_or_404(
+        _filter_private_queryset_for_user(
+            MortgageCalculation.objects.all(),
+            request.user,
+        ),
+        pk=pk,
+    )
     calculation.delete()
     return redirect('mortgage:calculation_list')
 
 
+@login_required
 def calculation_detail(request, pk):
     """Детальная информация о расчете"""
+    calculation_queryset = MortgageCalculation.objects.select_related(
+        'property',
+        'property__layout',
+        'property__building',
+        'property__building__real_estate_complex',
+        'property__building__real_estate_complex__developer',
+        'property__building__real_estate_complex__district',
+        'property__building__real_estate_complex__district__city',
+        'property__building__real_estate_complex__real_estate_class',
+    )
     calculation = get_object_or_404(
-        MortgageCalculation.objects.select_related(
-            'property',
-            'property__layout',
-            'property__building',
-            'property__building__real_estate_complex',
-            'property__building__real_estate_complex__developer',
-            'property__building__real_estate_complex__district',
-            'property__building__real_estate_complex__district__city',
-            'property__building__real_estate_complex__real_estate_class',
-        ),
+        _filter_private_queryset_for_user(calculation_queryset, request.user),
         pk=pk,
     )
     calculator = MortgageCalculator(
@@ -1204,9 +1272,9 @@ def calculation_detail(request, pk):
 
 
 
-def _get_trench_calculation_queryset():
+def _get_trench_calculation_queryset(user=None):
     """Return trench mortgage calculations with related objects loaded."""
-    return TrenchMortgageCalculation.objects.select_related(
+    queryset = TrenchMortgageCalculation.objects.select_related(
         'property',
         'property__layout',
         'property__decoration',
@@ -1217,6 +1285,9 @@ def _get_trench_calculation_queryset():
         'property__building__real_estate_complex__district__city',
         'property__building__real_estate_complex__real_estate_class',
     ).prefetch_related('trenches')
+    if user is None:
+        return queryset
+    return _filter_private_queryset_for_user(queryset, user)
 
 
 def _build_saved_trench_calculation_data(calculation):
@@ -1276,10 +1347,11 @@ def _build_saved_trench_calculation_data(calculation):
     }
 
 
+@login_required
 def trench_calculation_list(request):
     """Show saved trench mortgage calculations."""
     calculations = annotate_calculation_table_values(
-        _get_trench_calculation_queryset()
+        _get_trench_calculation_queryset(request.user)
     ).order_by('-timestamp')
     page_obj = Paginator(
         calculations, CALCULATION_LIST_PAGE_SIZE
@@ -1298,16 +1370,24 @@ def trench_calculation_list(request):
 
 
 @require_POST
+@login_required
 def trench_calculation_delete(request, pk):
     """Delete a saved trench mortgage calculation."""
-    calculation = get_object_or_404(TrenchMortgageCalculation, pk=pk)
+    calculation = get_object_or_404(
+        _get_trench_calculation_queryset(request.user),
+        pk=pk,
+    )
     calculation.delete()
     return redirect('mortgage:trench_calculation_list')
 
 
+@login_required
 def trench_calculation_detail(request, pk):
     """Show detailed information about a saved trench mortgage calculation."""
-    calculation = get_object_or_404(_get_trench_calculation_queryset(), pk=pk)
+    calculation = get_object_or_404(
+        _get_trench_calculation_queryset(request.user),
+        pk=pk,
+    )
     calculation_data = _build_saved_trench_calculation_data(calculation)
 
     if request.method == 'POST' and request.POST.get('export') == 'trench':

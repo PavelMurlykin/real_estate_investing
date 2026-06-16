@@ -1,5 +1,6 @@
 import builtins
 
+from django.conf import settings
 from django.db import models
 
 from mortgage.models import DISCOUNT_MARKUP_CHOICES
@@ -16,6 +17,14 @@ class TrenchMortgageCalculation(models.Model):
 
     property = models.ForeignKey(
         Property, on_delete=models.PROTECT, verbose_name='Объект'
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='trench_mortgage_calculations',
+        verbose_name='Пользователь',
     )
     base_property_cost = models.DecimalField(
         max_digits=15,

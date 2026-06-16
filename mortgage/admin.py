@@ -14,6 +14,7 @@ class MortgageCalculationAdmin(admin.ModelAdmin):
 
     list_display = (
         'timestamp',
+        'user',
         'get_property',
         'final_property_cost',
         'initial_payment_percent',
@@ -21,7 +22,12 @@ class MortgageCalculationAdmin(admin.ModelAdmin):
         'annual_rate',
         'has_grace_period',
     )
-    list_filter = ('timestamp', 'has_grace_period', 'discount_markup_type')
+    list_filter = (
+        'timestamp',
+        'user',
+        'has_grace_period',
+        'discount_markup_type',
+    )
     readonly_fields = ('timestamp',)
     search_fields = (
         'property__building__real_estate_complex__name',
@@ -56,6 +62,7 @@ class MortgageCalculationAdmin(admin.ModelAdmin):
         """
         return super().get_queryset(request).select_related(
             'property',
+            'user',
             'property__building',
             'property__building__real_estate_complex',
         )

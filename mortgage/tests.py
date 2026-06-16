@@ -5,6 +5,8 @@ import re
 from zipfile import ZipFile
 
 from openpyxl import load_workbook
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import TestCase
 from django.urls import reverse
 
@@ -29,6 +31,25 @@ from property.models import (
 )
 from mortgage.views import _build_saved_trench_calculation_data
 from trench_mortgage.models import Trench, TrenchMortgageCalculation
+from users.roles import (
+    APPLICATION_ADMINISTRATOR_GROUP_NAME,
+    MODERATOR_GROUP_NAME,
+)
+
+
+def create_user_with_role(email, phone_number, group_name=None):
+    """Create a test user and optionally add an application role group."""
+    user = get_user_model().objects.create_user(
+        email=email,
+        password='password',
+        phone_number=phone_number,
+        first_name='Test',
+        last_name='User',
+    )
+    if group_name:
+        group, _created = Group.objects.get_or_create(name=group_name)
+        user.groups.add(group)
+    return user
 
 
 class MortgageCalculatorViewTests(TestCase):
@@ -48,6 +69,31 @@ class MortgageCalculatorViewTests(TestCase):
         """
         self.property = self._create_property(cost=Decimal('5000000.00'))
         self.url = reverse('mortgage:mortgage_calculator')
+        self.user = create_user_with_role(
+            'mortgage-user@example.com',
+            '+79993000000',
+        )
+        self.client.force_login(self.user)
+
+    def _login_moderator(self):
+        """Log in as moderator for catalog-backed manual object tests."""
+        moderator = create_user_with_role(
+            'mortgage-moderator@example.com',
+            '+79993000001',
+            MODERATOR_GROUP_NAME,
+        )
+        self.client.force_login(moderator)
+        return moderator
+
+    def _login_application_administrator(self):
+        """Log in as application administrator for global access tests."""
+        administrator = create_user_with_role(
+            'mortgage-admin@example.com',
+            '+79993000002',
+            APPLICATION_ADMINISTRATOR_GROUP_NAME,
+        )
+        self.client.force_login(administrator)
+        return administrator
 
     def _create_property(
         self,
@@ -107,11 +153,15 @@ class MortgageCalculatorViewTests(TestCase):
     def _create_calculation(
         self,
         property_obj=None,
+        user=None,
     ) -> MortgageCalculation:
         if property_obj is None:
             property_obj = self.property
+        if user is None:
+            user = self.user
 
         return MortgageCalculation.objects.create(
+            user=user,
             property=property_obj,
             base_property_cost=Decimal('5000000.00'),
             initial_payment_percent=Decimal('20.00'),
@@ -130,11 +180,15 @@ class MortgageCalculatorViewTests(TestCase):
     def _create_trench_calculation(
         self,
         property_obj=None,
+        user=None,
     ) -> TrenchMortgageCalculation:
         if property_obj is None:
             property_obj = self.property
+        if user is None:
+            user = self.user
 
         calculation = TrenchMortgageCalculation.objects.create(
+            user=user,
             property=property_obj,
             base_property_cost=Decimal('5000000.00'),
             discount_markup_type='discount',
@@ -308,6 +362,37 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, reverse('mortgage:calculation_list'))
         self.assertNotContains(response, '/trench-mortgage/')
 
+    def test_anonymous_user_can_calculate_without_saved_links(self):
+        """Checks anonymous calculator access has no private saved links."""
+        self.client.logout()
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, reverse('mortgage:calculation_list'))
+        self.assertNotContains(response, reverse('customer:list'))
+
+    def test_anonymous_calculate_does_not_save_mortgage_calculation(self):
+        """Checks anonymous calculation has no database side effects."""
+        self.client.logout()
+        payload = self._base_payload()
+        payload.update({'calculate': '1'})
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('result', response.context)
+        self.assertFalse(MortgageCalculation.objects.exists())
+
+    def test_anonymous_saved_calculation_list_requires_login(self):
+        """Checks saved calculation list is private."""
+        self.client.logout()
+
+        response = self.client.get(reverse('mortgage:calculation_list'))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/users/login/', response['Location'])
+
     def test_mortgage_program_block_uses_banks_with_programs(self):
         """Checks mortgage program selector data and credit limits."""
         bank_with_program = Bank.objects.create(
@@ -471,6 +556,69 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertFalse(
             MortgageCalculation.objects.filter(pk=calculation.pk).exists()
         )
+
+    def test_regular_user_cannot_access_other_user_calculation(self):
+        """Checks object-level access for saved mortgage calculations."""
+        other_user = create_user_with_role(
+            'other-mortgage-user@example.com',
+            '+79993000003',
+        )
+        calculation = self._create_calculation(user=other_user)
+
+        list_response = self.client.get(reverse('mortgage:calculation_list'))
+        detail_response = self.client.get(
+            reverse(
+                'mortgage:calculation_detail',
+                kwargs={'pk': calculation.pk},
+            )
+        )
+        delete_response = self.client.post(
+            reverse(
+                'mortgage:calculation_delete',
+                kwargs={'pk': calculation.pk},
+            )
+        )
+
+        self.assertEqual(list_response.status_code, 200)
+        self.assertNotContains(
+            list_response,
+            reverse(
+                'mortgage:calculation_detail',
+                kwargs={'pk': calculation.pk},
+            ),
+        )
+        self.assertEqual(detail_response.status_code, 404)
+        self.assertEqual(delete_response.status_code, 404)
+        self.assertTrue(
+            MortgageCalculation.objects.filter(pk=calculation.pk).exists()
+        )
+
+    def test_application_administrator_can_access_other_user_calculation(self):
+        """Checks administrators have global saved calculation access."""
+        other_user = create_user_with_role(
+            'admin-visible-mortgage-user@example.com',
+            '+79993000004',
+        )
+        calculation = self._create_calculation(user=other_user)
+        self._login_application_administrator()
+
+        list_response = self.client.get(reverse('mortgage:calculation_list'))
+        detail_response = self.client.get(
+            reverse(
+                'mortgage:calculation_detail',
+                kwargs={'pk': calculation.pk},
+            )
+        )
+
+        self.assertEqual(list_response.status_code, 200)
+        self.assertContains(
+            list_response,
+            reverse(
+                'mortgage:calculation_detail',
+                kwargs={'pk': calculation.pk},
+            ),
+        )
+        self.assertEqual(detail_response.status_code, 200)
 
     def test_calculation_list_shows_city_column_and_filter(self):
         calculation = self._create_calculation()
@@ -994,6 +1142,46 @@ class MortgageCalculatorViewTests(TestCase):
             ).exists()
         )
 
+    def test_regular_user_cannot_access_other_user_trench_calculation(self):
+        """Checks object-level access for saved trench calculations."""
+        other_user = create_user_with_role(
+            'other-trench-user@example.com',
+            '+79993000005',
+        )
+        calculation = self._create_trench_calculation(user=other_user)
+
+        list_response = self.client.get(
+            reverse('mortgage:trench_calculation_list')
+        )
+        detail_response = self.client.get(
+            reverse(
+                'mortgage:trench_calculation_detail',
+                kwargs={'pk': calculation.pk},
+            )
+        )
+        delete_response = self.client.post(
+            reverse(
+                'mortgage:trench_calculation_delete',
+                kwargs={'pk': calculation.pk},
+            )
+        )
+
+        self.assertEqual(list_response.status_code, 200)
+        self.assertNotContains(
+            list_response,
+            reverse(
+                'mortgage:trench_calculation_detail',
+                kwargs={'pk': calculation.pk},
+            ),
+        )
+        self.assertEqual(detail_response.status_code, 404)
+        self.assertEqual(delete_response.status_code, 404)
+        self.assertTrue(
+            TrenchMortgageCalculation.objects.filter(
+                pk=calculation.pk
+            ).exists()
+        )
+
     def test_mortgage_form_prefills_fields_from_sample_calculation(self):
         calculation = self._create_calculation()
         calculation.base_property_cost = Decimal('6000000.00')
@@ -1243,6 +1431,7 @@ class MortgageCalculatorViewTests(TestCase):
         calculation = TrenchMortgageCalculation.objects.get()
         trenches = list(Trench.objects.order_by('trench_number'))
         self.assertEqual(calculation.property, self.property)
+        self.assertEqual(calculation.user, self.user)
         self.assertEqual(calculation.trench_count, 2)
         self.assertEqual(
             calculation.total_loan_amount,
@@ -1278,9 +1467,11 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertIn('result', response.context)
         self.assertIn('trench_result', response.context)
         self.assertTrue(MortgageCalculation.objects.exists())
+        self.assertEqual(MortgageCalculation.objects.get().user, self.user)
         self.assertFalse(TrenchMortgageCalculation.objects.exists())
 
     def test_calculate_with_manual_object_creates_property_and_calculation(self):
+        moderator = self._login_moderator()
         payload = self._base_payload()
         payload.update(
             {
@@ -1315,7 +1506,44 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertEqual(created_property.property_cost, Decimal('7000000'))
         calculation = MortgageCalculation.objects.latest('id')
         self.assertEqual(calculation.property, created_property)
+        self.assertEqual(calculation.user, moderator)
         self.assertEqual(calculation.base_property_cost, Decimal('7000000'))
+
+    def test_regular_user_manual_object_does_not_create_catalog_property(self):
+        """Checks regular users cannot create catalog properties via mortgage."""
+        payload = self._base_payload()
+        payload.update(
+            {
+                'calculate': '1',
+                'PROPERTY': '',
+                'PROPERTY_COST': '7000000',
+                'OBJECT_CITY': (
+                    self.property.building.real_estate_complex.district.city.pk
+                ),
+                'OBJECT_DISTRICT': (
+                    self.property.building.real_estate_complex.district.pk
+                ),
+                'OBJECT_DEVELOPER': (
+                    self.property.building.real_estate_complex.developer.pk
+                ),
+                'OBJECT_COMPLEX': (
+                    self.property.building.real_estate_complex.pk
+                ),
+                'OBJECT_BUILDING': self.property.building.pk,
+                'OBJECT_APARTMENT_NUMBER': '203',
+                'OBJECT_AREA': '55.50',
+                'OBJECT_LAYOUT': self.property.layout.pk,
+                'OBJECT_FLOOR': '12',
+                'OBJECT_DECORATION': self.property.decoration.pk,
+            }
+        )
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('result', response.context)
+        self.assertFalse(Property.objects.filter(apartment_number='203').exists())
+        self.assertFalse(MortgageCalculation.objects.exists())
 
     def test_calculate_keeps_overridden_cost_only_in_calculation(self):
         """Описание метода

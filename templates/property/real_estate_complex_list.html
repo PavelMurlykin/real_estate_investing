@@ -7,7 +7,9 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Жилые комплексы</h1>
+        {% if can_manage_catalogs %}
         <a href="{% url 'property:complex_create' %}" class="btn btn-primary">Добавить ЖК</a>
+        {% endif %}
     </div>
 
     <div class="card mb-4">
@@ -106,10 +108,12 @@
                                     <div class="d-flex gap-2 flex-nowrap">
                                         {% url 'property:complex_detail' complex.pk as detail_url %}
                                         {% include "includes/action_icon.html" with href=detail_url icon="details" label="Подробнее" %}
+                                        {% if can_manage_catalogs %}
                                         {% url 'property:complex_update' complex.pk as update_url %}
                                         {% include "includes/action_icon.html" with href=update_url icon="edit" label="Редактировать" %}
                                         {% url 'property:complex_delete' complex.pk as delete_url %}
                                         {% include "includes/action_icon.html" with href=delete_url icon="delete" label="Удалить" variant_class="btn-outline-danger" %}
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>
