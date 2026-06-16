@@ -1,284 +1,420 @@
-# Security Audit — `real_estate_investing`
+# Application Security Review
 
-**Дата аудита:** 2026-06-16
-**Стек:** Django 6.0.4, PostgreSQL 18, Gunicorn + nginx, Docker Compose, Python 3.13.
+## Metadata
 
-> Каждая находка содержит: серьёзность, расположение (файл:строка), описание проблемы и план исправления. Серьёзность: 🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Low.
+- Review ID: SEC-20260616-full-project
+- Date: 2026-06-16
+- Reviewer: Codex
+- Repository/branch: real_estate_investing / main
+- Scope: Django application, auth flows, business CRUD, JSON APIs, settings, dependencies, Docker Compose, nginx
+- Review type: static + dynamic-local + dependency/configuration
+- Environment: local Windows workspace, project virtualenv, local `.env` loaded by Django/Docker Compose
+- Authorization: local defensive review only; no live external scanning or exploitation
+- Status: complete with dependency-audit limitation
 
----
+## Executive Summary
 
-## Сводка находок
+The largest risk is missing access control on business-critical areas. `property`, `bank`, mortgage calculation views, and JSON APIs are reachable without explicit authentication or authorization, while saved mortgage calculations have no owner field and are retrieved by raw primary key. Production hardening is also incomplete: `check --deploy` reports missing HTTPS/HSTS/secure-cookie settings, `SECRET_KEY` can fall back to an empty string in Django settings, and Docker Compose still contains unsafe secret fallbacks.
 
-| #  | Серьёзность | Кратко |
-|----|-------------|--------|
-| B1 | 🔴 Critical | Вся бизнес-логика в `property/` и `mortgage/` доступна без аутентификации |
-| B2 | 🔴 Critical | API `/api/*` отдаёт данные без авторизации |
-| B3 | 🔴 Critical | Нет проверки владения объектом (IDOR) в `mortgage/` |
-| B4 | 🔴 Critical | Продакшен-секреты в локальном `.env`, небезопасные fallback'и в `settings.py`/`compose.yaml` |
-| B5 | 🟠 High | `DEBUG=True` и отсутствие всех `SECURE_*`/cookie/HSTS настроек |
-| B6 | 🟠 High | Нет `AUTH_PASSWORD_VALIDATORS` |
-| B7 | 🟠 High | Нет brute-force защиты на login/registration/password-reset |
-| B8 | 🟠 High | Баг в `EmailOrPhoneBackend` при коллизии email/phone — молча логинит |
-| B9 | 🟡 Medium | Загрузка файлов без валидации типа/размера |
-| B10 | 🟡 Medium | Инфраструктура: секреты в Docker-слоях, неверный volume Postgres, нет TLS/cap-drop |
-| B11 | 🟡 Medium | Email без шифрования по умолчанию (reset-токены в cleartext) |
+Immediate remediation should start with authentication/authorization on all private business views, ownership scoping for saved calculations, and production security settings.
 
----
+## Scope And Threat Model
 
-## Детальное описание проблем
+- Assets reviewed: user accounts, customers, mortgage calculations, property/catalog data, bank programs, uploaded media, secrets/configuration, deployment stack.
+- Primary attacker model: anonymous internet user, authenticated low-privilege user, supply-chain/deployment mistake.
+- Out of scope: live production testing, external vulnerability database query, destructive payloads, real credential validation.
+- Assumptions: property/bank/catalog/mortgage/customer data is private business data unless explicitly declared public.
 
-### B1. 🔴 Critical — Вся бизнес-логика доступна без аутентификации
+## Commands And Evidence
 
-**Расположение:** `property/views.py` (все классы), `mortgage/views.py` (все функции)
-**Проверка:** `findstr /I "login_required LoginRequiredMixin permission_required"` по обоим файлам → **0 совпадений**.
+| Command or source | Purpose | Result |
+| --- | --- | --- |
+| `git status --short` | Confirm working tree before review | Clean before report edits |
+| `rg --files` | Map repository | Django apps, Docker, templates, tests, existing audit files found |
+| `rg -n "login_required|LoginRequiredMixin|permission_required" property bank mortgage property/api_urls.py` | Find explicit access controls | No matches in property/bank/mortgage/API views; customer views do use `LoginRequiredMixin` |
+| `rg -n "csrf_exempt|mark_safe|eval|exec|cursor|raw|subprocess"` | Look for high-risk code patterns | No confirmed unsafe patterns in app code; external sync uses `urlopen` with timeouts |
+| `.\.venv\Scripts\python.exe manage.py check` | Django sanity check | Passed, 0 issues |
+| `.\.venv\Scripts\python.exe manage.py check --deploy` | Django production security check | 4 warnings: missing HSTS, SSL redirect, secure session cookie, secure CSRF cookie |
+| `.\.venv\Scripts\python.exe -m pytest` | Regression suite | 173 passed |
+| `.\.venv\Scripts\python.exe -m pip check` | Dependency compatibility | No broken requirements |
+| `.\.venv\Scripts\python.exe -m pip_audit` | Dependency vulnerability audit | Not run: `pip_audit` module is not installed |
+| `docker compose config` | Validate rendered Compose configuration | Valid config, but local `.env` values for `SECRET_KEY`/DB credentials are expanded into output; values redacted in this report |
+| `.dockerignore` | Build context review | `.env`, `.git`, `.venv`, caches, staticfiles are excluded |
 
-**Описание:**
-- `property/views.py` — полный CRUD (создание/редактирование/удаление) застройщиков, ЖК, объектов недвижимости выполняется **анонимным POST-запросом**. В частности `BaseCatalogView.post()` (`property/views.py:492`) по параметру `action=delete` удаляет строки справочников (типы/классы недвижимости, планировки, отделки, виды из окна, типы транспорта).
-- `mortgage/views.py` — `calculation_delete` (`:1080`), `trench_calculation_delete` (`:1226`), `calculation_detail` (`:1088`), списки расчётов — без логина.
-- Контраст: в `customer/` все view корректно используют `LoginRequiredMixin` (`customer/views.py:1, 28`). Расхождение по проекту.
+## Findings
 
-**План исправления:**
-1. На каждый view-класс в `property/views.py` добавить `LoginRequiredMixin` (в начало MRO). На function-based views в `mortgage/views.py` — декоратор `@login_required`.
-2. Для административных операций (создание/редактирование/удаление справочников в `BaseCatalogView`) потребовать `@permission_required` или `UserPassesTestMixin` (is_staff).
-3. Покрыть тестами: анонимный запрос к каждому protected endpoint → 302/403.
+### SEC-001: Business CRUD And Sync Views Lack Explicit Authentication
 
----
+- Severity: critical
+- Confidence: high
+- Component: `property`, `bank`, `mortgage`
+- Category: authorization
+- Status: open
+- Evidence:
+  - `property/views.py:75` defines `BaseCatalogView(TemplateView)` with no auth mixin; it handles generic catalog create/update/delete operations.
+  - `property/views.py:765`, `property/views.py:778`, `property/views.py:791`, `property/views.py:1124`, `property/views.py:1134`, `property/views.py:1168`, `property/views.py:1523`, `property/views.py:1549`, `property/views.py:1584` define property/developer/complex create/update/delete views without `LoginRequiredMixin` or permission mixins.
+  - `bank/views.py:30`, `bank/views.py:482`, `bank/views.py:486`, `bank/views.py:523` define bank catalog, create/update, and key-rate sync views without auth mixins.
+  - `mortgage/views.py:542`, `mortgage/views.py:1009`, `mortgage/views.py:1081`, `mortgage/views.py:1088`, `mortgage/views.py:1211`, `mortgage/views.py:1227`, `mortgage/views.py:1234` define calculator/list/detail/delete views without `@login_required`.
+  - Contrast: `customer/views.py:28`, `customer/views.py:110`, `customer/views.py:305` use `LoginRequiredMixin`.
+- Affected assets:
+  - Property catalog, bank catalog, key-rate sync, mortgage calculations, generated reports.
+- Attacker preconditions:
+  - Anonymous HTTP access and valid CSRF token from the public site for unsafe POST forms.
+- Impact:
+  - Anonymous users can potentially create, edit, delete, or trigger synchronization of business data.
+- Root cause:
+  - Private/admin workflows are implemented as regular class/function views without a shared access-control base.
+- Recommended fix:
+  - Add `LoginRequiredMixin` to all private class-based views and `@login_required` to private function views.
+  - Add stronger role checks (`PermissionRequiredMixin`, `UserPassesTestMixin`, or Django permissions) for admin/catalog/sync/delete operations.
+  - Split public read-only pages from private write/admin pages.
+- Validation plan:
+  - Add tests asserting anonymous users receive 302/403 for every private GET/POST endpoint.
+  - Add tests asserting non-staff users cannot run catalog delete/sync actions.
+- Residual risk:
+  - Access-control policy needs product confirmation for which catalog/list pages are intentionally public.
 
-### B2. 🔴 Critical — API `/api/*` отдаёт данные без авторизации
+### SEC-002: Saved Mortgage Calculations Are Not Owner Scoped
 
-**Расположение:** `property/api_urls.py:9, 25, 41, 81`
+- Severity: critical
+- Confidence: high
+- Component: `mortgage`, `trench_mortgage`, `customer`
+- Category: authorization
+- Status: open
+- Evidence:
+  - `mortgage/models.py:15` defines `MortgageCalculation` without a `user`/owner field.
+  - `trench_mortgage/models.py:10` defines `TrenchMortgageCalculation` without a `user`/owner field.
+  - `mortgage/views.py:1032` loads all `MortgageCalculation` rows for the list.
+  - `mortgage/views.py:1083` deletes `MortgageCalculation` by `pk` only.
+  - `mortgage/views.py:1090` opens calculation detail by `pk` only.
+  - `mortgage/views.py:1015` attaches selected calculation IDs to a customer using `MortgageCalculation.objects.filter(pk__in=selected_ids)` with no owner scope.
+  - `mortgage/views.py:1229` and `mortgage/views.py:1236` access trench calculations by `pk` only.
+- Affected assets:
+  - Saved mortgage calculations, customer calculation links, financial scenario data.
+- Attacker preconditions:
+  - Anonymous or authenticated user can guess or enumerate calculation IDs.
+- Impact:
+  - Cross-user read/delete/link of saved calculations; possible leakage of financial scenario data.
+- Root cause:
+  - Calculation models are global records and views do not filter by `request.user`.
+- Recommended fix:
+  - Add `user = ForeignKey(settings.AUTH_USER_MODEL, ...)` to calculation models.
+  - Scope list/detail/delete/queryset and customer attach flows by `user=request.user`.
+  - Decide migration strategy for existing rows, preferably assigning legacy rows to an admin or marking them unowned and staff-only.
+- Validation plan:
+  - Add tests for user A not seeing, exporting, deleting, or linking user B calculations.
+  - Add migration tests or data migration review for legacy records.
+- Residual risk:
+  - Existing unowned data needs a deliberate cleanup/ownership policy.
 
-**Описание:** Четыре endpoint (`cities/`, `districts/`, `complexes/`, `buildings/`) — bare function views, смонтированы публично в `real_estate_investing/urls.py:19` (`path('api/', include('property.api_urls'))`). Любой анонимный клиент может перечислить всю иерархию локаций/ЖК/корпусов/застройщиков.
+### SEC-003: Public JSON APIs Expose Internal Property Hierarchy And Objects
 
-**План исправления:**
-1. Добавить `@login_required` на каждую функцию (`cities_api`, `districts_api`, `complexes_api`, `buildings_api`).
-2. Либо перевести API на DRF с явными permission classes (`IsAuthenticated`).
-3. Рассмотреть кэширование ответов (см. Performance P2) — справочные данные меняются редко.
+- Severity: high
+- Confidence: high
+- Component: `property.api_urls`, `mortgage`
+- Category: data-exposure
+- Status: open
+- Evidence:
+  - `real_estate_investing/urls.py:19` mounts `path('api/', include('property.api_urls'))`.
+  - `property/api_urls.py:9`, `property/api_urls.py:25`, `property/api_urls.py:41`, `property/api_urls.py:81` define bare JSON function views.
+  - `property/api_urls.py:22`, `property/api_urls.py:38`, `property/api_urls.py:78`, `property/api_urls.py:104` return lists through `JsonResponse`.
+  - `mortgage/views.py:984` defines `property_cost_api`; `mortgage/views.py:1006` returns property payload by `pk`.
+- Affected assets:
+  - City/district/complex/building hierarchy, property payload, pricing-related fields.
+- Attacker preconditions:
+  - Anonymous access to API routes.
+- Impact:
+  - Bulk enumeration of catalog and property metadata; supports scraping and later IDOR attempts.
+- Root cause:
+  - Internal cascade selector APIs are mounted publicly without access control or rate limiting.
+- Recommended fix:
+  - Add `@login_required` or DRF permission classes.
+  - If any endpoint must stay public, document it, minimize fields, add cache/rate limits, and use explicit allowlists.
+- Validation plan:
+  - Add anonymous-access tests for each API endpoint.
+  - Add field-level tests to ensure private fields are never serialized.
+- Residual risk:
+  - Business decision needed on whether property catalog data is public marketing data or private operator data.
 
----
+### SEC-004: Production Security Settings And Secret Handling Are Weak
 
-### B3. 🔴 Critical — Нет проверки владения объектом (IDOR)
+- Severity: high
+- Confidence: high
+- Component: Django settings, Docker Compose, nginx
+- Category: configuration
+- Status: open
+- Evidence:
+  - `real_estate_investing/settings.py:30` sets `SECRET_KEY = os.getenv('SECRET_KEY', '')`.
+  - `real_estate_investing/settings.py` has no `SECURE_HSTS_SECONDS`, `SECURE_SSL_REDIRECT`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, or `SECURE_PROXY_SSL_HEADER`.
+  - `manage.py check --deploy` reports `security.W004`, `security.W008`, `security.W012`, `security.W016`.
+  - `compose.yaml:8`, `compose.yaml:27`, `compose.yaml:32` contain unsafe fallback values for DB password and `SECRET_KEY`.
+  - `docker compose config` expands local `SECRET_KEY`, `DB_USER`, and `DB_PASSWORD` values from `.env`; values are redacted here.
+  - `docker/nginx/default.conf:29` forwards `X-Forwarded-Proto`, but Django does not set `SECURE_PROXY_SSL_HEADER`.
+- Affected assets:
+  - Sessions, CSRF tokens, password-reset tokens, deployment secrets, transport confidentiality.
+- Attacker preconditions:
+  - Misconfigured production deployment or leaked Compose output/logs.
+- Impact:
+  - Weak or missing signing key, cookies over HTTP, missing HSTS, accidental secret disclosure in generated config/logs.
+- Root cause:
+  - Development-friendly defaults are not separated from production-required settings.
+- Recommended fix:
+  - Fail fast when `SECRET_KEY` is empty in non-debug environments.
+  - Remove unsafe secret fallbacks from Compose; require `.env`/secrets for production.
+  - Add production security settings gated by `DEBUG`.
+  - Set `SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')` when behind nginx/proxy.
+  - Treat any shared local secret values as compromised and rotate them.
+- Validation plan:
+  - Run `manage.py check --deploy` and expect no security warnings.
+  - Run `docker compose config` and confirm no unsafe defaults are used when required env vars are absent.
+- Residual risk:
+  - TLS termination and production domain/origin configuration require deployment-specific validation.
 
-**Расположение:** `mortgage/views.py:1083, 1090, 1211, 1227, 1236`; `mortgage/models.py:15`
+### SEC-005: Password And Abuse Controls Are Missing
 
-**Описание:**
-- `calculation_delete` (`:1083`): `get_object_or_404(MortgageCalculation, pk=pk)` — удаление/просмотр только по PK, без проверки владельца.
-- `calculation_list` (`:1040`): `MortgageCalculation.objects.all()` — все посетители видят все сохранённые расчёты.
-- Корень проблемы: модель `MortgageCalculation` (`mortgage/models.py:15`) **не имеет поля `user`** — изоляция по пользователю структурно невозможна. То же для `TrenchMortgageCalculation`.
+- Severity: high
+- Confidence: high
+- Component: `users`, Django settings
+- Category: authentication
+- Status: open
+- Evidence:
+  - `real_estate_investing/settings.py` has no `AUTH_PASSWORD_VALIDATORS`.
+  - `users/views.py:10` registration and `users/views.py:39` login use standard views with no rate limiting.
+  - `users/urls.py:37` and `users/urls.py:54` expose password-reset and confirm views.
+  - `requirements.txt` has no `django-axes`, `django-ratelimit`, or equivalent throttling package.
+- Affected assets:
+  - User accounts and password-reset email flow.
+- Attacker preconditions:
+  - Anonymous access to login/register/reset endpoints.
+- Impact:
+  - Weak passwords, login brute force, account enumeration pressure, reset-email flooding.
+- Root cause:
+  - Django password validators and rate-limit/lockout controls are not configured.
+- Recommended fix:
+  - Add Django's standard password validators.
+  - Add `django-axes` or equivalent rate limiting for login/password reset/registration.
+  - Consider CAPTCHA or progressive challenges after repeated failures.
+- Validation plan:
+  - Add tests for weak password rejection.
+  - Add tests or integration checks for throttled login/reset attempts.
+- Residual risk:
+  - Abuse thresholds should be tuned to real traffic.
 
-**План исправления:**
-1. Добавить `user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=CASCADE, related_name='mortgage_calculations')` в `MortgageCalculation` и `TrenchMortgageCalculation`. Создать миграцию (с дефолтом для существующих строк, например, назначить первого админа).
-2. В `get_queryset()` списков и в `get_object()` detail/delete добавить фильтр `user=request.user`.
-3. В POST-привязке расчётов к клиенту (`:1013-1018`) фильтровать `calculations` по `user=request.user`.
+### SEC-006: Authentication Backend Resolves Ambiguous Identifier Collisions Unsafe
 
----
+- Severity: high
+- Confidence: medium
+- Component: `users.backends.EmailOrPhoneBackend`
+- Category: authentication
+- Status: open
+- Evidence:
+  - `users/backends.py:39` builds `Q(email__iexact=login_value)`.
+  - `users/backends.py:47` calls `.get(query)`.
+  - `users/backends.py:51` handles `MultipleObjectsReturned`.
+  - `users/backends.py:52-56` selects `.order_by('id').first()` and continues password checking.
+- Affected assets:
+  - User sessions and account authentication.
+- Attacker preconditions:
+  - A crafted login identifier that can match more than one user through email/phone OR conditions.
+- Impact:
+  - Ambiguous identity resolution; possible wrong-account login attempt handling and unnecessary second query.
+- Root cause:
+  - Collision branch chooses a user instead of rejecting ambiguous identifiers.
+- Recommended fix:
+  - Return `None` on `MultipleObjectsReturned` and log a redacted warning.
+  - Normalize and store email/phone canonically; use exact indexed lookups where possible.
+- Validation plan:
+  - Add a test with two matching users and assert authentication fails.
+- Residual risk:
+  - Existing data should be checked for email/phone normalization drift.
 
-### B4. 🔴 Critical — Продакшен-секреты и небезопасные fallback'и
+### SEC-007: Upload And Request Body Limits Are Incomplete
 
-**Расположение:** `.env` (локально), `real_estate_investing/settings.py:30`, `compose.yaml:27, 30-32`
+- Severity: medium
+- Confidence: high
+- Component: `property`, settings, nginx
+- Category: file-upload
+- Status: open
+- Evidence:
+  - `property/models.py:117`, `property/models.py:471`, `property/models.py:477`, `property/models.py:483` define image fields.
+  - `property/forms.py:103`, `property/forms.py:104`, `property/forms.py:107`, `property/forms.py:262` use file inputs without visible size/type validators.
+  - `real_estate_investing/settings.py:110` sets `DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000`.
+  - `real_estate_investing/settings.py` has no `FILE_UPLOAD_MAX_MEMORY_SIZE` or `DATA_UPLOAD_MAX_MEMORY_SIZE`.
+  - `docker/nginx/default.conf:9` sets `client_max_body_size 20m`.
+- Affected assets:
+  - Media storage, memory, request workers, image processing.
+- Attacker preconditions:
+  - Access to property/complex image upload forms.
+- Impact:
+  - Oversized or unexpected image uploads can consume resources; high field-count limit widens DoS surface.
+- Root cause:
+  - Validation and upload limits are split across nginx/Django and not fully enforced at form/model level.
+- Recommended fix:
+  - Add reusable validators for extension, MIME/content type, and max size.
+  - Set Django upload/body size limits consistently with nginx.
+  - Lower or justify `DATA_UPLOAD_MAX_NUMBER_FIELDS`.
+- Validation plan:
+  - Add tests for rejected oversized and wrong-type uploads.
+  - Verify Django and nginx limits agree.
+- Residual risk:
+  - Image decoding vulnerabilities depend on Pillow/security updates; automate dependency scans.
 
-**Описание:**
-Локальный `.env` содержит реальные продакшен-данные:
+### SEC-008: Email Reset Defaults Allow Plain SMTP
+
+- Severity: medium
+- Confidence: high
+- Component: Django settings, password reset
+- Category: configuration
+- Status: open
+- Evidence:
+  - `real_estate_investing/settings.py:130` defaults `EMAIL_HOST` to localhost.
+  - `real_estate_investing/settings.py:131` defaults `EMAIL_PORT` to 25.
+  - `real_estate_investing/settings.py:134-145` default both `EMAIL_USE_TLS` and `EMAIL_USE_SSL` to false.
+  - `users/urls.py:37-58` wires Django password-reset views.
+- Affected assets:
+  - Password-reset links and email credentials.
+- Attacker preconditions:
+  - Production SMTP configured without TLS/SSL or traffic visible to an attacker.
+- Impact:
+  - Password-reset links can traverse SMTP plaintext.
+- Root cause:
+  - Secure email transport is optional and not guarded for production.
+- Recommended fix:
+  - Require TLS or SSL for non-debug SMTP configuration.
+  - Add an `ImproperlyConfigured` guard if both TLS and SSL are true, or both are false in production.
+- Validation plan:
+  - Add settings tests for production email transport requirements.
+- Residual risk:
+  - SMTP provider certificate policy must be validated outside the app.
+
+### SEC-009: Dependency Vulnerability Scanning Is Not Available Locally
+
+- Severity: low
+- Confidence: high
+- Component: dependencies/CI
+- Category: dependencies
+- Status: needs-data
+- Evidence:
+  - `requirements.txt` pins direct dependencies, including Django, gunicorn, Pillow, openpyxl, psycopg2-binary.
+  - `.\.venv\Scripts\python.exe -m pip check` passed.
+  - `.\.venv\Scripts\python.exe -m pip_audit` failed because `pip_audit` is not installed.
+  - `requirements.txt` has no `pip-audit`, `bandit`, or similar security tooling.
+- Affected assets:
+  - Application supply chain.
+- Attacker preconditions:
+  - Vulnerable dependency version or compromised package path.
+- Impact:
+  - Known vulnerable packages may go unnoticed.
+- Root cause:
+  - Compatibility checks exist, but vulnerability scanning is not part of local/CI workflow.
+- Recommended fix:
+  - Add `pip-audit` or an equivalent dependency scanner to development/CI tooling.
+  - Add `bandit` or a Django-aware SAST step for security-sensitive changes.
+  - Consider hash-locked dependency management for production builds.
+- Validation plan:
+  - Run `python -m pip_audit -r requirements.txt` in CI and fail on actionable vulnerabilities.
+- Residual risk:
+  - Vulnerability data changes over time and must be checked continuously.
+
+## Remediation Plan
+
+| Priority | Finding | Action | Expected risk reduction | Validation |
+| --- | --- | --- | --- | --- |
+| P0 | SEC-001 | Add auth/permission controls to property, bank, mortgage, API write/private endpoints | Prevent anonymous business-data mutation | Anonymous GET/POST tests return 302/403 |
+| P0 | SEC-002 | Add owner field and user-scoped querysets for saved calculations | Prevent cross-user read/delete/link | User A cannot access user B calculations |
+| P1 | SEC-003 | Protect or minimize JSON APIs | Reduce enumeration/data exposure | Anonymous API tests and field allowlist tests |
+| P1 | SEC-004 | Harden production settings and remove unsafe Compose fallbacks | Reduce deployment compromise risk | `manage.py check --deploy` clean |
+| P1 | SEC-005 | Add password validators and rate limiting | Reduce account abuse | Weak password and throttle tests |
+| P2 | SEC-006 | Reject ambiguous auth backend matches | Remove wrong-identity ambiguity | Collision regression test |
+| P2 | SEC-007 | Add upload validators and size limits | Reduce upload DoS and unsafe media risk | Upload validation tests |
+| P2 | SEC-008 | Require secure SMTP in production | Protect reset links in transit | Settings guard tests |
+| P3 | SEC-009 | Add dependency/SAST scans to CI | Detect known vulnerabilities earlier | CI `pip-audit`/SAST job |
+
+## AI Handoff
+
+```yaml
+security_review:
+  review_id: "SEC-20260616-full-project"
+  scope: "Django application, auth, APIs, settings, Docker/nginx, dependencies"
+  status: "complete"
+  authorization: "local defensive review only; no live external scanning"
+  findings:
+    - id: "SEC-001"
+      severity: "critical"
+      confidence: "high"
+      component: "property/bank/mortgage views"
+      category: "authorization"
+      status: "open"
+      evidence:
+        - "No login_required/LoginRequiredMixin in property, bank, mortgage, property/api_urls.py"
+        - "property/views.py:75,765,778,791,1124,1134,1168,1523,1549,1584"
+        - "bank/views.py:30,482,486,523"
+        - "mortgage/views.py:542,1009,1081,1088,1211,1227,1234"
+      affected_assets:
+        - "business catalog data"
+        - "mortgage calculations"
+      attacker_preconditions:
+        - "anonymous HTTP access"
+      recommended_fix:
+        - "Add authentication and permission checks to private/admin endpoints"
+      validation:
+        - "Add anonymous-access denial tests"
+      residual_risk:
+        - "Needs product decision on public vs private catalog pages"
+    - id: "SEC-002"
+      severity: "critical"
+      confidence: "high"
+      component: "mortgage/trench_mortgage/customer"
+      category: "authorization"
+      status: "open"
+      evidence:
+        - "MortgageCalculation and TrenchMortgageCalculation have no owner field"
+        - "mortgage/views.py:1032,1083,1090,1015,1229,1236"
+      affected_assets:
+        - "saved calculations"
+      attacker_preconditions:
+        - "known or guessed calculation pk"
+      recommended_fix:
+        - "Add owner field and scope querysets by request.user"
+      validation:
+        - "Cross-user access tests"
+      residual_risk:
+        - "Legacy row ownership migration"
+    - id: "SEC-004"
+      severity: "high"
+      confidence: "high"
+      component: "settings/compose/nginx"
+      category: "configuration"
+      status: "open"
+      evidence:
+        - "manage.py check --deploy reports W004, W008, W012, W016"
+        - "settings.py:30 empty SECRET_KEY fallback"
+        - "compose.yaml:8,27,32 unsafe secret fallbacks"
+      affected_assets:
+        - "sessions"
+        - "deployment secrets"
+      attacker_preconditions:
+        - "production misconfiguration or leaked config"
+      recommended_fix:
+        - "Fail fast for missing secrets and add production security settings"
+      validation:
+        - "manage.py check --deploy"
+      residual_risk:
+        - "Deployment-specific TLS validation"
+  next_actions:
+    - "Implement SEC-001 and SEC-002 before feature work."
+    - "Run deployment hardening from SEC-004."
+    - "Add dependency vulnerability scanning to CI."
 ```
-DEBUG=True
-SECRET_KEY=%-+#vp2)jwz#e_bl#*d92)%c%oh10*ta-e)1tfu-e#vuelqs3=
-DB_USER=pavel_murlykin
-DB_PASSWORD=Super_Tiger_Son_19
-```
-`.env` **не в git** (подтверждено `git ls-files` — отслеживается только `.env.example`), но:
-- `settings.py:30` — `SECRET_KEY = os.getenv('SECRET_KEY', '')`: пустой fallback. Если переменная не задана, Django стартует с криптографически пустым ключом → подписанные cookies, reset-токены, session-данные подделываются.
-- `compose.yaml:27` — `SECRET_KEY: ${SECRET_KEY:-unsafe-compose-development-secret-key-change-me}`: plaintext-fallback в compose.
-- `compose.yaml:30-32` — `DB_PASSWORD:-real_estate_investing_password`: слабый guessable дефолт.
 
-**План исправления:**
-1. **Ротировать** `SECRET_KEY` и `DB_PASSWORD` (считаем скомпрометированными, т.к. хранились локально в plaintext). Сгенерировать новые (`python -c "import secrets; print(secrets.token_urlsafe(50))"`).
-2. `settings.py:30` — убрать пустой fallback, поднимать `ImproperlyConfigured`, если `SECRET_KEY` пуст при не-DEBUG.
-3. В `compose.yaml` убрать небезопасные plaintext-дефолты; использовать `env_file` с `required: true` либо обязательную передачу секрета через Docker secrets / vault.
-4. Добавить `.env` в `.gitignore` (если ещё нет) и проверить `git log --all -- .env`, что секреты никогда не попадали в историю.
+## Open Questions
 
----
+- Which catalog/list/detail pages are intended to be public marketing pages versus staff-only operational tools?
+- How should existing saved mortgage and trench calculations be assigned during owner-field migration?
+- Which deployment terminates TLS and owns production email configuration?
 
-### B5. 🟠 High — `DEBUG=True` и отсутствие security-настроек
+## Appendix
 
-**Расположение:** `.env:1` (`DEBUG=True`), `real_estate_investing/settings.py`
-**Проверка:** `findstr` по `SECURE_ | SESSION_COOKIE | CSRF_COOKIE | X_FRAME | HSTS | REFERRER | PROXY_SSL` → **0 совпадений**.
-
-**Описание:** Отсутствуют все продакшен-настройки безопасности:
-- `SECURE_SSL_REDIRECT` — нет редиректа HTTP→HTTPS.
-- `SESSION_COOKIE_SECURE` / `CSRF_COOKIE_SECURE` — cookies уходят в cleartext по HTTP.
-- `SECURE_HSTS_SECONDS` — нет HSTS.
-- `SECURE_CONTENT_TYPE_NOSNIFF`, `SECURE_REFERRER_POLICY`, `X_FRAME_OPTIONS` — не заданы.
-- `SECURE_PROXY_SSL_HEADER` — **критично**: nginx терминирует TLS и шлёт `X-Forwarded-Proto`, но без этой настройки `request.is_secure()` всегда `False`, и secure-cookies/HSTS не сработают.
-- `DEBUG=True` в `.env` → на любом 500 Django отдаёт полный stack trace (исходники, env, настройки).
-
-**План исправления:**
-Добавить в `settings.py` блок, зависящий от `DEBUG`:
-```python
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30  # 30 дней
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    SECURE_REFERRER_POLICY = 'same-origin'
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    X_FRAME_OPTIONS = 'DENY'
-
-# Всегда:
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-```
-Перевести продакшен-развертывание на `DEBUG=False`.
-
----
-
-### B6. 🟠 High — Нет `AUTH_PASSWORD_VALIDATORS`
-
-**Расположение:** `real_estate_investing/settings.py`
-**Проверка:** `findstr PASSWORD_VALIDATORS` по settings → **0 совпадений**.
-
-**Описание:** Django поставляет 4 валидатора (`UserAttributeSimilarityValidator`, `MinimumLengthValidator`, `CommonPasswordValidator`, `NumericPasswordValidator`); ни один не настроен. В сочетании с `UserCreationForm` (`users/forms.py:15`) пользователи могут зарегистрироваться с паролями `1`, `password`, `12345678`.
-
-**План исправления:**
-Добавить в `settings.py`:
-```python
-AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-     'OPTIONS': {'min_length': 8}},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
-]
-```
-
----
-
-### B7. 🟠 High — Нет brute-force защиты
-
-**Расположение:** `users/views.py` (`UserLoginView:39`, `UserRegistrationView:10`), `users/urls.py:35-66` (password-reset flow)
-**Проверка:** `findstr ratelimit | django-axes | throttle` → **0 совпадений**, в `requirements.txt` нет rate-limit библиотек.
-
-**Описание:** Логин, регистрация, весь password-reset flow (включая `PasswordResetView`, `PasswordResetConfirmView`) — без ограничений частоты. → брутфорс паролей, массовая регистрация аккаунтов, бомбёжка reset-email.
-
-**План исправления:**
-1. Установить `django-axes` (блокировка по IP/username после N неудач) или `django-ratelimit` (декораторы `@ratelimit` на view).
-2. Покрыть: login (5 попыток/мин), registration (3/час/IP), password-reset (3/час/email).
-3. Настроить капчу (hCaptcha/Turnstile) на login после первых неудач.
-
----
-
-### B8. 🟠 High — Баг в `EmailOrPhoneBackend` при коллизии email/phone
-
-**Расположение:** `users/backends.py:39-56`
-
-**Описание:** Запрос `Q(email__iexact=login_value) | Q(phone_number=phone_number)` может легально совпасть с двумя разными строками (одна по email, другая по телефону, т.к. `email` и `phone_number` — независимые unique-поля). В ветке `MultipleObjectsReturned` (`:51-56`) берётся `.order_by('id').first()` и **молча логинит** этого пользователя — можно спровоцировать контролируемым идентификатором.
-Дополнительно: `email__iexact` (`:39`) компилируется в `LOWER(email)=`, что **не использует** case-sensitive unique index → seq-scan при каждой попытке логина (также проблема производительности — см. Performance P3/P4).
-
-**План исправления:**
-1. В `MultipleObjectsReturned` **не логинить**, возвращать `None` + логировать предупреждение.
-2. Хранить email в нижнем регистре (уже делается в `clean_email`) и использовать обычный `email=` вместо `email__iexact` — будет использовать unique index. Либо добавить functional index `Lower('email')`.
-3. Привести нормализацию телефона к каноническому виду (E.164 через `phonenumbers`), чтобы сравнение было надёжным.
-
----
-
-### B9. 🟡 Medium — Загрузка файлов без валидации типа/размера
-
-**Расположение:** `property/forms.py:103-109, 262` (`layout_image`, `floor_plan_image`, `window_view_image`, `photo`)
-
-**Описание:** `forms.FileInput` для изображений без проверки MIME/расширения/размера. `ImageField` проверяет только декодируемость файла, не ограничивает размер и не отсекает polyglot/exploit-файлы. В `settings.py` нет `FILE_UPLOAD_MAX_MEMORY_SIZE` / `DATA_UPLOAD_MAX_MEMORY_SIZE`, при этом `DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000` (10× от дефолта Django).
-
-**План исправления:**
-1. Добавить валидатор, проверяющий content-type (`image/jpeg`, `image/png`, `image/webp`) и расширение, плюс лимит размера (например, 5 MB).
-2. Задать `FILE_UPLOAD_MAX_MEMORY_SIZE` и `DATA_UPLOAD_MAX_MEMORY_SIZE` в `settings.py`.
-3. Вернуть `DATA_UPLOAD_MAX_NUMBER_FIELDS` к 1000 (или обосновать 10000).
-
----
-
-### B10. 🟡 Medium — Инфраструктура
-
-**Расположение:** `Dockerfile`, `compose.yaml`, `docker/nginx/default.conf`, `core/views.py:4`
-
-**Описание:**
-- `Dockerfile:15` `COPY . .` копирует весь репо (включая `.env`, если он в build context) в образ — секреты остаются в слоях образа.
-- `Dockerfile:1` `python:3.12-slim` — не pinned по digest; нет multi-stage build.
-- `compose.yaml:10` — volume монтируется в `/var/lib/postgresql` вместо `/var/lib/postgresql/data` — известная проблема инициализации Postgres.
-- `compose.yaml:56-57` — nginx публикует только HTTP (порт 80), TLS не настроен нигде.
-- Нет `cap_drop: [ALL]`, `security_opt: ["no-new-privileges:true"]`, `read_only: true`.
-- `core/views.py:4` `health_check` открыт наружу на `/health/`.
-
-**План исправления:**
-1. Создать `.dockerignore` с `.env`, `.venv`, `.git`, `media/`, `__pycache__`.
-2. Multi-stage Dockerfile, pin по digest, `pip install --require-hashes` (или `pip-tools`/`uv` lock).
-3. В `compose.yaml` исправить volume на `/var/lib/postgresql/data`.
-4. Добавить `cap_drop: [ALL]`, `security_opt: ["no-new-privileges:true"]`, `read_only: true` (с `tmpfs` для `/tmp`).
-5. Настроить HTTPS на nginx (Let's Encrypt / Caddy).
-6. Healthcheck зарутить под `/internal/health/`, не проксировать наружу.
-
----
-
-### B11. 🟡 Medium — Email без шифрования по умолчанию
-
-**Расположение:** `real_estate_investing/settings.py:130-145`
-
-**Описание:** `EMAIL_PORT=25`, `EMAIL_USE_TLS=False`, `EMAIL_USE_SSL=False` по умолчанию. Reset-токены (содержат токен сброса пароля, `users/urls.py:36-58`) уходят plaintext по SMTP. `EMAIL_USE_TLS` и `EMAIL_USE_SSL` — взаимоисключающие, без проверки.
-
-**План исправления:**
-1. Продакшен-дефолт `EMAIL_USE_TLS=True` (порт 587) или `EMAIL_USE_SSL=True` (порт 465).
-2. Добавить guard: если включены оба — поднимать `ImproperlyConfigured`.
-
----
-
-## ✅ Что проверено и чисто
-- Нет `raw()` / `cursor.execute` / `eval` / `exec` / `pickle` / `subprocess` с пользовательским вводом.
-- Нет `mark_safe` / `|safe` в шаблонах (XSS через шаблоны не подтверждён).
-- Нет `csrf_exempt` нигде; `CsrfViewMiddleware` включён.
-- `ModelForm` нигде не используют `fields='__all__'` (явные списки полей).
-- `.env` **не в git** (только `.env.example`).
-- В `customer/` авторизация и prefetch сделаны корректно.
-- Dockerfile использует non-root `django` user.
-- `User` в форме регистрации: поле `user` исключено и задаётся сервером — корректный паттерн.
-
----
-
-## План действий по приоритетам
-
-### Этап 1 — Критично, немедленно (доступ)
-1. `LoginRequiredMixin` / `@login_required` на все views в `property/views.py` и `mortgage/views.py`.
-2. `@login_required` на `/api/*` (`property/api_urls.py`).
-3. Поле `user` FK в `MortgageCalculation`/`TrenchMortgageCalculation` + миграция + фильтр по владельцу в queryset/get_object.
-4. Запретить POST-write анонимам в `BaseCatalogView.post`.
-5. Регресс: `python manage.py check && pytest`.
-
-### Этап 2 — Секреты и конфигурация (1-2 дня)
-1. Ротировать `SECRET_KEY`, `DB_PASSWORD`.
-2. `settings.py:30` — убрать пустой fallback, поднимать `ImproperlyConfigured`.
-3. `compose.yaml` — убрать plaintext-fallback'и, `env_file required: true`.
-4. Добавить `AUTH_PASSWORD_VALIDATORS`.
-5. Добавить security-настройки (B5), зависящие от `DEBUG`.
-6. Установить rate-limiting (django-axes / django-ratelimit).
-
-### Этап 3 — Баги аутентификации
-1. `EmailOrPhoneBackend` — не логинить при коллизии, логировать.
-2. `email=` вместо `email__iexact` (+ canonical lowercase).
-3. Нормализация телефона к E.164.
-4. Валидация загрузки изображений (MIME/размер).
-5. `DATA_UPLOAD_MAX_NUMBER_FIELDS` → 1000.
-
-### Этап 5 — Инфраструктура
-1. `.dockerignore` (`.env`, `.venv`, `.git`, `media/`).
-2. Multi-stage Dockerfile, digest-pin, hashes.
-3. `compose.yaml` volume → `/var/lib/postgresql/data`.
-4. `cap_drop`, `no-new-privileges`, `read_only`.
-5. HTTPS на nginx.
-6. `EMAIL_USE_TLS=True`.
-7. Healthcheck → `/internal/health/`.
-
-### Этап 6 — Процесс (долгосрочно)
-- `bandit` (SAST) + `pip-audit` в CI.
-- `python manage.py check --deploy` в CI — он сам flagged бы B4/B5/B6.
-- Тесты на permission-чеки (аноним → 302/403).
-
----
-
-**Самое опасное прямо сейчас — B1-B3:** анонимный пользователь может создать/удалить/просмотреть любые данные через веб и API. Начать с Этапа 1.
+- Confirmed clean areas: no `csrf_exempt` found, `CsrfViewMiddleware` enabled, no confirmed `mark_safe`, `eval`, `exec`, raw SQL, or unparameterized cursor usage in reviewed app code.
+- `.env` is not tracked by Git (`git ls-files .env .env.example .dockerignore` returned `.env.example` and `.dockerignore`, not `.env`).
+- Values from local `.env` observed through `docker compose config` are intentionally redacted from this report.

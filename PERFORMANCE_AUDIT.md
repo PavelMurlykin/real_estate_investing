@@ -1,178 +1,312 @@
-# Performance Audit — `real_estate_investing`
+# Backend Performance Review
 
-**Дата аудита:** 2026-06-16
-**Стек:** Django 6.0.4, PostgreSQL 18, Gunicorn + nginx, Docker Compose, Python 3.13.
+## Metadata
 
-> Каждая находка содержит: серьёзность, расположение (файл:строка), описание проблемы и план исправления. Серьёзность: 🔴 High · 🟠 Medium · 🟡 Low.
+- Review ID: PERF-20260616-full-project
+- Date: 2026-06-16
+- Reviewer: Codex
+- Repository/branch: real_estate_investing / main
+- Scope: Django backend views, ORM/query shape, forms, reports, imports/sync jobs, Docker runtime
+- Review type: static + safe local checks
+- Environment: local Windows workspace, project virtualenv, no production-sized database benchmark
+- Status: complete with measurement limitation
 
----
+## Executive Summary
 
-## Сводка находок
+The main performance risks are unbounded list/report views and full-table selector payloads. Mortgage calculation lists render all rows without pagination, several form views serialize full property/location/bank dictionaries into JSON on every request, and document exports are generated synchronously inside request handlers. The project has good use of `select_related`/`prefetch_related` in several detail/list paths and the full test suite passes, but there are no query-count or benchmark tests to catch regressions.
 
-| #  | Серьёзность | Кратко |
-|----|-------------|--------|
-| P1 | 🔴 High | Списки расчётов без пагинации грузят всю таблицу |
-| P2 | 🔴 High | Каскадные справочники сериализуются в JSON на каждый запрос калькулятора |
-| P3 | 🟠 Medium | N+1 и двойное вычисление querysets (homepage, auth backend, attach-цикл) |
-| P4 | 🟠 Medium | Отсутствуют индексы на часто фильтруемых/сортируемых полях |
-| P5 | 🟠 Medium | Синхронная генерация Word/Excel в request-цикле |
-| P6 | 🟡 Low | Дополнительные полнотабличные querysets для фильтров на каждой странице списка |
-| P7 | 🟡 Low | `email__iexact` в auth backend не использует unique index |
+Start with pagination/bounds, cache or lazy-load selector dictionaries, and move heavy exports to background jobs when usage grows.
 
----
+## Commands And Evidence
 
-## Детальное описание проблем
+| Command or source | Purpose | Result |
+| --- | --- | --- |
+| `rg --files` | Map project files | Django apps, templates, Docker, tests found |
+| `rg -n "paginate_by|Paginator|page_obj|calculations" templates mortgage property bank customer` | Check list pagination and templates | Customer/property main lists have pagination; mortgage saved calculation templates do not |
+| `rg -n "list\\(|values\\(|select_related|prefetch_related|annotate|order_by|get_or_create"` | Find ORM materialization and query patterns | Multiple full-table `list(values(...))`, unbounded `all()`, per-row `get_or_create` found |
+| `rg -n "db_index=True|indexes =|ordering|icontains"` | Review index hints and query-sensitive fields | Several frequently ordered/searched fields lack explicit indexes |
+| `.\.venv\Scripts\python.exe manage.py check` | Django sanity check | Passed, 0 issues |
+| `.\.venv\Scripts\python.exe -m pytest` | Regression suite | 173 passed |
+| `.\.venv\Scripts\python.exe -m py_compile ...` | Compile reviewed modules | Passed |
+| `docker compose config` | Validate Compose rendering | Valid config; no app-worker scaling/background job service defined |
 
-### P1. 🔴 High — Списки без пагинации грузят всю таблицу
+## Findings
 
-**Расположение:**
-- `mortgage/views.py:1031-1041` — `calculation_list`
-- `mortgage/views.py:1211-1223` — `trench_calculation_list`
-- `property/views.py:75, 337-368` — `BaseCatalogView` / `DictionaryCatalogView`
+### PERF-001: Saved Calculation Lists Render Unbounded QuerySets
 
-**Описание:**
-- `calculation_list` (`:1040`): `MortgageCalculation.objects...all()` без `.count()`/slice/пагинации, целиком передаётся в шаблон (`:1064`). Шаблон `templates/mortgage/mortgage_list.html:63` итерирует полный набор + рендерит вложенную таблицу-детайл на каждой строке (`:106-114`). Grep подтвердил: нигде под `templates/mortgage` нет `paginate`/`page_obj`/`is_paginated`.
-- `trench_calculation_list` (`:1211-1223`): `_get_trench_calculation_queryset()` (`:1139-1151`) возвращает все строки `.prefetch_related('trenches')` без лимита; целиком в шаблон (`:1221`).
-- `BaseCatalogView`/`DictionaryCatalogView` — это `TemplateView` (не `ListView`), `build_rows` (`:337-368`) итерирует `for obj in queryset:` (`:351`) всю таблицу без пагинации и без ограничения строк.
-- Контраст: `DeveloperListView`, `RealEstateComplexListView`, `PropertyListView` имеют `paginate_by = 20`; `CustomerListView` — `paginate_by = 20` (`customer/views.py:73`). Несогласованность по проекту.
+- Severity: high
+- Confidence: high
+- Component: `mortgage`
+- Category: database
+- Evidence:
+  - `mortgage/views.py:1032-1040` builds `MortgageCalculation.objects.select_related(...).all()` with no slice or paginator.
+  - `mortgage/views.py:1044` annotates and filters the full queryset.
+  - `templates/mortgage/mortgage_list.html:63` iterates over every `calculation`.
+  - `templates/mortgage/mortgage_list.html:110` includes the detail table for each row.
+  - `mortgage/views.py:1211-1215` renders all trench calculations with `annotate_calculation_table_values(_get_trench_calculation_queryset()).order_by('-timestamp')`.
+  - `templates/mortgage/trench_calculation_list.html:35` iterates all trench calculations.
+- Impact:
+  - Query, render time, and HTML size grow linearly with saved calculations; nested detail rows amplify response size.
+- Root cause:
+  - Function views pass full querysets directly to templates instead of using `Paginator` or `ListView`.
+- Recommended fix:
+  - Convert `calculation_list` and `trench_calculation_list` to paginated views (`Paginator` or `ListView`, `paginate_by=20`).
+  - Render compact rows on the list page and lazy-load detail tables or move them to detail pages.
+  - Keep city/filter choices bounded or cached.
+- Validation plan:
+  - Add tests for pagination context and max rows per page.
+  - Add query-count tests for list views with realistic fixture volume.
+- Risk:
+  - Pagination changes may affect existing templates and customer attach workflow.
+- Status: open
 
-**План исправления:**
-1. Перевести `calculation_list` / `trench_calculation_list` на `ListView` + `paginate_by=20`, в шаблоны добавить `paginate` block / include.
-2. `BaseCatalogView`/`DictionaryCatalogView` — добавить пагинацию (либо унаследоваться от `ListView`, либо вручную через `Paginator`).
-3. Для вложенной таблицы-детайл в `mortgage_list.html` рассмотреть lazy-loading (AJAX/HTMX) вместо рендера всех строк сразу.
+### PERF-002: Catalog And Dictionary Views Materialize Full Tables
 
----
+- Severity: high
+- Confidence: high
+- Component: `property.views.BaseCatalogView`, `bank.views.BankCatalogView`, `bank.views.KeyRateListView`
+- Category: database
+- Evidence:
+  - `property/views.py:169` starts catalog querysets with `config.model.objects.all()`.
+  - `property/views.py:337-368` builds all rows by iterating `for obj in queryset`.
+  - `property/views.py:407-415` stores all catalog rows in context.
+  - `templates/property/catalog_form.html:120` iterates `rows`.
+  - `bank/views.py:214` starts catalog querysets with `config.model.objects.all()`.
+  - `bank/views.py:262` paginates only the bank tab; non-bank catalog tabs use the inherited full-row behavior.
+  - `bank/views.py:571` materializes all key-rate rows with `rows = list(self.get_queryset())`.
+- Impact:
+  - Dictionary/catalog pages can become slow and memory-heavy as bank programs, aliases, credit limits, key rates, and property dictionaries grow.
+- Root cause:
+  - Shared catalog base class was built as `TemplateView` with manual row construction instead of paginated list behavior.
+- Recommended fix:
+  - Add pagination to `BaseCatalogView` for all model configs, not only the bank tab.
+  - Paginate `KeyRateListView`.
+  - Keep sortable/filter query parameters compatible with page links.
+- Validation plan:
+  - Add view tests asserting `page_obj` and bounded row counts for every catalog model tab.
+- Risk:
+  - Shared catalog templates need careful update to avoid breaking forms/edit/delete actions.
+- Status: open
 
-### P2. 🔴 High — Каскадные справочники сериализуются в JSON на каждый запрос
+### PERF-003: Full Selector Dictionaries Are Serialized On Every Form Request
 
-**Расположение:**
-- `mortgage/views.py:283-396` — `_get_property_form_data()`, `_get_mortgage_program_form_data()`
-- `property/views.py:1056-1090` — `RealEstateComplexFormsetMixin.get_context_data`
-- `property/views.py:1430-1481` — `PropertyFormContextMixin.get_location_context`
+- Severity: high
+- Confidence: high
+- Component: `mortgage`, `property`
+- Category: api
+- Evidence:
+  - `mortgage/views.py:283-322` builds property selector data by querying districts, complexes, buildings, all properties, and serializing lists.
+  - `mortgage/views.py:343-396` builds bank/program selector data and loops through regional credit limits.
+  - These helpers feed the calculator context on each request (`mortgage/views.py:612-613` from static search).
+  - `property/views.py:1056-1085` builds city/district/metro/existing-complex lists for complex forms.
+  - `property/views.py:1432-1474` builds region/city/district/developer/complex/building querysets and serializes cascade JSON for property forms.
+  - No `cache.get`, `cache.get_or_set`, or project `CACHES` configuration found.
+- Impact:
+  - Every form load pays the full database and JSON serialization cost; payload size grows with the entire catalog, not the selected parent values.
+- Root cause:
+  - Cascade selects are preloaded eagerly instead of cached or fetched on demand.
+- Recommended fix:
+  - Cache stable selector payloads with explicit invalidation on relevant model changes.
+  - Prefer lazy endpoint loading filtered by selected parent (`city`, `district`, `developer`, `complex`) for large tables.
+  - Use `.values()` and selected fields consistently; avoid full model instances where JSON values are enough.
+- Validation plan:
+  - Add query-count tests for calculator/property form GET.
+  - Add cache invalidation tests or endpoint tests for lazy cascades.
+- Risk:
+  - Cache invalidation must cover property/location/bank dictionary changes.
+- Status: open
 
-**Описание:**
-- `_get_property_form_data()` (`:283-322`) и `_get_mortgage_program_form_data()` (`:343-396`) вызываются на **каждом** запросе к калькулятору (`:612-613`). Грузят ВСЕ `Property` (с `select_related`, без `.only()`, без пагинации) в Python-список (`:293-322`), плюс полные `cities`/`districts`/`complexes`/`buildings` (`:302-317`), плюс все банки/программы с вложенным циклом по `regional_credit_limits` (`:387-392`). Результат сериализуется в JSON для фронтенд-каскада. Без кэширования.
-- `RealEstateComplexFormsetMixin.get_context_data` (`:1056-1090`): `list(City.objects...)`, `list(District.objects...)`, `list(Metro.objects...)`, `list(existing_complexes...)` — целиком в память на каждый GET формы комплекса.
-- `PropertyFormContextMixin.get_location_context` (`:1430-1481`): то же для `cities`/`districts`/`complexes`/`buildings`. Дополнительно: сырые querysets передаются в контекст (`:1447-1452`) И материализуются через `list(values(...))` — двойное вычисление.
+### PERF-004: Synchronous Word/Excel Generation Runs Inside Request Handlers
 
-**План исправления:**
-1. Кэшировать справочники через `cache.get_or_set('property_form_data', builder, timeout=600)` (TTL ~10 мин), инвалидировать при изменении соответствующих моделей (сигналы `post_save`/`post_delete`).
-2. Не материализовать `list(...)` целиком — передавать queryset или использовать `.values()` лениво. Для форм достаточно данных, отфильтрованных по выбранному родителю (фронтенд уже делает каскад).
-3. Убрать двойное вычисление: вычислить queryset один раз, сохранить в переменную, переиспользовать.
+- Severity: medium
+- Confidence: high
+- Component: `mortgage`, `trench_mortgage`
+- Category: cpu
+- Evidence:
+  - `mortgage/views.py:938-942` exports trench Word/Excel inside calculator POST.
+  - `mortgage/views.py:977-979` exports market mortgage Word/Excel inside calculator POST.
+  - `mortgage/views.py:1116-1123` exports saved market calculation documents inside detail POST.
+  - `mortgage/views.py:1240-1245` exports saved trench calculation documents inside detail POST.
+  - `mortgage/excel.py:103` creates workbooks in memory.
+  - `mortgage/excel.py:461` iterates `worksheet.columns` to compute widths.
+  - `mortgage/word.py:68` writes to `BytesIO`; `mortgage/word.py:101` opens the DOCX template.
+  - Compose has `web`/`nginx`/`db` only; no background worker service is defined.
+- Impact:
+  - Concurrent exports can tie up Gunicorn workers, increase latency, and amplify memory pressure.
+- Root cause:
+  - Document generation is treated as a synchronous request/response operation.
+- Recommended fix:
+  - Move heavy exports to a background job queue once usage or document size grows.
+  - Add download/status model for generated files or cache generated reports by calculation version.
+  - Optimize Excel width calculation by tracking max lengths during row writes.
+- Validation plan:
+  - Add timing around export functions with representative schedules.
+  - Add integration tests for async job creation when background queue is introduced.
+- Risk:
+  - Background job architecture adds storage, cleanup, and authorization requirements for generated files.
+- Status: open
 
----
+### PERF-005: Repeated QuerySet Evaluation And Per-Row Writes Exist In Hot Paths
 
-### P3. 🟠 Medium — N+1 и двойное вычисление querysets
+- Severity: medium
+- Confidence: medium
+- Component: `homepage`, `mortgage`, `users`
+- Category: orm
+- Evidence:
+  - `homepage/views.py:24` creates `cities` queryset and then may evaluate filtered variants at `homepage/views.py:33` and `homepage/views.py:36-38`.
+  - `homepage/views.py:43-55` creates `complexes`; `homepage/views.py:58-64` iterates it for map data and `homepage/views.py:71` passes the queryset to the template for a second evaluation.
+  - `mortgage/views.py:1015-1018` loops selected calculations and calls `_attach_calculation_to_customer`.
+  - `mortgage/views.py:80` uses `CustomerCalculation.objects.get_or_create(...)` per selected calculation.
+  - `users/backends.py:47-56` performs `.get(query)` and, on collision, performs a second `.filter(query).order_by('id').first()`.
+- Impact:
+  - Extra database round trips under homepage traffic, bulk customer attach actions, and login collision cases.
+- Root cause:
+  - Querysets are reused without materializing once, and bulk relation writes use per-row `get_or_create`.
+- Recommended fix:
+  - Materialize `complexes = list(...)` once when both map data and template rows need it.
+  - Reduce selected-city lookup to a single intentional query path.
+  - Bulk-create missing `CustomerCalculation` links after fetching existing IDs.
+  - Reject ambiguous auth collisions instead of querying again.
+- Validation plan:
+  - Add query-count tests for homepage and bulk attach actions.
+  - Add auth backend collision test.
+- Risk:
+  - Bulk create must preserve uniqueness constraint behavior.
+- Status: open
 
-**Расположение:**
-- `homepage/views.py:42-71`
-- `homepage/views.py:24-38`
-- `users/backends.py:47-56`
-- `mortgage/views.py:1013-1018`
+### PERF-006: Query-Sensitive Fields Lack Explicit Index Strategy
 
-**Описание:**
-- `homepage/views.py:42-64`: `complexes` вычисляется дважды — в list-comprehension (`:58`) и повторно при итерации в шаблоне (`'complexes': complexes`, `:71`). Две полных выборки + две конструкции объектов для одних и тех же строк.
-- `homepage/views.py:24-38`: до 4 запросов на определение `selected_city` — `cities` (`:24`, запрос #1), `cities.filter(pk=...)` (`:33`, #2), `cities.filter(name='Санкт-Петербург').first() or cities.first()` (`:36-38`, #3 и #4). `name` без индекса.
-- `users/backends.py:47-56`: при `MultipleObjectsReturned` (`:51`) бэкенд выполняет **второй** запрос (`.filter(query).order_by('id').first()`) после того как `.get()` уже выбрал-отбросил строку.
-- `mortgage/views.py:1013-1018`: цикл `for calculation in calculations: _attach_calculation_to_customer(...)` где каждый вызов (`:74-83`) делает `get_or_create` → по одному запросу на каждый выбранный расчёт (N запросов вместо bulk).
+- Severity: medium
+- Confidence: medium
+- Component: `core`, `property`, `mortgage`
+- Category: database
+- Evidence:
+  - `core/models.py:11` defines `is_active`; `core/models.py:16` defines `created_at`; neither has explicit `db_index=True`.
+  - `property/models.py:258` defines `RealEstateComplexBuilding.number`; model ordering at `property/models.py:297` orders by `number`.
+  - `property/models.py:450` defines `Property.apartment_number`; model ordering at `property/models.py:505` orders by `apartment_number`.
+  - `property/views.py:1253` filters `apartment_number__icontains`.
+  - `mortgage/utils.py:118-139` filters calculation ranges over monetary/rate/term fields; `mortgage/utils.py:171` sorts by selected calculation fields.
+- Impact:
+  - Larger tables can shift to sequential scans for common list/search/sort/filter operations.
+- Root cause:
+  - Model defaults and view filters evolved without an explicit PostgreSQL index plan.
+- Recommended fix:
+  - Add btree indexes for common equality/order filters after validating with realistic `EXPLAIN`.
+  - For `icontains`, consider PostgreSQL trigram indexes (`pg_trgm`) or change UX to prefix/exact search where appropriate.
+  - Add indexes for calculation timestamp/filter fields if saved-calculation volume grows.
+- Validation plan:
+  - Run `EXPLAIN (ANALYZE, BUFFERS)` on representative list/filter queries against dev/prod-like data.
+  - Add migrations and verify no excessive write penalty.
+- Risk:
+  - Extra indexes increase write cost and migration time; confirm with real query plans.
+- Status: needs-data
 
-**План исправления:**
-1. `homepage/views.py` — вычислить `complexes` один раз, сохранить в список (`complexes = list(...)`), переиспользовать в comprehension и контексте.
-2. Определить `selected_city` одним запросом по PK или одной фильтрацией, не перефильтровать один и тот же queryset многократно.
-3. Auth backend — см. Security B8 (убрать коллизию-ветку целиком).
-4. Bulk-операция: собрать существующие PK через один запрос, `bulk_create` недостающие `CustomerCalculation`.
+### PERF-007: Filter Option QuerySets And Annotations Run On Every List Request
 
----
+- Severity: low
+- Confidence: high
+- Component: `property`, `bank`
+- Category: caching
+- Evidence:
+  - `property/views.py:943-948` queries developers/cities/classes/types for every complex list request.
+  - `property/views.py:1360-1370` queries cities/developers/complexes/buildings/layouts for every property list request.
+  - `property/views.py:843-844` annotates `buildings_count` for `RealEstateComplexListView` before knowing if the filter is needed.
+  - `bank/views.py:371-372` queries banks/programs for bank-program filters on each request.
+- Impact:
+  - Extra queries on otherwise paginated list pages; cost grows with dictionary tables.
+- Root cause:
+  - Filter option data is generated synchronously per request and annotations are eager.
+- Recommended fix:
+  - Cache low-churn filter dictionaries with TTL and invalidation.
+  - Apply `buildings_count` annotation only when display/filtering requires it.
+  - Consider lazy-loading large filter lists for building/complex dropdowns.
+- Validation plan:
+  - Add query-count tests for list views before/after caching.
+- Risk:
+  - Cache keys must include active filters/permissions if access control is added.
+- Status: open
 
-### P4. 🟠 Medium — Отсутствуют индексы на часто фильтруемыхых/сортируемых полях
+## Remediation Plan
 
-**Расположение:** `property/models.py`, `core/models.py`
+| Priority | Finding | Action | Expected impact | Validation |
+| --- | --- | --- | --- | --- |
+| P0 | PERF-001 | Add pagination and compact rows to saved calculation lists | Bound query/render/HTML size | Pagination and query-count tests |
+| P0 | PERF-002 | Add shared pagination to catalog/key-rate views | Bound admin/catalog table work | Per-tab row count tests |
+| P1 | PERF-003 | Cache or lazy-load selector dictionaries | Reduce DB and JSON work on form GET | Query-count and cache invalidation tests |
+| P1 | PERF-004 | Move heavy exports to background jobs or cache generated files | Protect web workers from CPU/memory spikes | Export timing benchmarks |
+| P2 | PERF-005 | Remove repeated queryset evaluation and per-row `get_or_create` | Reduce round trips | Query-count tests |
+| P2 | PERF-006 | Add indexes based on real `EXPLAIN` plans | Improve large-table filter/sort paths | SQL plan comparison |
+| P3 | PERF-007 | Cache filter option querysets and make annotations conditional | Trim list-page overhead | Query-count tests |
 
-**Описание:** Поля, используемые в `filter()`/`order_by()`, без `db_index=True`:
-- `property/models.py:258` `RealEstateComplexBuilding.number` — `order_by` (Meta `:297`; views `:705, 879, 1280`). Составной `UniqueConstraint(['number', 'real_estate_complex'])` (`:299`) создаёт индекс, но он не покрывает глобальную сортировку по `number`.
-- `property/models.py:450` `Property.apartment_number` — `order_by` (Meta `:505`; views `:1273, 1281`) и `filter(apartment_number__icontains=...)` (`:1253`). Нет индекса → full scan на дефолтной сортировке.
-- `core/models.py:11-21` `BaseModel.is_active`, `created_at` — `created_at` в `list_filter`/`ordering` всех моделей; `is_active` фильтруется во всех view. Оба без `db_index`. Влияет на **каждую** модель-наследник.
+## AI Handoff
 
-**План исправления:**
-1. Добавить `db_index=True` на `RealEstateComplexBuilding.number`, `Property.apartment_number`, `BaseModel.is_active`, `BaseModel.created_at`.
-2. Создать миграцию (`makemigrations` + `migrate`).
-3. Для `icontains`-поиска по имени рассмотреть `icontains`-friendly index (functional или триграммный `pg_trgm`), либо полнотекстовый поиск для больших таблиц.
+```yaml
+performance_review:
+  review_id: "PERF-20260616-full-project"
+  scope: "Django backend views, ORM/query shape, forms, reports, Docker runtime"
+  status: "complete"
+  findings:
+    - id: "PERF-001"
+      severity: "high"
+      confidence: "high"
+      component: "mortgage calculation lists"
+      category: "database"
+      evidence:
+        - "mortgage/views.py:1032-1040 unbounded MortgageCalculation queryset"
+        - "templates/mortgage/mortgage_list.html:63 iterates all calculations"
+        - "mortgage/views.py:1211-1215 unbounded trench list"
+      recommended_fix:
+        - "Add pagination and compact list rendering"
+      validation:
+        - "Pagination tests and query-count tests"
+      status: "open"
+    - id: "PERF-002"
+      severity: "high"
+      confidence: "high"
+      component: "property/bank catalog views"
+      category: "database"
+      evidence:
+        - "property/views.py:337-368 iterates full catalog queryset"
+        - "bank/views.py:262 paginates only bank tab"
+        - "bank/views.py:571 materializes all key-rate rows"
+      recommended_fix:
+        - "Add shared pagination to catalog/key-rate views"
+      validation:
+        - "Bounded row count tests"
+      status: "open"
+    - id: "PERF-003"
+      severity: "high"
+      confidence: "high"
+      component: "mortgage/property selector data"
+      category: "api"
+      evidence:
+        - "mortgage/views.py:283-322 full property selector serialization"
+        - "mortgage/views.py:343-396 full bank/program selector serialization"
+        - "property/views.py:1056-1085 and 1432-1474 full cascade data serialization"
+      recommended_fix:
+        - "Cache stable dictionaries or lazy-load filtered endpoints"
+      validation:
+        - "Query-count and cache invalidation tests"
+      status: "open"
+  next_actions:
+    - "Implement pagination for saved calculations and catalog views."
+    - "Add query-count tests around the hottest GET pages."
+    - "Introduce cache/lazy endpoints for selector dictionaries."
+```
 
----
+## Open Questions
 
-### P5. 🟠 Medium — Синхронная генерация Word/Excel в request-цикле
+- What production-sized row counts should be used for benchmark fixtures: properties, buildings, saved calculations, bank programs, key-rate history?
+- Which selector data must be available immediately on page load versus lazy-loaded after parent selection?
+- Are Word/Excel exports expected to be frequent enough to justify a background worker now?
 
-**Расположение:** `mortgage/views.py:978-979, 939, 942, 1116, 1240`; `mortgage/word.py`; `mortgage/excel.py`
+## Appendix
 
-**Описание:**
-- `export_mortgage_word(report_data)` (`:978`), `export_mortgage_excel(report_data)` (`:979`), `export_trench_mortgage_word(...)` (`:939`), экспорт в detail-views (`:1116, 1240`) — всё строит документы синхронно внутри request/response цикла. Celery/фоновых задач нет.
-- `mortgage/excel.py:459-469` `_apply_column_widths`: `for column in worksheet.columns:` обходит **все** ячейки для вычисления max длины строки — O(rows×cols). Для ипотеки на 30 лет — до 360 строк × колонки.
-- `mortgage/word.py` строит полный `.docx` из шаблона, встраивает изображения (`_replace_cell_image:698-709`), сериализует через `BytesIO`.
-- Пачка запросов на экспорт заблокирует воркеры Gunicorn.
-
-**План исправления:**
-1. Вынести генерацию документов в фоновую задачу (Celery + Redis/RQ, или `django-q2` для лёгкого старта).
-2. Пользователь запрашивает экспорт → создаётся задача, возвращается страница «генерируется» с опросом статуса → по готовности отдаётся файл (или ссылка).
-3. В `excel.py` `_apply_column_widths` кэшировать максимальную длину в один проход при записи строк, а не отдельным обходом всех ячеек.
-
----
-
-### P6. 🟡 Low — Дополнительные полнотабличные querysets для фильтров на каждой странице списка
-
-**Расположение:** `property/views.py:943-948, 1360-1370`; `property/views.py:843-872`
-
-**Описание:**
-- `PropertyListView.get_context_data` (`:1360-1370`): на каждый рендер списка выполняются 5 querysets для выпадающих фильтров — `cities_for_filter`, `developers_for_filter`, `complexes_for_filter`, `buildings_for_filter`, `layouts_for_filter`. `buildings_for_filter` и `complexes_for_filter` растут без ограничений.
-- `RealEstateComplexListView.get_context_data` (`:943-948`): то же — `developers_for_filter`, `cities_for_filter`, `classes_for_filter`, `types_for_filter`.
-- `RealEstateComplexListView.get_queryset` (`:843-872`): `annotate(buildings_count=Count('realestatecomplexbuilding'))` (`:843`) + опциональный `filter(buildings_count=...)` (`:870`). Аннотация (group-by/join) выполняется на **каждом** запросе, даже когда фильтр не задан; фильтр по вычисляемому значению не использует индекс.
-
-**План исправления:**
-1. Кэшировать списки для фильтров (`cache.get_or_set`, TTL ~10-30 мин, инвалидация по сигналам).
-2. `buildings_count` аннотацию выполнять только если в запросе есть соответствующий фильтр (условный `annotate`/`filter`).
-
----
-
-### P7. 🟡 Low — `email__iexact` в auth backend не использует unique index
-
-**Расположение:** `users/backends.py:39`; `users/models.py:20`
-
-**Описание:** Поле `email` — `unique=True` (миграция создаёт case-sensitive btree-индекс). `Q(email__iexact=...)` компилируется в `LOWER(users.email) = LOWER(...)`, что **не может** использовать обычный unique index → каждая попытка логина = потенциальный seq/index scan по `users`. То же касается admin-поиска (`users/admin.py:36-42`).
-
-**План исправления:**
-1. Хранить email в нижнем регистре (уже делается в `clean_email`) и использовать `email=` вместо `email__iexact`.
-2. Либо добавить functional index `Lower('email')` через `Index(Lower('email'), name='...')` в `Meta.indexes`.
-
----
-
-## ✅ Что проверено и чисто (производительность)
-- Основные list-view `Property`/`RealEstateComplex` используют `select_related`/`prefetch_related` корректно — N+1 там нет.
-- `CustomerOwnedQuerysetMixin.get_queryset` (`customer/views.py:51-59`) делает nested `Prefetch` для `regional_credit_limits` — N+1 в customer-деталях нет.
-- `annotate_calculation_table_values` (`mortgage/utils.py:36-44`) — вычисление DB-side, корректно.
-- Нет `read()`/полной загрузки файлов в память в `property/forms.py` (`delete_saved_images` только удаляет).
-- Списки customer (`CustomerListView`) — `paginate_by=20`, корректно.
-
----
-
-## План действий по приоритетам
-
-### Этап 4 — Производительность (реализуется в спринт)
-
-| # | Действие | Файлы | Оценка |
-|---|----------|-------|--------|
-| 4.1 | Пагинация (`ListView` + `paginate_by=20`) в `calculation_list`, `trench_calculation_list`, `BaseCatalogView` | `mortgage/views.py`, `property/views.py`, шаблоны | 3-4 ч |
-| 4.2 | Кэшировать справочники для калькулятора (`cache.get_or_set`, TTL ~10 мин, инвалидация по сигналам) | `mortgage/views.py:283-396` | 2 ч |
-| 4.3 | Не материализовать `list(...)` целиком в `get_context_data`; убрать двойное вычисление querysets | `property/views.py:1056-1090, 1430-1481` | 2 ч |
-| 4.4 | Починить двойное вычисление в `homepage/views.py:42-71` (вычислить `complexes` один раз) | `homepage/views.py` | 30 мин |
-| 4.5 | `db_index=True` на `RealEstateComplexBuilding.number`, `Property.apartment_number`, `BaseModel.is_active`, `BaseModel.created_at` + миграция | `property/models.py`, `core/models.py` | 1 ч + миграция |
-| 4.6 | Bulk-операция вместо цикла `get_or_create` в `calculation_list` POST | `mortgage/views.py:1013-1018` | 1 ч |
-| 4.7 | Вынести генерацию Word/Excel в фоновую задачу (Celery + Redis / django-q2) | `mortgage/views.py`, `mortgage/word.py`, `mortgage/excel.py` | 1-2 дня |
-
-### Дополнительно (низкий приоритет)
-- Кэшировать querysets для выпадающих фильтров в list-view (`property/views.py:943-948, 1360-1370`).
-- Условная `buildings_count` аннотация — только при наличии фильтра (`property/views.py:843-872`).
-- Functional index `Lower('email')` или переход на `email=` в auth backend (`users/backends.py:39`).
-- Оптимизация `_apply_column_widths` в `excel.py:459-469`.
-
----
-
-**Наибольший эффект:** P1 (пагинация списков) и P2 (кэширование справочников калькулятора) — оба убирают O(вся таблица) на горячих путях. P5 (фон для экспортов) защищает воркеры от блокировок под нагрузкой.
+- Positive observations:
+  - `PropertyListView` and `RealEstateComplexListView` use `paginate_by = 20`.
+  - `CustomerListView` uses `paginate_by = 20`.
+  - Several detail/list querysets already use `select_related` and `prefetch_related`.
+  - `CustomerOwnedQuerysetMixin` uses nested `Prefetch` for customer detail calculation data.
+  - `annotate_calculation_table_values` performs calculation table values database-side.
+- Measurement limitation:
+  - No production-sized database was available, so query plans and timings are static hypotheses unless backed by the local checks listed above.
