@@ -168,6 +168,36 @@ def _attach_calculations_to_customer(customer, calculations):
     )
 
 
+def _attach_trench_calculations_to_customer(customer, calculations):
+    """Attach trench calculations to a customer in bulk."""
+    if customer is None:
+        return
+
+    from customer.models import CustomerTrenchCalculation
+
+    calculation_ids = [calculation.pk for calculation in calculations]
+    if not calculation_ids:
+        return
+
+    existing_calculation_ids = set(
+        CustomerTrenchCalculation.objects.filter(
+            customer=customer,
+            calculation_id__in=calculation_ids,
+        ).values_list('calculation_id', flat=True)
+    )
+    CustomerTrenchCalculation.objects.bulk_create(
+        [
+            CustomerTrenchCalculation(
+                customer=customer,
+                calculation=calculation,
+            )
+            for calculation in calculations
+            if calculation.pk not in existing_calculation_ids
+        ],
+        ignore_conflicts=True,
+    )
+
+
 def _build_pagination_querystring(request):
     """Return current query parameters without the page parameter."""
     query_parameters = request.GET.copy()
@@ -1386,6 +1416,30 @@ def _build_saved_trench_calculation_data(calculation):
 @login_required
 def trench_calculation_list(request):
     """Show saved trench mortgage calculations."""
+    target_customer = _get_target_customer(request)
+
+    if request.method == 'POST' and target_customer is not None:
+        selected_ids = request.POST.getlist('calculations')
+        calculations = _get_trench_calculation_queryset(request.user).filter(
+            pk__in=selected_ids
+        )
+
+        _attach_trench_calculations_to_customer(
+            target_customer, calculations
+        )
+
+        if selected_ids:
+            messages.success(
+                request,
+                'Выбранные траншевые расчеты добавлены в карточку клиента.',
+            )
+        else:
+            messages.info(
+                request,
+                'Траншевые расчеты для добавления не выбраны.',
+            )
+        return redirect('customer:detail', pk=target_customer.pk)
+
     calculation_filters = get_calculation_filters(request)
     calculation_sort, calculation_order = get_calculation_sort(request)
     calculations = _get_trench_calculation_queryset(request.user)
@@ -1400,6 +1454,18 @@ def trench_calculation_list(request):
     page_obj = Paginator(
         calculations, CALCULATION_LIST_PAGE_SIZE
     ).get_page(request.GET.get('page'))
+    linked_calculation_ids = []
+    if target_customer is not None:
+        linked_calculation_ids = list(
+            target_customer.saved_trench_calculations.values_list(
+                'pk', flat=True
+            )
+        )
+    calculation_filter_reset_url = request.path
+    if target_customer is not None:
+        calculation_filter_reset_url = (
+            f'{request.path}?customer={target_customer.pk}'
+        )
 
     return render(
         request,
@@ -1409,11 +1475,13 @@ def trench_calculation_list(request):
             'page_obj': page_obj,
             'is_paginated': page_obj.paginator.num_pages > 1,
             'pagination_querystring': _build_pagination_querystring(request),
+            'target_customer': target_customer,
+            'linked_calculation_ids': linked_calculation_ids,
             'calculation_filters': calculation_filters,
             'calculation_cities': calculation_cities,
             'calculation_sort': calculation_sort,
             'calculation_order': calculation_order,
-            'calculation_filter_reset_url': request.path,
+            'calculation_filter_reset_url': calculation_filter_reset_url,
             'calculation_table_headers': build_calculation_table_headers(
                 request,
                 excluded_fields=('timestamp',),

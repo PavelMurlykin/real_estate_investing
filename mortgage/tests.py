@@ -1070,6 +1070,75 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, 'Сумма платежа по траншу 2')
         self.assertContains(response, '44 043,44 руб.')
 
+    def test_trench_calculation_list_allows_customer_selection(self):
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_trench_calculation()
+        linked_calculation = self._create_trench_calculation(
+            property_obj=self._create_property(
+                cost=Decimal('5000000.00'),
+                complex_name='ЖК Уже привязан',
+            )
+        )
+        CustomerTrenchCalculation.objects.create(
+            customer=customer,
+            calculation=linked_calculation,
+        )
+
+        response = self.client.get(
+            reverse('mortgage:trench_calculation_list'),
+            {'customer': customer.pk},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['target_customer'], customer)
+        self.assertContains(response, customer.full_name)
+        self.assertContains(response, 'name="customer"')
+        self.assertContains(response, 'name="calculations"', count=2)
+        self.assertContains(response, f'value="{calculation.pk}"')
+        self.assertContains(response, f'value="{linked_calculation.pk}"')
+        self.assertContains(response, 'checked disabled')
+        self.assertContains(response, 'Добавить')
+        self.assertNotContains(
+            response,
+            reverse(
+                'mortgage:trench_calculation_delete',
+                kwargs={'pk': calculation.pk},
+            ),
+        )
+
+    def test_trench_calculation_list_attaches_selected_calculations_to_customer(
+        self,
+    ):
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_trench_calculation()
+
+        response = self.client.post(
+            reverse('mortgage:trench_calculation_list'),
+            {
+                'customer': customer.pk,
+                'calculations': [str(calculation.pk)],
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('customer:detail', kwargs={'pk': customer.pk}),
+        )
+        self.assertTrue(
+            CustomerTrenchCalculation.objects.filter(
+                customer=customer,
+                calculation=calculation,
+            ).exists()
+        )
+
     def test_trench_calculation_list_paginates_saved_calculations(self):
         for _ in range(21):
             self._create_trench_calculation()

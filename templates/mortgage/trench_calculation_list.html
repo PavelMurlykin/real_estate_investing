@@ -11,10 +11,22 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="mb-1">История расчетов траншевой ипотеки</h2>
+            {% if target_customer %}
+                <div class="text-muted">Выберите траншевые расчеты для клиента: {{ target_customer.full_name }}</div>
+            {% endif %}
         </div>
-        <a href="{% url 'mortgage:mortgage_calculator' %}" class="btn btn-primary">
-            <i class="bi bi-calculator"></i> Новый расчет
-        </a>
+        <div class="d-flex gap-2">
+            {% if target_customer %}
+                <a href="{% url 'customer:detail' target_customer.pk %}" class="btn btn-outline-secondary">К карточке клиента</a>
+                <a href="{% url 'mortgage:mortgage_calculator' %}?customer={{ target_customer.pk }}" class="btn btn-primary">
+                    <i class="bi bi-calculator"></i> Новый расчет
+                </a>
+            {% else %}
+                <a href="{% url 'mortgage:mortgage_calculator' %}" class="btn btn-primary">
+                    <i class="bi bi-calculator"></i> Новый расчет
+                </a>
+            {% endif %}
+        </div>
     </div>
 
     <div class="card mb-4">
@@ -27,10 +39,18 @@
         <div class="card-body">
             <div id="catalog-results" data-catalog-results>
                 {% if calculations %}
+                    {% if target_customer %}
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="customer" value="{{ target_customer.pk }}">
+                    {% endif %}
                     <div class="table-responsive">
                         <table class="table table-hover align-middle">
                             <thead>
                                 <tr>
+                                    {% if target_customer %}
+                                        <th style="width: 48px;"></th>
+                                    {% endif %}
                                     {% for header in calculation_table_headers %}
                                         <th>
                                             {% include "includes/catalog_sort_link.html" with sort_url=header.url sort_label=header.label sort_indicator=header.indicator sort_link_classes="text-body text-decoration-none fw-semibold" %}
@@ -42,6 +62,18 @@
                             <tbody>
                                 {% for calculation in calculations %}
                                 <tr>
+                                    {% if target_customer %}
+                                        <td>
+                                            <input
+                                                class="form-check-input"
+                                                type="checkbox"
+                                                name="calculations"
+                                                value="{{ calculation.pk }}"
+                                                {% if calculation.pk in linked_calculation_ids %}checked disabled{% endif %}
+                                                aria-label="Выбрать траншевый расчет от {{ calculation.timestamp|date:'d.m.Y H:i' }}"
+                                            >
+                                        </td>
+                                    {% endif %}
                                     <td>{{ calculation.property.building.real_estate_complex.district.city.name }}</td>
                                     <td>{{ calculation.property.building.real_estate_complex.name }}, кв. {{ calculation.property.apartment_number }}</td>
                                     <td>{{ calculation.final_property_cost|currency }} руб.</td>
@@ -62,15 +94,17 @@
                                             ></button>
                                             {% url 'mortgage:trench_calculation_detail' calculation.pk as detail_url %}
                                             {% include "includes/action_icon.html" with href=detail_url icon="details" label="Подробнее" %}
-                                            <form method="post" action="{% url 'mortgage:trench_calculation_delete' calculation.pk %}" onsubmit="return confirm('Удалить траншевый расчет?');">
-                                                {% csrf_token %}
-                                                {% include "includes/action_icon.html" with action_icon_is_button=True icon="delete" label="Удалить" variant_class="btn-outline-danger" %}
-                                            </form>
+                                            {% if not target_customer %}
+                                                <form method="post" action="{% url 'mortgage:trench_calculation_delete' calculation.pk %}" onsubmit="return confirm('Удалить траншевый расчет?');">
+                                                    {% csrf_token %}
+                                                    {% include "includes/action_icon.html" with action_icon_is_button=True icon="delete" label="Удалить" variant_class="btn-outline-danger" %}
+                                                </form>
+                                            {% endif %}
                                         </div>
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td colspan="{{ calculation_table_headers|length|add:1 }}" class="p-0 border-0">
+                                    <td colspan="{% if target_customer %}{{ calculation_table_headers|length|add:2 }}{% else %}{{ calculation_table_headers|length|add:1 }}{% endif %}" class="p-0 border-0">
                                         <div class="collapse" id="trench-calculation-details-{{ calculation.pk }}">
                                             <div class="p-3 bg-body-tertiary">
                                                 {% include "mortgage/includes/trench_calculation_detail_table.html" %}
@@ -107,10 +141,22 @@
                         </ul>
                     </nav>
                     {% endif %}
+                    {% if target_customer %}
+                        <div class="mt-3 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">Добавить</button>
+                            <a href="{% url 'customer:detail' target_customer.pk %}" class="btn btn-outline-secondary">Отмена</a>
+                        </div>
+                        <div class="form-text mt-2">Уже привязанные расчеты отмечены и недоступны для повторного выбора.</div>
+                        </form>
+                    {% endif %}
                 {% else %}
                     <div class="text-center py-4">
                         <p class="text-muted">Нет сохраненных расчетов траншевой ипотеки</p>
-                        <a href="{% url 'mortgage:mortgage_calculator' %}" class="btn btn-primary">Создать первый расчет</a>
+                        {% if target_customer %}
+                            <a href="{% url 'mortgage:mortgage_calculator' %}?customer={{ target_customer.pk }}" class="btn btn-primary">Создать первый расчет</a>
+                        {% else %}
+                            <a href="{% url 'mortgage:mortgage_calculator' %}" class="btn btn-primary">Создать первый расчет</a>
+                        {% endif %}
                     </div>
                 {% endif %}
             </div>

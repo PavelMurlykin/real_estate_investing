@@ -167,9 +167,28 @@
                 <a href="{% url 'mortgage:mortgage_calculator' %}?customer={{ customer.pk }}" class="btn btn-sm btn-primary">
                     Добавить новый расчет
                 </a>
-                <a href="{% url 'mortgage:calculation_list' %}?customer={{ customer.pk }}" class="btn btn-sm btn-outline-primary">
-                    Добавить существующий расчет
-                </a>
+                <div class="dropdown">
+                    <button
+                        class="btn btn-sm btn-outline-primary dropdown-toggle"
+                        type="button"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                    >
+                        Добавить существующий расчет
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" href="{% url 'mortgage:calculation_list' %}?customer={{ customer.pk }}">
+                                Рыночная ипотека
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'mortgage:trench_calculation_list' %}?customer={{ customer.pk }}">
+                                Траншевая ипотека
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
         <div class="card-body">

@@ -583,6 +583,21 @@ class CustomerDeleteViewTests(TestCase):
         self.assertContains(response, 'data-catalog-filter-control', count=12)
         self.assertContains(response, 'customer-calculation-results')
         self.assertContains(response, 'static/js/catalog.js')
+        self.assertContains(response, 'dropdown-toggle')
+        self.assertContains(response, 'Добавить существующий расчет')
+        self.assertContains(
+            response,
+            reverse('mortgage:calculation_list') + f'?customer={customer.pk}',
+        )
+        self.assertContains(
+            response,
+            (
+                reverse('mortgage:trench_calculation_list')
+                + f'?customer={customer.pk}'
+            ),
+        )
+        self.assertContains(response, 'Рыночная ипотека')
+        self.assertContains(response, 'Траншевая ипотека')
 
     def test_detail_saved_calculations_hide_date_and_show_detail_action(self):
         """Проверяет состав столбцов и действий в сохраненных расчетах."""
