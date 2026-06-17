@@ -15,17 +15,19 @@ class User(AbstractUser):
 
     username = None
 
-    first_name = models.CharField(max_length=150, verbose_name='First name')
-    last_name = models.CharField(max_length=150, verbose_name='Last name')
-    email = models.EmailField(unique=True, verbose_name='Email')
+    first_name = models.CharField(max_length=150, verbose_name='Имя')
+    last_name = models.CharField(max_length=150, verbose_name='Фамилия')
+    email = models.EmailField(
+        unique=True, verbose_name='Электронная почта'
+    )
     phone_number = models.CharField(
-        max_length=20, unique=True, verbose_name='Phone number'
+        max_length=20, unique=True, verbose_name='Номер телефона'
     )
     is_real_estate_agent = models.BooleanField(
-        default=False, verbose_name='Real estate agent'
+        default=False, verbose_name='Агент недвижимости'
     )
     agency_name = models.CharField(
-        max_length=255, blank=True, verbose_name='Agency name'
+        max_length=255, blank=True, verbose_name='Название агентства'
     )
 
     objects = UserManager()
@@ -41,8 +43,8 @@ class User(AbstractUser):
         """
 
         db_table = 'users'
-        verbose_name = 'User'
-        verbose_name_plural = 'Users'
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
 
     def clean(self):
         """Описание метода clean.

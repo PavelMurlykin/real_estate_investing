@@ -71,7 +71,17 @@ class TrenchMortgageCalculation(models.Model):
         max_digits=15, decimal_places=2, verbose_name='Сумма переплат, руб.'
     )
 
-    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    timestamp = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        verbose_name='Дата расчета',
+    )
+
+    class Meta:
+        """Метаданные сохраненных расчетов траншевой ипотеки."""
+
+        verbose_name = 'Расчет траншевой ипотеки'
+        verbose_name_plural = 'Расчеты траншевой ипотеки'
 
     def __str__(self):
         """Описание метода __str__.
@@ -106,6 +116,7 @@ class Trench(models.Model):
         TrenchMortgageCalculation,
         on_delete=models.CASCADE,
         related_name='trenches',
+        verbose_name='Расчет траншевой ипотеки',
     )
     trench_number = models.IntegerField(verbose_name='Номер транша')
     trench_date = models.DateField(verbose_name='Дата транша')
@@ -136,3 +147,5 @@ class Trench(models.Model):
         """
 
         ordering = ['trench_number']
+        verbose_name = 'Транш'
+        verbose_name_plural = 'Транши'

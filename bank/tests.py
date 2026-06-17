@@ -37,6 +37,39 @@ from .models import (
 )
 
 
+def test_bank_model_verbose_names():
+    """Checks bank model and field labels."""
+    expected_model_labels = {
+        Bank: ('Банк', 'Банки'),
+        MortgageProgram: (
+            'Ипотечная программа',
+            'Ипотечные программы',
+        ),
+        MortgageProgramRegionalCreditLimit: (
+            'Региональный лимит ипотечной программы',
+            'Региональные лимиты ипотечных программ',
+        ),
+        MortgageProgramAlias: (
+            'Алиас ипотечной программы',
+            'Алиасы ипотечных программ',
+        ),
+        BankProgram: ('Программа банка', 'Программы банков'),
+        KeyRate: ('Ключевая ставка', 'Ключевые ставки'),
+    }
+
+    for model, expected_labels in expected_model_labels.items():
+        expected_verbose_name, expected_verbose_name_plural = expected_labels
+
+        assert model._meta.verbose_name == expected_verbose_name
+        assert model._meta.verbose_name_plural == expected_verbose_name_plural
+
+    assert str(Bank._meta.get_field('name').verbose_name) == 'Название'
+    assert (
+        str(BankProgram._meta.get_field('interest_rate').verbose_name)
+        == 'Процентная ставка, %'
+    )
+
+
 def create_user_with_role(email, phone_number, group_name=None):
     """Create a test user and optionally add an application role group."""
     user = get_user_model().objects.create_user(

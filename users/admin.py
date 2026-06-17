@@ -17,6 +17,7 @@ class UserAdmin(BaseUserAdmin):
     add_form = UserAdminCreationForm
 
     list_display = (
+        'id',
         'email',
         'phone_number',
         'first_name',
@@ -26,6 +27,7 @@ class UserAdmin(BaseUserAdmin):
         'is_staff',
         'is_active',
     )
+    list_display_links = ('email',)
     list_filter = (
         'is_real_estate_agent',
         'is_staff',

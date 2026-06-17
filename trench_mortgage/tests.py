@@ -3,12 +3,34 @@ from decimal import Decimal
 
 from django.test import SimpleTestCase
 
+from trench_mortgage.models import Trench, TrenchMortgageCalculation
 from trench_mortgage.views import (
     _calculate_months_remaining,
     _calculate_trench_mortgage,
     _parse_trench_inputs,
     _prepare_mortgage_data,
 )
+
+
+def test_trench_mortgage_model_verbose_names():
+    """Checks trench mortgage model and field labels."""
+    assert (
+        TrenchMortgageCalculation._meta.verbose_name
+        == 'Расчет траншевой ипотеки'
+    )
+    assert (
+        TrenchMortgageCalculation._meta.verbose_name_plural
+        == 'Расчеты траншевой ипотеки'
+    )
+    timestamp_field = TrenchMortgageCalculation._meta.get_field('timestamp')
+
+    assert str(timestamp_field.verbose_name) == 'Дата расчета'
+    assert Trench._meta.verbose_name == 'Транш'
+    assert Trench._meta.verbose_name_plural == 'Транши'
+    assert (
+        str(Trench._meta.get_field('calculation').verbose_name)
+        == 'Расчет траншевой ипотеки'
+    )
 
 
 class TrenchMortgageCalculationTests(SimpleTestCase):

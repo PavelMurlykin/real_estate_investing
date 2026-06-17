@@ -13,6 +13,7 @@ class BankConfig(AppConfig):
 
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'bank'
+    verbose_name = 'Банки'
 
     def ready(self):
         """Описание метода ready.
