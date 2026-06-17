@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Prefetch, Q
 from django.urls import reverse_lazy
@@ -11,19 +13,222 @@ from django.views.generic import (
 
 from bank.models import MortgageProgram
 from mortgage.utils import (
-    apply_calculation_filters,
-    apply_calculation_sort,
-    annotate_calculation_table_values,
     build_calculation_table_headers,
     format_currency,
-    get_calculation_city_choices,
     get_calculation_filters,
     get_calculation_sort,
 )
 from users.roles import can_view_all_private_records
 
 from .forms import CustomerForm
-from .models import Customer, CustomerCalculation
+from .models import Customer, CustomerCalculation, CustomerTrenchCalculation
+
+
+CUSTOMER_CALCULATION_SORT_FIELDS = {
+    'city': 'city_name',
+    'timestamp': 'timestamp',
+    'object': 'object_name',
+    'cost': 'final_property_cost',
+    'initial_payment': 'table_initial_payment_amount',
+    'monthly_payment': 'main_monthly_payment',
+    'term': 'mortgage_term',
+    'rate': 'annual_rate',
+}
+
+
+def _parse_customer_calculation_decimal(value):
+    """Return a decimal filter value or None."""
+    if not value:
+        return None
+    try:
+        return Decimal(str(value).replace(',', '.'))
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _get_customer_calculation_property(calculation):
+    """Return the property object used by a saved calculation."""
+    return calculation.property
+
+
+def _get_customer_calculation_city(calculation):
+    """Return the city object used by a saved calculation."""
+    return (
+        _get_customer_calculation_property(calculation)
+        .building.real_estate_complex.district.city
+    )
+
+
+def _get_customer_calculation_object_name(calculation):
+    """Return the object name used for customer calculation sorting."""
+    property_obj = _get_customer_calculation_property(calculation)
+    return property_obj.building.real_estate_complex.name
+
+
+def _get_last_trench_monthly_payment(calculation):
+    """Return the cumulative monthly payment of the last trench."""
+    trenches = list(calculation.trenches.all())
+    if not trenches:
+        return Decimal('0')
+    return trenches[-1].monthly_payment
+
+
+def _prepare_customer_calculation_link(
+    link,
+    program_type,
+    program_label,
+    monthly_payment,
+):
+    """Attach shared table attributes to a customer calculation link."""
+    calculation = link.calculation
+    link.program_type = program_type
+    link.program_label = program_label
+    link.table_initial_payment_amount = (
+        calculation.final_property_cost
+        * calculation.initial_payment_percent
+        / Decimal('100')
+    )
+    link.main_monthly_payment = monthly_payment
+    link.timestamp = calculation.timestamp
+    link.city = _get_customer_calculation_city(calculation)
+    link.city_name = link.city.name
+    link.object_name = _get_customer_calculation_object_name(calculation)
+    link.final_property_cost = calculation.final_property_cost
+    link.mortgage_term = calculation.mortgage_term
+    link.annual_rate = calculation.annual_rate
+    return link
+
+
+def _build_customer_calculation_links(
+    market_customer_calculations,
+    trench_customer_calculations,
+):
+    """Return normalized calculation links for the customer detail table."""
+    rows = [
+        _prepare_customer_calculation_link(
+            customer_calculation,
+            'market',
+            'Рыночная ипотека',
+            customer_calculation.calculation.main_monthly_payment,
+        )
+        for customer_calculation in market_customer_calculations
+    ]
+    rows.extend(
+        _prepare_customer_calculation_link(
+            customer_calculation,
+            'trench',
+            'Траншевая ипотека',
+            _get_last_trench_monthly_payment(
+                customer_calculation.calculation
+            ),
+        )
+        for customer_calculation in trench_customer_calculations
+    )
+    return rows
+
+
+def _apply_customer_calculation_decimal_range(
+    rows,
+    filters,
+    row_attribute,
+    filter_name,
+):
+    """Filter normalized customer calculation rows by decimal range."""
+    from_value = _parse_customer_calculation_decimal(
+        filters.get(f'{filter_name}_from')
+    )
+    if from_value is not None:
+        rows = [
+            row
+            for row in rows
+            if getattr(row, row_attribute) >= from_value
+        ]
+
+    to_value = _parse_customer_calculation_decimal(
+        filters.get(f'{filter_name}_to')
+    )
+    if to_value is not None:
+        rows = [
+            row
+            for row in rows
+            if getattr(row, row_attribute) <= to_value
+        ]
+
+    return rows
+
+
+def _apply_customer_calculation_filters(rows, filters):
+    """Filter normalized customer calculation rows."""
+    city = filters.get('city')
+    if city:
+        rows = [row for row in rows if str(row.city.pk) == city]
+
+    search = (filters.get('q') or '').casefold()
+    if search:
+        rows = [
+            row
+            for row in rows
+            if search in row.calculation.property.apartment_number.casefold()
+            or search in row.object_name.casefold()
+        ]
+
+    rows = _apply_customer_calculation_decimal_range(
+        rows, filters, 'final_property_cost', 'cost'
+    )
+    rows = _apply_customer_calculation_decimal_range(
+        rows, filters, 'table_initial_payment_amount', 'initial_payment'
+    )
+    rows = _apply_customer_calculation_decimal_range(
+        rows, filters, 'main_monthly_payment', 'monthly_payment'
+    )
+    rows = _apply_customer_calculation_decimal_range(
+        rows, filters, 'annual_rate', 'rate'
+    )
+
+    term_from = _parse_customer_calculation_decimal(
+        filters.get('term_from')
+    )
+    if term_from is not None:
+        rows = [
+            row for row in rows if row.mortgage_term >= term_from * 12
+        ]
+
+    term_to = _parse_customer_calculation_decimal(filters.get('term_to'))
+    if term_to is not None:
+        rows = [row for row in rows if row.mortgage_term <= term_to * 12]
+
+    return rows
+
+
+def _get_customer_calculation_sort_value(row, sort):
+    """Return a normalized sort value for a customer calculation row."""
+    value = getattr(row, CUSTOMER_CALCULATION_SORT_FIELDS[sort])
+    if isinstance(value, str):
+        return value.casefold()
+    return value
+
+
+def _sort_customer_calculation_rows(rows, sort, order):
+    """Sort normalized customer calculation rows."""
+    return sorted(
+        rows,
+        key=lambda row: _get_customer_calculation_sort_value(row, sort),
+        reverse=order == 'desc',
+    )
+
+
+def _build_customer_calculation_city_choices(rows):
+    """Return city choices available in normalized customer calculations."""
+    cities = {
+        str(row.city.pk): row.city.name
+        for row in rows
+    }
+    return [
+        {'id': city_id, 'name': city_name}
+        for city_id, city_name in sorted(
+            cities.items(), key=lambda item: item[1].casefold()
+        )
+    ]
 
 
 class CustomerOwnedQuerysetMixin(LoginRequiredMixin):
@@ -223,15 +428,23 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
         calculation_sort, calculation_order = get_calculation_sort(
             self.request
         )
-        base_customer_calculations = CustomerCalculation.objects.filter(
+        market_customer_calculations = CustomerCalculation.objects.filter(
             customer=customer
         )
+        trench_customer_calculations = (
+            CustomerTrenchCalculation.objects.filter(customer=customer)
+        )
         if not can_view_all_private_records(self.request.user):
-            base_customer_calculations = base_customer_calculations.filter(
+            market_customer_calculations = market_customer_calculations.filter(
                 calculation__user=self.request.user
             )
-        customer_calculations = (
-            base_customer_calculations
+            trench_customer_calculations = (
+                trench_customer_calculations.filter(
+                    calculation__user=self.request.user
+                )
+            )
+        market_customer_calculations = (
+            market_customer_calculations
             .select_related(
                 'calculation',
                 'calculation__property',
@@ -248,23 +461,40 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
                 ),
             )
         )
-        customer_calculations = apply_calculation_filters(
-            annotate_calculation_table_values(
-                customer_calculations,
-                prefix='calculation__',
-            ),
-            calculation_filters,
-            prefix='calculation__',
+        trench_customer_calculations = (
+            trench_customer_calculations
+            .select_related(
+                'calculation',
+                'calculation__property',
+                'calculation__property__layout',
+                'calculation__property__building',
+                'calculation__property__building__real_estate_complex',
+                (
+                    'calculation__property__building'
+                    '__real_estate_complex__district'
+                ),
+                (
+                    'calculation__property__building'
+                    '__real_estate_complex__district__city'
+                ),
+            )
+            .prefetch_related('calculation__trenches')
         )
-        customer_calculations = apply_calculation_sort(
+        customer_calculation_rows = _build_customer_calculation_links(
+            market_customer_calculations,
+            trench_customer_calculations,
+        )
+        calculation_cities = _build_customer_calculation_city_choices(
+            customer_calculation_rows
+        )
+        customer_calculations = _apply_customer_calculation_filters(
+            customer_calculation_rows,
+            calculation_filters,
+        )
+        customer_calculations = _sort_customer_calculation_rows(
             customer_calculations,
             calculation_sort,
             calculation_order,
-            prefix='calculation__',
-        )
-        calculation_cities = get_calculation_city_choices(
-            base_customer_calculations,
-            prefix='calculation__',
         )
 
         context['customer_calculations'] = customer_calculations
@@ -328,6 +558,28 @@ class CustomerCalculationDeleteView(LoginRequiredMixin, DeleteView):
 
     def get_success_url(self):
         """Возвращает пользователя в карточку клиента после удаления связи."""
+        return reverse_lazy(
+            'customer:detail', kwargs={'pk': self.object.customer_id}
+        )
+
+
+class CustomerTrenchCalculationDeleteView(LoginRequiredMixin, DeleteView):
+    """Delete a customer link to a saved trench mortgage calculation."""
+
+    model = CustomerTrenchCalculation
+
+    def get_queryset(self):
+        """Return trench calculation links available to the current user."""
+        queryset = CustomerTrenchCalculation.objects.all()
+        if not can_view_all_private_records(self.request.user):
+            queryset = queryset.filter(
+                customer__user=self.request.user,
+                calculation__user=self.request.user,
+            )
+        return queryset
+
+    def get_success_url(self):
+        """Return the user to the customer detail after link deletion."""
         return reverse_lazy(
             'customer:detail', kwargs={'pk': self.object.customer_id}
         )

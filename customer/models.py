@@ -62,6 +62,13 @@ class Customer(BaseModel):
         related_name='saved_for_customers',
         verbose_name='Сохраненные расчеты',
     )
+    saved_trench_calculations = models.ManyToManyField(
+        'trench_mortgage.TrenchMortgageCalculation',
+        through='CustomerTrenchCalculation',
+        blank=True,
+        related_name='saved_for_customers',
+        verbose_name='Сохраненные траншевые расчеты',
+    )
 
     # Персональные данные
     first_name = models.CharField(max_length=150, verbose_name='Имя')
@@ -484,4 +491,42 @@ class CustomerCalculation(models.Model):
         ]
 
     def __str__(self):
+        return f'{self.customer} - {self.calculation}'
+
+
+class CustomerTrenchCalculation(models.Model):
+    """Link a customer to a saved trench mortgage calculation."""
+
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name='trench_calculation_links',
+        verbose_name='Клиент',
+    )
+    calculation = models.ForeignKey(
+        'trench_mortgage.TrenchMortgageCalculation',
+        on_delete=models.CASCADE,
+        related_name='customer_links',
+        verbose_name='Расчет',
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True, verbose_name='Дата сохранения'
+    )
+
+    class Meta:
+        """Metadata for customer trench mortgage calculation links."""
+
+        db_table = 'customer_trench_calculation'
+        verbose_name = 'Траншевый расчет клиента'
+        verbose_name_plural = 'Траншевые расчеты клиентов'
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['customer', 'calculation'],
+                name='unique_customer_trench_calculation',
+            )
+        ]
+
+    def __str__(self):
+        """Return the customer and saved trench calculation pair."""
         return f'{self.customer} - {self.calculation}'

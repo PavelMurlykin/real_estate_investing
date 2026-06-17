@@ -19,4 +19,9 @@ urlpatterns = [
         views.CustomerCalculationDeleteView.as_view(),
         name='calculation_delete',
     ),
+    path(
+        'trench-calculations/<int:pk>/delete/',
+        views.CustomerTrenchCalculationDeleteView.as_view(),
+        name='trench_calculation_delete',
+    ),
 ]

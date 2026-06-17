@@ -1,10 +1,19 @@
 from django.contrib import admin
 
-from .models import Customer, CustomerCalculation
+from .models import Customer, CustomerCalculation, CustomerTrenchCalculation
 
 
 class CustomerCalculationInline(admin.TabularInline):
     model = CustomerCalculation
+    extra = 0
+    autocomplete_fields = ('calculation',)
+    readonly_fields = ('created_at',)
+
+
+class CustomerTrenchCalculationInline(admin.TabularInline):
+    """Inline admin for saved trench mortgage calculations."""
+
+    model = CustomerTrenchCalculation
     extra = 0
     autocomplete_fields = ('calculation',)
     readonly_fields = ('created_at',)
@@ -53,11 +62,28 @@ class CustomerAdmin(admin.ModelAdmin):
     )
     ordering = ('-created_at',)
     list_editable = ('is_active',)
-    inlines = (CustomerCalculationInline,)
+    inlines = (CustomerCalculationInline, CustomerTrenchCalculationInline)
 
 
 @admin.register(CustomerCalculation)
 class CustomerCalculationAdmin(admin.ModelAdmin):
+    list_display = ('customer', 'calculation', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = (
+        'customer__first_name',
+        'customer__last_name',
+        'customer__phone',
+        'calculation__property__apartment_number',
+    )
+    autocomplete_fields = ('customer', 'calculation')
+    readonly_fields = ('created_at',)
+    ordering = ('-created_at',)
+
+
+@admin.register(CustomerTrenchCalculation)
+class CustomerTrenchCalculationAdmin(admin.ModelAdmin):
+    """Admin for customer trench mortgage calculation links."""
+
     list_display = ('customer', 'calculation', 'created_at')
     list_filter = ('created_at',)
     search_fields = (

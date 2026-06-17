@@ -17,6 +17,7 @@ from bank.models import (
     MortgageProgram,
     MortgageProgramRegionalCreditLimit,
 )
+from customer.models import Customer, CustomerTrenchCalculation
 from location.models import City, District, Region
 from mortgage.models import MortgageCalculation
 from property.models import (
@@ -1570,6 +1571,45 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertEqual(len(trenches), 2)
         self.assertEqual(trenches[0].trench_amount, Decimal('100000.00'))
         self.assertEqual(trenches[1].trench_amount, Decimal('3900000.00'))
+
+    def test_trench_calculate_with_customer_attaches_saved_calculation(self):
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        payload = self._base_payload()
+        payload.update(
+            {
+                'calculate': 'trench',
+                'CALCULATION_TYPE': 'trench',
+                'TRENCH_COUNT': '2',
+                'trench_date_1': '2026-01-01',
+                'trench_percent_1': '50',
+                'trench_amount_1': '',
+                'trench_amount_source_1': 'percent',
+                'annual_rate_1': '12',
+                'trench_date_2': '2027-01-01',
+                'trench_percent_2': '',
+                'trench_amount_2': '',
+                'trench_amount_source_2': 'rubles',
+                'annual_rate_2': '12',
+            }
+        )
+
+        response = self.client.post(
+            f'{self.url}?customer={customer.pk}',
+            payload,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        calculation = TrenchMortgageCalculation.objects.get()
+        self.assertTrue(
+            CustomerTrenchCalculation.objects.filter(
+                customer=customer,
+                calculation=calculation,
+            ).exists()
+        )
 
     def test_market_calculate_keeps_trench_report_when_trench_data_is_present(self):
         payload = self._base_payload()

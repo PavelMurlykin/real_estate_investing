@@ -125,6 +125,19 @@ def _attach_calculation_to_customer(customer, calculation):
     )
 
 
+def _attach_trench_calculation_to_customer(customer, calculation):
+    """Attach a saved trench mortgage calculation to a customer."""
+    if customer is None:
+        return
+
+    from customer.models import CustomerTrenchCalculation
+
+    CustomerTrenchCalculation.objects.get_or_create(
+        customer=customer,
+        calculation=calculation,
+    )
+
+
 def _attach_calculations_to_customer(customer, calculations):
     """Attach calculations to a customer using one read and one bulk insert."""
     if customer is None:
@@ -817,9 +830,15 @@ def mortgage_calculator(request):
                                     base_property_cost,
                                 )
                             trench_calculation['property_obj'] = property_obj
-                            _save_trench_calculation(
-                                trench_calculation,
-                                user=calculation_owner,
+                            saved_trench_calculation = (
+                                _save_trench_calculation(
+                                    trench_calculation,
+                                    user=calculation_owner,
+                                )
+                            )
+                            _attach_trench_calculation_to_customer(
+                                target_customer,
+                                saved_trench_calculation,
                             )
 
                     context['trench_result'] = _format_trench_result(

@@ -22,10 +22,11 @@ from property.models import (
     RealEstateComplexBuilding,
     RealEstateType,
 )
+from trench_mortgage.models import Trench, TrenchMortgageCalculation
 from users.roles import APPLICATION_ADMINISTRATOR_GROUP_NAME
 
 from .forms import CustomerForm
-from .models import Customer, CustomerCalculation
+from .models import Customer, CustomerCalculation, CustomerTrenchCalculation
 
 
 class CustomerFormTests(TestCase):
@@ -418,6 +419,54 @@ class CustomerDeleteViewTests(TestCase):
             total_overpayment=Decimal('9213034.40'),
         )
 
+    def _create_trench_calculation(
+        self,
+        city_name='Город 1',
+        complex_name='ЖК Транш',
+    ) -> TrenchMortgageCalculation:
+        """Создает сохраненный траншевый ипотечный расчет."""
+        calculation = TrenchMortgageCalculation.objects.create(
+            user=self.user,
+            property=self._create_property(
+                city_name=city_name,
+                complex_name=complex_name,
+            ),
+            base_property_cost=Decimal('5000000.00'),
+            discount_markup_type='discount',
+            discount_markup_value=Decimal('0.00'),
+            final_property_cost=Decimal('5000000.00'),
+            initial_payment_percent=Decimal('20.00'),
+            initial_payment_date=date(2026, 1, 1),
+            mortgage_term=240,
+            annual_rate=Decimal('12.00'),
+            trench_count=2,
+            total_loan_amount=Decimal('4000000.00'),
+            total_overpayment=Decimal('8500000.00'),
+        )
+        Trench.objects.create(
+            calculation=calculation,
+            trench_number=1,
+            trench_date=date(2026, 1, 1),
+            trench_percent=Decimal('50.00'),
+            trench_amount=Decimal('2000000.00'),
+            annual_rate=Decimal('12.00'),
+            monthly_payment=Decimal('22021.72'),
+            payments_count=12,
+            remaining_debt=Decimal('2000000.00'),
+        )
+        Trench.objects.create(
+            calculation=calculation,
+            trench_number=2,
+            trench_date=date(2027, 1, 1),
+            trench_percent=Decimal('50.00'),
+            trench_amount=Decimal('2000000.00'),
+            annual_rate=Decimal('12.00'),
+            monthly_payment=Decimal('44043.44'),
+            payments_count=228,
+            remaining_debt=Decimal('0.00'),
+        )
+        return calculation
+
     def test_list_page_shows_delete_button(self):
         """Проверяет вывод кнопки удаления в списке клиентов."""
         customer = Customer.objects.create(
@@ -571,6 +620,74 @@ class CustomerDeleteViewTests(TestCase):
             ),
         )
 
+    def test_detail_saved_calculations_include_trench_calculations(self):
+        """Проверяет вывод рыночных и траншевых расчетов в одной таблице."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        market_calculation = self._create_calculation(
+            complex_name='ЖК Рыночный'
+        )
+        trench_calculation = self._create_trench_calculation(
+            complex_name='ЖК Траншевый'
+        )
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=market_calculation,
+        )
+        customer_trench_calculation = (
+            CustomerTrenchCalculation.objects.create(
+                customer=customer,
+                calculation=trench_calculation,
+            )
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+        calculations = list(response.context['customer_calculations'])
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<th>Программа</th>', html=True)
+        content = response.content.decode()
+        table_header = content[
+            content.index('<thead>'):content.index('</thead>')
+        ]
+        self.assertGreater(
+            table_header.index('<th>Программа</th>'),
+            table_header.index('Ставка'),
+        )
+        self.assertLess(
+            table_header.index('<th>Программа</th>'),
+            table_header.index('<th>Действия</th>'),
+        )
+        self.assertContains(response, 'Рыночная ипотека')
+        self.assertContains(response, 'Траншевая ипотека')
+        self.assertContains(response, 'ЖК Рыночный, кв. 101')
+        self.assertContains(response, 'ЖК Траншевый, кв. 101')
+        self.assertContains(response, '55 054,31 руб.')
+        self.assertContains(response, '44 043,44 руб.')
+        self.assertContains(
+            response,
+            reverse(
+                'mortgage:trench_calculation_detail',
+                kwargs={'pk': trench_calculation.pk},
+            ),
+        )
+        self.assertContains(
+            response,
+            reverse(
+                'customer:trench_calculation_delete',
+                kwargs={'pk': customer_trench_calculation.pk},
+            ),
+        )
+        self.assertEqual(
+            {calculation.program_type for calculation in calculations},
+            {'market', 'trench'},
+        )
+
     def test_delete_customer_calculation_removes_link_and_keeps_calculation(
         self,
     ):
@@ -604,6 +721,42 @@ class CustomerDeleteViewTests(TestCase):
         )
         self.assertTrue(
             MortgageCalculation.objects.filter(pk=calculation.pk).exists()
+        )
+
+    def test_delete_customer_trench_calculation_removes_link_and_keeps_calculation(
+        self,
+    ):
+        """Проверяет удаление связи клиента и траншевого расчета."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_trench_calculation()
+        customer_calculation = CustomerTrenchCalculation.objects.create(
+            customer=customer,
+            calculation=calculation,
+        )
+
+        response = self.client.post(
+            reverse(
+                'customer:trench_calculation_delete',
+                kwargs={'pk': customer_calculation.pk},
+            )
+        )
+
+        self.assertRedirects(
+            response, reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+        self.assertTrue(Customer.objects.filter(pk=customer.pk).exists())
+        self.assertFalse(
+            CustomerTrenchCalculation.objects.filter(
+                pk=customer_calculation.pk
+            ).exists()
+        )
+        self.assertTrue(
+            TrenchMortgageCalculation.objects.filter(pk=calculation.pk)
+            .exists()
         )
 
     def test_detail_saved_calculations_show_city_column_and_filter(self):
@@ -691,6 +844,84 @@ class CustomerDeleteViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(cities, ['Астрахань', 'Ярославль'])
 
+    def test_detail_saved_calculations_filter_trench_by_city(self):
+        """Проверяет фильтрацию траншевых расчетов по городу."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        moscow_calculation = self._create_trench_calculation(
+            city_name='Москва',
+            complex_name='ЖК Москва',
+        )
+        kazan_calculation = self._create_calculation(
+            city_name='Казань',
+            complex_name='ЖК Казань',
+        )
+        CustomerTrenchCalculation.objects.create(
+            customer=customer,
+            calculation=moscow_calculation,
+        )
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=kazan_calculation,
+        )
+        moscow_city = (
+            moscow_calculation.property.building.real_estate_complex
+            .district.city
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk}),
+            {'city': moscow_city.pk},
+        )
+        calculations = list(response.context['customer_calculations'])
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(calculations), 1)
+        self.assertEqual(calculations[0].calculation, moscow_calculation)
+        self.assertEqual(calculations[0].program_type, 'trench')
+
+    def test_detail_saved_calculations_sort_by_monthly_payment_across_programs(
+        self,
+    ):
+        """Проверяет сортировку по платежу для обоих типов ипотеки."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        market_calculation = self._create_calculation()
+        trench_calculation = self._create_trench_calculation()
+        CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=market_calculation,
+        )
+        CustomerTrenchCalculation.objects.create(
+            customer=customer,
+            calculation=trench_calculation,
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk}),
+            {'sort': 'monthly_payment', 'order': 'asc'},
+        )
+        calculations = list(response.context['customer_calculations'])
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [calculation.program_type for calculation in calculations],
+            ['trench', 'market'],
+        )
+        self.assertEqual(
+            [
+                calculation.main_monthly_payment
+                for calculation in calculations
+            ],
+            [Decimal('44043.44'), Decimal('55054.31')],
+        )
+
     def test_detail_saved_calculation_spoiler_shows_full_calculation(self):
         """Проверяет содержимое спойлера сохраненного расчета."""
         customer = Customer.objects.create(
@@ -729,7 +960,10 @@ class CustomerDeleteViewTests(TestCase):
         self.assertNotContains(response, '>Раскрыть</button>')
         self.assertContains(
             response,
-            f'customer-calculation-details-{calculation.customer_links.first().pk}',
+            (
+                'customer-market-calculation-details-'
+                f'{calculation.customer_links.first().pk}'
+            ),
         )
         self.assertContains(response, 'table-bordered')
         self.assertContains(response, 'Стоимость объекта')
@@ -780,6 +1014,39 @@ class CustomerDeleteViewTests(TestCase):
         self.assertContains(response, 'Сумма ежемесячного платежа')
         self.assertContains(response, '55 054,31 руб.')
         self.assertNotContains(response, 'Срок льготного периода')
+
+    def test_detail_saved_trench_calculation_spoiler_shows_trench_fields(self):
+        """Проверяет содержимое спойлера траншевого расчета клиента."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_trench_calculation()
+        customer_calculation = CustomerTrenchCalculation.objects.create(
+            customer=customer,
+            calculation=calculation,
+        )
+
+        response = self.client.get(
+            reverse('customer:detail', kwargs={'pk': customer.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            (
+                'customer-trench-calculation-details-'
+                f'{customer_calculation.pk}'
+            ),
+        )
+        self.assertContains(response, 'Количество траншей')
+        self.assertContains(response, 'Число платежей по траншу 1')
+        self.assertContains(response, 'Сумма платежа по траншу 1')
+        self.assertContains(response, '22 021,72 руб.')
+        self.assertContains(response, 'Число платежей по траншу 2')
+        self.assertContains(response, 'Сумма платежа по траншу 2')
+        self.assertContains(response, '44 043,44 руб.')
 
     def test_detail_saved_calculation_spoiler_shows_grace_period_fields(self):
         """Проверяет поля льготного периода в спойлере расчета."""

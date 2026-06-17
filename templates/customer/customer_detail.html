@@ -186,6 +186,7 @@
                                             {% include "includes/catalog_sort_link.html" with sort_url=header.url sort_label=header.label sort_indicator=header.indicator sort_link_classes="text-body text-decoration-none" %}
                                         </th>
                                     {% endfor %}
+                                    <th>Программа</th>
                                     <th>Действия</th>
                                 </tr>
                             </thead>
@@ -197,23 +198,32 @@
                                             <td>{{ calculation.property.building.real_estate_complex.name }}, кв. {{ calculation.property.apartment_number }}</td>
                                             <td>{{ calculation.final_property_cost|currency }} руб.</td>
                                             <td>{{ customer_calculation.table_initial_payment_amount|currency }} руб.</td>
-                                            <td>{{ calculation.main_monthly_payment|currency }} руб.</td>
+                                            <td>{{ customer_calculation.main_monthly_payment|currency }} руб.</td>
                                             <td>{{ calculation.mortgage_term|years_label_from_months }}</td>
                                             <td>{{ calculation.annual_rate }}%</td>
+                                            <td>{{ customer_calculation.program_label }}</td>
                                             <td class="text-nowrap">
                                                 <div class="d-flex gap-2 flex-nowrap">
                                                     <button
                                                         class="btn btn-sm btn-outline-primary calculation-toggle collapsed"
                                                         type="button"
                                                         data-bs-toggle="collapse"
-                                                        data-bs-target="#customer-calculation-details-{{ customer_calculation.pk }}"
+                                                        data-bs-target="#customer-{{ customer_calculation.program_type }}-calculation-details-{{ customer_calculation.pk }}"
                                                         aria-expanded="false"
-                                                        aria-controls="customer-calculation-details-{{ customer_calculation.pk }}"
+                                                        aria-controls="customer-{{ customer_calculation.program_type }}-calculation-details-{{ customer_calculation.pk }}"
                                                         aria-label="Показать детали расчета"
                                                     ></button>
-                                                    {% url 'mortgage:calculation_detail' calculation.pk as detail_url %}
+                                                    {% if customer_calculation.program_type == 'trench' %}
+                                                        {% url 'mortgage:trench_calculation_detail' calculation.pk as detail_url %}
+                                                    {% else %}
+                                                        {% url 'mortgage:calculation_detail' calculation.pk as detail_url %}
+                                                    {% endif %}
                                                     {% include "includes/action_icon.html" with href=detail_url icon="details" label="Подробнее" %}
-                                                    <form method="post" action="{% url 'customer:calculation_delete' customer_calculation.pk %}" onsubmit="return confirm('Удалить связь клиента с расчетом? Сам расчет сохранится.');">
+                                                    {% if customer_calculation.program_type == 'trench' %}
+                                                        <form method="post" action="{% url 'customer:trench_calculation_delete' customer_calculation.pk %}" onsubmit="return confirm('Удалить связь клиента с расчетом? Сам расчет сохранится.');">
+                                                    {% else %}
+                                                        <form method="post" action="{% url 'customer:calculation_delete' customer_calculation.pk %}" onsubmit="return confirm('Удалить связь клиента с расчетом? Сам расчет сохранится.');">
+                                                    {% endif %}
                                                         {% csrf_token %}
                                                         {% include "includes/action_icon.html" with action_icon_is_button=True icon="delete" label="Удалить" variant_class="btn-outline-danger" %}
                                                     </form>
@@ -221,10 +231,14 @@
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td colspan="{{ calculation_table_headers|length|add:1 }}" class="p-0 border-0">
-                                                <div class="collapse" id="customer-calculation-details-{{ customer_calculation.pk }}">
+                                            <td colspan="{{ calculation_table_headers|length|add:2 }}" class="p-0 border-0">
+                                                <div class="collapse" id="customer-{{ customer_calculation.program_type }}-calculation-details-{{ customer_calculation.pk }}">
                                                     <div class="p-3 bg-body-tertiary">
-                                                        {% include "mortgage/includes/calculation_detail_table.html" %}
+                                                        {% if customer_calculation.program_type == 'trench' %}
+                                                            {% include "mortgage/includes/trench_calculation_detail_table.html" %}
+                                                        {% else %}
+                                                            {% include "mortgage/includes/calculation_detail_table.html" %}
+                                                        {% endif %}
                                                     </div>
                                                 </div>
                                             </td>
