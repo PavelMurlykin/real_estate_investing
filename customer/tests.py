@@ -1,6 +1,9 @@
-﻿from datetime import date
+import re
+from datetime import date
 from decimal import Decimal
+from io import BytesIO
 from pathlib import Path
+from zipfile import ZipFile
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -397,14 +400,16 @@ class CustomerDeleteViewTests(TestCase):
         self,
         city_name='Город 1',
         complex_name='ЖК Тест',
+        property_obj=None,
     ) -> MortgageCalculation:
         """Создает сохраненный ипотечный расчет."""
+        property_obj = property_obj or self._create_property(
+            city_name=city_name,
+            complex_name=complex_name,
+        )
         return MortgageCalculation.objects.create(
             user=self.user,
-            property=self._create_property(
-                city_name=city_name,
-                complex_name=complex_name,
-            ),
+            property=property_obj,
             base_property_cost=Decimal('5000000.00'),
             initial_payment_percent=Decimal('20.00'),
             initial_payment_date=date(2026, 1, 1),
@@ -423,14 +428,16 @@ class CustomerDeleteViewTests(TestCase):
         self,
         city_name='Город 1',
         complex_name='ЖК Транш',
+        property_obj=None,
     ) -> TrenchMortgageCalculation:
         """Создает сохраненный траншевый ипотечный расчет."""
+        property_obj = property_obj or self._create_property(
+            city_name=city_name,
+            complex_name=complex_name,
+        )
         calculation = TrenchMortgageCalculation.objects.create(
             user=self.user,
-            property=self._create_property(
-                city_name=city_name,
-                complex_name=complex_name,
-            ),
+            property=property_obj,
             base_property_cost=Decimal('5000000.00'),
             discount_markup_type='discount',
             discount_markup_value=Decimal('0.00'),
@@ -466,6 +473,16 @@ class CustomerDeleteViewTests(TestCase):
             remaining_debt=Decimal('0.00'),
         )
         return calculation
+
+    def _extract_docx_document_xml(self, content):
+        """Возвращает XML тела Word-документа."""
+        with ZipFile(BytesIO(content)) as archive:
+            return archive.read('word/document.xml').decode('utf-8')
+
+    def _extract_docx_text(self, content):
+        """Возвращает текстовую часть Word-документа."""
+        document_xml = self._extract_docx_document_xml(content)
+        return re.sub(r'<[^>]+>', '', document_xml)
 
     def test_list_page_shows_delete_button(self):
         """Проверяет вывод кнопки удаления в списке клиентов."""
@@ -634,6 +651,23 @@ class CustomerDeleteViewTests(TestCase):
                 kwargs={'pk': customer_calculation.pk},
             ),
         )
+        self.assertContains(
+            response,
+            reverse(
+                'customer:calculations_export_word',
+                kwargs={'pk': customer.pk},
+            ),
+        )
+        self.assertContains(response, 'Сохранить в Word')
+        self.assertContains(response, 'name="calculations"')
+        self.assertContains(
+            response,
+            f'value="market:{customer_calculation.pk}"',
+        )
+        self.assertContains(
+            response,
+            'form="customer-calculations-word-export-form"',
+        )
 
     def test_detail_saved_calculations_include_trench_calculations(self):
         """Проверяет вывод рыночных и траншевых расчетов в одной таблице."""
@@ -701,6 +735,189 @@ class CustomerDeleteViewTests(TestCase):
         self.assertEqual(
             {calculation.program_type for calculation in calculations},
             {'market', 'trench'},
+        )
+
+    def test_saved_calculations_word_export_single_uses_existing_report(self):
+        """Проверяет Word-выгрузку одного расчета из карточки клиента."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        calculation = self._create_calculation()
+        customer_calculation = CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=calculation,
+        )
+
+        response = self.client.post(
+            reverse(
+                'customer:calculations_export_word',
+                kwargs={'pk': customer.pk},
+            ),
+            {'calculations': [f'market:{customer_calculation.pk}']},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['Content-Type'],
+            (
+                'application/vnd.openxmlformats-officedocument.'
+                'wordprocessingml.document'
+            ),
+        )
+        self.assertIn(
+            'attachment; filename="mortgage_calculation.docx"',
+            response['Content-Disposition'],
+        )
+        document_text = self._extract_docx_text(response.content)
+        self.assertIn('Ипотека', document_text)
+        self.assertIn(
+            'Ежемесячный платеж на 240 месяцев (до 01.12.2045)',
+            document_text,
+        )
+
+    def test_saved_calculations_word_export_groups_selected_rows(self):
+        """Проверяет группировку нескольких расчетов в Word-отчете."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        first_property = self._create_property(complex_name='ЖК Первый')
+        second_property = Property.objects.create(
+            apartment_number='102',
+            building=first_property.building,
+            decoration=first_property.decoration,
+            layout=first_property.layout,
+            area=Decimal('48.00'),
+            floor=11,
+            property_cost=Decimal('5200000.00'),
+        )
+        first_calculation = self._create_calculation(
+            property_obj=first_property
+        )
+        second_calculation = self._create_calculation(
+            property_obj=first_property
+        )
+        second_calculation.mortgage_term = 120
+        second_calculation.main_payments_count = 120
+        second_calculation.mortgage_end_date = date(2036, 1, 1)
+        second_calculation.main_monthly_payment = Decimal('60000.00')
+        second_calculation.save()
+        trench_calculation = self._create_trench_calculation(
+            property_obj=second_property
+        )
+        other_complex_calculation = self._create_calculation(
+            complex_name='ЖК Второй'
+        )
+        first_customer_calculation = CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=first_calculation,
+        )
+        second_customer_calculation = CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=second_calculation,
+        )
+        trench_customer_calculation = (
+            CustomerTrenchCalculation.objects.create(
+                customer=customer,
+                calculation=trench_calculation,
+            )
+        )
+        other_customer_calculation = CustomerCalculation.objects.create(
+            customer=customer,
+            calculation=other_complex_calculation,
+        )
+
+        response = self.client.post(
+            reverse(
+                'customer:calculations_export_word',
+                kwargs={'pk': customer.pk},
+            ),
+            {
+                'calculations': [
+                    f'market:{first_customer_calculation.pk}',
+                    f'market:{second_customer_calculation.pk}',
+                    f'trench:{trench_customer_calculation.pk}',
+                    f'market:{other_customer_calculation.pk}',
+                ]
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            'customer_mortgage_calculations.docx',
+            response['Content-Disposition'],
+        )
+        document_xml = self._extract_docx_document_xml(response.content)
+        document_text = self._extract_docx_text(response.content)
+        self.assertEqual(document_text.count('ЖК Первый'), 1)
+        self.assertEqual(document_text.count('ЖК Второй'), 1)
+        self.assertEqual(document_text.count('Рыночная ипотека'), 2)
+        self.assertIn(
+            'Ежемесячный платеж на 240 месяцев (до 01.12.2045)',
+            document_text,
+        )
+        self.assertIn(
+            'Ежемесячный платеж на 120 месяцев (до 01.12.2035)',
+            document_text,
+        )
+        self.assertIn(
+            'Ежемесячный платеж на 12 месяцев (до 01.12.2026)',
+            document_text,
+        )
+        self.assertGreaterEqual(document_xml.count('w:type="page"'), 2)
+        self.assertNotIn('</w:tbl><w:tbl>', document_xml)
+
+    def test_saved_calculations_word_export_ignores_unavailable_links(self):
+        """Проверяет, что чужие связи расчетов не попадают в отчет."""
+        customer = Customer.objects.create(
+            user=self.user,
+            first_name='Иван',
+            last_name='Петров',
+        )
+        other_user = self._create_user(
+            'other-export-user@example.com',
+            '+79990000006',
+        )
+        other_customer = Customer.objects.create(
+            user=other_user,
+            first_name='Петр',
+            last_name='Сидоров',
+        )
+        other_calculation = MortgageCalculation.objects.create(
+            user=other_user,
+            property=self._create_property(complex_name='ЖК Чужой'),
+            base_property_cost=Decimal('5000000.00'),
+            initial_payment_percent=Decimal('20.00'),
+            initial_payment_date=date(2026, 1, 1),
+            mortgage_term=240,
+            annual_rate=Decimal('12.00'),
+            has_grace_period=False,
+            final_property_cost=Decimal('5000000.00'),
+            main_payments_count=240,
+            mortgage_end_date=date(2046, 1, 1),
+            main_monthly_payment=Decimal('55054.31'),
+            total_loan_amount=Decimal('4000000.00'),
+            total_overpayment=Decimal('9213034.40'),
+        )
+        other_customer_calculation = CustomerCalculation.objects.create(
+            customer=other_customer,
+            calculation=other_calculation,
+        )
+
+        response = self.client.post(
+            reverse(
+                'customer:calculations_export_word',
+                kwargs={'pk': customer.pk},
+            ),
+            {'calculations': [f'market:{other_customer_calculation.pk}']},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('customer:detail', kwargs={'pk': customer.pk}),
         )
 
     def test_delete_customer_calculation_removes_link_and_keeps_calculation(

@@ -1,8 +1,11 @@
 from decimal import Decimal, InvalidOperation
 
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Prefetch, Q
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
+from django.views import View
 from django.views.generic import (
     CreateView,
     DeleteView,
@@ -12,11 +15,20 @@ from django.views.generic import (
 )
 
 from bank.models import MortgageProgram
+from mortgage.mortgage_calculator import MortgageCalculator
 from mortgage.utils import (
     build_calculation_table_headers,
     format_currency,
     get_calculation_filters,
     get_calculation_sort,
+)
+from mortgage.views import _build_saved_trench_calculation_data
+from mortgage.word import (
+    build_market_word_calculation,
+    build_trench_word_calculation,
+    export_customer_mortgage_calculations_word,
+    export_saved_mortgage_calculation_word,
+    export_trench_mortgage_word,
 )
 from users.roles import can_view_all_private_records
 
@@ -34,6 +46,27 @@ CUSTOMER_CALCULATION_SORT_FIELDS = {
     'term': 'mortgage_term',
     'rate': 'annual_rate',
 }
+CUSTOMER_WORD_CALCULATION_SELECT_RELATED = (
+    'calculation',
+    'calculation__property',
+    'calculation__property__layout',
+    'calculation__property__decoration',
+    'calculation__property__building',
+    'calculation__property__building__real_estate_complex',
+    'calculation__property__building__real_estate_complex__developer',
+    'calculation__property__building__real_estate_complex__district',
+    'calculation__property__building__real_estate_complex__district__city',
+    'calculation__property__building__real_estate_complex__real_estate_class',
+)
+CUSTOMER_WORD_CALCULATION_PREFETCH_RELATED = (
+    'calculation__property__window_views',
+    (
+        'calculation__property__building__real_estate_complex'
+        '__metro_availability__metro'
+    ),
+)
+CUSTOMER_CALCULATION_EXPORT_PROGRAM_MARKET = 'market'
+CUSTOMER_CALCULATION_EXPORT_PROGRAM_TRENCH = 'trench'
 
 
 def _parse_customer_calculation_decimal(value):
@@ -229,6 +262,149 @@ def _build_customer_calculation_city_choices(rows):
             cities.items(), key=lambda item: item[1].casefold()
         )
     ]
+
+
+def _parse_customer_calculation_export_selection(post_data):
+    """Return validated calculation selection tokens from POST data."""
+    selections = []
+    allowed_programs = {
+        CUSTOMER_CALCULATION_EXPORT_PROGRAM_MARKET,
+        CUSTOMER_CALCULATION_EXPORT_PROGRAM_TRENCH,
+    }
+    for raw_value in post_data.getlist('calculations'):
+        program_type, separator, raw_link_id = raw_value.partition(':')
+        if (
+            separator != ':'
+            or program_type not in allowed_programs
+            or not raw_link_id.isdecimal()
+        ):
+            continue
+        selections.append((program_type, int(raw_link_id)))
+    return selections
+
+
+def _filter_customer_word_export_queryset(queryset, user):
+    """Scope customer calculation export links to the current user."""
+    if can_view_all_private_records(user):
+        return queryset
+    return queryset.filter(
+        customer__user=user,
+        calculation__user=user,
+    )
+
+
+def _get_customer_word_market_links(customer, user, link_ids):
+    """Return market calculation links available for Word export."""
+    queryset = CustomerCalculation.objects.filter(
+        customer=customer,
+        pk__in=link_ids,
+    )
+    queryset = _filter_customer_word_export_queryset(queryset, user)
+    return queryset.select_related(
+        *CUSTOMER_WORD_CALCULATION_SELECT_RELATED
+    ).prefetch_related(*CUSTOMER_WORD_CALCULATION_PREFETCH_RELATED)
+
+
+def _get_customer_word_trench_links(customer, user, link_ids):
+    """Return trench calculation links available for Word export."""
+    queryset = CustomerTrenchCalculation.objects.filter(
+        customer=customer,
+        pk__in=link_ids,
+    )
+    queryset = _filter_customer_word_export_queryset(queryset, user)
+    return queryset.select_related(
+        *CUSTOMER_WORD_CALCULATION_SELECT_RELATED
+    ).prefetch_related(
+        *CUSTOMER_WORD_CALCULATION_PREFETCH_RELATED,
+        'calculation__trenches',
+    )
+
+
+def _get_selected_customer_calculation_links(customer, user, selections):
+    """Return selected customer calculation links preserving POST order."""
+    market_link_ids = [
+        link_id
+        for program_type, link_id in selections
+        if program_type == CUSTOMER_CALCULATION_EXPORT_PROGRAM_MARKET
+    ]
+    trench_link_ids = [
+        link_id
+        for program_type, link_id in selections
+        if program_type == CUSTOMER_CALCULATION_EXPORT_PROGRAM_TRENCH
+    ]
+    market_links = {
+        link.pk: link
+        for link in _get_customer_word_market_links(
+            customer,
+            user,
+            market_link_ids,
+        )
+    }
+    trench_links = {
+        link.pk: link
+        for link in _get_customer_word_trench_links(
+            customer,
+            user,
+            trench_link_ids,
+        )
+    }
+
+    selected_links = []
+    for program_type, link_id in selections:
+        if program_type == CUSTOMER_CALCULATION_EXPORT_PROGRAM_MARKET:
+            link = market_links.get(link_id)
+        else:
+            link = trench_links.get(link_id)
+        if link is None:
+            continue
+        link.program_type = program_type
+        selected_links.append(link)
+    return selected_links
+
+
+def _build_market_customer_payment_schedule(calculation):
+    """Return a saved market calculation payment schedule."""
+    calculator = MortgageCalculator(
+        property_cost=float(calculation.final_property_cost),
+        initial_payment_percent=float(calculation.initial_payment_percent),
+        initial_payment_date=calculation.initial_payment_date,
+        mortgage_term=int(calculation.mortgage_term),
+        annual_rate=float(calculation.annual_rate),
+        has_grace_period=calculation.has_grace_period,
+        grace_period_term=int(calculation.grace_period_term or 0),
+        grace_period_rate=float(calculation.grace_period_rate or 0),
+    )
+    return calculator.get_payment_schedule()
+
+
+def _build_customer_word_calculation(link):
+    """Build prepared Word calculation data for a selected link."""
+    if link.program_type == CUSTOMER_CALCULATION_EXPORT_PROGRAM_MARKET:
+        payment_schedule = _build_market_customer_payment_schedule(
+            link.calculation
+        )
+        return build_market_word_calculation(
+            link.calculation,
+            payment_schedule,
+        )
+
+    calculation_data = _build_saved_trench_calculation_data(link.calculation)
+    return build_trench_word_calculation(calculation_data)
+
+
+def _export_single_customer_word_calculation(link):
+    """Return the existing single-calculation Word export response."""
+    if link.program_type == CUSTOMER_CALCULATION_EXPORT_PROGRAM_MARKET:
+        payment_schedule = _build_market_customer_payment_schedule(
+            link.calculation
+        )
+        return export_saved_mortgage_calculation_word(
+            link.calculation,
+            payment_schedule,
+        )
+
+    calculation_data = _build_saved_trench_calculation_data(link.calculation)
+    return export_trench_mortgage_word(calculation_data)
 
 
 class CustomerOwnedQuerysetMixin(LoginRequiredMixin):
@@ -510,6 +686,43 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
             )
         )
         return context
+
+
+class CustomerCalculationsWordExportView(
+    CustomerOwnedQuerysetMixin,
+    View,
+):
+    """Exports selected customer saved calculations to a Word report."""
+
+    def post(self, request, *args, **kwargs):
+        """Build a Word report for selected saved calculations."""
+        customer = get_object_or_404(
+            self.get_queryset(),
+            pk=kwargs['pk'],
+        )
+        selections = _parse_customer_calculation_export_selection(
+            request.POST
+        )
+        selected_links = _get_selected_customer_calculation_links(
+            customer,
+            request.user,
+            selections,
+        )
+
+        if not selected_links:
+            messages.info(
+                request,
+                'Расчеты для выгрузки в Word не выбраны.',
+            )
+            return redirect('customer:detail', pk=customer.pk)
+
+        if len(selected_links) == 1:
+            return _export_single_customer_word_calculation(selected_links[0])
+
+        return export_customer_mortgage_calculations_word(
+            _build_customer_word_calculation(link)
+            for link in selected_links
+        )
 
 
 class CustomerUpdateView(CustomerOwnedQuerysetMixin, UpdateView):

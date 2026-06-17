@@ -1,3 +1,6 @@
+from collections import OrderedDict
+from copy import deepcopy
+from dataclasses import dataclass
 from datetime import date, datetime
 from io import BytesIO
 from pathlib import Path
@@ -5,7 +8,7 @@ from pathlib import Path
 from django.http import HttpResponse
 from docx import Document
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.opc.constants import RELATIONSHIP_TYPE as RELATIONSHIP_TYPE
@@ -39,6 +42,16 @@ COMPLEX_ROW_LABELS = {
 }
 
 
+@dataclass
+class MortgageWordCalculation:
+    """Prepared calculation data for Word mortgage reports."""
+
+    property_obj: object
+    template_rows: dict
+    calculation_heading: str
+    program_label: str
+
+
 def export_mortgage_word(report_data):
     """Формирует HTTP-ответ с Word-файлом ипотечного расчета."""
     document = _build_market_mortgage_document(report_data)
@@ -60,6 +73,40 @@ def export_trench_mortgage_word(calculation):
     return _build_word_response(
         document,
         'trench_mortgage_calculation.docx',
+    )
+
+
+def export_customer_mortgage_calculations_word(calculations):
+    """Build a grouped Word report for selected customer calculations."""
+    prepared_calculations = list(calculations)
+    document = _build_customer_mortgage_document(prepared_calculations)
+    return _build_word_response(
+        document,
+        'customer_mortgage_calculations.docx',
+    )
+
+
+def build_market_word_calculation(calculation, payment_schedule):
+    """Build prepared Word data for a saved market mortgage calculation."""
+    report_data = build_saved_mortgage_excel_data(
+        calculation,
+        payment_schedule,
+    )
+    return MortgageWordCalculation(
+        property_obj=report_data.property_obj,
+        template_rows=_build_market_template_rows(report_data),
+        calculation_heading='Ипотека',
+        program_label='Рыночная ипотека',
+    )
+
+
+def build_trench_word_calculation(calculation):
+    """Build prepared Word data for a saved trench mortgage calculation."""
+    return MortgageWordCalculation(
+        property_obj=calculation.get('property_obj'),
+        template_rows=_build_trench_template_rows(calculation),
+        calculation_heading='Ипотека траншевая',
+        program_label='Траншевая ипотека',
     )
 
 
@@ -94,6 +141,214 @@ def _build_trench_mortgage_document(calculation):
         'Ипотека траншевая',
     )
     return document
+
+
+def _build_customer_mortgage_document(calculations):
+    """Create a grouped Word document for customer selected calculations."""
+    document = _create_template_document()
+    if not calculations:
+        _clear_document_body(document)
+        return document
+
+    if len(document.tables) < 3:
+        _populate_customer_fallback_document(document, calculations)
+        return document
+
+    template_tables = [
+        deepcopy(table._tbl)
+        for table in document.tables[:3]
+    ]
+    grouped_calculations = _group_word_calculations(calculations)
+    _clear_document_body(document)
+
+    is_first_complex = True
+    for complex_group in grouped_calculations:
+        if not is_first_complex:
+            _append_page_break(document)
+        is_first_complex = False
+
+        first_property_group = complex_group['property_groups'][0]
+        complex_table = _append_template_table(
+            document,
+            template_tables[0],
+        )
+        _populate_complex_table(
+            complex_table,
+            first_property_group['property_obj'],
+            first_property_group['template_rows']['complex_rows'],
+        )
+
+        for property_index, property_group in enumerate(
+            complex_group['property_groups']
+        ):
+            if property_index > 0:
+                _append_page_break(document)
+            _append_customer_property_tables(
+                document,
+                template_tables,
+                property_group,
+            )
+
+    return document
+
+
+def _append_customer_property_tables(document, template_tables, property_group):
+    """Append and fill object, calculation and image tables."""
+    object_table = _append_template_table(document, template_tables[1])
+    image_table = _append_template_table(document, template_tables[2])
+    _populate_object_and_calculation_table(
+        object_table,
+        property_group['property_obj'],
+        property_group['template_rows'],
+        property_group['calculation_heading'],
+    )
+    _populate_image_table(image_table, property_group['property_obj'])
+
+
+def _populate_customer_fallback_document(document, calculations):
+    """Populate a simple customer report when the Word template is invalid."""
+    _clear_document_body(document)
+    grouped_calculations = _group_word_calculations(calculations)
+    is_first_section = True
+    for complex_group in grouped_calculations:
+        if not is_first_section:
+            _append_page_break(document)
+        is_first_section = False
+        first_property_group = complex_group['property_groups'][0]
+        _append_key_value_section(
+            document,
+            'Данные ЖК',
+            first_property_group['template_rows']['complex_rows'],
+        )
+        for property_index, property_group in enumerate(
+            complex_group['property_groups']
+        ):
+            if property_index > 0:
+                _append_page_break(document)
+            _append_key_value_section(
+                document,
+                'Объект недвижимости',
+                property_group['template_rows']['object_rows'],
+            )
+            _append_key_value_section(
+                document,
+                property_group['calculation_heading'],
+                property_group['template_rows']['calculation_rows'],
+            )
+
+
+def _group_word_calculations(calculations):
+    """Group calculations by complex and property preserving selection order."""
+    complex_groups = OrderedDict()
+    for calculation in calculations:
+        complex_key = _get_word_complex_key(calculation.property_obj)
+        property_key = _get_word_property_key(calculation.property_obj)
+
+        if complex_key not in complex_groups:
+            complex_groups[complex_key] = OrderedDict()
+        property_groups = complex_groups[complex_key]
+        if property_key not in property_groups:
+            property_groups[property_key] = {
+                'property_obj': calculation.property_obj,
+                'calculations': [],
+            }
+        property_groups[property_key]['calculations'].append(calculation)
+
+    return [
+        {
+            'property_groups': [
+                _build_word_property_group(property_group)
+                for property_group in property_groups.values()
+            ]
+        }
+        for property_groups in complex_groups.values()
+    ]
+
+
+def _build_word_property_group(property_group):
+    """Build merged template rows for one property calculation group."""
+    calculations = property_group['calculations']
+    first_calculation = calculations[0]
+    template_rows = {
+        'complex_rows': first_calculation.template_rows['complex_rows'],
+        'object_rows': first_calculation.template_rows['object_rows'],
+        'calculation_rows': _combine_word_calculation_rows(calculations),
+    }
+    return {
+        'property_obj': property_group['property_obj'],
+        'template_rows': template_rows,
+        'calculation_heading': _get_property_group_calculation_heading(
+            calculations
+        ),
+    }
+
+
+def _combine_word_calculation_rows(calculations):
+    """Return calculation rows, adding program labels when needed."""
+    if len(calculations) == 1:
+        return calculations[0].template_rows['calculation_rows']
+
+    rows = []
+    for calculation in calculations:
+        rows.append(['Ипотека', calculation.program_label])
+        rows.extend(calculation.template_rows['calculation_rows'])
+    return rows
+
+
+def _get_property_group_calculation_heading(calculations):
+    """Return the heading for a property mortgage section."""
+    headings = {calculation.calculation_heading for calculation in calculations}
+    if len(headings) == 1:
+        return calculations[0].calculation_heading
+    return 'Ипотека'
+
+
+def _get_word_complex_key(property_obj):
+    """Return a stable grouping key for a property complex."""
+    if property_obj is None:
+        return ('property', None)
+    return ('complex', property_obj.building.real_estate_complex_id)
+
+
+def _get_word_property_key(property_obj):
+    """Return a stable grouping key for a property object."""
+    if property_obj is None:
+        return ('property', None)
+    return ('property', property_obj.pk)
+
+
+def _append_template_table(document, table_element):
+    """Append a cloned template table to the document body."""
+    cloned_table = deepcopy(table_element)
+    _append_body_element(document, cloned_table)
+    _append_table_separator_paragraph(document)
+    return document.tables[-1]
+
+
+def _append_table_separator_paragraph(document):
+    """Append an empty paragraph so Word keeps adjacent tables separate."""
+    _append_body_element(document, OxmlElement('w:p'))
+
+
+def _append_body_element(document, element):
+    """Append a body XML element before section properties."""
+    body = document._element.body
+    section_properties = None
+    for child in body:
+        if child.tag == qn('w:sectPr'):
+            section_properties = child
+            break
+    if section_properties is None:
+        body.append(element)
+    else:
+        section_properties.addprevious(element)
+
+
+def _append_page_break(document):
+    """Append a page break to the document."""
+    paragraph = document.add_paragraph()
+    run = paragraph.add_run()
+    run.add_break(WD_BREAK.PAGE)
 
 
 def _create_template_document():

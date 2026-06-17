@@ -6,6 +6,7 @@
     class="btn {{ size_class|default:'btn-sm' }} {{ variant_class|default:'btn-outline-primary' }} action-icon-button"
     {% if button_name %}name="{{ button_name }}"{% endif %}
     {% if button_value %}value="{{ button_value }}"{% endif %}
+    {% if button_form %}form="{{ button_form }}"{% endif %}
     title="{{ label }}"
     aria-label="{{ label }}"
     data-bs-toggle="tooltip"
