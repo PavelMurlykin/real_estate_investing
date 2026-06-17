@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db import transaction
+from django.db.models import DecimalField, OuterRef, Subquery
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
@@ -35,7 +36,7 @@ from trench_mortgage.views import (
     _resolve_trench_count,
     _save_trench_calculation,
 )
-from trench_mortgage.models import TrenchMortgageCalculation
+from trench_mortgage.models import Trench, TrenchMortgageCalculation
 from users.roles import can_manage_catalogs, can_view_all_private_records
 
 from bank.models import Bank, BankProgram, KeyRate
@@ -1291,6 +1292,21 @@ def _get_trench_calculation_queryset(user=None):
     return _filter_private_queryset_for_user(queryset, user)
 
 
+def _annotate_trench_calculation_table_values(queryset):
+    """Annotate trench calculations for the saved calculations table."""
+    last_trench_monthly_payment = (
+        Trench.objects.filter(calculation=OuterRef('pk'))
+        .order_by('-trench_number', '-pk')
+        .values('monthly_payment')[:1]
+    )
+    return annotate_calculation_table_values(queryset).annotate(
+        main_monthly_payment=Subquery(
+            last_trench_monthly_payment,
+            output_field=DecimalField(max_digits=15, decimal_places=2),
+        )
+    )
+
+
 def _build_saved_trench_calculation_data(calculation):
     """Build an export/report payload from a saved trench calculation."""
     trenches = []
@@ -1351,9 +1367,17 @@ def _build_saved_trench_calculation_data(calculation):
 @login_required
 def trench_calculation_list(request):
     """Show saved trench mortgage calculations."""
-    calculations = annotate_calculation_table_values(
-        _get_trench_calculation_queryset(request.user)
-    ).order_by('-timestamp')
+    calculation_filters = get_calculation_filters(request)
+    calculation_sort, calculation_order = get_calculation_sort(request)
+    calculations = _get_trench_calculation_queryset(request.user)
+    calculation_cities = get_calculation_city_choices(calculations)
+    calculations = apply_calculation_filters(
+        _annotate_trench_calculation_table_values(calculations),
+        calculation_filters,
+    )
+    calculations = apply_calculation_sort(
+        calculations, calculation_sort, calculation_order
+    )
     page_obj = Paginator(
         calculations, CALCULATION_LIST_PAGE_SIZE
     ).get_page(request.GET.get('page'))
@@ -1366,6 +1390,15 @@ def trench_calculation_list(request):
             'page_obj': page_obj,
             'is_paginated': page_obj.paginator.num_pages > 1,
             'pagination_querystring': _build_pagination_querystring(request),
+            'calculation_filters': calculation_filters,
+            'calculation_cities': calculation_cities,
+            'calculation_sort': calculation_sort,
+            'calculation_order': calculation_order,
+            'calculation_filter_reset_url': request.path,
+            'calculation_table_headers': build_calculation_table_headers(
+                request,
+                excluded_fields=('timestamp',),
+            ),
         },
     )
 

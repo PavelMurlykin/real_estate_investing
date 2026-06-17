@@ -71,6 +71,23 @@ def discount_markup_label(calculation):
     return 'Скидка'
 
 
+def _build_calculation_detail_table_response(
+    calculation,
+    rows,
+    extra_width_labels=(),
+):
+    """Return shared detail table context for saved calculations."""
+    width_labels = [row['label'] for row in rows]
+    width_labels.extend(extra_width_labels)
+
+    return {
+        'rows': rows,
+        'label_width': max(len(label) for label in width_labels) + 4,
+        'value_width': max(len(row['value']) for row in rows) + 4,
+        'layout_image': calculation.property.layout_image,
+    }
+
+
 @register.simple_tag
 def calculation_detail_table(calculation):
     """Return rows, dynamic column widths, and layout image for details."""
@@ -168,12 +185,92 @@ def calculation_detail_table(calculation):
             ]
         )
 
-    return {
-        'rows': rows,
-        'label_width': max(
-            max(len(row['label']) for row in rows),
-            max(len(label) for label in grace_period_labels),
-        ) + 4,
-        'value_width': max(len(row['value']) for row in rows) + 4,
-        'layout_image': calculation.property.layout_image,
-    }
+    return _build_calculation_detail_table_response(
+        calculation,
+        rows,
+        grace_period_labels,
+    )
+
+
+@register.simple_tag
+def trench_calculation_detail_table(calculation):
+    """Return detail rows for a saved trench mortgage calculation."""
+    rubles = 'руб.'
+    months = 'мес.'
+    property_obj = calculation.property
+    rows = [
+        {
+            'label': 'Планировка',
+            'value': property_obj.layout.name,
+        },
+        {
+            'label': 'Площадь',
+            'value': compact_decimal(property_obj.area),
+        },
+        {
+            'label': 'Стоимость объекта',
+            'value': f'{compact_currency(calculation.base_property_cost)} {rubles}',
+        },
+        {
+            'label': (
+                'Удорожание'
+                if calculation.discount_markup_type == 'markup'
+                else 'Скидка'
+            ),
+            'value': (
+                f'{compact_currency(discount_markup_amount(calculation))} '
+                f'{rubles} ({compact_decimal(calculation.discount_markup_value)} %)'
+            ),
+        },
+        {
+            'label': 'Итоговая стоимость объекта',
+            'value': f'{compact_currency(calculation.final_property_cost)} {rubles}',
+        },
+        {
+            'label': 'Первоначальный взнос',
+            'value': (
+                f'{compact_currency(calculation.initial_payment_amount)} '
+                f'{rubles} ({compact_decimal(calculation.initial_payment_percent)} %)'
+            ),
+        },
+        {
+            'label': 'Срок ипотеки',
+            'value': (
+                f'{format_years_label(int(calculation.mortgage_term) // 12)} '
+                f'({calculation.mortgage_term} {months})'
+            ),
+        },
+        {
+            'label': 'Годовая ставка',
+            'value': f'{compact_decimal(calculation.annual_rate)} %',
+        },
+        {
+            'label': 'Количество траншей',
+            'value': str(calculation.trench_count),
+        },
+    ]
+
+    for trench in calculation.trenches.all():
+        rows.extend(
+            [
+                {
+                    'label': (
+                        'Число платежей по траншу '
+                        f'{trench.trench_number}'
+                    ),
+                    'value': str(trench.payments_count),
+                },
+                {
+                    'label': (
+                        'Сумма платежа по траншу '
+                        f'{trench.trench_number}'
+                    ),
+                    'value': (
+                        f'{compact_currency(trench.monthly_payment)} '
+                        f'{rubles}'
+                    ),
+                },
+            ]
+        )
+
+    return _build_calculation_detail_table_response(calculation, rows)

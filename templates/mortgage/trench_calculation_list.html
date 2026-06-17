@@ -1,5 +1,10 @@
 {% extends 'base.html' %}
+{% load static %}
 {% load mortgage_filters %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/calculation_table.css' %}?v=20260523-fit-area">
+{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
@@ -12,84 +17,108 @@
         </a>
     </div>
 
+    <div class="card mb-4">
+        <div class="card-body">
+            {% include "mortgage/includes/calculation_filter_form.html" with calculation_filter_results_target="#catalog-results" calculation_filter_id_prefix="trench_calculation" %}
+        </div>
+    </div>
+
     <div class="card">
         <div class="card-body">
-            {% if calculations %}
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead>
-                            <tr>
-                                <th>Город</th>
-                                <th>Дата расчета</th>
-                                <th>Объект</th>
-                                <th>Стоимость объекта</th>
-                                <th>Первоначальный взнос</th>
-                                <th>Транши</th>
-                                <th>Срок</th>
-                                <th>Ставка</th>
-                                <th>Переплата</th>
-                                <th class="text-nowrap">Действия</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for calculation in calculations %}
-                            <tr>
-                                <td>{{ calculation.property.building.real_estate_complex.district.city.name }}</td>
-                                <td>{{ calculation.timestamp|date:"d.m.Y H:i" }}</td>
-                                <td>{{ calculation.property.building.real_estate_complex.name }}, кв. {{ calculation.property.apartment_number }}</td>
-                                <td>{{ calculation.final_property_cost|currency }} руб.</td>
-                                <td>{{ calculation.table_initial_payment_amount|currency }} руб.</td>
-                                <td>{{ calculation.trench_count }}</td>
-                                <td>{{ calculation.mortgage_term|term_from_months }}</td>
-                                <td>{{ calculation.annual_rate|compact_decimal }}%</td>
-                                <td>{{ calculation.total_overpayment|currency }} руб.</td>
-                                <td class="text-nowrap">
-                                    <div class="d-flex gap-2 flex-nowrap">
-                                        {% url 'mortgage:trench_calculation_detail' calculation.pk as detail_url %}
-                                        {% include "includes/action_icon.html" with href=detail_url icon="details" label="Подробнее" %}
-                                        <form method="post" action="{% url 'mortgage:trench_calculation_delete' calculation.pk %}" onsubmit="return confirm('Удалить траншевый расчет?');">
-                                            {% csrf_token %}
-                                            {% include "includes/action_icon.html" with action_icon_is_button=True icon="delete" label="Удалить" variant_class="btn-outline-danger" %}
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% if is_paginated %}
-                <nav aria-label="Пагинация расчетов">
-                    <ul class="pagination justify-content-center mb-0">
-                        {% if page_obj.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page=1{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Первая</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Предыдущая</a>
-                        </li>
-                        {% endif %}
-                        <li class="page-item disabled">
-                            <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
-                        </li>
-                        {% if page_obj.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Следующая</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Последняя</a>
-                        </li>
-                        {% endif %}
-                    </ul>
-                </nav>
+            <div id="catalog-results" data-catalog-results>
+                {% if calculations %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    {% for header in calculation_table_headers %}
+                                        <th>
+                                            {% include "includes/catalog_sort_link.html" with sort_url=header.url sort_label=header.label sort_indicator=header.indicator sort_link_classes="text-body text-decoration-none fw-semibold" %}
+                                        </th>
+                                    {% endfor %}
+                                    <th class="text-nowrap">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for calculation in calculations %}
+                                <tr>
+                                    <td>{{ calculation.property.building.real_estate_complex.district.city.name }}</td>
+                                    <td>{{ calculation.property.building.real_estate_complex.name }}, кв. {{ calculation.property.apartment_number }}</td>
+                                    <td>{{ calculation.final_property_cost|currency }} руб.</td>
+                                    <td>{{ calculation.table_initial_payment_amount|currency }} руб.</td>
+                                    <td>{{ calculation.main_monthly_payment|currency }} руб.</td>
+                                    <td>{{ calculation.mortgage_term|years_label_from_months }}</td>
+                                    <td>{{ calculation.annual_rate }}%</td>
+                                    <td class="text-nowrap">
+                                        <div class="d-flex gap-2 flex-nowrap">
+                                            <button
+                                                class="btn btn-sm btn-outline-primary calculation-toggle collapsed"
+                                                type="button"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#trench-calculation-details-{{ calculation.pk }}"
+                                                aria-expanded="false"
+                                                aria-controls="trench-calculation-details-{{ calculation.pk }}"
+                                                aria-label="Показать детали расчета"
+                                            ></button>
+                                            {% url 'mortgage:trench_calculation_detail' calculation.pk as detail_url %}
+                                            {% include "includes/action_icon.html" with href=detail_url icon="details" label="Подробнее" %}
+                                            <form method="post" action="{% url 'mortgage:trench_calculation_delete' calculation.pk %}" onsubmit="return confirm('Удалить траншевый расчет?');">
+                                                {% csrf_token %}
+                                                {% include "includes/action_icon.html" with action_icon_is_button=True icon="delete" label="Удалить" variant_class="btn-outline-danger" %}
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="{{ calculation_table_headers|length|add:1 }}" class="p-0 border-0">
+                                        <div class="collapse" id="trench-calculation-details-{{ calculation.pk }}">
+                                            <div class="p-3 bg-body-tertiary">
+                                                {% include "mortgage/includes/trench_calculation_detail_table.html" %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if is_paginated %}
+                    <nav aria-label="Пагинация расчетов">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Первая</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Предыдущая</a>
+                            </li>
+                            {% endif %}
+                            <li class="page-item disabled">
+                                <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+                            </li>
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Следующая</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Последняя</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-muted">Нет сохраненных расчетов траншевой ипотеки</p>
+                        <a href="{% url 'mortgage:mortgage_calculator' %}" class="btn btn-primary">Создать первый расчет</a>
+                    </div>
                 {% endif %}
-            {% else %}
-                <div class="text-center py-4">
-                    <p class="text-muted">Нет сохраненных расчетов траншевой ипотеки</p>
-                    <a href="{% url 'mortgage:mortgage_calculator' %}" class="btn btn-primary">Создать первый расчет</a>
-                </div>
-            {% endif %}
+            </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/catalog.js' %}?v=20260516-sort"></script>
 {% endblock %}

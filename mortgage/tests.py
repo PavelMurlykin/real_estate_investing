@@ -927,10 +927,32 @@ class MortgageCalculatorViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'История расчетов траншевой ипотеки')
-        self.assertContains(response, 'Сохраненные расчеты траншевой ипотеки')
+        self.assertEqual(
+            [
+                header['field']
+                for header in response.context['calculation_table_headers']
+            ],
+            [
+                'city',
+                'object',
+                'cost',
+                'initial_payment',
+                'monthly_payment',
+                'term',
+                'rate',
+            ],
+        )
         self.assertContains(response, 'ЖК Тест, кв. 101')
         self.assertContains(response, '5 000 000,00 руб.')
-        self.assertContains(response, '8 500 000,00 руб.')
+        self.assertContains(response, '1 000 000,00 руб.')
+        self.assertContains(response, '44 043,44 руб.')
+        self.assertNotContains(response, 'Дата расчета')
+        self.assertNotContains(response, 'Транши')
+        self.assertNotContains(response, 'Переплата')
+        self.assertEqual(
+            response.context['calculations'][0].main_monthly_payment,
+            Decimal('44043.44'),
+        )
         self.assertContains(
             response,
             reverse(
@@ -938,6 +960,114 @@ class MortgageCalculatorViewTests(TestCase):
                 kwargs={'pk': calculation.pk},
             ),
         )
+
+    def test_trench_calculation_list_filters_by_city(self):
+        moscow_property = self._create_property(
+            cost=Decimal('5000000.00'),
+            city_name='Москва',
+            complex_name='ЖК Москва',
+        )
+        kazan_property = self._create_property(
+            cost=Decimal('5000000.00'),
+            city_name='Казань',
+            complex_name='ЖК Казань',
+        )
+        moscow_calculation = self._create_trench_calculation(
+            property_obj=moscow_property
+        )
+        self._create_trench_calculation(property_obj=kazan_property)
+        moscow_city = (
+            moscow_calculation.property.building.real_estate_complex
+            .district.city
+        )
+
+        response = self.client.get(
+            reverse('mortgage:trench_calculation_list'),
+            {'city': moscow_city.pk},
+        )
+        calculations = list(response.context['calculations'])
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(calculations, [moscow_calculation])
+
+    def test_trench_calculation_list_filters_by_last_monthly_payment(self):
+        matching_calculation = self._create_trench_calculation()
+        expensive_calculation = self._create_trench_calculation(
+            property_obj=self._create_property(
+                cost=Decimal('6000000.00'),
+                complex_name='ЖК Дорогой транш',
+            )
+        )
+        Trench.objects.filter(
+            calculation=expensive_calculation,
+            trench_number=2,
+        ).update(monthly_payment=Decimal('70000.00'))
+
+        response = self.client.get(
+            reverse('mortgage:trench_calculation_list'),
+            {
+                'monthly_payment_from': '40000',
+                'monthly_payment_to': '50000',
+            },
+        )
+        calculations = list(response.context['calculations'])
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(calculations, [matching_calculation])
+
+    def test_trench_calculation_list_sorts_by_last_monthly_payment(self):
+        expensive_calculation = self._create_trench_calculation()
+        affordable_calculation = self._create_trench_calculation(
+            property_obj=self._create_property(
+                cost=Decimal('4500000.00'),
+                complex_name='ЖК Доступный транш',
+            )
+        )
+        Trench.objects.filter(
+            calculation=expensive_calculation,
+            trench_number=2,
+        ).update(monthly_payment=Decimal('70000.00'))
+        Trench.objects.filter(
+            calculation=affordable_calculation,
+            trench_number=2,
+        ).update(monthly_payment=Decimal('30000.00'))
+
+        response = self.client.get(
+            reverse('mortgage:trench_calculation_list'),
+            {'sort': 'monthly_payment', 'order': 'asc'},
+        )
+        calculations = list(response.context['calculations'])
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            calculations,
+            [affordable_calculation, expensive_calculation],
+        )
+        self.assertEqual(
+            [calculation.main_monthly_payment for calculation in calculations],
+            [Decimal('30000.00'), Decimal('70000.00')],
+        )
+
+    def test_trench_calculation_list_shows_trench_detail_rows(self):
+        calculation = self._create_trench_calculation()
+
+        response = self.client.get(reverse('mortgage:trench_calculation_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'calculation-toggle')
+        self.assertContains(
+            response,
+            f'id="trench-calculation-details-{calculation.pk}"',
+        )
+        self.assertContains(response, 'Планировка')
+        self.assertContains(response, 'Срок ипотеки')
+        self.assertContains(response, 'Количество траншей')
+        self.assertContains(response, 'Число платежей по траншу 1')
+        self.assertContains(response, 'Сумма платежа по траншу 1')
+        self.assertContains(response, '22 021,72 руб.')
+        self.assertContains(response, 'Число платежей по траншу 2')
+        self.assertContains(response, 'Сумма платежа по траншу 2')
+        self.assertContains(response, '44 043,44 руб.')
 
     def test_trench_calculation_list_paginates_saved_calculations(self):
         for _ in range(21):
