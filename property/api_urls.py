@@ -1,63 +1,136 @@
+from django.conf import settings
 from django.http import JsonResponse
 from django.urls import path
+from django.views.decorators.http import require_GET
 
 from location.models import City, District
 
 from .models import RealEstateComplex, RealEstateComplexBuilding
 
+CITY_API_FIELDS = ('id', 'name')
+DISTRICT_API_FIELDS = ('id', 'name')
+COMPLEX_API_FIELDS = (
+    'id',
+    'name',
+    'developer_id',
+    'district_id',
+    'district__city_id',
+    'district__city__region_id',
+)
+BUILDING_API_FIELDS = ('id', 'number', 'real_estate_complex_id')
 
+
+def get_public_catalog_api_limit():
+    """Return the maximum number of rows exposed by public catalog APIs."""
+    return getattr(settings, 'PUBLIC_CATALOG_API_MAX_RESULTS', 200)
+
+
+def parse_positive_integer_param(request, name):
+    """Return a positive integer query parameter or an error response."""
+    value = request.GET.get(name)
+    if value in (None, ''):
+        return None, None
+
+    try:
+        parsed_value = int(value)
+    except (TypeError, ValueError):
+        return None, JsonResponse(
+            {'error': f'Invalid {name}.'},
+            status=400,
+        )
+
+    if parsed_value <= 0:
+        return None, JsonResponse(
+            {'error': f'Invalid {name}.'},
+            status=400,
+        )
+
+    return parsed_value, None
+
+
+def limited_json_response(queryset):
+    """Return a bounded JSON response for public selector endpoints."""
+    return JsonResponse(
+        list(queryset[:get_public_catalog_api_limit()]),
+        safe=False,
+    )
+
+
+@require_GET
 def cities_api(request):
-    """Описание метода cities_api.
+    """Return cities for a selected region."""
+    region_id, error_response = parse_positive_integer_param(
+        request,
+        'region_id',
+    )
+    if error_response:
+        return error_response
 
-    Выполняет прикладную операцию текущего модуля.
+    cities = City.objects.none()
+    if region_id is not None:
+        cities = City.objects.filter(region_id=region_id)
 
-    Аргументы:
-        request: Входной параметр, влияющий на работу метода.
-
-    Возвращает:
-        Any: Тип результата определяется вызывающим кодом.
-    """
-    region_id = request.GET.get('region_id')
-    cities = City.objects.filter(region_id=region_id).values('id', 'name')
-    return JsonResponse(list(cities), safe=False)
+    return limited_json_response(
+        cities.order_by('name').values(*CITY_API_FIELDS)
+    )
 
 
+@require_GET
 def districts_api(request):
-    """Описание метода districts_api.
+    """Return districts for a selected city."""
+    city_id, error_response = parse_positive_integer_param(
+        request,
+        'city_id',
+    )
+    if error_response:
+        return error_response
 
-    Выполняет прикладную операцию текущего модуля.
+    districts = District.objects.none()
+    if city_id is not None:
+        districts = District.objects.filter(city_id=city_id)
 
-    Аргументы:
-        request: Входной параметр, влияющий на работу метода.
-
-    Возвращает:
-        Any: Тип результата определяется вызывающим кодом.
-    """
-    city_id = request.GET.get('city_id')
-    districts = District.objects.filter(city_id=city_id).values('id', 'name')
-    return JsonResponse(list(districts), safe=False)
+    return limited_json_response(
+        districts.order_by('name').values(*DISTRICT_API_FIELDS)
+    )
 
 
+@require_GET
 def complexes_api(request):
-    """Описание метода complexes_api.
+    """Return complexes for selected public catalog filters."""
+    region_id, error_response = parse_positive_integer_param(
+        request,
+        'region_id',
+    )
+    if error_response:
+        return error_response
 
-    Выполняет прикладную операцию текущего модуля.
+    city_id, error_response = parse_positive_integer_param(
+        request,
+        'city_id',
+    )
+    if error_response:
+        return error_response
 
-    Аргументы:
-        request: Входной параметр, влияющий на работу метода.
+    district_id, error_response = parse_positive_integer_param(
+        request,
+        'district_id',
+    )
+    if error_response:
+        return error_response
 
-    Возвращает:
-        Any: Тип результата определяется вызывающим кодом.
-    """
-    region_id = request.GET.get('region_id')
-    city_id = request.GET.get('city_id')
-    district_id = request.GET.get('district_id')
-    developer_id = request.GET.get('developer_id')
+    developer_id, error_response = parse_positive_integer_param(
+        request,
+        'developer_id',
+    )
+    if error_response:
+        return error_response
 
     complexes = RealEstateComplex.objects.select_related(
         'developer',
         'district__city__region',
     )
+    if not any((region_id, city_id, district_id, developer_id)):
+        complexes = complexes.none()
     if developer_id:
         complexes = complexes.filter(developer_id=developer_id)
     if district_id:
@@ -67,41 +140,30 @@ def complexes_api(request):
     elif region_id:
         complexes = complexes.filter(district__city__region_id=region_id)
 
-    complexes = complexes.order_by('name').values(
-        'id',
-        'name',
-        'developer_id',
-        'district_id',
-        'district__city_id',
-        'district__city__region_id',
+    return limited_json_response(
+        complexes.order_by('name').values(*COMPLEX_API_FIELDS)
     )
-    return JsonResponse(list(complexes), safe=False)
 
 
+@require_GET
 def buildings_api(request):
-    """Описание метода buildings_api.
+    """Return buildings for a selected complex."""
+    complex_id, error_response = parse_positive_integer_param(
+        request,
+        'complex_id',
+    )
+    if error_response:
+        return error_response
 
-    Выполняет прикладную операцию текущего модуля.
-
-    Аргументы:
-        request: Входной параметр, влияющий на работу метода.
-
-    Возвращает:
-        Any: Тип результата определяется вызывающим кодом.
-    """
-    complex_id = request.GET.get('complex_id')
     buildings = RealEstateComplexBuilding.objects.none()
-    if complex_id:
+    if complex_id is not None:
         buildings = RealEstateComplexBuilding.objects.filter(
             real_estate_complex_id=complex_id
         )
 
-    buildings = buildings.order_by('number').values(
-        'id',
-        'number',
-        'real_estate_complex_id',
+    return limited_json_response(
+        buildings.order_by('number').values(*BUILDING_API_FIELDS)
     )
-    return JsonResponse(list(buildings), safe=False)
 
 
 urlpatterns = [

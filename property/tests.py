@@ -14,6 +14,7 @@ from location.models import City, District, Metro, MetroLine, Region
 from users.roles import MODERATOR_GROUP_NAME
 
 from .forms import (
+    PropertyForm,
     RealEstateComplexBuildingForm,
     RealEstateComplexForm,
     RealEstateComplexMetroAvailabilityForm,
@@ -442,6 +443,23 @@ class RealEstateComplexFormLocationTests(TestCase):
                 self.assertTrue(
                     (Path(media_root) / complex_obj.photo.name).exists()
                 )
+
+    @override_settings(PROPERTY_IMAGE_MAX_UPLOAD_SIZE=1)
+    def test_complex_form_rejects_oversized_photo(self):
+        """The complex form should reject images above the configured limit."""
+        form = RealEstateComplexForm(
+            data=self._form_data(),
+            files={
+                'photo': SimpleUploadedFile(
+                    'complex.gif',
+                    SIMPLE_GIF,
+                    content_type='image/gif',
+                ),
+            },
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('photo', form.errors)
 
     def test_update_view_shows_current_complex_photo(self):
         complex_obj = RealEstateComplex.objects.create(
@@ -1222,6 +1240,30 @@ class PropertyFormCascadeTests(TestCase):
             [self.building],
         )
 
+    def test_property_form_rejects_non_image_extension(self):
+        """The property form should reject unsupported upload extensions."""
+        form = PropertyForm(
+            data={
+                'apartment_number': '101',
+                'building': self.building.pk,
+                'decoration': self.decoration.pk,
+                'layout': self.layout.pk,
+                'area': '42.00',
+                'floor': '10',
+                'property_cost': '1000000.00',
+            },
+            files={
+                'layout_image': SimpleUploadedFile(
+                    'layout.txt',
+                    SIMPLE_GIF,
+                    content_type='text/plain',
+                ),
+            },
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('layout_image', form.errors)
+
     def test_complexes_api_filters_by_developer_and_location(self):
         """The complexes API should support developer and location filters."""
         response = self.client.get(
@@ -1237,6 +1279,48 @@ class PropertyFormCascadeTests(TestCase):
             [item['id'] for item in response.json()],
             [self.complex.pk],
         )
+        self.assertEqual(
+            set(response.json()[0]),
+            {
+                'id',
+                'name',
+                'developer_id',
+                'district_id',
+                'district__city_id',
+                'district__city__region_id',
+            },
+        )
+
+    def test_complexes_api_rejects_invalid_id_filter(self):
+        """The complexes API should reject invalid integer filters."""
+        response = self.client.get(
+            '/api/complexes/',
+            {'region_id': 'not-a-number'},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'error': 'Invalid region_id.'})
+
+    def test_complexes_api_returns_empty_list_without_filters(self):
+        """The complexes API should not expose a full unfiltered dump."""
+        response = self.client.get('/api/complexes/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
+
+    @override_settings(PUBLIC_CATALOG_API_MAX_RESULTS=1)
+    def test_cities_api_limits_rows_and_fields(self):
+        """The cities API should expose a bounded allowlisted payload."""
+        City.objects.create(name='City 0', region=self.region)
+
+        response = self.client.get(
+            '/api/cities/',
+            {'region_id': self.region.pk},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 1)
+        self.assertEqual(set(response.json()[0]), {'id', 'name'})
 
     def test_buildings_api_requires_complex(self):
         """The buildings API should return rows only for a selected complex."""
@@ -1251,6 +1335,10 @@ class PropertyFormCascadeTests(TestCase):
         self.assertEqual(
             [item['id'] for item in selected_response.json()],
             [self.building.pk],
+        )
+        self.assertEqual(
+            set(selected_response.json()[0]),
+            {'id', 'number', 'real_estate_complex_id'},
         )
 
     def test_property_list_has_detail_action(self):

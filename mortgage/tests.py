@@ -1798,13 +1798,41 @@ class MortgageCalculatorViewTests(TestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()['property_cost'], '5000000.00')
+        payload = response.json()
         self.assertEqual(
-            response.json()['city_id'],
+            set(payload),
+            {
+                'id',
+                'property_cost',
+                'city_id',
+                'district_id',
+                'developer_id',
+                'complex_id',
+                'building_id',
+                'apartment_number',
+                'area',
+                'layout_id',
+                'floor',
+                'decoration_id',
+            },
+        )
+        self.assertEqual(payload['property_cost'], '5000000.00')
+        self.assertEqual(
+            payload['city_id'],
             self.property.building.real_estate_complex.district.city.pk,
         )
         self.assertEqual(
-            response.json()['building_id'],
+            payload['building_id'],
             self.property.building.pk,
         )
-        self.assertEqual(response.json()['apartment_number'], '101')
+        self.assertEqual(payload['apartment_number'], '101')
+
+    def test_property_cost_api_rejects_post(self):
+        """The property cost API should be read-only."""
+        url = reverse(
+            'mortgage:property_cost_api', kwargs={'pk': self.property.pk}
+        )
+
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, 405)

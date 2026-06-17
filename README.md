@@ -180,6 +180,14 @@ python manage.py check
 python -m pytest
 ```
 
+Установить dev-инструменты и запустить локальные security checks:
+
+```bash
+pip install -r requirements-dev.txt
+python -m pip_audit -r requirements.txt
+python -m bandit -r bank core customer homepage location mortgage property real_estate_investing trench_mortgage users -x "*/migrations/*,*/tests.py"
+```
+
 Через Docker:
 
 ```bash
@@ -254,5 +262,10 @@ real_estate_investing/
 - `DB_PORT`
 - `NGINX_PORT`
 - `EMAIL_*`
+- `DATA_UPLOAD_MAX_NUMBER_FIELDS`
+- `DATA_UPLOAD_MAX_MEMORY_SIZE`
+- `FILE_UPLOAD_MAX_MEMORY_SIZE`
+- `PROPERTY_IMAGE_MAX_UPLOAD_SIZE`
+- `PUBLIC_CATALOG_API_MAX_RESULTS`
 
 Не коммитить `.env` и реальные секреты в Git.
