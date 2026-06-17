@@ -108,7 +108,39 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
+DATA_UPLOAD_MAX_NUMBER_FIELDS = get_env_int(
+    'DATA_UPLOAD_MAX_NUMBER_FIELDS',
+    3000,
+)
+DATA_UPLOAD_MAX_MEMORY_SIZE = get_env_int(
+    'DATA_UPLOAD_MAX_MEMORY_SIZE',
+    20 * 1024 * 1024,
+)
+FILE_UPLOAD_MAX_MEMORY_SIZE = get_env_int(
+    'FILE_UPLOAD_MAX_MEMORY_SIZE',
+    5 * 1024 * 1024,
+)
+PROPERTY_IMAGE_MAX_UPLOAD_SIZE = get_env_int(
+    'PROPERTY_IMAGE_MAX_UPLOAD_SIZE',
+    5 * 1024 * 1024,
+)
+PROPERTY_IMAGE_ALLOWED_EXTENSIONS = (
+    '.gif',
+    '.jpeg',
+    '.jpg',
+    '.png',
+    '.webp',
+)
+PROPERTY_IMAGE_ALLOWED_CONTENT_TYPES = (
+    'image/gif',
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+)
+PUBLIC_CATALOG_API_MAX_RESULTS = get_env_int(
+    'PUBLIC_CATALOG_API_MAX_RESULTS',
+    200,
+)
 
 AUTH_USER_MODEL = 'users.User'
 

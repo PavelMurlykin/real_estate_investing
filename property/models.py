@@ -7,6 +7,8 @@ from django.urls import reverse
 from core.models import BaseModel
 from location.models import District, Metro
 
+from .validators import validate_property_image_upload
+
 User = get_user_model()
 
 
@@ -118,6 +120,7 @@ class RealEstateComplex(BaseModel):
         upload_to='property/complexes/',
         blank=True,
         null=True,
+        validators=[validate_property_image_upload],
         verbose_name='Фото ЖК',
     )
 
@@ -475,18 +478,21 @@ class Property(BaseModel):
         upload_to='property/layouts/',
         blank=True,
         null=True,
+        validators=[validate_property_image_upload],
         verbose_name='Планировка',
     )
     floor_plan_image = models.ImageField(
         upload_to='property/floor_plans/',
         blank=True,
         null=True,
+        validators=[validate_property_image_upload],
         verbose_name='План этажа',
     )
     window_view_image = models.ImageField(
         upload_to='property/window_views/',
         blank=True,
         null=True,
+        validators=[validate_property_image_upload],
         verbose_name='Вид из окна',
     )
     window_views = models.ManyToManyField(
