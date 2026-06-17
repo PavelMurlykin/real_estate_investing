@@ -820,6 +820,41 @@ class LocationCatalogMetroTests(TestCase):
         self.assertEqual(len(response.context['rows']), 20)
         self.assertTrue(response.context['is_paginated'])
         self.assertEqual(response.context['page_obj'].paginator.per_page, 20)
+        self.assertContains(response, '?page=2&model=metro')
+
+        second_page_response = self.client.get(
+            reverse('location:location_catalog'),
+            {'model': 'metro', 'page': 2},
+        )
+
+        self.assertEqual(second_page_response.status_code, 200)
+        self.assertEqual(len(second_page_response.context['rows']), 1)
+        self.assertContains(second_page_response, 'Station 20')
+
+    def test_location_catalog_paginates_district_rows(self):
+        for index in range(21):
+            District.objects.create(
+                name=f'District {index:02d}',
+                city=self.city,
+            )
+
+        response = self.client.get(
+            reverse('location:location_catalog'), {'model': 'district'}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['rows']), 20)
+        self.assertTrue(response.context['is_paginated'])
+        self.assertContains(response, '?page=2&model=district')
+
+        second_page_response = self.client.get(
+            reverse('location:location_catalog'),
+            {'model': 'district', 'page': 2},
+        )
+
+        self.assertEqual(second_page_response.status_code, 200)
+        self.assertEqual(len(second_page_response.context['rows']), 1)
+        self.assertContains(second_page_response, 'District 20')
 
     def test_location_catalog_creates_updates_and_deletes_metro(self):
         other_line = MetroLine.objects.create(
