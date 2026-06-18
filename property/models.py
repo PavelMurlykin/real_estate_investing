@@ -23,6 +23,29 @@ class Developer(BaseModel):
     description = models.TextField(
         blank=True, null=True, verbose_name='Описание'
     )
+    company_group = models.ForeignKey(
+        'CompanyGroup',
+        on_delete=models.PROTECT,
+        blank=True,
+        null=True,
+        related_name='developers',
+        verbose_name='Группа компаний',
+    )
+    legal_address = models.TextField(
+        blank=True, null=True, verbose_name='Юридический адрес'
+    )
+    actual_address = models.TextField(
+        blank=True, null=True, verbose_name='Фактический адрес'
+    )
+    taxpayer_identification_number = models.CharField(
+        max_length=12, blank=True, null=True, verbose_name='ИНН'
+    )
+    tax_registration_reason_code = models.CharField(
+        max_length=9, blank=True, null=True, verbose_name='КПП'
+    )
+    primary_state_registration_number = models.CharField(
+        max_length=15, blank=True, null=True, verbose_name='ОГРН'
+    )
 
     class Meta(BaseModel.Meta):
         """
@@ -36,6 +59,30 @@ class Developer(BaseModel):
 
     def __str__(self):
         """Возвращает название застройщика."""
+        return self.name
+
+
+class CompanyGroup(models.Model):
+    """
+    Справочник групп компаний.
+    """
+
+    name = models.CharField(
+        max_length=255, unique=True, verbose_name='Группа компаний'
+    )
+
+    class Meta:
+        """
+        Метаданные таблицы.
+        """
+
+        db_table = 'company_group'
+        verbose_name = 'Группа компаний'
+        verbose_name_plural = 'Группы компаний'
+        ordering = ['name']
+
+    def __str__(self):
+        """Возвращает название группы компаний."""
         return self.name
 
 

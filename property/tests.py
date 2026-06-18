@@ -3,6 +3,7 @@ from decimal import Decimal
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import pytest
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -14,6 +15,7 @@ from location.models import City, District, Metro, MetroLine, Region
 from users.roles import MODERATOR_GROUP_NAME
 
 from .forms import (
+    DeveloperForm,
     PropertyForm,
     RealEstateComplexBuildingForm,
     RealEstateComplexForm,
@@ -22,6 +24,7 @@ from .forms import (
 from .models import (
     ApartmentDecoration,
     ApartmentLayout,
+    CompanyGroup,
     Developer,
     Property,
     RealEstateClass,
@@ -55,6 +58,79 @@ def create_moderator(email, phone_number):
     )
     user.groups.add(group)
     return user
+
+
+@pytest.mark.django_db
+def test_developer_form_new_fields_are_optional():
+    """Developer form should allow saving without new optional fields."""
+    form = DeveloperForm(
+        data={
+            'name': 'Developer without requisites',
+            'is_active': 'on',
+        }
+    )
+
+    assert form.is_valid(), form.errors.as_json()
+    developer = form.save()
+
+    assert developer.company_group is None
+    assert developer.legal_address in (None, '')
+    assert developer.actual_address in (None, '')
+    assert developer.taxpayer_identification_number in (None, '')
+    assert developer.tax_registration_reason_code in (None, '')
+    assert developer.primary_state_registration_number in (None, '')
+
+
+@pytest.mark.django_db
+def test_developer_form_saves_company_group_and_requisites():
+    """Developer form should persist company group and requisites."""
+    company_group = CompanyGroup.objects.create(name='ГК Север')
+    form = DeveloperForm(
+        data={
+            'name': 'Developer with requisites',
+            'company_group': str(company_group.pk),
+            'legal_address': 'Legal address',
+            'actual_address': 'Actual address',
+            'taxpayer_identification_number': '1234567890',
+            'tax_registration_reason_code': '123456789',
+            'primary_state_registration_number': '1234567890123',
+            'description': '',
+            'is_active': 'on',
+        }
+    )
+
+    assert form.is_valid(), form.errors.as_json()
+    developer = form.save()
+
+    assert developer.company_group == company_group
+    assert developer.legal_address == 'Legal address'
+    assert developer.actual_address == 'Actual address'
+    assert developer.taxpayer_identification_number == '1234567890'
+    assert developer.tax_registration_reason_code == '123456789'
+    assert developer.primary_state_registration_number == '1234567890123'
+
+
+@pytest.mark.django_db
+def test_company_group_dictionary_catalog_creates_group(client):
+    """Company groups should be manageable through property dictionaries."""
+    client.force_login(
+        create_moderator(
+            'company-group-moderator@example.com',
+            '+79992000101',
+        )
+    )
+
+    response = client.post(
+        reverse('property:dictionary_catalog'),
+        {
+            'model': 'company_group',
+            'action': 'save',
+            'name': 'ГК Новая',
+        },
+    )
+
+    assert response.status_code == 302
+    assert CompanyGroup.objects.filter(name='ГК Новая').exists()
 
 
 def test_metro_availability_select_uses_bootstrap_class_for_auto_search():
@@ -978,8 +1054,18 @@ class LocationCatalogMetroTests(TestCase):
 
 class DeveloperListViewTests(TestCase):
     def test_developer_list_filters_and_sorts_with_catalog_static_hooks(self):
+        company_group = CompanyGroup.objects.create(name='Alpha Group')
         Developer.objects.create(name='Beta Developer', description='Townhouses')
-        Developer.objects.create(name='Alpha Developer', description='Apartments')
+        Developer.objects.create(
+            name='Alpha Developer',
+            company_group=company_group,
+            legal_address='Legal address',
+            actual_address='Actual address',
+            taxpayer_identification_number='1234567890',
+            tax_registration_reason_code='123456789',
+            primary_state_registration_number='1234567890123',
+            description='Apartments',
+        )
 
         response = self.client.get(
             reverse('property:developer_list'),
@@ -998,12 +1084,23 @@ class DeveloperListViewTests(TestCase):
         self.assertContains(response, 'data-catalog-sort-link')
         self.assertContains(response, 'static/js/catalog.js')
         self.assertContains(response, 'Alpha Developer')
+        self.assertContains(response, 'Alpha Group')
+        self.assertContains(response, '1234567890')
         self.assertNotContains(response, 'Beta Developer')
         self.assertEqual(response.context['sort_by'], 'name')
         self.assertEqual(response.context['sort_dir'], 'desc')
         self.assertEqual(
             [column['key'] for column in response.context['columns']],
-            ['name', 'description'],
+            [
+                'name',
+                'company_group',
+                'legal_address',
+                'actual_address',
+                'taxpayer_identification_number',
+                'tax_registration_reason_code',
+                'primary_state_registration_number',
+                'description',
+            ],
         )
 
     def test_developer_list_does_not_render_active_column(self):

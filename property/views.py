@@ -38,6 +38,7 @@ from .forms import (
 from .models import (
     ApartmentDecoration,
     ApartmentLayout,
+    CompanyGroup,
     Developer,
     Property,
     RealEstateClass,
@@ -693,6 +694,13 @@ class DictionaryCatalogView(BaseCatalogView):
     default_model_key = 'real_estate_type'
     model_configs = (
         CatalogModelConfig(
+            key='company_group',
+            model=CompanyGroup,
+            form_fields=('name',),
+            table_fields=('name',),
+            order_by=('name',),
+        ),
+        CatalogModelConfig(
             key='real_estate_type',
             model=RealEstateType,
             form_fields=('name', 'description', 'is_active'),
@@ -781,10 +789,24 @@ class DeveloperListView(ListView):
     paginate_by = 20
     sort_fields = {
         'name': 'name',
+        'company_group': 'company_group__name',
+        'legal_address': 'legal_address',
+        'actual_address': 'actual_address',
+        'taxpayer_identification_number': 'taxpayer_identification_number',
+        'tax_registration_reason_code': 'tax_registration_reason_code',
+        'primary_state_registration_number': (
+            'primary_state_registration_number'
+        ),
         'description': 'description',
     }
     table_columns = (
         {'key': 'name', 'label': 'Название'},
+        {'key': 'company_group', 'label': 'Группа компаний'},
+        {'key': 'legal_address', 'label': 'Юридический адрес'},
+        {'key': 'actual_address', 'label': 'Фактический адрес'},
+        {'key': 'taxpayer_identification_number', 'label': 'ИНН'},
+        {'key': 'tax_registration_reason_code', 'label': 'КПП'},
+        {'key': 'primary_state_registration_number', 'label': 'ОГРН'},
         {'key': 'description', 'label': 'Описание'},
     )
 
@@ -796,11 +818,41 @@ class DeveloperListView(ListView):
         Возвращает:
             Any: Тип результата зависит от контекста использования.
         """
-        queryset = Developer.objects.all()
+        queryset = Developer.objects.select_related('company_group')
         filters = self.get_filters()
 
         if filters['name']:
             queryset = queryset.filter(name__icontains=filters['name'])
+        if filters['company_group'].isdigit():
+            queryset = queryset.filter(
+                company_group_id=filters['company_group']
+            )
+        if filters['legal_address']:
+            queryset = queryset.filter(
+                legal_address__icontains=filters['legal_address']
+            )
+        if filters['actual_address']:
+            queryset = queryset.filter(
+                actual_address__icontains=filters['actual_address']
+            )
+        if filters['taxpayer_identification_number']:
+            queryset = queryset.filter(
+                taxpayer_identification_number__icontains=filters[
+                    'taxpayer_identification_number'
+                ]
+            )
+        if filters['tax_registration_reason_code']:
+            queryset = queryset.filter(
+                tax_registration_reason_code__icontains=filters[
+                    'tax_registration_reason_code'
+                ]
+            )
+        if filters['primary_state_registration_number']:
+            queryset = queryset.filter(
+                primary_state_registration_number__icontains=filters[
+                    'primary_state_registration_number'
+                ]
+            )
         if filters['description']:
             queryset = queryset.filter(
                 description__icontains=filters['description']
@@ -818,6 +870,24 @@ class DeveloperListView(ListView):
     def get_filters(self):
         return {
             'name': self.request.GET.get('filter_name', '').strip(),
+            'company_group': self.request.GET.get(
+                'filter_company_group', ''
+            ),
+            'legal_address': self.request.GET.get(
+                'filter_legal_address', ''
+            ).strip(),
+            'actual_address': self.request.GET.get(
+                'filter_actual_address', ''
+            ).strip(),
+            'taxpayer_identification_number': self.request.GET.get(
+                'filter_taxpayer_identification_number', ''
+            ).strip(),
+            'tax_registration_reason_code': self.request.GET.get(
+                'filter_tax_registration_reason_code', ''
+            ).strip(),
+            'primary_state_registration_number': self.request.GET.get(
+                'filter_primary_state_registration_number', ''
+            ).strip(),
             'description': self.request.GET.get(
                 'filter_description', ''
             ).strip(),
@@ -868,6 +938,9 @@ class DeveloperListView(ListView):
         context['sort_dir'] = self.request.GET.get('sort_dir', 'asc')
         context['columns'] = self.build_table_columns()
         context['pagination_querystring'] = self.build_querystring()
+        context['company_groups_for_filter'] = CompanyGroup.objects.order_by(
+            'name'
+        )
         return context
 
 

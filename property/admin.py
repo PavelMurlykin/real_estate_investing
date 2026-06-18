@@ -4,6 +4,7 @@ from django.contrib import admin
 from .models import (
     ApartmentDecoration,
     ApartmentLayout,
+    CompanyGroup,
     Developer,
     Property,
     PropertyWindowView,
@@ -17,6 +18,15 @@ from .models import (
 )
 
 
+@admin.register(CompanyGroup)
+class CompanyGroupAdmin(admin.ModelAdmin):
+    """Admin for company group dictionary entries."""
+
+    list_display = ('name',)
+    search_fields = ('name',)
+    ordering = ('name',)
+
+
 @admin.register(Developer)
 class DeveloperAdmin(admin.ModelAdmin):
     """Описание класса DeveloperAdmin.
@@ -25,11 +35,32 @@ class DeveloperAdmin(admin.ModelAdmin):
     в данном модуле.
     """
 
-    list_display = ('name', 'is_active', 'created_at')
-    list_filter = ('is_active', 'created_at')
-    search_fields = ('name', 'description')
+    list_display = (
+        'name',
+        'company_group',
+        'taxpayer_identification_number',
+        'tax_registration_reason_code',
+        'primary_state_registration_number',
+        'is_active',
+        'created_at',
+    )
+    list_filter = ('is_active', 'company_group', 'created_at')
+    search_fields = (
+        'name',
+        'company_group__name',
+        'legal_address',
+        'actual_address',
+        'taxpayer_identification_number',
+        'tax_registration_reason_code',
+        'primary_state_registration_number',
+        'description',
+    )
     list_editable = ('is_active',)
     ordering = ('name',)
+
+    def get_queryset(self, request):
+        """Return developers with company groups loaded."""
+        return super().get_queryset(request).select_related('company_group')
 
 
 @admin.register(RealEstateType)
