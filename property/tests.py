@@ -111,8 +111,8 @@ def test_developer_form_saves_company_group_and_requisites():
 
 
 @pytest.mark.django_db
-def test_company_group_dictionary_catalog_creates_group(client):
-    """Company groups should be manageable through property dictionaries."""
+def test_company_group_create_view_creates_group(client):
+    """Company groups should be manageable through a standalone form."""
     client.force_login(
         create_moderator(
             'company-group-moderator@example.com',
@@ -121,16 +121,63 @@ def test_company_group_dictionary_catalog_creates_group(client):
     )
 
     response = client.post(
-        reverse('property:dictionary_catalog'),
+        reverse('property:company_group_create'),
         {
-            'model': 'company_group',
-            'action': 'save',
             'name': 'ГК Новая',
         },
     )
 
     assert response.status_code == 302
     assert CompanyGroup.objects.filter(name='ГК Новая').exists()
+
+
+@pytest.mark.django_db
+def test_company_group_list_is_before_developers_in_real_estate_menu(client):
+    """Company group list should appear before developers in real estate menu."""
+    response = client.get(reverse('property:company_group_list'))
+
+    assert response.status_code == 200
+
+    content = response.content.decode()
+    company_group_url = reverse('property:company_group_list')
+    developer_url = reverse('property:developer_list')
+
+    assert company_group_url in content
+    assert developer_url in content
+    assert content.index(company_group_url) < content.index(developer_url)
+
+
+@pytest.mark.django_db
+def test_dictionary_catalog_is_last_in_real_estate_menu(client):
+    """Property dictionaries should be the last real estate menu item."""
+    response = client.get(reverse('property:dictionary_catalog'))
+
+    assert response.status_code == 200
+
+    content = response.content.decode()
+    dictionary_href = f'href="{reverse("property:dictionary_catalog")}"'
+    company_group_href = f'href="{reverse("property:company_group_list")}"'
+    developer_href = f'href="{reverse("property:developer_list")}"'
+    complex_href = f'href="{reverse("property:complex_list")}"'
+    property_href = f'href="{reverse("property:list")}"'
+    real_estate_menu_prefix = content.split('Недвижимость', 1)[0]
+
+    assert dictionary_href not in real_estate_menu_prefix
+    assert content.index(company_group_href) < content.index(developer_href)
+    assert content.index(developer_href) < content.index(complex_href)
+    assert content.index(complex_href) < content.index(property_href)
+    assert content.index(property_href) < content.index(dictionary_href)
+
+
+@pytest.mark.django_db
+def test_company_group_is_not_dictionary_catalog_tab(client):
+    """Company groups should not be rendered as a generic dictionary tab."""
+    response = client.get(reverse('property:dictionary_catalog'))
+
+    assert response.status_code == 200
+    assert 'company_group' not in [
+        tab['key'] for tab in response.context['model_tabs']
+    ]
 
 
 def test_metro_availability_select_uses_bootstrap_class_for_auto_search():

@@ -11,6 +11,26 @@ urlpatterns = [
         name='dictionary_catalog',
     ),
     path(
+        'company-groups/',
+        views.CompanyGroupListView.as_view(),
+        name='company_group_list',
+    ),
+    path(
+        'company-groups/create/',
+        views.CompanyGroupCreateView.as_view(),
+        name='company_group_create',
+    ),
+    path(
+        'company-groups/<int:pk>/update/',
+        views.CompanyGroupUpdateView.as_view(),
+        name='company_group_update',
+    ),
+    path(
+        'company-groups/<int:pk>/delete/',
+        views.CompanyGroupDeleteView.as_view(),
+        name='company_group_delete',
+    ),
+    path(
         'developers/', views.DeveloperListView.as_view(), name='developer_list'
     ),
     path(

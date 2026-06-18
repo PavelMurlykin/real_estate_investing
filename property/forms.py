@@ -231,6 +231,19 @@ class DeveloperForm(forms.ModelForm):
         self.fields['company_group'].empty_label = 'Без группы компаний'
 
 
+class CompanyGroupForm(forms.ModelForm):
+    """Form for creating and updating company groups."""
+
+    class Meta:
+        """Configure company group form fields and widgets."""
+
+        model = CompanyGroup
+        fields = ['name']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+
 class RealEstateComplexForm(forms.ModelForm):
     """Описание класса RealEstateComplexForm.
 

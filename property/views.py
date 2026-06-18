@@ -27,6 +27,7 @@ from location.models import City, District, Metro, MetroLine, Region
 from users.roles import CatalogManagementRequiredMixin, can_manage_catalogs
 
 from .forms import (
+    CompanyGroupForm,
     DeveloperForm,
     PropertyForm,
     RealEstateComplexBuildingFormSet,
@@ -694,13 +695,6 @@ class DictionaryCatalogView(BaseCatalogView):
     default_model_key = 'real_estate_type'
     model_configs = (
         CatalogModelConfig(
-            key='company_group',
-            model=CompanyGroup,
-            form_fields=('name',),
-            table_fields=('name',),
-            order_by=('name',),
-        ),
-        CatalogModelConfig(
             key='real_estate_type',
             model=RealEstateType,
             form_fields=('name', 'description', 'is_active'),
@@ -774,6 +768,125 @@ class ProtectedDeleteMixin:
             context = self.get_context_data(object=self.object)
             context['protected_error'] = self.protected_error_message
             return self.render_to_response(context, status=400)
+
+
+class CompanyGroupListView(ListView):
+    """List company groups as a standalone property catalog."""
+
+    model = CompanyGroup
+    template_name = 'property/company_group_list.html'
+    context_object_name = 'company_groups'
+    paginate_by = 20
+    sort_fields = {
+        'name': 'name',
+    }
+    table_columns = (
+        {'key': 'name', 'label': 'Название'},
+    )
+
+    def get_queryset(self):
+        """Return filtered and sorted company groups."""
+        queryset = CompanyGroup.objects.all()
+        filters = self.get_filters()
+
+        if filters['name']:
+            queryset = queryset.filter(name__icontains=filters['name'])
+
+        sort_by = self.request.GET.get('sort_by', '')
+        sort_dir = self.request.GET.get('sort_dir', 'asc')
+        sort_field = self.sort_fields.get(sort_by)
+        if sort_field:
+            sort_prefix = '-' if sort_dir == 'desc' else ''
+            return queryset.order_by(f'{sort_prefix}{sort_field}', 'name')
+
+        return queryset.order_by('name')
+
+    def get_filters(self):
+        """Return company group list filters from request parameters."""
+        return {
+            'name': self.request.GET.get('filter_name', '').strip(),
+        }
+
+    def build_querystring(self, **overrides):
+        """Build a list query string preserving current filters and sorting."""
+        params = self.request.GET.copy()
+        params.pop('page', None)
+        for key, value in overrides.items():
+            if value in (None, ''):
+                params.pop(key, None)
+                continue
+            params[key] = value
+        return params.urlencode()
+
+    def build_table_columns(self):
+        """Return sortable table column metadata for company groups."""
+        sort_by = self.request.GET.get('sort_by', '')
+        sort_dir = self.request.GET.get('sort_dir', 'asc')
+        columns = []
+
+        for column in self.table_columns:
+            key = column['key']
+            next_sort_dir = 'asc'
+            is_sorted = sort_by == key
+            if is_sorted and sort_dir != 'desc':
+                next_sort_dir = 'desc'
+
+            columns.append(
+                {
+                    **column,
+                    'is_sorted': is_sorted,
+                    'sort_direction': sort_dir if is_sorted else '',
+                    'sort_url': (
+                        '?'
+                        + self.build_querystring(
+                            sort_by=key, sort_dir=next_sort_dir
+                        )
+                    ),
+                }
+            )
+
+        return columns
+
+    def get_context_data(self, **kwargs):
+        """Add list filters and sortable columns to the template context."""
+        context = super().get_context_data(**kwargs)
+        context['filters'] = self.get_filters()
+        context['sort_by'] = self.request.GET.get('sort_by', '')
+        context['sort_dir'] = self.request.GET.get('sort_dir', 'asc')
+        context['columns'] = self.build_table_columns()
+        context['pagination_querystring'] = self.build_querystring()
+        return context
+
+
+class CompanyGroupCreateView(CatalogManagementRequiredMixin, CreateView):
+    """Create a company group from a standalone form."""
+
+    model = CompanyGroup
+    form_class = CompanyGroupForm
+    template_name = 'property/company_group_form.html'
+    success_url = reverse_lazy('property:company_group_list')
+
+
+class CompanyGroupUpdateView(CatalogManagementRequiredMixin, UpdateView):
+    """Update a company group from a standalone form."""
+
+    model = CompanyGroup
+    form_class = CompanyGroupForm
+    template_name = 'property/company_group_form.html'
+    success_url = reverse_lazy('property:company_group_list')
+
+
+class CompanyGroupDeleteView(
+    CatalogManagementRequiredMixin, ProtectedDeleteMixin, DeleteView
+):
+    """Delete a company group when it is not used by developers."""
+
+    model = CompanyGroup
+    template_name = 'property/company_group_confirm_delete.html'
+    success_url = reverse_lazy('property:company_group_list')
+    protected_error_message = (
+        'Нельзя удалить группу компаний: с ней связаны застройщики.'
+    )
 
 
 class DeveloperListView(ListView):
