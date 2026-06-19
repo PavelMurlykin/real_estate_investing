@@ -1,9 +1,12 @@
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from django import forms
-from django.core.exceptions import PermissionDenied
+from django.contrib import messages
 from django.core.cache import cache
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import models as django_models
 from django.db import transaction
@@ -20,11 +23,16 @@ from django.views.generic import (
     ListView,
     TemplateView,
     UpdateView,
+    View,
 )
 
 from core.forms import GroupedDecimalField, format_grouped_decimal_value
 from location.models import City, District, Metro, MetroLine, Region
-from users.roles import CatalogManagementRequiredMixin, can_manage_catalogs
+from users.roles import (
+    CatalogManagementRequiredMixin,
+    ExternalDataSyncRequiredMixin,
+    can_manage_catalogs,
+)
 
 from .forms import (
     CompanyGroupForm,
@@ -49,11 +57,21 @@ from .models import (
     TransportAccessibilityType,
     WindowView,
 )
+from .services.developer_registry_file_client import (
+    FileDeveloperRegistryClient,
+    SUPPORTED_SOURCE_FILE_EXTENSIONS,
+)
+from .services.developer_registry_importer import (
+    DeveloperRegistryImportError,
+    import_dom_rf_developers,
+)
 
 
 FORM_DATA_CACHE_TIMEOUT = 600
 COMPLEX_FORM_LOCATION_CACHE_KEY = 'property:complex_form_location:v1'
 PROPERTY_FORM_LOCATION_CACHE_KEY = 'property:property_form_location:v1'
+DEVELOPER_REGISTRY_UPLOAD_FIELD_NAME = 'source_file'
+MAX_DEVELOPER_REGISTRY_UPLOAD_SIZE = 20 * 1024 * 1024
 
 
 def build_complex_form_location_payload():
@@ -1098,6 +1116,73 @@ class DeveloperDeleteView(
     protected_error_message = (
         'Нельзя удалить застройщика: с ним связаны записи ЖК.'
     )
+
+
+class DeveloperRegistryImportView(ExternalDataSyncRequiredMixin, View):
+    """Run developer and company group import from DOM.RF registry."""
+
+    def post(self, request, *args, **kwargs):
+        """Run the registry import and redirect to the developer list."""
+        try:
+            summary = self.run_import(request)
+        except DeveloperRegistryImportError as exception:
+            messages.error(
+                request,
+                f'Не удалось обновить застройщиков из ЕРЗ: {exception}',
+            )
+        else:
+            messages.success(request, summary.to_message())
+        return redirect('property:developer_list')
+
+    def run_import(self, request):
+        """Run import from an uploaded file or from the online registry."""
+        uploaded_file = request.FILES.get(DEVELOPER_REGISTRY_UPLOAD_FIELD_NAME)
+        if uploaded_file:
+            return self.import_uploaded_file(uploaded_file)
+        return import_dom_rf_developers()
+
+    def import_uploaded_file(self, uploaded_file):
+        """Import developers from a user-uploaded registry source file."""
+        self.validate_uploaded_file(uploaded_file)
+        source_file_path = self.save_uploaded_file_to_temporary_path(
+            uploaded_file
+        )
+        try:
+            return import_dom_rf_developers(
+                client=FileDeveloperRegistryClient(source_file_path)
+            )
+        finally:
+            Path(source_file_path).unlink(missing_ok=True)
+
+    def validate_uploaded_file(self, uploaded_file):
+        """Validate developer registry upload metadata before parsing."""
+        uploaded_file_name = getattr(uploaded_file, 'name', '')
+        extension = Path(uploaded_file_name).suffix.casefold()
+        if extension not in SUPPORTED_SOURCE_FILE_EXTENSIONS:
+            supported_extensions = ', '.join(
+                SUPPORTED_SOURCE_FILE_EXTENSIONS
+            )
+            raise DeveloperRegistryImportError(
+                (
+                    'Файл импорта должен быть в формате '
+                    f'{supported_extensions}.'
+                )
+            )
+
+        uploaded_file_size = getattr(uploaded_file, 'size', 0)
+        if uploaded_file_size > MAX_DEVELOPER_REGISTRY_UPLOAD_SIZE:
+            raise DeveloperRegistryImportError(
+                'Файл импорта не должен превышать 20 МБ.'
+            )
+
+    def save_uploaded_file_to_temporary_path(self, uploaded_file):
+        """Persist an uploaded file to a temporary parser-readable path."""
+        uploaded_file_name = getattr(uploaded_file, 'name', '')
+        extension = Path(uploaded_file_name).suffix.casefold()
+        with NamedTemporaryFile(delete=False, suffix=extension) as source_file:
+            for chunk in uploaded_file.chunks():
+                source_file.write(chunk)
+            return source_file.name
 
 
 class RealEstateComplexListView(ListView):

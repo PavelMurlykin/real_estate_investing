@@ -1,18 +1,27 @@
+import json
 from datetime import date
 from decimal import Decimal
+from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 import pytest
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.contrib.messages import get_messages
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from openpyxl import Workbook
 
 from location.models import City, District, Metro, MetroLine, Region
-from users.roles import MODERATOR_GROUP_NAME
+from users.roles import (
+    APPLICATION_ADMINISTRATOR_GROUP_NAME,
+    MODERATOR_GROUP_NAME,
+)
 
 from .forms import (
     DeveloperForm,
@@ -35,6 +44,15 @@ from .models import (
     TransportAccessibilityType,
     WindowView,
 )
+from .services.developer_registry_client import DeveloperRegistrySourceItem
+from .services.developer_registry_file_client import (
+    FileDeveloperRegistryClient,
+)
+from .services.developer_registry_importer import (
+    DeveloperRegistryImportSummary,
+    import_dom_rf_developers,
+    normalize_developer_registry_item,
+)
 
 
 SIMPLE_GIF = (
@@ -44,8 +62,8 @@ SIMPLE_GIF = (
 )
 
 
-def create_moderator(email, phone_number):
-    """Create a test moderator user."""
+def create_user_with_role(email, phone_number, group_name):
+    """Create a test user assigned to one application role group."""
     user = get_user_model().objects.create_user(
         email=email,
         password='password',
@@ -53,11 +71,23 @@ def create_moderator(email, phone_number):
         first_name='Test',
         last_name='User',
     )
-    group, _created = Group.objects.get_or_create(
-        name=MODERATOR_GROUP_NAME
-    )
+    group, _created = Group.objects.get_or_create(name=group_name)
     user.groups.add(group)
     return user
+
+
+def create_moderator(email, phone_number):
+    """Create a test moderator user."""
+    return create_user_with_role(email, phone_number, MODERATOR_GROUP_NAME)
+
+
+def create_application_administrator(email, phone_number):
+    """Create a test application administrator user."""
+    return create_user_with_role(
+        email,
+        phone_number,
+        APPLICATION_ADMINISTRATOR_GROUP_NAME,
+    )
 
 
 @pytest.mark.django_db
@@ -178,6 +208,363 @@ def test_company_group_is_not_dictionary_catalog_tab(client):
     assert 'company_group' not in [
         tab['key'] for tab in response.context['model_tabs']
     ]
+
+
+class FakeDeveloperRegistryClient:
+    """Test client returning prepared DOM.RF registry items."""
+
+    def __init__(self, items):
+        """Store prepared source items."""
+        self.items = items
+
+    def fetch_developers(self, region_codes=None, limit=None):
+        """Yield prepared source items for importer tests."""
+        yielded_count = 0
+        selected_region_codes = set(str(code) for code in region_codes or ())
+        for item in self.items:
+            if (
+                selected_region_codes
+                and item.region_code not in selected_region_codes
+            ):
+                continue
+            yield item
+            yielded_count += 1
+            if limit and yielded_count >= limit:
+                return
+
+
+def test_normalize_developer_registry_item_uses_known_dom_rf_aliases():
+    """Registry normalization should map known source aliases."""
+    record = normalize_developer_registry_item(
+        {
+            'devShortCleanNm': '  ООО  "Тестовый застройщик" ',
+            'devLegalAddr': ' Санкт-Петербург, Невский пр., 1 ',
+            'devFactAddr': ' Москва, Тверская, 2 ',
+            'devInn': '  7812 345678 ',
+            'devKpp': ' 781201001 ',
+            'devOgrn': ' 1234567890123 ',
+            'developerGroup': {'name': ' ГК Тест '},
+        },
+        region_code='78',
+    )
+
+    assert record.name == 'ООО "Тестовый застройщик"'
+    assert record.company_group_name == 'ГК Тест'
+    assert record.legal_address == 'Санкт-Петербург, Невский пр., 1'
+    assert record.actual_address == 'Москва, Тверская, 2'
+    assert record.taxpayer_identification_number == '7812345678'
+    assert record.tax_registration_reason_code == '781201001'
+    assert record.primary_state_registration_number == '1234567890123'
+    assert record.source_regions == ('78',)
+
+
+@pytest.mark.django_db
+def test_import_dom_rf_developers_creates_groups_and_deduplicates_regions():
+    """Importer should create company groups and deduplicate region rows."""
+    client = FakeDeveloperRegistryClient(
+        [
+            DeveloperRegistrySourceItem(
+                region_code='77',
+                payload={
+                    'devShortCleanNm': 'ООО "Регион Девелопмент"',
+                    'devInn': '7712345678',
+                    'devKpp': '771201001',
+                    'devOgrn': '1234567890123',
+                    'devLegalAddr': 'Москва, ул. Первая, 1',
+                    'developerGroup': {'name': 'ГК Регион'},
+                },
+            ),
+            DeveloperRegistrySourceItem(
+                region_code='78',
+                payload={
+                    'devShortCleanNm': 'ООО "Регион Девелопмент"',
+                    'devInn': '7712345678',
+                    'devFactAddr': 'Санкт-Петербург, ул. Вторая, 2',
+                    'developerGroup': {'name': 'ГК Регион'},
+                },
+            ),
+        ]
+    )
+
+    summary = import_dom_rf_developers(client=client)
+
+    developer = Developer.objects.get(name='ООО "Регион Девелопмент"')
+    assert summary.source_records == 2
+    assert summary.normalized_records == 1
+    assert summary.created_developers == 1
+    assert summary.created_company_groups == 1
+    assert developer.company_group.name == 'ГК Регион'
+    assert developer.legal_address == 'Москва, ул. Первая, 1'
+    assert developer.actual_address == 'Санкт-Петербург, ул. Вторая, 2'
+    assert developer.taxpayer_identification_number == '7712345678'
+
+
+@pytest.mark.django_db
+def test_import_dom_rf_developers_updates_existing_without_blank_overwrite():
+    """Importer should update by INN without blanking local values."""
+    company_group = CompanyGroup.objects.create(name='Старая ГК')
+    developer = Developer.objects.create(
+        name='Старое название',
+        company_group=company_group,
+        legal_address='Старый юридический адрес',
+        actual_address='Старый фактический адрес',
+        taxpayer_identification_number='7712345678',
+        description='Локальная заметка',
+        is_active=False,
+    )
+    client = FakeDeveloperRegistryClient(
+        [
+            DeveloperRegistrySourceItem(
+                region_code='77',
+                payload={
+                    'devShortCleanNm': 'Новое название',
+                    'devInn': '7712345678',
+                    'devFactAddr': '',
+                    'devOgrn': '1234567890123',
+                    'developerGroup': {'name': 'Новая ГК'},
+                },
+            ),
+        ]
+    )
+
+    summary = import_dom_rf_developers(client=client)
+    developer.refresh_from_db()
+
+    assert summary.updated_developers == 1
+    assert developer.name == 'Новое название'
+    assert developer.company_group.name == 'Новая ГК'
+    assert developer.legal_address == 'Старый юридический адрес'
+    assert developer.actual_address == 'Старый фактический адрес'
+    assert developer.description == 'Локальная заметка'
+    assert developer.is_active is False
+    assert developer.primary_state_registration_number == '1234567890123'
+
+    second_summary = import_dom_rf_developers(client=client)
+    assert second_summary.created_developers == 0
+    assert second_summary.unchanged_developers == 1
+
+
+@pytest.mark.django_db
+def test_import_dom_rf_developers_reads_local_csv_source_file(tmp_path):
+    """Importer should load developers from a local CSV source file."""
+    source_file = tmp_path / 'developers.csv'
+    source_file.write_text(
+        (
+            'Застройщик;Группа компаний;ИНН;КПП;ОГРН;'
+            'Юридический адрес;Фактический адрес\n'
+            'ООО Файл Девелопмент;ГК Файл;7712345678;'
+            '771201001;1234567890123;Москва, ул. Первая, 1;'
+            'Санкт-Петербург, ул. Вторая, 2\n'
+        ),
+        encoding='utf-8-sig',
+    )
+
+    client = FileDeveloperRegistryClient(source_file)
+    summary = import_dom_rf_developers(client=client)
+
+    developer = Developer.objects.get(name='ООО Файл Девелопмент')
+    assert summary.source_records == 1
+    assert summary.created_developers == 1
+    assert summary.created_company_groups == 1
+    assert developer.company_group.name == 'ГК Файл'
+    assert developer.legal_address == 'Москва, ул. Первая, 1'
+    assert developer.actual_address == 'Санкт-Петербург, ул. Вторая, 2'
+    assert developer.taxpayer_identification_number == '7712345678'
+    assert developer.tax_registration_reason_code == '771201001'
+    assert developer.primary_state_registration_number == '1234567890123'
+
+    second_summary = import_dom_rf_developers(client=client)
+    assert second_summary.created_developers == 0
+    assert second_summary.unchanged_developers == 1
+
+
+def test_file_developer_registry_client_reads_json_source_file(tmp_path):
+    """File client should read JSON files with common list wrappers."""
+    source_file = tmp_path / 'developers.json'
+    source_file.write_text(
+        json.dumps(
+            {
+                'data': {
+                    'items': [
+                        {
+                            'Наименование застройщика': 'ООО JSON Девелопмент',
+                            'ГК': 'ГК JSON',
+                            'ИНН': '7800000001',
+                        }
+                    ]
+                }
+            },
+            ensure_ascii=False,
+        ),
+        encoding='utf-8',
+    )
+
+    items = list(FileDeveloperRegistryClient(source_file).fetch_developers())
+
+    assert len(items) == 1
+    assert items[0].payload['name'] == 'ООО JSON Девелопмент'
+    assert items[0].payload['companyGroupName'] == 'ГК JSON'
+    assert items[0].payload['inn'] == '7800000001'
+
+
+def test_file_developer_registry_client_reads_xlsx_source_file(tmp_path):
+    """File client should read XLSX files from the first worksheet."""
+    source_file = tmp_path / 'developers.xlsx'
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.append(['Застройщик', 'Группа компаний', 'ИНН'])
+    worksheet.append(['ООО XLSX Девелопмент', 'ГК XLSX', '7812345678'])
+    workbook.save(source_file)
+    workbook.close()
+
+    items = list(FileDeveloperRegistryClient(source_file).fetch_developers())
+
+    assert len(items) == 1
+    assert items[0].payload['name'] == 'ООО XLSX Девелопмент'
+    assert items[0].payload['companyGroupName'] == 'ГК XLSX'
+    assert items[0].payload['inn'] == '7812345678'
+
+
+@pytest.mark.django_db
+def test_import_dom_rf_developers_command_accepts_source_file(tmp_path):
+    """Management command should support dry-run imports from local files."""
+    source_file = tmp_path / 'developers.csv'
+    source_file.write_text(
+        'Застройщик,ИНН\nООО Командный Девелопмент,7722000000\n',
+        encoding='utf-8',
+    )
+    output = StringIO()
+
+    call_command(
+        'import_dom_rf_developers',
+        '--source-file',
+        str(source_file),
+        '--dry-run',
+        stdout=output,
+    )
+
+    assert 'Проверка импорта ЕРЗ завершен' in output.getvalue()
+    assert not Developer.objects.filter(
+        name='ООО Командный Девелопмент'
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_developer_registry_import_button_runs_for_application_admin(client):
+    """Application administrators should be able to run registry import."""
+    client.force_login(
+        create_application_administrator(
+            'developer-sync-admin@example.com',
+            '+79992000102',
+        )
+    )
+    summary = DeveloperRegistryImportSummary(created_developers=2)
+
+    with patch(
+        'property.views.import_dom_rf_developers',
+        return_value=summary,
+    ) as import_mock:
+        response = client.post(reverse('property:developer_registry_import'))
+
+    assert response.status_code == 302
+    assert response.url == reverse('property:developer_list')
+    import_mock.assert_called_once_with()
+
+
+@pytest.mark.django_db
+def test_developer_registry_import_view_imports_uploaded_file(client):
+    """Application administrators should import developers from uploaded files."""
+    client.force_login(
+        create_application_administrator(
+            'developer-upload-sync-admin@example.com',
+            '+79992000105',
+        )
+    )
+    uploaded_file = SimpleUploadedFile(
+        'developers.csv',
+        (
+            'Застройщик;Группа компаний;ИНН\n'
+            'ООО Загрузка Через Форму;ГК Форма;7711000000\n'
+        ).encode('utf-8'),
+        content_type='text/csv',
+    )
+
+    response = client.post(
+        reverse('property:developer_registry_import'),
+        {'source_file': uploaded_file},
+    )
+
+    assert response.status_code == 302
+    assert response.url == reverse('property:developer_list')
+    developer = Developer.objects.get(name='ООО Загрузка Через Форму')
+    assert developer.company_group.name == 'ГК Форма'
+    assert developer.taxpayer_identification_number == '7711000000'
+
+
+@pytest.mark.django_db
+def test_developer_registry_import_view_rejects_unsupported_file(client):
+    """Registry import view should reject unsupported upload extensions."""
+    client.force_login(
+        create_application_administrator(
+            'developer-upload-invalid-admin@example.com',
+            '+79992000106',
+        )
+    )
+    uploaded_file = SimpleUploadedFile(
+        'developers.txt',
+        'Застройщик\nООО Неверный Файл\n'.encode('utf-8'),
+        content_type='text/plain',
+    )
+
+    response = client.post(
+        reverse('property:developer_registry_import'),
+        {'source_file': uploaded_file},
+    )
+
+    message_texts = [
+        str(message) for message in get_messages(response.wsgi_request)
+    ]
+    assert response.status_code == 302
+    assert any('Файл импорта должен быть' in text for text in message_texts)
+    assert not Developer.objects.filter(name='ООО Неверный Файл').exists()
+
+
+@pytest.mark.django_db
+def test_moderator_cannot_run_developer_registry_import(client):
+    """Developer registry import should require external sync permission."""
+    client.force_login(
+        create_moderator(
+            'developer-sync-moderator@example.com',
+            '+79992000103',
+        )
+    )
+
+    with patch('property.views.import_dom_rf_developers') as import_mock:
+        response = client.post(reverse('property:developer_registry_import'))
+
+    assert response.status_code == 403
+    import_mock.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_developer_list_shows_registry_import_button_for_admin(client):
+    """Developer list should expose registry import button to sync admins."""
+    client.force_login(
+        create_application_administrator(
+            'developer-list-sync-admin@example.com',
+            '+79992000104',
+        )
+    )
+
+    response = client.get(reverse('property:developer_list'))
+
+    assert response.status_code == 200
+    assert 'Импорт из файла ЕРЗ' in response.content.decode()
+    assert 'type="file"' in response.content.decode()
+    assert 'name="source_file"' in response.content.decode()
+    assert reverse('property:developer_registry_import') in (
+        response.content.decode()
+    )
 
 
 def test_metro_availability_select_uses_bootstrap_class_for_auto_search():

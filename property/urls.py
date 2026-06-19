@@ -39,6 +39,11 @@ urlpatterns = [
         name='developer_create',
     ),
     path(
+        'developers/import-registry/',
+        views.DeveloperRegistryImportView.as_view(),
+        name='developer_registry_import',
+    ),
+    path(
         'developers/<int:pk>/update/',
         views.DeveloperUpdateView.as_view(),
         name='developer_update',
