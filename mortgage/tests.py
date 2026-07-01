@@ -5,6 +5,7 @@ import re
 from zipfile import ZipFile
 
 from openpyxl import load_workbook
+import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase
@@ -53,6 +54,71 @@ def create_user_with_role(email, phone_number, group_name=None):
         group, _created = Group.objects.get_or_create(name=group_name)
         user.groups.add(group)
     return user
+
+
+def create_property_for_calculator_prefill():
+    """Create a property with related catalog records for prefill tests."""
+    region = Region.objects.create(name='Prefill Region', code='PREF')
+    city = City.objects.create(name='Prefill City', region=region)
+    district = District.objects.create(name='Prefill District', city=city)
+    developer = Developer.objects.create(name='Prefill Developer')
+    estate_type = RealEstateType.objects.create(name='Prefill Apartment')
+    estate_class = RealEstateClass.objects.create(
+        name='Prefill Comfort',
+        weight=Decimal('1.00'),
+    )
+    real_estate_complex = RealEstateComplex.objects.create(
+        name='Prefill Complex',
+        developer=developer,
+        district=district,
+        real_estate_class=estate_class,
+        real_estate_type=estate_type,
+    )
+    building = RealEstateComplexBuilding.objects.create(
+        number='A',
+        real_estate_complex=real_estate_complex,
+    )
+    layout = ApartmentLayout.objects.create(name='Prefill Layout')
+    decoration = ApartmentDecoration.objects.create(name='Prefill Decoration')
+    return Property.objects.create(
+        apartment_number='705',
+        building=building,
+        decoration=decoration,
+        layout=layout,
+        area=Decimal('48.50'),
+        floor=7,
+        property_cost=Decimal('8500000.00'),
+    )
+
+
+@pytest.mark.django_db
+def test_mortgage_calculator_prefills_property_data_from_query_parameter(
+    client,
+):
+    """Calculator should prefill object data from property_id."""
+    property_obj = create_property_for_calculator_prefill()
+
+    response = client.get(
+        reverse('mortgage:mortgage_calculator'),
+        {'property_id': str(property_obj.pk)},
+    )
+
+    assert response.status_code == 200
+    form_initial = response.context['mortgage_form'].initial
+    real_estate_complex = property_obj.building.real_estate_complex
+    district = real_estate_complex.district
+    assert form_initial['PROPERTY'] == property_obj.pk
+    assert form_initial['PROPERTY_COST'] == property_obj.property_cost
+    assert form_initial['OBJECT_CITY'] == district.city_id
+    assert form_initial['OBJECT_DISTRICT'] == district.pk
+    assert form_initial['OBJECT_DEVELOPER'] == real_estate_complex.developer_id
+    assert form_initial['OBJECT_COMPLEX'] == real_estate_complex.pk
+    assert form_initial['OBJECT_BUILDING'] == property_obj.building_id
+    assert form_initial['OBJECT_APARTMENT_NUMBER'] == '705'
+    assert form_initial['OBJECT_AREA'] == property_obj.area
+    assert form_initial['OBJECT_LAYOUT'] == property_obj.layout_id
+    assert form_initial['OBJECT_FLOOR'] == 7
+    assert form_initial['OBJECT_DECORATION'] == property_obj.decoration_id
 
 
 class MortgageFormDeveloperChoiceTests(TestCase):

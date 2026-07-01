@@ -381,6 +381,16 @@ def _get_property_initial(property_obj):
     }
 
 
+def _get_property_calculator_initial(property_obj):
+    """Return mortgage calculator initial data for a selected property."""
+    initial = {
+        'PROPERTY': property_obj.pk,
+        'PROPERTY_COST': property_obj.property_cost,
+    }
+    initial.update(_get_property_initial(property_obj))
+    return initial
+
+
 def _get_property_payload(property_obj):
     """Return property data used by the calculator UI."""
     real_estate_complex = property_obj.building.real_estate_complex
@@ -627,6 +637,24 @@ def _build_calculation(property_obj, data, result, values, user=None):
     )
 
 
+def _get_property_from_query(request):
+    """Return the property requested for calculator prefill."""
+    property_id = (request.GET.get('property_id') or '').strip()
+    if not property_id or not property_id.isdecimal():
+        return None
+
+    return get_object_or_404(
+        Property.objects.select_related(
+            'building__real_estate_complex__developer',
+            'building__real_estate_complex__district__city',
+            'building',
+            'layout',
+            'decoration',
+        ),
+        pk=property_id,
+    )
+
+
 def _get_sample_calculation(request):
     """Возвращает расчет-образец для предзаполнения формы калькулятора."""
     sample_calculation_id = (request.GET.get('sample') or '').strip()
@@ -699,6 +727,11 @@ def mortgage_calculator(request):
         if request.method == 'GET'
         else None
     )
+    selected_property = (
+        _get_property_from_query(request)
+        if request.method == 'GET' and sample_calculation is None
+        else None
+    )
 
     if request.method == 'POST':
         form_data = request.POST.copy()
@@ -724,6 +757,10 @@ def mortgage_calculator(request):
     elif sample_calculation is not None:
         mortgage_form = MortgageForm(
             initial=_get_calculation_form_initial(sample_calculation)
+        )
+    elif selected_property is not None:
+        mortgage_form = MortgageForm(
+            initial=_get_property_calculator_initial(selected_property)
         )
     else:
         mortgage_form = MortgageForm()
