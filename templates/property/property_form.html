@@ -75,7 +75,7 @@
                             <select class="form-control" id="developer-select" data-cascade-field="developer">
                                 <option value="">Выберите застройщика</option>
                                 {% for developer in developers %}
-                                <option value="{{ developer.id }}" {% if current_developer == developer.id %}selected{% endif %}>{{ developer.name }}</option>
+                                <option value="{{ developer.id }}" {% if current_developer == developer.id %}selected{% endif %}>{{ developer.get_display_name_with_company_group }}</option>
                                 {% endfor %}
                             </select>
                         </div>

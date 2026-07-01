@@ -3,34 +3,51 @@
 
 {% block title %}Застройщики{% endblock %}
 
+{% block extra_css %}
+<style>
+    .developer-list-actions {
+        min-width: 0;
+        overflow-x: auto;
+    }
+
+    .developer-list-import-form {
+        flex: 0 0 auto;
+    }
+
+    .developer-list-import-file {
+        width: clamp(14rem, 24vw, 22rem);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center gap-2 mb-4">
-        <h1>Застройщики</h1>
-        <div class="d-flex flex-wrap align-items-center gap-2">
+        <h1 class="mb-0">Застройщики</h1>
+        <div class="developer-list-actions d-flex flex-nowrap align-items-center justify-content-end gap-2">
             {% if can_sync_external_data %}
             <form
                 method="post"
                 enctype="multipart/form-data"
                 action="{% url 'property:developer_registry_import' %}"
-                class="d-flex flex-wrap align-items-center gap-2"
+                class="developer-list-import-form d-flex flex-nowrap align-items-center gap-2"
             >
                 {% csrf_token %}
                 <input
                     type="file"
                     name="source_file"
-                    class="form-control form-control-sm"
+                    class="developer-list-import-file form-control form-control-sm"
                     accept=".csv,.json,.xlsx"
                     aria-label="Файл ЕРЗ"
                     required
                 >
-                <button type="submit" class="btn btn-outline-primary">
+                <button type="submit" class="btn btn-outline-primary text-nowrap">
                     Импорт из файла ЕРЗ
                 </button>
             </form>
             {% endif %}
         {% if can_manage_catalogs %}
-            <a href="{% url 'property:developer_create' %}" class="btn btn-primary">Добавить застройщика</a>
+            <a href="{% url 'property:developer_create' %}" class="btn btn-primary text-nowrap">Добавить застройщика</a>
         {% endif %}
         </div>
     </div>

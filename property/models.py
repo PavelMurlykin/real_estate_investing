@@ -68,6 +68,12 @@ class Developer(BaseModel):
         """Возвращает название застройщика."""
         return self.name
 
+    def get_display_name_with_company_group(self):
+        """Возвращает название застройщика с группой компаний для селектов."""
+        if not self.company_group_id:
+            return self.name
+        return f'{self.name} ({self.company_group})'
+
 
 class DeveloperRegion(BaseModel):
     """Регион работы застройщика."""

@@ -34,6 +34,7 @@ from users.roles import (
     can_manage_catalogs,
 )
 
+from .form_fields import get_developers_with_company_groups_queryset
 from .forms import (
     CompanyGroupForm,
     DeveloperForm,
@@ -1238,7 +1239,7 @@ class RealEstateComplexListView(ListView):
                 buildings_count=Count('realestatecomplexbuilding')
             )
             .select_related(
-                'developer',
+                'developer__company_group',
                 'district__city',
                 'real_estate_class',
                 'real_estate_type',
@@ -1334,7 +1335,9 @@ class RealEstateComplexListView(ListView):
         context['sort_by'] = self.request.GET.get('sort_by', '')
         context['sort_dir'] = self.request.GET.get('sort_dir', 'asc')
         context['columns'] = self.build_table_columns()
-        context['developers_for_filter'] = Developer.objects.order_by('name')
+        context['developers_for_filter'] = (
+            get_developers_with_company_groups_queryset()
+        )
         context['cities_for_filter'] = City.objects.order_by('name')
         context['classes_for_filter'] = RealEstateClass.objects.order_by(
             'weight', 'name'
@@ -1606,7 +1609,7 @@ class PropertyListView(ListView):
             Any: Тип результата зависит от контекста использования.
         """
         queryset = Property.objects.select_related(
-            'building__real_estate_complex__developer',
+            'building__real_estate_complex__developer__company_group',
             'building__real_estate_complex__district__city',
             'building__real_estate_complex',
             'building',
@@ -1743,7 +1746,9 @@ class PropertyListView(ListView):
         context['sort_dir'] = self.request.GET.get('sort_dir', 'asc')
         context['columns'] = self.build_table_columns()
         context['cities_for_filter'] = City.objects.order_by('name')
-        context['developers_for_filter'] = Developer.objects.order_by('name')
+        context['developers_for_filter'] = (
+            get_developers_with_company_groups_queryset()
+        )
         context['complexes_for_filter'] = RealEstateComplex.objects.select_related(
             'developer', 'district__city'
         ).order_by('name')
@@ -1819,7 +1824,7 @@ class PropertyFormContextMixin:
         districts = District.objects.select_related(
             'city__region'
         ).order_by('name')
-        developers = Developer.objects.order_by('name')
+        developers = get_developers_with_company_groups_queryset()
         complexes = RealEstateComplex.objects.select_related(
             'developer',
             'district__city__region',

@@ -26,6 +26,7 @@ from users.roles import (
 
 from .forms import (
     DeveloperForm,
+    PropertyFilterForm,
     PropertyForm,
     RealEstateComplexBuildingForm,
     RealEstateComplexForm,
@@ -90,6 +91,56 @@ def create_application_administrator(email, phone_number):
         phone_number,
         APPLICATION_ADMINISTRATOR_GROUP_NAME,
     )
+
+
+@pytest.mark.django_db
+def test_developer_display_name_includes_company_group_when_available():
+    """Developer selector label should include company group when present."""
+    company_group = CompanyGroup.objects.create(name='ГК Север')
+    developer = Developer.objects.create(
+        name='Застройщик Север',
+        company_group=company_group,
+    )
+    standalone_developer = Developer.objects.create(
+        name='Самостоятельный застройщик'
+    )
+
+    assert (
+        developer.get_display_name_with_company_group()
+        == 'Застройщик Север (ГК Север)'
+    )
+    assert (
+        standalone_developer.get_display_name_with_company_group()
+        == 'Самостоятельный застройщик'
+    )
+    assert str(developer) == 'Застройщик Север'
+
+
+@pytest.mark.django_db
+def test_developer_choice_fields_use_company_group_labels():
+    """Developer choice fields should use the shared display label."""
+    company_group = CompanyGroup.objects.create(name='ГК Форма')
+    Developer.objects.create(
+        name='Формовый застройщик',
+        company_group=company_group,
+    )
+    Developer.objects.create(name='Застройщик без группы')
+
+    complex_form_labels = [
+        label for _value, label in RealEstateComplexForm().fields[
+            'developer'
+        ].choices
+    ]
+    filter_form_labels = [
+        label for _value, label in PropertyFilterForm().fields[
+            'developer'
+        ].choices
+    ]
+
+    assert 'Формовый застройщик (ГК Форма)' in complex_form_labels
+    assert 'Застройщик без группы' in complex_form_labels
+    assert 'Застройщик без группы ()' not in complex_form_labels
+    assert 'Формовый застройщик (ГК Форма)' in filter_form_labels
 
 
 @pytest.mark.django_db
@@ -717,11 +768,16 @@ def test_developer_list_shows_registry_import_button_for_admin(client):
     response = client.get(reverse('property:developer_list'))
 
     assert response.status_code == 200
-    assert 'Импорт из файла ЕРЗ' in response.content.decode()
-    assert 'type="file"' in response.content.decode()
-    assert 'name="source_file"' in response.content.decode()
+    content = response.content.decode()
+    assert 'Импорт из файла ЕРЗ' in content
+    assert 'developer-list-actions d-flex flex-nowrap' in content
+    assert 'developer-list-import-form d-flex flex-nowrap' in content
+    assert 'developer-list-import-file form-control form-control-sm' in content
+    assert 'class="btn btn-primary text-nowrap"' in content
+    assert 'type="file"' in content
+    assert 'name="source_file"' in content
     assert reverse('property:developer_registry_import') in (
-        response.content.decode()
+        content
     )
 
 
@@ -907,6 +963,39 @@ class RealEstateComplexFormLocationTests(TestCase):
             ],
             '#FF0000',
         )
+
+    def test_create_view_formats_developer_choice_with_company_group(self):
+        company_group = CompanyGroup.objects.create(name='Group 1')
+        self.developer.company_group = company_group
+        self.developer.save(update_fields=['company_group', 'updated_at'])
+
+        response = self.client.get(reverse('property:complex_create'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Developer 1 (Group 1)')
+        self.assertNotContains(response, 'Developer 1 ()')
+
+    def test_complex_list_filter_formats_developer_with_company_group(self):
+        company_group = CompanyGroup.objects.create(name='Group 1')
+        self.developer.company_group = company_group
+        self.developer.save(update_fields=['company_group', 'updated_at'])
+        RealEstateComplex.objects.create(
+            name='Complex 1',
+            developer=self.developer,
+            district=self.district,
+            real_estate_class=self.estate_class,
+            real_estate_type=self.estate_type,
+        )
+
+        response = self.client.get(reverse('property:complex_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            'property-complex-list-table__developer-column',
+        )
+        self.assertContains(response, 'Developer 1 (Group 1)', count=2)
+        self.assertNotContains(response, 'Developer 1 ()')
 
     def test_complex_form_metro_options_show_station_name_without_line(self):
         form = RealEstateComplexMetroAvailabilityForm()
@@ -1710,6 +1799,20 @@ class DeveloperListViewTests(TestCase):
         self.assertNotContains(response, 'Да')
         self.assertNotContains(response, 'Нет')
 
+    def test_developer_list_keeps_name_and_company_group_separate(self):
+        company_group = CompanyGroup.objects.create(name='Separate Group')
+        Developer.objects.create(
+            name='Separate Developer',
+            company_group=company_group,
+        )
+
+        response = self.client.get(reverse('property:developer_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Separate Developer')
+        self.assertContains(response, 'Separate Group')
+        self.assertNotContains(response, 'Separate Developer (Separate Group)')
+
 
 class RealEstateComplexDeleteViewTests(TestCase):
     """Описание класса RealEstateComplexDeleteViewTests.
@@ -2247,6 +2350,42 @@ class PropertyFormCascadeTests(TestCase):
             response,
             '/media/property/window_views/window-view.gif',
         )
+
+    def test_create_view_formats_developer_choice_with_company_group(self):
+        """The property form should show developer company group in choices."""
+        company_group = CompanyGroup.objects.create(name='Group 1')
+        self.developer.company_group = company_group
+        self.developer.save(update_fields=['company_group', 'updated_at'])
+
+        response = self.client.get(reverse('property:create'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Developer 1 (Group 1)')
+        self.assertContains(response, 'Developer 2')
+        self.assertNotContains(response, 'Developer 2 ()')
+
+    def test_property_list_filter_formats_developer_with_company_group(self):
+        """The property list should show developer company groups."""
+        company_group = CompanyGroup.objects.create(name='Group 1')
+        self.developer.company_group = company_group
+        self.developer.save(update_fields=['company_group', 'updated_at'])
+        Property.objects.create(
+            apartment_number='101',
+            building=self.building,
+            decoration=self.decoration,
+            layout=self.layout,
+            area=Decimal('42.00'),
+            floor=10,
+            property_cost=Decimal('1000000.00'),
+        )
+
+        response = self.client.get(reverse('property:list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'property-list-table__developer-column')
+        self.assertContains(response, 'Developer 1 (Group 1)', count=2)
+        self.assertContains(response, 'Developer 2')
+        self.assertNotContains(response, 'Developer 2 ()')
 
     def test_update_view_clears_selected_image_files(self):
         """The property update form should clear and delete selected images."""

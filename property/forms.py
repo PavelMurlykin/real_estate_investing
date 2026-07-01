@@ -3,6 +3,10 @@ from django.forms import BaseInlineFormSet, inlineformset_factory
 
 from location.models import City, District, Metro, Region
 
+from .form_fields import (
+    DeveloperModelChoiceField,
+    get_developers_with_company_groups_queryset,
+)
 from .models import (
     CompanyGroup,
     Developer,
@@ -29,8 +33,8 @@ class PropertyFilterForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-control'}),
         label='Город',
     )
-    developer = forms.ModelChoiceField(
-        queryset=Developer.objects.all(),
+    developer = DeveloperModelChoiceField(
+        queryset=get_developers_with_company_groups_queryset(),
         required=False,
         empty_label='Все застройщики',
         widget=forms.Select(attrs={'class': 'form-control'}),
@@ -275,6 +279,12 @@ class RealEstateComplexForm(forms.ModelForm):
         label='Город',
         widget=forms.Select(attrs={'class': 'form-control'}),
     )
+    developer = DeveloperModelChoiceField(
+        queryset=get_developers_with_company_groups_queryset(),
+        empty_label='Выберите застройщика',
+        label='Застройщик',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
 
     class Meta:
         """Описание служебного класса Meta.
@@ -337,6 +347,9 @@ class RealEstateComplexForm(forms.ModelForm):
             'city__region'
         ).order_by('name')
         self.fields['district'].empty_label = 'Выберите район'
+        self.fields['developer'].queryset = (
+            get_developers_with_company_groups_queryset()
+        )
 
         district = getattr(self.instance, 'district', None)
         if district:
