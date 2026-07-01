@@ -57,6 +57,17 @@
                     </select>
                 </div>
                 <div class="col-md-4">
+                    <label class="form-label">Регион</label>
+                    <select name="filter_region" class="form-control" data-catalog-filter-control>
+                        <option value="">Все регионы</option>
+                        {% for region in regions_for_filter %}
+                        <option value="{{ region.pk }}" {% if filters.region == region.pk|stringformat:'s' %}selected{% endif %}>
+                            {{ region.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
                     <label class="form-label">Описание</label>
                     <input type="text" name="filter_description" value="{{ filters.description }}" class="form-control" data-catalog-filter-control>
                 </div>
@@ -96,7 +107,11 @@
                             <tr>
                                 {% for column in columns %}
                                 <th>
+                                    {% if column.sort_url %}
                                     {% include "includes/catalog_sort_link.html" with sort_url=column.sort_url sort_label=column.label sort_is_sorted=column.is_sorted sort_direction=column.sort_direction %}
+                                    {% else %}
+                                    {{ column.label }}
+                                    {% endif %}
                                 </th>
                                 {% endfor %}
                                 {% if can_manage_catalogs %}
@@ -113,6 +128,12 @@
                                         {{ developer.name }}
                                     {% elif column.key == 'company_group' %}
                                         {{ developer.company_group|default:"-" }}
+                                    {% elif column.key == 'regions' %}
+                                        {% for region in developer.regions.all %}
+                                            {{ region.name }}{% if not forloop.last %}, {% endif %}
+                                        {% empty %}
+                                            -
+                                        {% endfor %}
                                     {% elif column.key == 'legal_address' %}
                                         {{ developer.legal_address|default:"-"|truncatechars:100 }}
                                     {% elif column.key == 'actual_address' %}

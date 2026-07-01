@@ -5,7 +5,8 @@ from dataclasses import dataclass, field
 
 from django.db import transaction
 
-from property.models import CompanyGroup, Developer
+from location.models import Region
+from property.models import CompanyGroup, Developer, DeveloperRegion
 
 from .developer_registry_client import (
     DEFAULT_DEVELOPER_REGISTRY_REGIONS,
@@ -85,6 +86,17 @@ COMPANY_GROUP_NAME_ALIASES = (
     'group.name',
     'holdingName',
 )
+REGION_ALIASES = (
+    'region',
+    'regionCode',
+    'regionName',
+    'region.code',
+    'region.name',
+    'developer.region',
+    'developer.regionCode',
+    'developer.regionName',
+)
+IGNORED_SOURCE_REGION_REFERENCES = {'file'}
 
 
 class DeveloperRegistryImportError(Exception):
@@ -115,6 +127,7 @@ class DeveloperRegistryImportSummary:
     updated_developers: int = 0
     unchanged_developers: int = 0
     created_company_groups: int = 0
+    created_developer_region_links: int = 0
     skipped_records: int = 0
     errors: list[str] = field(default_factory=list)
     dry_run: bool = False
@@ -128,6 +141,8 @@ class DeveloperRegistryImportSummary:
             f'обновлено {self.updated_developers}, '
             f'без изменений {self.unchanged_developers}, '
             f'создано ГК {self.created_company_groups}, '
+            f'добавлено связей с регионами '
+            f'{self.created_developer_region_links}, '
             f'пропущено {self.skipped_records}.'
         )
 
@@ -214,7 +229,7 @@ class DeveloperRegistryImporter:
         developer = find_existing_developer(record)
 
         if developer is None:
-            Developer.objects.create(
+            developer = Developer.objects.create(
                 name=record.name,
                 company_group=company_group,
                 legal_address=record.legal_address or None,
@@ -230,6 +245,9 @@ class DeveloperRegistryImporter:
                 ),
             )
             summary.created_developers += 1
+            summary.created_developer_region_links += (
+                sync_developer_regions(developer, record.source_regions)
+            )
             return
 
         changed_fields = apply_developer_registry_record(
@@ -237,8 +255,16 @@ class DeveloperRegistryImporter:
             record,
             company_group,
         )
+        created_region_links = sync_developer_regions(
+            developer,
+            record.source_regions,
+        )
+        summary.created_developer_region_links += created_region_links
         if changed_fields:
             developer.save(update_fields=[*changed_fields, 'updated_at'])
+            summary.updated_developers += 1
+            return
+        if created_region_links:
             summary.updated_developers += 1
             return
 
@@ -248,6 +274,12 @@ class DeveloperRegistryImporter:
         """Return the company group from the record, creating it if needed."""
         if not record.company_group_name:
             return None
+
+        company_group = CompanyGroup.objects.filter(
+            name__iexact=record.company_group_name
+        ).first()
+        if company_group:
+            return company_group
 
         company_group, created = CompanyGroup.objects.get_or_create(
             name=record.company_group_name
@@ -280,6 +312,10 @@ def normalize_developer_registry_item(payload, region_code=''):
         ),
         max_length=15,
     )
+    region_references = normalize_region_references(
+        read_first_payload_value(payload, REGION_ALIASES),
+        region_code,
+    )
 
     return DeveloperRegistryRecord(
         name=normalize_text(
@@ -297,7 +333,7 @@ def normalize_developer_registry_item(payload, region_code=''):
         taxpayer_identification_number=taxpayer_identification_number,
         tax_registration_reason_code=tax_registration_reason_code,
         primary_state_registration_number=primary_state_registration_number,
-        source_regions=(str(region_code),) if region_code else (),
+        source_regions=region_references,
     )
 
 
@@ -306,6 +342,8 @@ def normalize_text(value):
     if value in (None, ''):
         return ''
     text = str(value).replace('\xa0', ' ').strip()
+    if text.casefold() in {'-', '—', 'null', 'none', 'nan', 'n/a'}:
+        return ''
     return TEXT_WHITESPACE_PATTERN.sub(' ', text)
 
 
@@ -317,6 +355,25 @@ def normalize_digits(value, max_length=None):
     if max_length:
         return digits[:max_length]
     return digits
+
+
+def normalize_region_references(*values):
+    """Normalize source region references from row values and source filters."""
+    references = []
+    seen_references = set()
+
+    for value in values:
+        text = normalize_text(value)
+        if not text:
+            continue
+        if text.casefold() in IGNORED_SOURCE_REGION_REFERENCES:
+            continue
+        if text in seen_references:
+            continue
+        seen_references.add(text)
+        references.append(text)
+
+    return tuple(references)
 
 
 def read_first_payload_value(payload, aliases):
@@ -412,6 +469,78 @@ def find_existing_developer(record):
         if developer:
             return developer
     return None
+
+
+def sync_developer_regions(developer, source_region_codes):
+    """Create missing region links for the developer from source references."""
+    source_region_references = set(
+        normalize_region_references(*source_region_codes)
+    )
+    if not source_region_references:
+        return 0
+
+    region_codes = set()
+    region_names = set()
+    for region_reference in source_region_references:
+        region_codes.update(get_region_code_lookup_values(region_reference))
+        if not normalize_text(region_reference).isdigit():
+            region_names.add(normalize_region_name(region_reference))
+
+    region_ids = set()
+    if region_codes:
+        region_ids.update(
+            Region.objects.filter(code__in=region_codes).values_list(
+                'pk',
+                flat=True,
+            )
+        )
+    if region_names:
+        region_ids.update(
+            region.pk
+            for region in Region.objects.all()
+            if normalize_region_name(region.name) in region_names
+        )
+
+    if not region_ids:
+        return 0
+
+    existing_region_ids = set(
+        DeveloperRegion.objects.filter(
+            developer=developer,
+            region_id__in=region_ids,
+        ).values_list('region_id', flat=True)
+    )
+    new_region_ids = region_ids - existing_region_ids
+    if not new_region_ids:
+        return 0
+
+    DeveloperRegion.objects.bulk_create(
+        [
+            DeveloperRegion(developer=developer, region_id=region_id)
+            for region_id in sorted(new_region_ids)
+        ],
+        ignore_conflicts=True,
+    )
+    return len(new_region_ids)
+
+
+def get_region_code_lookup_values(region_reference):
+    """Return possible region code forms for a source region reference."""
+    digits = normalize_digits(region_reference)
+    if not digits:
+        return set()
+
+    codes = {digits}
+    stripped_digits = digits.lstrip('0')
+    if stripped_digits:
+        codes.add(stripped_digits)
+        codes.add(stripped_digits.zfill(2))
+    return codes
+
+
+def normalize_region_name(region_name):
+    """Normalize a region name for case-insensitive matching."""
+    return normalize_text(region_name).replace('ё', 'е').casefold()
 
 
 def apply_developer_registry_record(developer, record, company_group):

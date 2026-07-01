@@ -188,6 +188,7 @@ class DeveloperForm(forms.ModelForm):
         fields = [
             'name',
             'company_group',
+            'regions',
             'legal_address',
             'actual_address',
             'taxpayer_identification_number',
@@ -199,6 +200,9 @@ class DeveloperForm(forms.ModelForm):
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'company_group': forms.Select(attrs={'class': 'form-control'}),
+            'regions': forms.SelectMultiple(
+                attrs={'class': 'form-control'}
+            ),
             'legal_address': forms.Textarea(
                 attrs={'class': 'form-control', 'rows': 2}
             ),
@@ -229,6 +233,8 @@ class DeveloperForm(forms.ModelForm):
             'name'
         )
         self.fields['company_group'].empty_label = 'Без группы компаний'
+        self.fields['regions'].queryset = Region.objects.order_by('name')
+        self.fields['regions'].required = False
 
 
 class CompanyGroupForm(forms.ModelForm):

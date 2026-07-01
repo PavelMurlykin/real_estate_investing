@@ -13,6 +13,7 @@ from django.contrib.auth.models import Group
 from django.contrib.messages import get_messages
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
+from django.db import IntegrityError, transaction
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from openpyxl import Workbook
@@ -35,6 +36,7 @@ from .models import (
     ApartmentLayout,
     CompanyGroup,
     Developer,
+    DeveloperRegion,
     Property,
     RealEstateClass,
     RealEstateComplex,
@@ -91,6 +93,28 @@ def create_application_administrator(email, phone_number):
 
 
 @pytest.mark.django_db
+def test_developer_region_links_developer_and_region_once():
+    """DeveloperRegion should expose the developer-region M2M relation."""
+    developer = Developer.objects.create(name='Regional Developer')
+    region = Region.objects.create(name='Москва', code='77')
+
+    link = DeveloperRegion.objects.create(
+        developer=developer,
+        region=region,
+    )
+
+    assert list(developer.regions.all()) == [region]
+    assert list(region.developers.all()) == [developer]
+    assert str(link) == 'Regional Developer - Москва'
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            DeveloperRegion.objects.create(
+                developer=developer,
+                region=region,
+            )
+
+
+@pytest.mark.django_db
 def test_developer_form_new_fields_are_optional():
     """Developer form should allow saving without new optional fields."""
     form = DeveloperForm(
@@ -109,6 +133,29 @@ def test_developer_form_new_fields_are_optional():
     assert developer.taxpayer_identification_number in (None, '')
     assert developer.tax_registration_reason_code in (None, '')
     assert developer.primary_state_registration_number in (None, '')
+    assert not developer.regions.exists()
+
+
+@pytest.mark.django_db
+def test_developer_form_saves_regions():
+    """Developer form should persist selected operating regions."""
+    moscow = Region.objects.create(name='Москва', code='77')
+    saint_petersburg = Region.objects.create(name='Санкт-Петербург', code='78')
+    form = DeveloperForm(
+        data={
+            'name': 'Developer with regions',
+            'regions': [str(moscow.pk), str(saint_petersburg.pk)],
+            'is_active': 'on',
+        }
+    )
+
+    assert form.is_valid(), form.errors.as_json()
+    developer = form.save()
+
+    assert set(developer.regions.values_list('code', flat=True)) == {
+        '77',
+        '78',
+    }
 
 
 @pytest.mark.django_db
@@ -261,6 +308,8 @@ def test_normalize_developer_registry_item_uses_known_dom_rf_aliases():
 @pytest.mark.django_db
 def test_import_dom_rf_developers_creates_groups_and_deduplicates_regions():
     """Importer should create company groups and deduplicate region rows."""
+    Region.objects.create(name='Москва', code='77')
+    Region.objects.create(name='Санкт-Петербург', code='78')
     client = FakeDeveloperRegistryClient(
         [
             DeveloperRegistrySourceItem(
@@ -293,10 +342,15 @@ def test_import_dom_rf_developers_creates_groups_and_deduplicates_regions():
     assert summary.normalized_records == 1
     assert summary.created_developers == 1
     assert summary.created_company_groups == 1
+    assert summary.created_developer_region_links == 2
     assert developer.company_group.name == 'ГК Регион'
     assert developer.legal_address == 'Москва, ул. Первая, 1'
     assert developer.actual_address == 'Санкт-Петербург, ул. Вторая, 2'
     assert developer.taxpayer_identification_number == '7712345678'
+    assert set(developer.regions.values_list('code', flat=True)) == {
+        '77',
+        '78',
+    }
 
 
 @pytest.mark.django_db
@@ -408,21 +462,125 @@ def test_file_developer_registry_client_reads_json_source_file(tmp_path):
 
 
 def test_file_developer_registry_client_reads_xlsx_source_file(tmp_path):
-    """File client should read XLSX files from the first worksheet."""
+    """File client should read XLSX files from every worksheet."""
     source_file = tmp_path / 'developers.xlsx'
     workbook = Workbook()
     worksheet = workbook.active
-    worksheet.append(['Застройщик', 'Группа компаний', 'ИНН'])
-    worksheet.append(['ООО XLSX Девелопмент', 'ГК XLSX', '7812345678'])
+    worksheet.title = '77'
+    worksheet.append(
+        ['Застройщик', 'Группа компаний', 'Адрес', 'ИНН', 'ОГРН', 'Регион']
+    )
+    worksheet.append(
+        [
+            'ООО XLSX Девелопмент',
+            'NULL',
+            'Москва, ул. Первая, 1',
+            '7812345678',
+            '1234567890123',
+            77,
+        ]
+    )
+    second_worksheet = workbook.create_sheet('78')
+    second_worksheet.append(
+        ['Застройщик', 'Группа компаний', 'Адрес', 'ИНН', 'ОГРН', 'Регион']
+    )
+    second_worksheet.append(
+        [
+            'ООО Второй Лист',
+            'ГК XLSX',
+            'Санкт-Петербург, ул. Вторая, 2',
+            '7800000001',
+            '1234567890124',
+            78,
+        ]
+    )
     workbook.save(source_file)
     workbook.close()
 
     items = list(FileDeveloperRegistryClient(source_file).fetch_developers())
 
-    assert len(items) == 1
+    assert len(items) == 2
     assert items[0].payload['name'] == 'ООО XLSX Девелопмент'
-    assert items[0].payload['companyGroupName'] == 'ГК XLSX'
+    assert items[0].payload['companyGroupName'] == ''
+    assert items[0].payload['legalAddress'] == 'Москва, ул. Первая, 1'
     assert items[0].payload['inn'] == '7812345678'
+    assert items[0].payload['ogrn'] == '1234567890123'
+    assert items[0].payload['region'] == 77
+    assert items[0].payload['_sourceSheetName'] == '77'
+    assert items[1].payload['name'] == 'ООО Второй Лист'
+    assert items[1].payload['companyGroupName'] == 'ГК XLSX'
+    assert items[1].payload['region'] == 78
+
+
+@pytest.mark.django_db
+def test_import_dom_rf_developers_reads_multisheet_xlsx_regions(tmp_path):
+    """Importer should deduplicate developers and load region links from XLSX."""
+    Region.objects.create(name='Москва', code='77')
+    Region.objects.create(name='Санкт-Петербург', code='78')
+    source_file = tmp_path / 'developers.xlsx'
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = '77'
+    worksheet.append(
+        ['Застройщик', 'Группа компаний', 'Адрес', 'ИНН', 'ОГРН', 'Регион']
+    )
+    worksheet.append(
+        [
+            'ООО Мульти Регион',
+            'ГК Мульти',
+            'Москва, ул. Первая, 1',
+            '7712345678',
+            '1234567890123',
+            77,
+        ]
+    )
+    second_worksheet = workbook.create_sheet('78')
+    second_worksheet.append(
+        ['Застройщик', 'Группа компаний', 'Адрес', 'ИНН', 'ОГРН', 'Регион']
+    )
+    second_worksheet.append(
+        [
+            'ООО Мульти Регион',
+            'NULL',
+            'Санкт-Петербург, ул. Вторая, 2',
+            '7712345678',
+            '1234567890123',
+            78,
+        ]
+    )
+    workbook.save(source_file)
+    workbook.close()
+
+    summary = import_dom_rf_developers(
+        client=FileDeveloperRegistryClient(source_file)
+    )
+
+    developer = Developer.objects.get(name='ООО Мульти Регион')
+    assert summary.source_records == 2
+    assert summary.normalized_records == 1
+    assert summary.created_developers == 1
+    assert summary.created_company_groups == 1
+    assert summary.created_developer_region_links == 2
+    assert Developer.objects.count() == 1
+    assert CompanyGroup.objects.count() == 1
+    assert not CompanyGroup.objects.filter(name='NULL').exists()
+    assert developer.company_group.name == 'ГК Мульти'
+    assert developer.legal_address == 'Москва, ул. Первая, 1'
+    assert set(developer.regions.values_list('code', flat=True)) == {
+        '77',
+        '78',
+    }
+
+    second_summary = import_dom_rf_developers(
+        client=FileDeveloperRegistryClient(source_file)
+    )
+
+    assert second_summary.created_developers == 0
+    assert second_summary.created_company_groups == 0
+    assert second_summary.created_developer_region_links == 0
+    assert second_summary.unchanged_developers == 1
+    assert Developer.objects.count() == 1
+    assert DeveloperRegion.objects.count() == 2
 
 
 @pytest.mark.django_db
@@ -1489,8 +1647,9 @@ class LocationCatalogMetroTests(TestCase):
 class DeveloperListViewTests(TestCase):
     def test_developer_list_filters_and_sorts_with_catalog_static_hooks(self):
         company_group = CompanyGroup.objects.create(name='Alpha Group')
+        region = Region.objects.create(name='Region Alpha', code='RA')
         Developer.objects.create(name='Beta Developer', description='Townhouses')
-        Developer.objects.create(
+        developer = Developer.objects.create(
             name='Alpha Developer',
             company_group=company_group,
             legal_address='Legal address',
@@ -1500,11 +1659,13 @@ class DeveloperListViewTests(TestCase):
             primary_state_registration_number='1234567890123',
             description='Apartments',
         )
+        DeveloperRegion.objects.create(developer=developer, region=region)
 
         response = self.client.get(
             reverse('property:developer_list'),
             {
                 'filter_description': 'Apart',
+                'filter_region': str(region.pk),
                 'sort_by': 'name',
                 'sort_dir': 'desc',
             },
@@ -1519,6 +1680,7 @@ class DeveloperListViewTests(TestCase):
         self.assertContains(response, 'static/js/catalog.js')
         self.assertContains(response, 'Alpha Developer')
         self.assertContains(response, 'Alpha Group')
+        self.assertContains(response, 'Region Alpha')
         self.assertContains(response, '1234567890')
         self.assertNotContains(response, 'Beta Developer')
         self.assertEqual(response.context['sort_by'], 'name')
@@ -1528,6 +1690,7 @@ class DeveloperListViewTests(TestCase):
             [
                 'name',
                 'company_group',
+                'regions',
                 'legal_address',
                 'actual_address',
                 'taxpayer_identification_number',

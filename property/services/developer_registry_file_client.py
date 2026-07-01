@@ -18,9 +18,11 @@ from .developer_registry_client import (
 DEFAULT_FILE_SOURCE_REGION_CODE = 'file'
 SUPPORTED_SOURCE_FILE_EXTENSIONS = ('.csv', '.json', '.xlsx')
 CSV_DELIMITERS = ',;\t'
+NULL_SOURCE_VALUES = {'-', '—', 'null', 'none', 'nan', 'n/a'}
 HEADER_ALIAS_MAP = {
     'actual address': 'actualAddress',
     'actualaddress': 'actualAddress',
+    'address': 'legalAddress',
     'address actual': 'actualAddress',
     'addressactual': 'actualAddress',
     'address legal': 'legalAddress',
@@ -56,6 +58,12 @@ HEADER_ALIAS_MAP = {
     'organizationname': 'name',
     'short name': 'name',
     'shortname': 'name',
+    'region': 'region',
+    'region code': 'region',
+    'region name': 'region',
+    'regioncode': 'region',
+    'regionname': 'region',
+    'адрес': 'legalAddress',
     'адрес регистрации': 'legalAddress',
     'адрес фактический': 'actualAddress',
     'адрес юридический': 'legalAddress',
@@ -75,6 +83,10 @@ HEADER_ALIAS_MAP = {
     'огрн': 'ogrn',
     'организация': 'name',
     'почтовый адрес': 'actualAddress',
+    'регион': 'region',
+    'регион работы': 'region',
+    'субъект': 'region',
+    'субъект рф': 'region',
     'факт адрес': 'actualAddress',
     'факт. адрес': 'actualAddress',
     'фактический адрес': 'actualAddress',
@@ -189,7 +201,7 @@ def load_json_developer_registry_file(path):
 
 
 def load_xlsx_developer_registry_file(path):
-    """Load registry rows from the first worksheet of an XLSX file."""
+    """Load registry rows from every worksheet of an XLSX file."""
     try:
         workbook = load_workbook(path, read_only=True, data_only=True)
     except (
@@ -203,34 +215,41 @@ def load_xlsx_developer_registry_file(path):
         ) from exception
 
     try:
-        worksheet = workbook.active
-        rows = worksheet.iter_rows(values_only=True)
-        headers = next(rows, None)
-        if not headers:
-            return []
-
-        normalized_headers = [
-            normalize_source_header(header) for header in headers
-        ]
         source_rows = []
-        for row_number, row in enumerate(rows, start=2):
-            if not row_has_values(row):
-                continue
-
-            source_rows.append(
-                normalize_source_row(
-                    {
-                        header: value
-                        for header, value in zip(normalized_headers, row)
-                        if header
-                    },
-                    row_number=row_number,
-                    headers_already_normalized=True,
-                )
-            )
+        for worksheet in workbook.worksheets:
+            source_rows.extend(load_xlsx_worksheet_rows(worksheet))
         return source_rows
     finally:
         workbook.close()
+
+
+def load_xlsx_worksheet_rows(worksheet):
+    """Load normalized developer rows from one XLSX worksheet."""
+    rows = worksheet.iter_rows(values_only=True)
+    headers = next(rows, None)
+    if not headers:
+        return []
+
+    normalized_headers = [normalize_source_header(header) for header in headers]
+    source_rows = []
+    for row_number, row in enumerate(rows, start=2):
+        if not row_has_values(row):
+            continue
+
+        source_row = normalize_source_row(
+            {
+                header: value
+                for header, value in zip(normalized_headers, row)
+                if header
+            },
+            row_number=row_number,
+            headers_already_normalized=True,
+        )
+        source_row['_sourceSheetName'] = worksheet.title
+        if not source_row.get('region'):
+            source_row['region'] = normalize_source_value(worksheet.title)
+        source_rows.append(source_row)
+    return source_rows
 
 
 def detect_csv_dialect(sample):
@@ -280,7 +299,10 @@ def normalize_source_value(value):
     if value is None:
         return ''
     if isinstance(value, str):
-        return value.strip()
+        text = value.strip()
+        if text.casefold() in NULL_SOURCE_VALUES:
+            return ''
+        return text
     if isinstance(value, float) and value.is_integer():
         return int(value)
     return value

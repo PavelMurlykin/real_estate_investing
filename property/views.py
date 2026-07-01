@@ -933,6 +933,7 @@ class DeveloperListView(ListView):
     table_columns = (
         {'key': 'name', 'label': 'Название'},
         {'key': 'company_group', 'label': 'Группа компаний'},
+        {'key': 'regions', 'label': 'Регионы'},
         {'key': 'legal_address', 'label': 'Юридический адрес'},
         {'key': 'actual_address', 'label': 'Фактический адрес'},
         {'key': 'taxpayer_identification_number', 'label': 'ИНН'},
@@ -949,7 +950,9 @@ class DeveloperListView(ListView):
         Возвращает:
             Any: Тип результата зависит от контекста использования.
         """
-        queryset = Developer.objects.select_related('company_group')
+        queryset = Developer.objects.select_related(
+            'company_group'
+        ).prefetch_related('regions')
         filters = self.get_filters()
 
         if filters['name']:
@@ -958,6 +961,8 @@ class DeveloperListView(ListView):
             queryset = queryset.filter(
                 company_group_id=filters['company_group']
             )
+        if filters['region'].isdigit():
+            queryset = queryset.filter(regions__id=filters['region'])
         if filters['legal_address']:
             queryset = queryset.filter(
                 legal_address__icontains=filters['legal_address']
@@ -1004,6 +1009,7 @@ class DeveloperListView(ListView):
             'company_group': self.request.GET.get(
                 'filter_company_group', ''
             ),
+            'region': self.request.GET.get('filter_region', ''),
             'legal_address': self.request.GET.get(
                 'filter_legal_address', ''
             ).strip(),
@@ -1042,21 +1048,26 @@ class DeveloperListView(ListView):
         for column in self.table_columns:
             key = column['key']
             next_sort_dir = 'asc'
-            is_sorted = sort_by == key
+            is_sortable = key in self.sort_fields
+            is_sorted = is_sortable and sort_by == key
             if is_sorted and sort_dir != 'desc':
                 next_sort_dir = 'desc'
+
+            sort_url = ''
+            if is_sortable:
+                sort_url = (
+                    '?'
+                    + self.build_querystring(
+                        sort_by=key, sort_dir=next_sort_dir
+                    )
+                )
 
             columns.append(
                 {
                     **column,
                     'is_sorted': is_sorted,
                     'sort_direction': sort_dir if is_sorted else '',
-                    'sort_url': (
-                        '?'
-                        + self.build_querystring(
-                            sort_by=key, sort_dir=next_sort_dir
-                        )
-                    ),
+                    'sort_url': sort_url,
                 }
             )
 
@@ -1072,6 +1083,7 @@ class DeveloperListView(ListView):
         context['company_groups_for_filter'] = CompanyGroup.objects.order_by(
             'name'
         )
+        context['regions_for_filter'] = Region.objects.order_by('name')
         return context
 
 

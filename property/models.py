@@ -5,7 +5,7 @@ from django.db import models
 from django.urls import reverse
 
 from core.models import BaseModel
-from location.models import District, Metro
+from location.models import District, Metro, Region
 
 from .validators import validate_property_image_upload
 
@@ -30,6 +30,13 @@ class Developer(BaseModel):
         null=True,
         related_name='developers',
         verbose_name='Группа компаний',
+    )
+    regions = models.ManyToManyField(
+        Region,
+        through='DeveloperRegion',
+        related_name='developers',
+        blank=True,
+        verbose_name='Регионы',
     )
     legal_address = models.TextField(
         blank=True, null=True, verbose_name='Юридический адрес'
@@ -60,6 +67,41 @@ class Developer(BaseModel):
     def __str__(self):
         """Возвращает название застройщика."""
         return self.name
+
+
+class DeveloperRegion(BaseModel):
+    """Регион работы застройщика."""
+
+    developer = models.ForeignKey(
+        Developer,
+        on_delete=models.CASCADE,
+        related_name='region_links',
+        verbose_name='Застройщик',
+    )
+    region = models.ForeignKey(
+        Region,
+        on_delete=models.PROTECT,
+        related_name='developer_links',
+        verbose_name='Регион',
+    )
+
+    class Meta(BaseModel.Meta):
+        """Метаданные связи застройщика и региона."""
+
+        db_table = 'developer_region'
+        verbose_name = 'Регион застройщика'
+        verbose_name_plural = 'Регионы застройщиков'
+        ordering = ['developer__name', 'region__name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['developer', 'region'],
+                name='unique_developer_region',
+            ),
+        ]
+
+    def __str__(self):
+        """Возвращает строковое представление связи застройщика и региона."""
+        return f'{self.developer} - {self.region}'
 
 
 class CompanyGroup(models.Model):
