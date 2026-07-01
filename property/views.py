@@ -1,9 +1,12 @@
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from django import forms
-from django.core.exceptions import PermissionDenied
+from django.contrib import messages
 from django.core.cache import cache
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import models as django_models
 from django.db import transaction
@@ -20,13 +23,20 @@ from django.views.generic import (
     ListView,
     TemplateView,
     UpdateView,
+    View,
 )
 
 from core.forms import GroupedDecimalField, format_grouped_decimal_value
 from location.models import City, District, Metro, MetroLine, Region
-from users.roles import CatalogManagementRequiredMixin, can_manage_catalogs
+from users.roles import (
+    CatalogManagementRequiredMixin,
+    ExternalDataSyncRequiredMixin,
+    can_manage_catalogs,
+)
 
+from .form_fields import get_developers_with_company_groups_queryset
 from .forms import (
+    CompanyGroupForm,
     DeveloperForm,
     PropertyForm,
     RealEstateComplexBuildingFormSet,
@@ -38,6 +48,7 @@ from .forms import (
 from .models import (
     ApartmentDecoration,
     ApartmentLayout,
+    CompanyGroup,
     Developer,
     Property,
     RealEstateClass,
@@ -47,11 +58,21 @@ from .models import (
     TransportAccessibilityType,
     WindowView,
 )
+from .services.developer_registry_file_client import (
+    FileDeveloperRegistryClient,
+    SUPPORTED_SOURCE_FILE_EXTENSIONS,
+)
+from .services.developer_registry_importer import (
+    DeveloperRegistryImportError,
+    import_dom_rf_developers,
+)
 
 
 FORM_DATA_CACHE_TIMEOUT = 600
 COMPLEX_FORM_LOCATION_CACHE_KEY = 'property:complex_form_location:v1'
 PROPERTY_FORM_LOCATION_CACHE_KEY = 'property:property_form_location:v1'
+DEVELOPER_REGISTRY_UPLOAD_FIELD_NAME = 'source_file'
+MAX_DEVELOPER_REGISTRY_UPLOAD_SIZE = 20 * 1024 * 1024
 
 
 def build_complex_form_location_payload():
@@ -768,43 +789,27 @@ class ProtectedDeleteMixin:
             return self.render_to_response(context, status=400)
 
 
-class DeveloperListView(ListView):
-    """Описание класса DeveloperListView.
+class CompanyGroupListView(ListView):
+    """List company groups as a standalone property catalog."""
 
-    Инкапсулирует данные и поведение, необходимые для работы компонента
-    в данном модуле.
-    """
-
-    model = Developer
-    template_name = 'property/developer_list.html'
-    context_object_name = 'developers'
+    model = CompanyGroup
+    template_name = 'property/company_group_list.html'
+    context_object_name = 'company_groups'
     paginate_by = 20
     sort_fields = {
         'name': 'name',
-        'description': 'description',
     }
     table_columns = (
         {'key': 'name', 'label': 'Название'},
-        {'key': 'description', 'label': 'Описание'},
     )
 
     def get_queryset(self):
-        """Описание метода get_queryset.
-
-        Возвращает подготовленные данные для дальнейшей обработки.
-
-        Возвращает:
-            Any: Тип результата зависит от контекста использования.
-        """
-        queryset = Developer.objects.all()
+        """Return filtered and sorted company groups."""
+        queryset = CompanyGroup.objects.all()
         filters = self.get_filters()
 
         if filters['name']:
             queryset = queryset.filter(name__icontains=filters['name'])
-        if filters['description']:
-            queryset = queryset.filter(
-                description__icontains=filters['description']
-            )
 
         sort_by = self.request.GET.get('sort_by', '')
         sort_dir = self.request.GET.get('sort_dir', 'asc')
@@ -816,14 +821,13 @@ class DeveloperListView(ListView):
         return queryset.order_by('name')
 
     def get_filters(self):
+        """Return company group list filters from request parameters."""
         return {
             'name': self.request.GET.get('filter_name', '').strip(),
-            'description': self.request.GET.get(
-                'filter_description', ''
-            ).strip(),
         }
 
     def build_querystring(self, **overrides):
+        """Build a list query string preserving current filters and sorting."""
         params = self.request.GET.copy()
         params.pop('page', None)
         for key, value in overrides.items():
@@ -834,6 +838,7 @@ class DeveloperListView(ListView):
         return params.urlencode()
 
     def build_table_columns(self):
+        """Return sortable table column metadata for company groups."""
         sort_by = self.request.GET.get('sort_by', '')
         sort_dir = self.request.GET.get('sort_dir', 'asc')
         columns = []
@@ -862,12 +867,224 @@ class DeveloperListView(ListView):
         return columns
 
     def get_context_data(self, **kwargs):
+        """Add list filters and sortable columns to the template context."""
         context = super().get_context_data(**kwargs)
         context['filters'] = self.get_filters()
         context['sort_by'] = self.request.GET.get('sort_by', '')
         context['sort_dir'] = self.request.GET.get('sort_dir', 'asc')
         context['columns'] = self.build_table_columns()
         context['pagination_querystring'] = self.build_querystring()
+        return context
+
+
+class CompanyGroupCreateView(CatalogManagementRequiredMixin, CreateView):
+    """Create a company group from a standalone form."""
+
+    model = CompanyGroup
+    form_class = CompanyGroupForm
+    template_name = 'property/company_group_form.html'
+    success_url = reverse_lazy('property:company_group_list')
+
+
+class CompanyGroupUpdateView(CatalogManagementRequiredMixin, UpdateView):
+    """Update a company group from a standalone form."""
+
+    model = CompanyGroup
+    form_class = CompanyGroupForm
+    template_name = 'property/company_group_form.html'
+    success_url = reverse_lazy('property:company_group_list')
+
+
+class CompanyGroupDeleteView(
+    CatalogManagementRequiredMixin, ProtectedDeleteMixin, DeleteView
+):
+    """Delete a company group when it is not used by developers."""
+
+    model = CompanyGroup
+    template_name = 'property/company_group_confirm_delete.html'
+    success_url = reverse_lazy('property:company_group_list')
+    protected_error_message = (
+        'Нельзя удалить группу компаний: с ней связаны застройщики.'
+    )
+
+
+class DeveloperListView(ListView):
+    """Описание класса DeveloperListView.
+
+    Инкапсулирует данные и поведение, необходимые для работы компонента
+    в данном модуле.
+    """
+
+    model = Developer
+    template_name = 'property/developer_list.html'
+    context_object_name = 'developers'
+    paginate_by = 20
+    sort_fields = {
+        'name': 'name',
+        'company_group': 'company_group__name',
+        'legal_address': 'legal_address',
+        'actual_address': 'actual_address',
+        'taxpayer_identification_number': 'taxpayer_identification_number',
+        'tax_registration_reason_code': 'tax_registration_reason_code',
+        'primary_state_registration_number': (
+            'primary_state_registration_number'
+        ),
+        'description': 'description',
+    }
+    table_columns = (
+        {'key': 'name', 'label': 'Название'},
+        {'key': 'company_group', 'label': 'Группа компаний'},
+        {'key': 'regions', 'label': 'Регионы'},
+        {'key': 'legal_address', 'label': 'Юридический адрес'},
+        {'key': 'actual_address', 'label': 'Фактический адрес'},
+        {'key': 'taxpayer_identification_number', 'label': 'ИНН'},
+        {'key': 'tax_registration_reason_code', 'label': 'КПП'},
+        {'key': 'primary_state_registration_number', 'label': 'ОГРН'},
+        {'key': 'description', 'label': 'Описание'},
+    )
+
+    def get_queryset(self):
+        """Описание метода get_queryset.
+
+        Возвращает подготовленные данные для дальнейшей обработки.
+
+        Возвращает:
+            Any: Тип результата зависит от контекста использования.
+        """
+        queryset = Developer.objects.select_related(
+            'company_group'
+        ).prefetch_related('regions')
+        filters = self.get_filters()
+
+        if filters['name']:
+            queryset = queryset.filter(name__icontains=filters['name'])
+        if filters['company_group'].isdigit():
+            queryset = queryset.filter(
+                company_group_id=filters['company_group']
+            )
+        if filters['region'].isdigit():
+            queryset = queryset.filter(regions__id=filters['region'])
+        if filters['legal_address']:
+            queryset = queryset.filter(
+                legal_address__icontains=filters['legal_address']
+            )
+        if filters['actual_address']:
+            queryset = queryset.filter(
+                actual_address__icontains=filters['actual_address']
+            )
+        if filters['taxpayer_identification_number']:
+            queryset = queryset.filter(
+                taxpayer_identification_number__icontains=filters[
+                    'taxpayer_identification_number'
+                ]
+            )
+        if filters['tax_registration_reason_code']:
+            queryset = queryset.filter(
+                tax_registration_reason_code__icontains=filters[
+                    'tax_registration_reason_code'
+                ]
+            )
+        if filters['primary_state_registration_number']:
+            queryset = queryset.filter(
+                primary_state_registration_number__icontains=filters[
+                    'primary_state_registration_number'
+                ]
+            )
+        if filters['description']:
+            queryset = queryset.filter(
+                description__icontains=filters['description']
+            )
+
+        sort_by = self.request.GET.get('sort_by', '')
+        sort_dir = self.request.GET.get('sort_dir', 'asc')
+        sort_field = self.sort_fields.get(sort_by)
+        if sort_field:
+            sort_prefix = '-' if sort_dir == 'desc' else ''
+            return queryset.order_by(f'{sort_prefix}{sort_field}', 'name')
+
+        return queryset.order_by('name')
+
+    def get_filters(self):
+        return {
+            'name': self.request.GET.get('filter_name', '').strip(),
+            'company_group': self.request.GET.get(
+                'filter_company_group', ''
+            ),
+            'region': self.request.GET.get('filter_region', ''),
+            'legal_address': self.request.GET.get(
+                'filter_legal_address', ''
+            ).strip(),
+            'actual_address': self.request.GET.get(
+                'filter_actual_address', ''
+            ).strip(),
+            'taxpayer_identification_number': self.request.GET.get(
+                'filter_taxpayer_identification_number', ''
+            ).strip(),
+            'tax_registration_reason_code': self.request.GET.get(
+                'filter_tax_registration_reason_code', ''
+            ).strip(),
+            'primary_state_registration_number': self.request.GET.get(
+                'filter_primary_state_registration_number', ''
+            ).strip(),
+            'description': self.request.GET.get(
+                'filter_description', ''
+            ).strip(),
+        }
+
+    def build_querystring(self, **overrides):
+        params = self.request.GET.copy()
+        params.pop('page', None)
+        for key, value in overrides.items():
+            if value in (None, ''):
+                params.pop(key, None)
+                continue
+            params[key] = value
+        return params.urlencode()
+
+    def build_table_columns(self):
+        sort_by = self.request.GET.get('sort_by', '')
+        sort_dir = self.request.GET.get('sort_dir', 'asc')
+        columns = []
+
+        for column in self.table_columns:
+            key = column['key']
+            next_sort_dir = 'asc'
+            is_sortable = key in self.sort_fields
+            is_sorted = is_sortable and sort_by == key
+            if is_sorted and sort_dir != 'desc':
+                next_sort_dir = 'desc'
+
+            sort_url = ''
+            if is_sortable:
+                sort_url = (
+                    '?'
+                    + self.build_querystring(
+                        sort_by=key, sort_dir=next_sort_dir
+                    )
+                )
+
+            columns.append(
+                {
+                    **column,
+                    'is_sorted': is_sorted,
+                    'sort_direction': sort_dir if is_sorted else '',
+                    'sort_url': sort_url,
+                }
+            )
+
+        return columns
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filters'] = self.get_filters()
+        context['sort_by'] = self.request.GET.get('sort_by', '')
+        context['sort_dir'] = self.request.GET.get('sort_dir', 'asc')
+        context['columns'] = self.build_table_columns()
+        context['pagination_querystring'] = self.build_querystring()
+        context['company_groups_for_filter'] = CompanyGroup.objects.order_by(
+            'name'
+        )
+        context['regions_for_filter'] = Region.objects.order_by('name')
         return context
 
 
@@ -914,6 +1131,73 @@ class DeveloperDeleteView(
     )
 
 
+class DeveloperRegistryImportView(ExternalDataSyncRequiredMixin, View):
+    """Run developer and company group import from DOM.RF registry."""
+
+    def post(self, request, *args, **kwargs):
+        """Run the registry import and redirect to the developer list."""
+        try:
+            summary = self.run_import(request)
+        except DeveloperRegistryImportError as exception:
+            messages.error(
+                request,
+                f'Не удалось обновить застройщиков из ЕРЗ: {exception}',
+            )
+        else:
+            messages.success(request, summary.to_message())
+        return redirect('property:developer_list')
+
+    def run_import(self, request):
+        """Run import from an uploaded file or from the online registry."""
+        uploaded_file = request.FILES.get(DEVELOPER_REGISTRY_UPLOAD_FIELD_NAME)
+        if uploaded_file:
+            return self.import_uploaded_file(uploaded_file)
+        return import_dom_rf_developers()
+
+    def import_uploaded_file(self, uploaded_file):
+        """Import developers from a user-uploaded registry source file."""
+        self.validate_uploaded_file(uploaded_file)
+        source_file_path = self.save_uploaded_file_to_temporary_path(
+            uploaded_file
+        )
+        try:
+            return import_dom_rf_developers(
+                client=FileDeveloperRegistryClient(source_file_path)
+            )
+        finally:
+            Path(source_file_path).unlink(missing_ok=True)
+
+    def validate_uploaded_file(self, uploaded_file):
+        """Validate developer registry upload metadata before parsing."""
+        uploaded_file_name = getattr(uploaded_file, 'name', '')
+        extension = Path(uploaded_file_name).suffix.casefold()
+        if extension not in SUPPORTED_SOURCE_FILE_EXTENSIONS:
+            supported_extensions = ', '.join(
+                SUPPORTED_SOURCE_FILE_EXTENSIONS
+            )
+            raise DeveloperRegistryImportError(
+                (
+                    'Файл импорта должен быть в формате '
+                    f'{supported_extensions}.'
+                )
+            )
+
+        uploaded_file_size = getattr(uploaded_file, 'size', 0)
+        if uploaded_file_size > MAX_DEVELOPER_REGISTRY_UPLOAD_SIZE:
+            raise DeveloperRegistryImportError(
+                'Файл импорта не должен превышать 20 МБ.'
+            )
+
+    def save_uploaded_file_to_temporary_path(self, uploaded_file):
+        """Persist an uploaded file to a temporary parser-readable path."""
+        uploaded_file_name = getattr(uploaded_file, 'name', '')
+        extension = Path(uploaded_file_name).suffix.casefold()
+        with NamedTemporaryFile(delete=False, suffix=extension) as source_file:
+            for chunk in uploaded_file.chunks():
+                source_file.write(chunk)
+            return source_file.name
+
+
 class RealEstateComplexListView(ListView):
     """Описание класса RealEstateComplexListView.
 
@@ -955,7 +1239,7 @@ class RealEstateComplexListView(ListView):
                 buildings_count=Count('realestatecomplexbuilding')
             )
             .select_related(
-                'developer',
+                'developer__company_group',
                 'district__city',
                 'real_estate_class',
                 'real_estate_type',
@@ -1051,7 +1335,9 @@ class RealEstateComplexListView(ListView):
         context['sort_by'] = self.request.GET.get('sort_by', '')
         context['sort_dir'] = self.request.GET.get('sort_dir', 'asc')
         context['columns'] = self.build_table_columns()
-        context['developers_for_filter'] = Developer.objects.order_by('name')
+        context['developers_for_filter'] = (
+            get_developers_with_company_groups_queryset()
+        )
         context['cities_for_filter'] = City.objects.order_by('name')
         context['classes_for_filter'] = RealEstateClass.objects.order_by(
             'weight', 'name'
@@ -1323,7 +1609,7 @@ class PropertyListView(ListView):
             Any: Тип результата зависит от контекста использования.
         """
         queryset = Property.objects.select_related(
-            'building__real_estate_complex__developer',
+            'building__real_estate_complex__developer__company_group',
             'building__real_estate_complex__district__city',
             'building__real_estate_complex',
             'building',
@@ -1460,7 +1746,9 @@ class PropertyListView(ListView):
         context['sort_dir'] = self.request.GET.get('sort_dir', 'asc')
         context['columns'] = self.build_table_columns()
         context['cities_for_filter'] = City.objects.order_by('name')
-        context['developers_for_filter'] = Developer.objects.order_by('name')
+        context['developers_for_filter'] = (
+            get_developers_with_company_groups_queryset()
+        )
         context['complexes_for_filter'] = RealEstateComplex.objects.select_related(
             'developer', 'district__city'
         ).order_by('name')
@@ -1536,7 +1824,7 @@ class PropertyFormContextMixin:
         districts = District.objects.select_related(
             'city__region'
         ).order_by('name')
-        developers = Developer.objects.order_by('name')
+        developers = get_developers_with_company_groups_queryset()
         complexes = RealEstateComplex.objects.select_related(
             'developer',
             'district__city__region',

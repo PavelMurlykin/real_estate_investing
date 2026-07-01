@@ -19,10 +19,12 @@ from bank.models import (
 )
 from customer.models import Customer, CustomerTrenchCalculation
 from location.models import City, District, Region
+from mortgage.forms import MortgageForm
 from mortgage.models import MortgageCalculation
 from property.models import (
     ApartmentDecoration,
     ApartmentLayout,
+    CompanyGroup,
     Developer,
     Property,
     RealEstateClass,
@@ -51,6 +53,29 @@ def create_user_with_role(email, phone_number, group_name=None):
         group, _created = Group.objects.get_or_create(name=group_name)
         user.groups.add(group)
     return user
+
+
+class MortgageFormDeveloperChoiceTests(TestCase):
+    """Tests for mortgage form developer selector labels."""
+
+    def test_developer_choice_labels_include_company_group(self):
+        """Developer choices should include company group when present."""
+        company_group = CompanyGroup.objects.create(name='ГК Ипотека')
+        Developer.objects.create(
+            name='Ипотечный застройщик',
+            company_group=company_group,
+        )
+        Developer.objects.create(name='Застройщик без ГК')
+
+        labels = [
+            label for _value, label in MortgageForm().fields[
+                'OBJECT_DEVELOPER'
+            ].choices
+        ]
+
+        self.assertIn('Ипотечный застройщик (ГК Ипотека)', labels)
+        self.assertIn('Застройщик без ГК', labels)
+        self.assertNotIn('Застройщик без ГК ()', labels)
 
 
 class MortgageCalculatorViewTests(TestCase):
@@ -226,6 +251,18 @@ class MortgageCalculatorViewTests(TestCase):
             remaining_debt=Decimal('0.00'),
         )
         return calculation
+
+    def _set_property_developer_company_group(
+        self,
+        property_obj,
+        group_name='Group 1',
+    ):
+        """Assign a company group to a property's developer."""
+        company_group = CompanyGroup.objects.create(name=group_name)
+        developer = property_obj.building.real_estate_complex.developer
+        developer.company_group = company_group
+        developer.save(update_fields=['company_group', 'updated_at'])
+        return developer
 
     def _extract_docx_text(self, content):
         """Возвращает текстовую часть DOCX-файла из HTTP-ответа."""
@@ -774,6 +811,21 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertNotContains(response, 'Наличие льготного периода')
         self.assertNotContains(response, 'Срок льготного периода, годы')
 
+    def test_calculation_detail_formats_developer_with_company_group(self):
+        developer = self._set_property_developer_company_group(self.property)
+        calculation = self._create_calculation()
+
+        response = self.client.get(
+            reverse('mortgage:calculation_detail', kwargs={'pk': calculation.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            developer.get_display_name_with_company_group(),
+        )
+        self.assertNotContains(response, f'{developer.name} ()')
+
     def test_calculation_detail_has_new_calculation_by_sample_button(self):
         calculation = self._create_calculation()
 
@@ -1175,6 +1227,24 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, 'Сохранить в Word')
         self.assertContains(response, 'name="export_word"')
         self.assertContains(response, 'value="trench"')
+
+    def test_trench_calculation_detail_formats_developer_with_company_group(self):
+        developer = self._set_property_developer_company_group(self.property)
+        calculation = self._create_trench_calculation()
+
+        response = self.client.get(
+            reverse(
+                'mortgage:trench_calculation_detail',
+                kwargs={'pk': calculation.pk},
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            developer.get_display_name_with_company_group(),
+        )
+        self.assertNotContains(response, f'{developer.name} ()')
 
     def test_saved_trench_calculation_keeps_each_trench_overpayment_positive(
         self,

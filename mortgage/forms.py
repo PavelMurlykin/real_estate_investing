@@ -4,10 +4,13 @@ from datetime import date, datetime
 from django import forms
 
 from location.models import City, District
+from property.form_fields import (
+    DeveloperModelChoiceField,
+    get_developers_with_company_groups_queryset,
+)
 from property.models import (
     ApartmentDecoration,
     ApartmentLayout,
-    Developer,
     Property,
     RealEstateComplex,
     RealEstateComplexBuilding,
@@ -77,8 +80,8 @@ class MortgageForm(forms.Form):
         ),
     )
 
-    OBJECT_DEVELOPER = forms.ModelChoiceField(
-        queryset=Developer.objects.all(),
+    OBJECT_DEVELOPER = DeveloperModelChoiceField(
+        queryset=get_developers_with_company_groups_queryset(),
         label='Застройщик',
         required=False,
         empty_label='Выберите застройщика',
@@ -208,8 +211,8 @@ class MortgageForm(forms.Form):
         self.fields['OBJECT_DISTRICT'].queryset = (
             District.objects.select_related('city').order_by('name')
         )
-        self.fields['OBJECT_DEVELOPER'].queryset = Developer.objects.order_by(
-            'name'
+        self.fields['OBJECT_DEVELOPER'].queryset = (
+            get_developers_with_company_groups_queryset()
         )
         self.fields['OBJECT_COMPLEX'].queryset = (
             RealEstateComplex.objects.select_related(

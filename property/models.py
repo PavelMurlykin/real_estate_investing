@@ -5,7 +5,7 @@ from django.db import models
 from django.urls import reverse
 
 from core.models import BaseModel
-from location.models import District, Metro
+from location.models import District, Metro, Region
 
 from .validators import validate_property_image_upload
 
@@ -23,6 +23,36 @@ class Developer(BaseModel):
     description = models.TextField(
         blank=True, null=True, verbose_name='Описание'
     )
+    company_group = models.ForeignKey(
+        'CompanyGroup',
+        on_delete=models.PROTECT,
+        blank=True,
+        null=True,
+        related_name='developers',
+        verbose_name='Группа компаний',
+    )
+    regions = models.ManyToManyField(
+        Region,
+        through='DeveloperRegion',
+        related_name='developers',
+        blank=True,
+        verbose_name='Регионы',
+    )
+    legal_address = models.TextField(
+        blank=True, null=True, verbose_name='Юридический адрес'
+    )
+    actual_address = models.TextField(
+        blank=True, null=True, verbose_name='Фактический адрес'
+    )
+    taxpayer_identification_number = models.CharField(
+        max_length=12, blank=True, null=True, verbose_name='ИНН'
+    )
+    tax_registration_reason_code = models.CharField(
+        max_length=9, blank=True, null=True, verbose_name='КПП'
+    )
+    primary_state_registration_number = models.CharField(
+        max_length=15, blank=True, null=True, verbose_name='ОГРН'
+    )
 
     class Meta(BaseModel.Meta):
         """
@@ -36,6 +66,71 @@ class Developer(BaseModel):
 
     def __str__(self):
         """Возвращает название застройщика."""
+        return self.name
+
+    def get_display_name_with_company_group(self):
+        """Возвращает название застройщика с группой компаний для селектов."""
+        if not self.company_group_id:
+            return self.name
+        return f'{self.name} ({self.company_group})'
+
+
+class DeveloperRegion(BaseModel):
+    """Регион работы застройщика."""
+
+    developer = models.ForeignKey(
+        Developer,
+        on_delete=models.CASCADE,
+        related_name='region_links',
+        verbose_name='Застройщик',
+    )
+    region = models.ForeignKey(
+        Region,
+        on_delete=models.PROTECT,
+        related_name='developer_links',
+        verbose_name='Регион',
+    )
+
+    class Meta(BaseModel.Meta):
+        """Метаданные связи застройщика и региона."""
+
+        db_table = 'developer_region'
+        verbose_name = 'Регион застройщика'
+        verbose_name_plural = 'Регионы застройщиков'
+        ordering = ['developer__name', 'region__name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['developer', 'region'],
+                name='unique_developer_region',
+            ),
+        ]
+
+    def __str__(self):
+        """Возвращает строковое представление связи застройщика и региона."""
+        return f'{self.developer} - {self.region}'
+
+
+class CompanyGroup(models.Model):
+    """
+    Справочник групп компаний.
+    """
+
+    name = models.CharField(
+        max_length=255, unique=True, verbose_name='Группа компаний'
+    )
+
+    class Meta:
+        """
+        Метаданные таблицы.
+        """
+
+        db_table = 'company_group'
+        verbose_name = 'Группа компаний'
+        verbose_name_plural = 'Группы компаний'
+        ordering = ['name']
+
+    def __str__(self):
+        """Возвращает название группы компаний."""
         return self.name
 
 

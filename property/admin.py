@@ -4,7 +4,9 @@ from django.contrib import admin
 from .models import (
     ApartmentDecoration,
     ApartmentLayout,
+    CompanyGroup,
     Developer,
+    DeveloperRegion,
     Property,
     PropertyWindowView,
     RealEstateClass,
@@ -17,6 +19,46 @@ from .models import (
 )
 
 
+@admin.register(CompanyGroup)
+class CompanyGroupAdmin(admin.ModelAdmin):
+    """Admin for company group dictionary entries."""
+
+    list_display = ('name',)
+    search_fields = ('name',)
+    ordering = ('name',)
+
+
+class DeveloperRegionInline(admin.TabularInline):
+    """Inline for developer regions."""
+
+    model = DeveloperRegion
+    extra = 1
+    fields = ('region', 'is_active')
+    show_change_link = True
+
+
+@admin.register(DeveloperRegion)
+class DeveloperRegionAdmin(admin.ModelAdmin):
+    """Admin for developer region links."""
+
+    list_display = (
+        'developer',
+        'region',
+        'is_active',
+        'created_at',
+    )
+    list_filter = ('developer', 'region', 'is_active', 'created_at')
+    search_fields = ('developer__name', 'region__name')
+    ordering = ('developer__name', 'region__name')
+
+    def get_queryset(self, request):
+        """Return developer region links with related objects loaded."""
+        return super().get_queryset(request).select_related(
+            'developer',
+            'region',
+        )
+
+
 @admin.register(Developer)
 class DeveloperAdmin(admin.ModelAdmin):
     """Описание класса DeveloperAdmin.
@@ -25,11 +67,48 @@ class DeveloperAdmin(admin.ModelAdmin):
     в данном модуле.
     """
 
-    list_display = ('name', 'is_active', 'created_at')
-    list_filter = ('is_active', 'created_at')
-    search_fields = ('name', 'description')
+    list_display = (
+        'name',
+        'company_group',
+        'get_region_names',
+        'taxpayer_identification_number',
+        'tax_registration_reason_code',
+        'primary_state_registration_number',
+        'is_active',
+        'created_at',
+    )
+    list_filter = ('is_active', 'company_group', 'regions', 'created_at')
+    search_fields = (
+        'name',
+        'company_group__name',
+        'regions__name',
+        'legal_address',
+        'actual_address',
+        'taxpayer_identification_number',
+        'tax_registration_reason_code',
+        'primary_state_registration_number',
+        'description',
+    )
     list_editable = ('is_active',)
     ordering = ('name',)
+    inlines = (DeveloperRegionInline,)
+
+    def get_queryset(self, request):
+        """Return developers with company groups loaded."""
+        return (
+            super()
+            .get_queryset(request)
+            .select_related('company_group')
+            .prefetch_related('regions')
+        )
+
+    @admin.display(description='Регионы')
+    def get_region_names(self, obj):
+        """Return a comma-separated list of developer regions."""
+        region_names = [region.name for region in obj.regions.all()]
+        if not region_names:
+            return '-'
+        return ', '.join(region_names)
 
 
 @admin.register(RealEstateType)

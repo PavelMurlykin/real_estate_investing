@@ -4,6 +4,19 @@
 
 {% block title %}Объекты недвижимости{% endblock %}
 
+{% block extra_css %}
+<style>
+    .property-list-table__developer-column {
+        width: 25%;
+    }
+
+    .property-list-table__developer-cell {
+        overflow-wrap: anywhere;
+        white-space: normal;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -33,7 +46,7 @@
                     <select name="filter_developer" class="form-select" data-catalog-filter-control>
                         <option value="">Все</option>
                         {% for developer in developers_for_filter %}
-                        <option value="{{ developer.id }}" {% if filters.developer == developer.id|stringformat:'s' %}selected{% endif %}>{{ developer.name }}</option>
+                        <option value="{{ developer.id }}" {% if filters.developer == developer.id|stringformat:'s' %}selected{% endif %}>{{ developer.get_display_name_with_company_group }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -87,11 +100,17 @@
         <div class="card-body">
             <div id="catalog-results" data-catalog-results>
                 <div class="table-responsive">
-                    <table class="table table-striped table-hover align-middle">
+                    <table class="table table-striped table-hover align-middle property-list-table">
+                        <colgroup>
+                            {% for column in columns %}
+                            <col{% if column.key == 'developer' %} class="property-list-table__developer-column"{% endif %}>
+                            {% endfor %}
+                            <col>
+                        </colgroup>
                         <thead>
                             <tr>
                                 {% for column in columns %}
-                                <th>
+                                <th{% if column.key == 'developer' %} class="property-list-table__developer-cell"{% endif %}>
                                     {% include "includes/catalog_sort_link.html" with sort_url=column.sort_url sort_label=column.label sort_is_sorted=column.is_sorted sort_direction=column.sort_direction %}
                                 </th>
                                 {% endfor %}
@@ -102,11 +121,11 @@
                             {% for property in properties %}
                             <tr>
                                 {% for column in columns %}
-                                <td>
+                                <td{% if column.key == 'developer' %} class="property-list-table__developer-cell"{% endif %}>
                                     {% if column.key == 'city' %}
                                         {{ property.building.real_estate_complex.district.city.name }}
                                     {% elif column.key == 'developer' %}
-                                        {{ property.building.real_estate_complex.developer.name }}
+                                        {{ property.building.real_estate_complex.developer.get_display_name_with_company_group }}
                                     {% elif column.key == 'complex' %}
                                         {{ property.building.real_estate_complex.name }}
                                     {% elif column.key == 'building' %}

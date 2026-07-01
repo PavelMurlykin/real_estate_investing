@@ -3,7 +3,12 @@ from django.forms import BaseInlineFormSet, inlineformset_factory
 
 from location.models import City, District, Metro, Region
 
+from .form_fields import (
+    DeveloperModelChoiceField,
+    get_developers_with_company_groups_queryset,
+)
 from .models import (
+    CompanyGroup,
     Developer,
     Property,
     RealEstateComplex,
@@ -28,8 +33,8 @@ class PropertyFilterForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-control'}),
         label='Город',
     )
-    developer = forms.ModelChoiceField(
-        queryset=Developer.objects.all(),
+    developer = DeveloperModelChoiceField(
+        queryset=get_developers_with_company_groups_queryset(),
         required=False,
         empty_label='Все застройщики',
         widget=forms.Select(attrs={'class': 'form-control'}),
@@ -184,15 +189,68 @@ class DeveloperForm(forms.ModelForm):
         """
 
         model = Developer
-        fields = ['name', 'description', 'is_active']
+        fields = [
+            'name',
+            'company_group',
+            'regions',
+            'legal_address',
+            'actual_address',
+            'taxpayer_identification_number',
+            'tax_registration_reason_code',
+            'primary_state_registration_number',
+            'description',
+            'is_active',
+        ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'company_group': forms.Select(attrs={'class': 'form-control'}),
+            'regions': forms.SelectMultiple(
+                attrs={'class': 'form-control'}
+            ),
+            'legal_address': forms.Textarea(
+                attrs={'class': 'form-control', 'rows': 2}
+            ),
+            'actual_address': forms.Textarea(
+                attrs={'class': 'form-control', 'rows': 2}
+            ),
+            'taxpayer_identification_number': forms.TextInput(
+                attrs={'class': 'form-control'}
+            ),
+            'tax_registration_reason_code': forms.TextInput(
+                attrs={'class': 'form-control'}
+            ),
+            'primary_state_registration_number': forms.TextInput(
+                attrs={'class': 'form-control'}
+            ),
             'description': forms.Textarea(
                 attrs={'class': 'form-control', 'rows': 3}
             ),
             'is_active': forms.CheckboxInput(
                 attrs={'class': 'form-check-input'}
             ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        """Prepare optional company group choices."""
+        super().__init__(*args, **kwargs)
+        self.fields['company_group'].queryset = CompanyGroup.objects.order_by(
+            'name'
+        )
+        self.fields['company_group'].empty_label = 'Без группы компаний'
+        self.fields['regions'].queryset = Region.objects.order_by('name')
+        self.fields['regions'].required = False
+
+
+class CompanyGroupForm(forms.ModelForm):
+    """Form for creating and updating company groups."""
+
+    class Meta:
+        """Configure company group form fields and widgets."""
+
+        model = CompanyGroup
+        fields = ['name']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
         }
 
 
@@ -219,6 +277,12 @@ class RealEstateComplexForm(forms.ModelForm):
         required=False,
         empty_label='Все города',
         label='Город',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+    developer = DeveloperModelChoiceField(
+        queryset=get_developers_with_company_groups_queryset(),
+        empty_label='Выберите застройщика',
+        label='Застройщик',
         widget=forms.Select(attrs={'class': 'form-control'}),
     )
 
@@ -283,6 +347,9 @@ class RealEstateComplexForm(forms.ModelForm):
             'city__region'
         ).order_by('name')
         self.fields['district'].empty_label = 'Выберите район'
+        self.fields['developer'].queryset = (
+            get_developers_with_company_groups_queryset()
+        )
 
         district = getattr(self.instance, 'district', None)
         if district:

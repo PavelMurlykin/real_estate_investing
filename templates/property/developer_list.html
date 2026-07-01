@@ -3,13 +3,53 @@
 
 {% block title %}Застройщики{% endblock %}
 
+{% block extra_css %}
+<style>
+    .developer-list-actions {
+        min-width: 0;
+        overflow-x: auto;
+    }
+
+    .developer-list-import-form {
+        flex: 0 0 auto;
+    }
+
+    .developer-list-import-file {
+        width: clamp(14rem, 24vw, 22rem);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Застройщики</h1>
+    <div class="d-flex justify-content-between align-items-center gap-2 mb-4">
+        <h1 class="mb-0">Застройщики</h1>
+        <div class="developer-list-actions d-flex flex-nowrap align-items-center justify-content-end gap-2">
+            {% if can_sync_external_data %}
+            <form
+                method="post"
+                enctype="multipart/form-data"
+                action="{% url 'property:developer_registry_import' %}"
+                class="developer-list-import-form d-flex flex-nowrap align-items-center gap-2"
+            >
+                {% csrf_token %}
+                <input
+                    type="file"
+                    name="source_file"
+                    class="developer-list-import-file form-control form-control-sm"
+                    accept=".csv,.json,.xlsx"
+                    aria-label="Файл ЕРЗ"
+                    required
+                >
+                <button type="submit" class="btn btn-outline-primary text-nowrap">
+                    Импорт из файла ЕРЗ
+                </button>
+            </form>
+            {% endif %}
         {% if can_manage_catalogs %}
-        <a href="{% url 'property:developer_create' %}" class="btn btn-primary">Добавить застройщика</a>
+            <a href="{% url 'property:developer_create' %}" class="btn btn-primary text-nowrap">Добавить застройщика</a>
         {% endif %}
+        </div>
     </div>
 
     <div class="card mb-4">
@@ -18,13 +58,55 @@
                 <input type="hidden" name="sort_by" value="{{ sort_by }}">
                 <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
 
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label class="form-label">Застройщик</label>
                     <input type="text" name="filter_name" value="{{ filters.name }}" class="form-control" data-catalog-filter-control>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
+                    <label class="form-label">Группа компаний</label>
+                    <select name="filter_company_group" class="form-control" data-catalog-filter-control>
+                        <option value="">Все группы компаний</option>
+                        {% for company_group in company_groups_for_filter %}
+                        <option value="{{ company_group.pk }}" {% if filters.company_group == company_group.pk|stringformat:'s' %}selected{% endif %}>
+                            {{ company_group.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Регион</label>
+                    <select name="filter_region" class="form-control" data-catalog-filter-control>
+                        <option value="">Все регионы</option>
+                        {% for region in regions_for_filter %}
+                        <option value="{{ region.pk }}" {% if filters.region == region.pk|stringformat:'s' %}selected{% endif %}>
+                            {{ region.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
                     <label class="form-label">Описание</label>
                     <input type="text" name="filter_description" value="{{ filters.description }}" class="form-control" data-catalog-filter-control>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Юридический адрес</label>
+                    <input type="text" name="filter_legal_address" value="{{ filters.legal_address }}" class="form-control" data-catalog-filter-control>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Фактический адрес</label>
+                    <input type="text" name="filter_actual_address" value="{{ filters.actual_address }}" class="form-control" data-catalog-filter-control>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">ИНН</label>
+                    <input type="text" name="filter_taxpayer_identification_number" value="{{ filters.taxpayer_identification_number }}" class="form-control" data-catalog-filter-control>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">КПП</label>
+                    <input type="text" name="filter_tax_registration_reason_code" value="{{ filters.tax_registration_reason_code }}" class="form-control" data-catalog-filter-control>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">ОГРН</label>
+                    <input type="text" name="filter_primary_state_registration_number" value="{{ filters.primary_state_registration_number }}" class="form-control" data-catalog-filter-control>
                 </div>
                 <div class="col-12">
                     <a href="{% url 'property:developer_list' %}" class="btn btn-outline-secondary">Сбросить</a>
@@ -42,7 +124,11 @@
                             <tr>
                                 {% for column in columns %}
                                 <th>
+                                    {% if column.sort_url %}
                                     {% include "includes/catalog_sort_link.html" with sort_url=column.sort_url sort_label=column.label sort_is_sorted=column.is_sorted sort_direction=column.sort_direction %}
+                                    {% else %}
+                                    {{ column.label }}
+                                    {% endif %}
                                 </th>
                                 {% endfor %}
                                 {% if can_manage_catalogs %}
@@ -57,6 +143,24 @@
                                 <td>
                                     {% if column.key == 'name' %}
                                         {{ developer.name }}
+                                    {% elif column.key == 'company_group' %}
+                                        {{ developer.company_group|default:"-" }}
+                                    {% elif column.key == 'regions' %}
+                                        {% for region in developer.regions.all %}
+                                            {{ region.name }}{% if not forloop.last %}, {% endif %}
+                                        {% empty %}
+                                            -
+                                        {% endfor %}
+                                    {% elif column.key == 'legal_address' %}
+                                        {{ developer.legal_address|default:"-"|truncatechars:100 }}
+                                    {% elif column.key == 'actual_address' %}
+                                        {{ developer.actual_address|default:"-"|truncatechars:100 }}
+                                    {% elif column.key == 'taxpayer_identification_number' %}
+                                        {{ developer.taxpayer_identification_number|default:"-" }}
+                                    {% elif column.key == 'tax_registration_reason_code' %}
+                                        {{ developer.tax_registration_reason_code|default:"-" }}
+                                    {% elif column.key == 'primary_state_registration_number' %}
+                                        {{ developer.primary_state_registration_number|default:"-" }}
                                     {% elif column.key == 'description' %}
                                         {{ developer.description|default:"-"|truncatechars:100 }}
                                     {% endif %}

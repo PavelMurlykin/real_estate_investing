@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Группы компаний{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Группы компаний</h1>
+        {% if can_manage_catalogs %}
+        <a href="{% url 'property:company_group_create' %}" class="btn btn-primary">Добавить группу компаний</a>
+        {% endif %}
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-2" data-catalog-filter-form data-catalog-results-target="#catalog-results">
+                <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+
+                <div class="col-md-6">
+                    <label class="form-label">Группа компаний</label>
+                    <input type="text" name="filter_name" value="{{ filters.name }}" class="form-control" data-catalog-filter-control>
+                </div>
+                <div class="col-12">
+                    <a href="{% url 'property:company_group_list' %}" class="btn btn-outline-secondary">Сбросить</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div id="catalog-results" data-catalog-results>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle">
+                        <thead>
+                            <tr>
+                                {% for column in columns %}
+                                <th>
+                                    {% include "includes/catalog_sort_link.html" with sort_url=column.sort_url sort_label=column.label sort_is_sorted=column.is_sorted sort_direction=column.sort_direction %}
+                                </th>
+                                {% endfor %}
+                                {% if can_manage_catalogs %}
+                                <th class="text-nowrap">Действия</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for company_group in company_groups %}
+                            <tr>
+                                <td>{{ company_group.name }}</td>
+                                {% if can_manage_catalogs %}
+                                <td class="align-middle text-nowrap">
+                                    <div class="d-flex gap-2 flex-nowrap">
+                                        {% url 'property:company_group_update' company_group.pk as update_url %}
+                                        {% include "includes/action_icon.html" with href=update_url icon="edit" label="Редактировать" %}
+                                        {% url 'property:company_group_delete' company_group.pk as delete_url %}
+                                        {% include "includes/action_icon.html" with href=delete_url icon="delete" label="Удалить" variant_class="btn-outline-danger" %}
+                                    </div>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="{% if can_manage_catalogs %}{{ columns|length|add:1 }}{% else %}{{ columns|length }}{% endif %}" class="text-center">Группы компаний не найдены</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if is_paginated %}
+                <nav aria-label="Пагинация">
+                    <ul class="pagination justify-content-center mb-0">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Первая</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Предыдущая</a>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item disabled">
+                            <span class="page-link">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Следующая</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Последняя</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/catalog.js' %}?v=20260516-sort"></script>
+{% endblock %}
