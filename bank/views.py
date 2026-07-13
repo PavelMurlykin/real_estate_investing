@@ -30,6 +30,11 @@ from .forms import (
     BankForm,
     BankProgramFormSet,
     DeveloperMortgageProgramForm,
+    DeveloperMortgageProgramImportForm,
+)
+from .developer_mortgage_program_importer import (
+    DeveloperMortgageProgramImportError,
+    import_developer_mortgage_programs,
 )
 from .key_rate_sync import KeyRateSyncError, sync_key_rates
 from .mortgage_offer_sync import (
@@ -45,6 +50,8 @@ from .models import (
     MortgageProgramAlias,
     MortgageProgramRegionalCreditLimit,
 )
+
+DEVELOPER_PROGRAM_IMPORT_SESSION_KEY = 'developer_program_import_summary'
 
 
 class BankCatalogView(BaseCatalogView):
@@ -469,6 +476,7 @@ class DeveloperMortgageProgramListView(ListView):
         'real_estate_complex': 'real_estate_complex__name',
         'bank': 'bank__name',
         'mortgage_program': 'mortgage_program__name',
+        'is_active': 'is_active',
         'price_increase_percent': 'price_increase_percent',
         'grace_period_months': 'grace_period_months',
         'grace_period_interest_rate': 'grace_period_interest_rate',
@@ -485,6 +493,7 @@ class DeveloperMortgageProgramListView(ListView):
         {'key': 'real_estate_complex', 'label': 'ЖК'},
         {'key': 'bank', 'label': 'Банк'},
         {'key': 'mortgage_program', 'label': 'Ипотечная программа'},
+        {'key': 'is_active', 'label': 'Статус'},
         {'key': 'price_increase_percent', 'label': 'Удорожание, %'},
         {'key': 'grace_period_months', 'label': 'Льготный период, мес.'},
         {
@@ -517,6 +526,7 @@ class DeveloperMortgageProgramListView(ListView):
             'mortgage_program': self.request.GET.get(
                 'filter_mortgage_program', ''
             ),
+            'status': self.request.GET.get('filter_status', ''),
         }
 
     def get_queryset(self):
@@ -528,11 +538,21 @@ class DeveloperMortgageProgramListView(ListView):
             'mortgage_program',
         )
         filters = self.get_filters()
-        for field_name, filter_value in filters.items():
+        for field_name in (
+            'company_group',
+            'real_estate_complex',
+            'bank',
+            'mortgage_program',
+        ):
+            filter_value = filters[field_name]
             if filter_value.isdecimal():
                 queryset = queryset.filter(
                     **{f'{field_name}_id': filter_value}
                 )
+        if filters['status'] == 'active':
+            queryset = queryset.filter(is_active=True)
+        elif filters['status'] == 'stopped':
+            queryset = queryset.filter(is_active=False)
 
         sort_by = self.request.GET.get('sort_by', '')
         sort_direction = self.request.GET.get('sort_dir', 'asc')
@@ -614,6 +634,11 @@ class DeveloperMortgageProgramListView(ListView):
                 'sort_by': self.request.GET.get('sort_by', ''),
                 'sort_dir': self.request.GET.get('sort_dir', 'asc'),
                 'pagination_querystring': self.build_querystring(),
+                'import_form': DeveloperMortgageProgramImportForm(),
+                'import_summary': self.request.session.pop(
+                    DEVELOPER_PROGRAM_IMPORT_SESSION_KEY,
+                    None,
+                ),
                 'company_groups_for_filter': (
                     CompanyGroup.objects.filter(
                         pk__in=used_company_group_ids
@@ -667,6 +692,44 @@ class DeveloperMortgageProgramDeleteView(
     model = DeveloperMortgageProgram
     template_name = 'bank/developer_mortgage_program_confirm_delete.html'
     success_url = reverse_lazy('bank:developer_mortgage_program_list')
+
+
+class DeveloperMortgageProgramImportView(
+    CatalogManagementRequiredMixin, View
+):
+    """Imports normalized developer programs from an uploaded XLSX file."""
+
+    def post(self, request, *args, **kwargs):
+        """Validate, import and redirect to the program list summary."""
+        import_form = DeveloperMortgageProgramImportForm(
+            request.POST,
+            request.FILES,
+        )
+        if not import_form.is_valid():
+            error_messages = [
+                str(error)
+                for field_errors in import_form.errors.values()
+                for error in field_errors
+            ]
+            messages.error(request, ' '.join(error_messages))
+            return redirect('bank:developer_mortgage_program_list')
+
+        try:
+            import_result = import_developer_mortgage_programs(
+                import_form.cleaned_data['workbook_file']
+            )
+        except DeveloperMortgageProgramImportError as error:
+            messages.error(request, str(error))
+            return redirect('bank:developer_mortgage_program_list')
+
+        request.session[DEVELOPER_PROGRAM_IMPORT_SESSION_KEY] = (
+            import_result.to_session_data()
+        )
+        messages.success(
+            request,
+            'Импорт ипотечных программ завершен.',
+        )
+        return redirect('bank:developer_mortgage_program_list')
 
 
 class DeveloperMortgageProgramComplexOptionsView(

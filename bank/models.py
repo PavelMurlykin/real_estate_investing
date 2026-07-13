@@ -282,6 +282,8 @@ class DeveloperMortgageProgram(BaseModel):
         max_digits=6,
         decimal_places=2,
         default=Decimal('0'),
+        null=True,
+        blank=True,
         verbose_name='Удорожание, %',
     )
     grace_period_months = models.PositiveSmallIntegerField(
@@ -347,6 +349,41 @@ class DeveloperMortgageProgram(BaseModel):
             MaxValueValidator(Decimal('100')),
         ],
         verbose_name='Дисконт к ставке, п. п.',
+    )
+    source_key = models.CharField(
+        max_length=64,
+        null=True,
+        blank=True,
+        unique=True,
+        editable=False,
+        verbose_name='Ключ записи источника',
+    )
+    source_record_id = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        editable=False,
+        verbose_name='ID записи источника',
+    )
+    source_sheet_row = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        editable=False,
+        verbose_name='Строка исходной таблицы',
+    )
+    source_program_column = models.CharField(
+        max_length=1,
+        blank=True,
+        default='',
+        editable=False,
+        verbose_name='Столбец программы источника',
+    )
+    source_program_variant_index = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name='Номер варианта программы источника',
     )
 
     class Meta(BaseModel.Meta):

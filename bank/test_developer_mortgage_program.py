@@ -1,4 +1,5 @@
 from decimal import Decimal
+from io import BytesIO
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -6,7 +7,9 @@ from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
+from openpyxl import Workbook
 
 from location.models import City, District, Region
 from property.models import (
@@ -19,6 +22,12 @@ from property.models import (
 from users.roles import MODERATOR_GROUP_NAME
 
 from .forms import DeveloperMortgageProgramForm
+from .developer_mortgage_program_importer import (
+    DeveloperMortgageProgramImportError,
+    REQUIRED_COLUMNS,
+    import_developer_mortgage_programs,
+    parse_developer_mortgage_program_workbook,
+)
 from .models import Bank, DeveloperMortgageProgram, MortgageProgram
 
 
@@ -102,6 +111,50 @@ def create_real_estate_complex(company_group, suffix):
         real_estate_class=real_estate_class,
         real_estate_type=real_estate_type,
     )
+
+
+def build_import_row(**overrides):
+    """Return a complete normalized import row with optional overrides."""
+    row = {
+        'record_id': 1,
+        'source_sheet_row': 6,
+        'company_group_name': 'Группа Север',
+        'real_estate_complex_name': 'ЖК Основной',
+        'object_scope': 'named',
+        'bank_name': 'Тестовый банк',
+        'program_type_code': 'family',
+        'program_cell_column': 'G',
+        'program_variant_index': 1,
+        'is_program_on_stop': False,
+        'grace_period_rate_percent': '0.10',
+        'grace_period_term_years': 2,
+        'interest_rate_percent': '4.30',
+        'initial_payment_min_percent': '20.10',
+        'maximum_loan_term_years': 30,
+        'maximum_loan_amount_rub': 12_000_000,
+        'rate_discount_percent': '0.50',
+        'effective_price_increase_percent': '-1.25',
+        'parse_warnings': '',
+        'source_url': 'https://example.com/source',
+    }
+    row.update(overrides)
+    return row
+
+
+def build_import_workbook(rows, headers=REQUIRED_COLUMNS):
+    """Build an in-memory XLSX workbook matching the import contract."""
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = 'db_import'
+    worksheet.append(list(headers))
+    for row in rows:
+        worksheet.append([row.get(column_name) for column_name in headers])
+
+    workbook_file = BytesIO()
+    workbook.save(workbook_file)
+    workbook.close()
+    workbook_file.seek(0)
+    return workbook_file
 
 
 @pytest.mark.django_db
@@ -352,3 +405,255 @@ def test_developer_program_list_has_bounded_query_count(
 
     assert response.status_code == 200
     assert len(captured_queries) <= 8
+
+
+@pytest.mark.django_db
+def test_import_creates_typed_program_from_existing_dictionaries(
+    company_group,
+    bank,
+    mortgage_program,
+):
+    """Importer maps normalized values and converts grace years to months."""
+    real_estate_complex = create_real_estate_complex(
+        company_group,
+        'Основной',
+    )
+    workbook_file = build_import_workbook([build_import_row()])
+
+    result = import_developer_mortgage_programs(workbook_file)
+
+    developer_program = DeveloperMortgageProgram.objects.get()
+    assert result.created == 1
+    assert result.skipped == 0
+    assert developer_program.real_estate_complex == real_estate_complex
+    assert developer_program.grace_period_months == 24
+    assert developer_program.grace_period_interest_rate == Decimal('0.10')
+    assert developer_program.interest_rate == Decimal('4.30')
+    assert developer_program.price_increase_percent == Decimal('-1.25')
+    assert developer_program.source_record_id == 1
+    assert developer_program.source_key
+
+
+@pytest.mark.django_db
+def test_import_updates_same_source_record_without_duplicates(
+    company_group,
+    bank,
+    mortgage_program,
+):
+    """Rerunning a changed source variant updates the existing model row."""
+    create_real_estate_complex(company_group, 'Основной')
+    first_workbook = build_import_workbook([build_import_row()])
+    second_workbook = build_import_workbook(
+        [build_import_row(interest_rate_percent='4.75')]
+    )
+
+    first_result = import_developer_mortgage_programs(first_workbook)
+    second_result = import_developer_mortgage_programs(second_workbook)
+
+    assert first_result.created == 1
+    assert second_result.created == 0
+    assert second_result.updated == 1
+    assert DeveloperMortgageProgram.objects.count() == 1
+    assert (
+        DeveloperMortgageProgram.objects.get().interest_rate
+        == Decimal('4.75')
+    )
+
+
+@pytest.mark.django_db
+def test_import_all_objects_and_unknown_price_increase(
+    company_group,
+    bank,
+    mortgage_program,
+):
+    """All-object rows use a null complex and preserve unknown increase."""
+    workbook_file = build_import_workbook(
+        [
+            build_import_row(
+                object_scope='all_objects',
+                real_estate_complex_name='Все объекты',
+                effective_price_increase_percent=None,
+                is_program_on_stop=True,
+            )
+        ]
+    )
+
+    result = import_developer_mortgage_programs(workbook_file)
+
+    developer_program = DeveloperMortgageProgram.objects.get()
+    assert result.created == 1
+    assert result.inactive_rows == 1
+    assert developer_program.real_estate_complex is None
+    assert developer_program.price_increase_percent is None
+    assert not developer_program.is_active
+
+
+@pytest.mark.django_db
+def test_import_never_creates_missing_dictionary_records(
+    company_group,
+    bank,
+    mortgage_program,
+):
+    """Missing groups, banks, complexes and programs are only reported."""
+    create_real_estate_complex(company_group, 'Основной')
+    initial_counts = {
+        'company_groups': CompanyGroup.objects.count(),
+        'banks': Bank.objects.count(),
+        'complexes': RealEstateComplex.objects.count(),
+        'programs': MortgageProgram.objects.count(),
+    }
+    workbook_file = build_import_workbook(
+        [
+            build_import_row(
+                record_id=1,
+                source_sheet_row=10,
+                company_group_name='Несуществующая группа',
+            ),
+            build_import_row(
+                record_id=2,
+                source_sheet_row=11,
+                bank_name='Несуществующий банк',
+            ),
+            build_import_row(
+                record_id=3,
+                source_sheet_row=12,
+                real_estate_complex_name='Несуществующий ЖК',
+            ),
+            build_import_row(
+                record_id=4,
+                source_sheet_row=13,
+                program_type_code='it',
+                program_cell_column='H',
+            ),
+        ]
+    )
+
+    result = import_developer_mortgage_programs(workbook_file)
+
+    assert result.created == 0
+    assert result.skipped == 4
+    assert not DeveloperMortgageProgram.objects.exists()
+    assert CompanyGroup.objects.count() == initial_counts['company_groups']
+    assert Bank.objects.count() == initial_counts['banks']
+    assert RealEstateComplex.objects.count() == initial_counts['complexes']
+    assert MortgageProgram.objects.count() == initial_counts['programs']
+    issue_text = ' '.join(result.issue_messages)
+    assert 'отсутствует в базе' in issue_text
+
+
+@pytest.mark.django_db
+def test_import_skips_unsupported_scopes_and_exact_duplicates(
+    company_group,
+    bank,
+    mortgage_program,
+):
+    """Report unsupported scopes and collapse exact business duplicates."""
+    create_real_estate_complex(company_group, 'Основной')
+    workbook_file = build_import_workbook(
+        [
+            build_import_row(record_id=1, source_sheet_row=20),
+            build_import_row(record_id=2, source_sheet_row=21),
+            build_import_row(
+                record_id=3,
+                source_sheet_row=22,
+                object_scope='all_except',
+                real_estate_complex_name='Все объекты',
+            ),
+        ]
+    )
+
+    result = import_developer_mortgage_programs(workbook_file)
+
+    assert result.created == 1
+    assert result.duplicate_rows == 1
+    assert result.skipped == 2
+    assert DeveloperMortgageProgram.objects.count() == 1
+    assert 'не поддерживается моделью' in ' '.join(result.issue_messages)
+
+
+def test_parser_rejects_missing_required_columns():
+    """Parser rejects structurally incompatible workbooks before loading."""
+    incomplete_headers = tuple(
+        column_name
+        for column_name in REQUIRED_COLUMNS
+        if column_name != 'bank_name'
+    )
+    workbook_file = build_import_workbook(
+        [build_import_row()],
+        headers=incomplete_headers,
+    )
+
+    with pytest.raises(DeveloperMortgageProgramImportError):
+        parse_developer_mortgage_program_workbook(workbook_file)
+
+
+@pytest.mark.django_db
+def test_import_view_requires_moderator_and_displays_summary(
+    client,
+    regular_user,
+    moderator,
+    company_group,
+    bank,
+    mortgage_program,
+):
+    """Only moderators can upload files and see the redirected summary."""
+    create_real_estate_complex(company_group, 'Основной')
+    upload_url = reverse('bank:developer_mortgage_program_import')
+    workbook_bytes = build_import_workbook(
+        [build_import_row()]
+    ).getvalue()
+
+    client.force_login(regular_user)
+    denied_response = client.post(
+        upload_url,
+        data={
+            'workbook_file': SimpleUploadedFile(
+                'programs.xlsx',
+                workbook_bytes,
+            )
+        },
+    )
+    assert denied_response.status_code == 403
+    assert not DeveloperMortgageProgram.objects.exists()
+
+    client.force_login(moderator)
+    response = client.post(
+        upload_url,
+        data={
+            'workbook_file': SimpleUploadedFile(
+                'programs.xlsx',
+                workbook_bytes,
+            )
+        },
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    assert 'Результат импорта' in response.content.decode('utf-8')
+    assert DeveloperMortgageProgram.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_import_query_count_is_bounded(
+    company_group,
+    bank,
+    mortgage_program,
+):
+    """Batch loading does not issue database queries for every source row."""
+    create_real_estate_complex(company_group, 'Основной')
+    rows = [
+        build_import_row(
+            record_id=index,
+            source_sheet_row=100 + index,
+            program_variant_index=index,
+            interest_rate_percent=Decimal('4.00') + Decimal(index) / 100,
+        )
+        for index in range(1, 31)
+    ]
+    workbook_file = build_import_workbook(rows)
+
+    with CaptureQueriesContext(connection) as captured_queries:
+        result = import_developer_mortgage_programs(workbook_file)
+
+    assert result.created == 30
+    assert len(captured_queries) <= 15

@@ -1,4 +1,5 @@
 from django import forms
+from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
 
 from property.models import RealEstateComplex
@@ -165,6 +166,32 @@ class DeveloperMortgageProgramForm(forms.ModelForm):
         if self.instance and self.instance.company_group_id:
             return self.instance.company_group_id
         return None
+
+
+class DeveloperMortgageProgramImportForm(forms.Form):
+    """Validates an uploaded normalized developer program workbook."""
+
+    maximum_file_size = 15 * 1024 * 1024
+    workbook_file = forms.FileField(
+        label='Файл XLSX',
+        widget=forms.ClearableFileInput(
+            attrs={
+                'accept': '.xlsx',
+                'class': 'form-control',
+            }
+        ),
+    )
+
+    def clean_workbook_file(self):
+        """Reject unsupported extensions and unexpectedly large files."""
+        workbook_file = self.cleaned_data['workbook_file']
+        if not workbook_file.name.casefold().endswith('.xlsx'):
+            raise ValidationError('Поддерживаются только файлы XLSX.')
+        if workbook_file.size > self.maximum_file_size:
+            raise ValidationError(
+                'Размер файла не должен превышать 15 МБ.'
+            )
+        return workbook_file
 
 
 BankProgramFormSet = inlineformset_factory(

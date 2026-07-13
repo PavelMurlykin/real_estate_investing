@@ -8,6 +8,7 @@ from .views import (
     DeveloperMortgageProgramComplexOptionsView,
     DeveloperMortgageProgramCreateView,
     DeveloperMortgageProgramDeleteView,
+    DeveloperMortgageProgramImportView,
     DeveloperMortgageProgramListView,
     DeveloperMortgageProgramUpdateView,
     KeyRateListView,
@@ -33,6 +34,11 @@ urlpatterns = [
         'developer-programs/create/',
         DeveloperMortgageProgramCreateView.as_view(),
         name='developer_mortgage_program_create',
+    ),
+    path(
+        'developer-programs/import/',
+        DeveloperMortgageProgramImportView.as_view(),
+        name='developer_mortgage_program_import',
     ),
     path(
         'developer-programs/<int:pk>/edit/',
