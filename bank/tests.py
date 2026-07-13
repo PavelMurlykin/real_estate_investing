@@ -30,6 +30,7 @@ from .mortgage_offer_sync import (
 from .models import (
     Bank,
     BankProgram,
+    DeveloperMortgageProgram,
     KeyRate,
     MortgageProgram,
     MortgageProgramAlias,
@@ -54,6 +55,10 @@ def test_bank_model_verbose_names():
             'Алиасы ипотечных программ',
         ),
         BankProgram: ('Программа банка', 'Программы банков'),
+        DeveloperMortgageProgram: (
+            'Ипотечная программа застройщика',
+            'Ипотечные программы застройщиков',
+        ),
         KeyRate: ('Ключевая ставка', 'Ключевые ставки'),
     }
 

@@ -1,0 +1,9 @@
+<ul class="nav nav-tabs flex-nowrap overflow-x-auto mb-4">
+    {% for tab in model_tabs %}
+    <li class="nav-item">
+        <a class="nav-link text-nowrap {% if tab.is_active %}active{% endif %}" href="{{ tab.url }}">
+            {{ tab.title|capfirst }}
+        </a>
+    </li>
+    {% endfor %}
+</ul>

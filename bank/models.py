@@ -1,6 +1,7 @@
 from decimal import Decimal
 
-from django.core.validators import MinValueValidator
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from core.models import BaseModel
@@ -246,6 +247,223 @@ class BankProgram(BaseModel):
     def __str__(self):
         """Возвращает связку банка и ипотечной программы."""
         return f'{self.bank} - {self.mortgage_program}'
+
+
+class DeveloperMortgageProgram(BaseModel):
+    """Условия ипотечной программы для группы компаний или отдельного ЖК."""
+
+    company_group = models.ForeignKey(
+        'property.CompanyGroup',
+        on_delete=models.PROTECT,
+        related_name='developer_mortgage_programs',
+        verbose_name='Группа компаний',
+    )
+    real_estate_complex = models.ForeignKey(
+        'property.RealEstateComplex',
+        on_delete=models.PROTECT,
+        related_name='developer_mortgage_programs',
+        null=True,
+        blank=True,
+        verbose_name='ЖК',
+    )
+    bank = models.ForeignKey(
+        Bank,
+        on_delete=models.PROTECT,
+        related_name='developer_mortgage_programs',
+        verbose_name='Банк',
+    )
+    mortgage_program = models.ForeignKey(
+        MortgageProgram,
+        on_delete=models.PROTECT,
+        related_name='developer_mortgage_programs',
+        verbose_name='Ипотечная программа',
+    )
+    price_increase_percent = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=Decimal('0'),
+        verbose_name='Удорожание, %',
+    )
+    grace_period_months = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        verbose_name='Срок льготного периода, мес.',
+    )
+    grace_period_interest_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal('0')),
+            MaxValueValidator(Decimal('100')),
+        ],
+        verbose_name='Ставка на льготный период, % годовых',
+    )
+    minimum_initial_payment_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal('0')),
+            MaxValueValidator(Decimal('100')),
+        ],
+        verbose_name='Первоначальный взнос, %',
+    )
+    interest_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal('0')),
+            MaxValueValidator(Decimal('100')),
+        ],
+        verbose_name='Годовая ставка, %',
+    )
+    maximum_loan_term_years = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        verbose_name='Максимальный срок кредита, лет',
+    )
+    maximum_loan_amount = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal('0'))],
+        verbose_name='Максимальная сумма кредита',
+    )
+    rate_discount_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal('0')),
+            MaxValueValidator(Decimal('100')),
+        ],
+        verbose_name='Дисконт к ставке, п. п.',
+    )
+
+    class Meta(BaseModel.Meta):
+        """Метаданные ипотечных программ застройщиков."""
+
+        db_table = 'developer_mortgage_program'
+        verbose_name = 'Ипотечная программа застройщика'
+        verbose_name_plural = 'Ипотечные программы застройщиков'
+        ordering = [
+            'company_group__name',
+            'real_estate_complex__name',
+            'bank__name',
+            'mortgage_program__name',
+        ]
+        indexes = [
+            models.Index(
+                fields=['company_group', 'bank', 'mortgage_program'],
+                name='dev_mort_group_bank_idx',
+            ),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(grace_period_months__isnull=True)
+                    | models.Q(grace_period_months__gte=1)
+                ),
+                name='dev_mort_grace_months_positive',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(grace_period_interest_rate__isnull=True)
+                    | models.Q(
+                        grace_period_interest_rate__gte=Decimal('0'),
+                        grace_period_interest_rate__lte=Decimal('100'),
+                    )
+                ),
+                name='dev_mort_grace_rate_range',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(minimum_initial_payment_percent__isnull=True)
+                    | models.Q(
+                        minimum_initial_payment_percent__gte=Decimal('0'),
+                        minimum_initial_payment_percent__lte=Decimal('100'),
+                    )
+                ),
+                name='dev_mort_initial_payment_range',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(interest_rate__isnull=True)
+                    | models.Q(
+                        interest_rate__gte=Decimal('0'),
+                        interest_rate__lte=Decimal('100'),
+                    )
+                ),
+                name='dev_mort_interest_rate_range',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(rate_discount_percent__isnull=True)
+                    | models.Q(
+                        rate_discount_percent__gte=Decimal('0'),
+                        rate_discount_percent__lte=Decimal('100'),
+                    )
+                ),
+                name='dev_mort_discount_range',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(maximum_loan_term_years__isnull=True)
+                    | models.Q(maximum_loan_term_years__gte=1)
+                ),
+                name='dev_mort_max_term_positive',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(maximum_loan_amount__isnull=True)
+                    | models.Q(maximum_loan_amount__gte=Decimal('0'))
+                ),
+                name='dev_mort_max_amount_nonnegative',
+            ),
+        ]
+
+    def clean(self):
+        """Проверяет принадлежность выбранного ЖК группе компаний."""
+        super().clean()
+        if not self.company_group_id or not self.real_estate_complex_id:
+            return
+
+        real_estate_complex_model = self._meta.get_field(
+            'real_estate_complex'
+        ).remote_field.model
+        complex_company_group_id = (
+            real_estate_complex_model.objects.filter(
+                pk=self.real_estate_complex_id
+            )
+            .values_list('developer__company_group_id', flat=True)
+            .first()
+        )
+        if complex_company_group_id != self.company_group_id:
+            raise ValidationError(
+                {
+                    'real_estate_complex': (
+                        'Выбранный ЖК не относится к указанной группе '
+                        'компаний.'
+                    )
+                }
+            )
+
+    def __str__(self):
+        """Возвращает программу с областью действия и банком."""
+        scope = self.real_estate_complex or 'Все ЖК группы'
+        return (
+            f'{self.company_group} / {scope} / '
+            f'{self.bank} / {self.mortgage_program}'
+        )
 
 
 class KeyRate(BaseModel):

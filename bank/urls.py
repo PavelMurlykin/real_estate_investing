@@ -5,6 +5,11 @@ from .views import (
     BankCreateView,
     BankDetailView,
     BankUpdateView,
+    DeveloperMortgageProgramComplexOptionsView,
+    DeveloperMortgageProgramCreateView,
+    DeveloperMortgageProgramDeleteView,
+    DeveloperMortgageProgramListView,
+    DeveloperMortgageProgramUpdateView,
     KeyRateListView,
 )
 
@@ -18,6 +23,31 @@ urlpatterns = [
         'banks/<int:pk>/edit/',
         BankUpdateView.as_view(),
         name='bank_update',
+    ),
+    path(
+        'developer-programs/',
+        DeveloperMortgageProgramListView.as_view(),
+        name='developer_mortgage_program_list',
+    ),
+    path(
+        'developer-programs/create/',
+        DeveloperMortgageProgramCreateView.as_view(),
+        name='developer_mortgage_program_create',
+    ),
+    path(
+        'developer-programs/<int:pk>/edit/',
+        DeveloperMortgageProgramUpdateView.as_view(),
+        name='developer_mortgage_program_update',
+    ),
+    path(
+        'developer-programs/<int:pk>/delete/',
+        DeveloperMortgageProgramDeleteView.as_view(),
+        name='developer_mortgage_program_delete',
+    ),
+    path(
+        'developer-programs/complex-options/',
+        DeveloperMortgageProgramComplexOptionsView.as_view(),
+        name='developer_mortgage_program_complex_options',
     ),
     path('key-rate/', KeyRateListView.as_view(), name='key_rate_list'),
 ]

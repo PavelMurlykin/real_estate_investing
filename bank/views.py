@@ -6,10 +6,19 @@ from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import DecimalField, ExpressionWrapper, F, Window
 from django.db.models.functions import Lead
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
-from django.urls import reverse
-from django.views.generic import TemplateView
+from django.urls import reverse, reverse_lazy
+from django.views import View
+from django.views.generic import (
+    CreateView,
+    DeleteView,
+    ListView,
+    TemplateView,
+    UpdateView,
+)
 
+from property.models import CompanyGroup, RealEstateComplex
 from property.views import BaseCatalogView, CatalogModelConfig
 from users.roles import (
     CatalogManagementRequiredMixin,
@@ -17,7 +26,11 @@ from users.roles import (
     can_sync_external_data,
 )
 
-from .forms import BankForm, BankProgramFormSet
+from .forms import (
+    BankForm,
+    BankProgramFormSet,
+    DeveloperMortgageProgramForm,
+)
 from .key_rate_sync import KeyRateSyncError, sync_key_rates
 from .mortgage_offer_sync import (
     BankMortgageSyncError,
@@ -26,6 +39,7 @@ from .mortgage_offer_sync import (
 from .models import (
     Bank,
     BankProgram,
+    DeveloperMortgageProgram,
     KeyRate,
     MortgageProgram,
     MortgageProgramAlias,
@@ -108,6 +122,34 @@ class BankCatalogView(BaseCatalogView):
             select_related=('bank', 'mortgage_program'),
         ),
     )
+
+    @classmethod
+    def get_catalog_tabs(cls, active_key):
+        """Возвращает вкладки справочника банков для всех его страниц."""
+        catalog_url = reverse('bank:catalog')
+        tabs = [
+            {
+                'key': config.key,
+                'title': config.title,
+                'url': f'{catalog_url}?model={config.key}',
+                'is_active': config.key == active_key,
+            }
+            for config in cls.model_configs
+        ]
+        tabs.insert(
+            1,
+            {
+                'key': 'developer_mortgage_program',
+                'title': 'Программы застройщиков',
+                'url': reverse('bank:developer_mortgage_program_list'),
+                'is_active': active_key == 'developer_mortgage_program',
+            }
+        )
+        return tabs
+
+    def build_nav_models(self, current_key):
+        """Добавляет отдельный CRUD программ застройщиков во вкладки."""
+        return self.get_catalog_tabs(current_key)
 
     def post(self, request, *args, **kwargs):
         """Handle bank catalog updates and regular catalog actions."""
@@ -413,6 +455,252 @@ class BankCatalogView(BaseCatalogView):
             column['sort_url'] = f'?{params.urlencode()}'
 
         return context
+
+
+class DeveloperMortgageProgramListView(ListView):
+    """Показывает программы застройщиков с фильтрами и пагинацией."""
+
+    model = DeveloperMortgageProgram
+    template_name = 'bank/developer_mortgage_program_list.html'
+    context_object_name = 'developer_mortgage_programs'
+    paginate_by = 20
+    sort_fields = {
+        'company_group': 'company_group__name',
+        'real_estate_complex': 'real_estate_complex__name',
+        'bank': 'bank__name',
+        'mortgage_program': 'mortgage_program__name',
+        'price_increase_percent': 'price_increase_percent',
+        'grace_period_months': 'grace_period_months',
+        'grace_period_interest_rate': 'grace_period_interest_rate',
+        'minimum_initial_payment_percent': (
+            'minimum_initial_payment_percent'
+        ),
+        'interest_rate': 'interest_rate',
+        'maximum_loan_term_years': 'maximum_loan_term_years',
+        'maximum_loan_amount': 'maximum_loan_amount',
+        'rate_discount_percent': 'rate_discount_percent',
+    }
+    table_columns = (
+        {'key': 'company_group', 'label': 'Группа компаний'},
+        {'key': 'real_estate_complex', 'label': 'ЖК'},
+        {'key': 'bank', 'label': 'Банк'},
+        {'key': 'mortgage_program', 'label': 'Ипотечная программа'},
+        {'key': 'price_increase_percent', 'label': 'Удорожание, %'},
+        {'key': 'grace_period_months', 'label': 'Льготный период, мес.'},
+        {
+            'key': 'grace_period_interest_rate',
+            'label': 'Ставка льготного периода, %',
+        },
+        {
+            'key': 'minimum_initial_payment_percent',
+            'label': 'Первоначальный взнос, %',
+        },
+        {'key': 'interest_rate', 'label': 'Годовая ставка, %'},
+        {
+            'key': 'maximum_loan_term_years',
+            'label': 'Максимальный срок, лет',
+        },
+        {'key': 'maximum_loan_amount', 'label': 'Максимальная сумма'},
+        {'key': 'rate_discount_percent', 'label': 'Дисконт, п. п.'},
+    )
+
+    def get_filters(self):
+        """Возвращает значения фильтров из строки запроса."""
+        return {
+            'company_group': self.request.GET.get(
+                'filter_company_group', ''
+            ),
+            'real_estate_complex': self.request.GET.get(
+                'filter_real_estate_complex', ''
+            ),
+            'bank': self.request.GET.get('filter_bank', ''),
+            'mortgage_program': self.request.GET.get(
+                'filter_mortgage_program', ''
+            ),
+        }
+
+    def get_queryset(self):
+        """Возвращает отфильтрованные программы без N+1 запросов."""
+        queryset = DeveloperMortgageProgram.objects.select_related(
+            'company_group',
+            'real_estate_complex__developer',
+            'bank',
+            'mortgage_program',
+        )
+        filters = self.get_filters()
+        for field_name, filter_value in filters.items():
+            if filter_value.isdecimal():
+                queryset = queryset.filter(
+                    **{f'{field_name}_id': filter_value}
+                )
+
+        sort_by = self.request.GET.get('sort_by', '')
+        sort_direction = self.request.GET.get('sort_dir', 'asc')
+        sort_field = self.sort_fields.get(sort_by)
+        if sort_field:
+            sort_prefix = '-' if sort_direction == 'desc' else ''
+            return queryset.order_by(f'{sort_prefix}{sort_field}', 'pk')
+
+        return queryset.order_by(
+            'company_group__name',
+            'real_estate_complex__name',
+            'bank__name',
+            'mortgage_program__name',
+            'pk',
+        )
+
+    def build_querystring(self, **overrides):
+        """Сохраняет фильтры и сортировку в ссылках списка."""
+        params = self.request.GET.copy()
+        params.pop('page', None)
+        for key, value in overrides.items():
+            if value in (None, ''):
+                params.pop(key, None)
+                continue
+            params[key] = value
+        return params.urlencode()
+
+    def build_table_columns(self):
+        """Возвращает метаданные сортируемых столбцов таблицы."""
+        sort_by = self.request.GET.get('sort_by', '')
+        sort_direction = self.request.GET.get('sort_dir', 'asc')
+        columns = []
+        for column in self.table_columns:
+            column_key = column['key']
+            is_sorted = sort_by == column_key
+            next_sort_direction = 'asc'
+            if is_sorted and sort_direction != 'desc':
+                next_sort_direction = 'desc'
+            columns.append(
+                {
+                    **column,
+                    'is_sorted': is_sorted,
+                    'sort_direction': (
+                        sort_direction if is_sorted else ''
+                    ),
+                    'sort_url': (
+                        '?'
+                        + self.build_querystring(
+                            sort_by=column_key,
+                            sort_dir=next_sort_direction,
+                        )
+                    ),
+                }
+            )
+        return columns
+
+    def get_context_data(self, **kwargs):
+        """Добавляет вкладки, фильтры и справочники к контексту списка."""
+        context = super().get_context_data(**kwargs)
+        filters = self.get_filters()
+        used_company_group_ids = DeveloperMortgageProgram.objects.values(
+            'company_group_id'
+        )
+        used_bank_ids = DeveloperMortgageProgram.objects.values('bank_id')
+        used_mortgage_program_ids = DeveloperMortgageProgram.objects.values(
+            'mortgage_program_id'
+        )
+        used_complex_ids = DeveloperMortgageProgram.objects.filter(
+            real_estate_complex__isnull=False
+        ).values('real_estate_complex_id')
+        context.update(
+            {
+                'section_title': 'Программы застройщиков',
+                'model_tabs': BankCatalogView.get_catalog_tabs(
+                    'developer_mortgage_program'
+                ),
+                'filters': filters,
+                'columns': self.build_table_columns(),
+                'sort_by': self.request.GET.get('sort_by', ''),
+                'sort_dir': self.request.GET.get('sort_dir', 'asc'),
+                'pagination_querystring': self.build_querystring(),
+                'company_groups_for_filter': (
+                    CompanyGroup.objects.filter(
+                        pk__in=used_company_group_ids
+                    ).order_by('name')
+                ),
+                'banks_for_filter': Bank.objects.filter(
+                    pk__in=used_bank_ids
+                ).order_by('name'),
+                'programs_for_filter': MortgageProgram.objects.filter(
+                    pk__in=used_mortgage_program_ids
+                ).order_by(
+                    'name'
+                ),
+                'complexes_for_filter': (
+                    RealEstateComplex.objects.select_related('developer')
+                    .filter(pk__in=used_complex_ids)
+                    .order_by('name', 'developer__name')
+                ),
+            }
+        )
+        return context
+
+
+class DeveloperMortgageProgramCreateView(
+    CatalogManagementRequiredMixin, CreateView
+):
+    """Создает ипотечную программу застройщика."""
+
+    model = DeveloperMortgageProgram
+    form_class = DeveloperMortgageProgramForm
+    template_name = 'bank/developer_mortgage_program_form.html'
+    success_url = reverse_lazy('bank:developer_mortgage_program_list')
+
+
+class DeveloperMortgageProgramUpdateView(
+    CatalogManagementRequiredMixin, UpdateView
+):
+    """Редактирует ипотечную программу застройщика."""
+
+    model = DeveloperMortgageProgram
+    form_class = DeveloperMortgageProgramForm
+    template_name = 'bank/developer_mortgage_program_form.html'
+    success_url = reverse_lazy('bank:developer_mortgage_program_list')
+
+
+class DeveloperMortgageProgramDeleteView(
+    CatalogManagementRequiredMixin, DeleteView
+):
+    """Удаляет ипотечную программу застройщика после подтверждения."""
+
+    model = DeveloperMortgageProgram
+    template_name = 'bank/developer_mortgage_program_confirm_delete.html'
+    success_url = reverse_lazy('bank:developer_mortgage_program_list')
+
+
+class DeveloperMortgageProgramComplexOptionsView(
+    CatalogManagementRequiredMixin, View
+):
+    """Возвращает ограниченный список ЖК выбранной группы компаний."""
+
+    maximum_options = 500
+
+    def get(self, request, *args, **kwargs):
+        """Возвращает JSON с ЖК и застройщиками выбранной группы."""
+        company_group_id = request.GET.get('company_group_id', '')
+        if not company_group_id.isdecimal():
+            return JsonResponse({'complexes': []})
+
+        complexes = (
+            RealEstateComplex.objects.select_related('developer')
+            .filter(developer__company_group_id=company_group_id)
+            .order_by('name', 'developer__name')[: self.maximum_options]
+        )
+        return JsonResponse(
+            {
+                'complexes': [
+                    {
+                        'id': real_estate_complex.pk,
+                        'label': (
+                            f'{real_estate_complex.name} '
+                            f'({real_estate_complex.developer.name})'
+                        ),
+                    }
+                    for real_estate_complex in complexes
+                ]
+            }
+        )
 
 
 class BankProgramFormMixin:

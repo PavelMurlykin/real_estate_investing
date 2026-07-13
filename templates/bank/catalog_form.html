@@ -60,15 +60,7 @@
         {% endif %}
     </div>
 
-    <ul class="nav nav-tabs mb-4">
-        {% for tab in model_tabs %}
-        <li class="nav-item">
-            <a class="nav-link {% if tab.is_active %}active{% endif %}" href="{{ tab.url }}">
-                {{ tab.title|capfirst }}
-            </a>
-        </li>
-        {% endfor %}
-    </ul>
+    {% include "bank/includes/catalog_tabs.html" %}
 
     {% if delete_error %}
     <div class="alert alert-danger">{{ delete_error }}</div>

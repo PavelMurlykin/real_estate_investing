@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ section_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .developer-mortgage-program-table {
+    min-width: 1680px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <h1 class="mb-0">{{ section_title }}</h1>
+        {% if can_manage_catalogs %}
+        <a href="{% url 'bank:developer_mortgage_program_create' %}" class="btn btn-primary">
+            Добавить программу
+        </a>
+        {% endif %}
+    </div>
+
+    {% include "bank/includes/catalog_tabs.html" %}
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-2" data-catalog-filter-form data-catalog-results-target="#catalog-results">
+                <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+
+                <div class="col-md-6 col-xl-3">
+                    <label for="filter-company-group" class="form-label">Группа компаний</label>
+                    <select id="filter-company-group" name="filter_company_group" class="form-select" data-catalog-filter-control>
+                        <option value="">Все</option>
+                        {% for company_group in company_groups_for_filter %}
+                        <option value="{{ company_group.pk }}" {% if filters.company_group == company_group.pk|stringformat:'s' %}selected{% endif %}>{{ company_group.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6 col-xl-3">
+                    <label for="filter-complex" class="form-label">ЖК</label>
+                    <select id="filter-complex" name="filter_real_estate_complex" class="form-select" data-catalog-filter-control>
+                        <option value="">Все</option>
+                        {% for real_estate_complex in complexes_for_filter %}
+                        <option value="{{ real_estate_complex.pk }}" {% if filters.real_estate_complex == real_estate_complex.pk|stringformat:'s' %}selected{% endif %}>{{ real_estate_complex.name }} ({{ real_estate_complex.developer.name }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6 col-xl-3">
+                    <label for="filter-bank" class="form-label">Банк</label>
+                    <select id="filter-bank" name="filter_bank" class="form-select" data-catalog-filter-control>
+                        <option value="">Все</option>
+                        {% for bank in banks_for_filter %}
+                        <option value="{{ bank.pk }}" {% if filters.bank == bank.pk|stringformat:'s' %}selected{% endif %}>{{ bank.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6 col-xl-3">
+                    <label for="filter-program" class="form-label">Ипотечная программа</label>
+                    <select id="filter-program" name="filter_mortgage_program" class="form-select" data-catalog-filter-control>
+                        <option value="">Все</option>
+                        {% for mortgage_program in programs_for_filter %}
+                        <option value="{{ mortgage_program.pk }}" {% if filters.mortgage_program == mortgage_program.pk|stringformat:'s' %}selected{% endif %}>{{ mortgage_program.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <a href="{% url 'bank:developer_mortgage_program_list' %}" class="btn btn-outline-secondary">Сбросить</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div id="catalog-results" data-catalog-results>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle developer-mortgage-program-table">
+                        <thead>
+                            <tr>
+                                {% for column in columns %}
+                                <th>
+                                    {% include "includes/catalog_sort_link.html" with sort_url=column.sort_url sort_label=column.label sort_is_sorted=column.is_sorted sort_direction=column.sort_direction %}
+                                </th>
+                                {% endfor %}
+                                {% if can_manage_catalogs %}
+                                <th class="text-nowrap">Действия</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for developer_program in developer_mortgage_programs %}
+                            <tr>
+                                <td>{{ developer_program.company_group.name }}</td>
+                                <td>
+                                    {% if developer_program.real_estate_complex %}
+                                    {{ developer_program.real_estate_complex.name }}
+                                    {% else %}
+                                    Все ЖК группы
+                                    {% endif %}
+                                </td>
+                                <td>{{ developer_program.bank.name }}</td>
+                                <td>{{ developer_program.mortgage_program.name }}</td>
+                                <td>{{ developer_program.price_increase_percent|floatformat:"-2" }}</td>
+                                <td>{{ developer_program.grace_period_months|default_if_none:"-" }}</td>
+                                <td>{% if developer_program.grace_period_interest_rate != None %}{{ developer_program.grace_period_interest_rate|floatformat:"-2" }}{% else %}-{% endif %}</td>
+                                <td>{% if developer_program.minimum_initial_payment_percent != None %}{{ developer_program.minimum_initial_payment_percent|floatformat:"-2" }}{% else %}-{% endif %}</td>
+                                <td>{% if developer_program.interest_rate != None %}{{ developer_program.interest_rate|floatformat:"-2" }}{% else %}-{% endif %}</td>
+                                <td>{{ developer_program.maximum_loan_term_years|default_if_none:"-" }}</td>
+                                <td>{% if developer_program.maximum_loan_amount != None %}{{ developer_program.maximum_loan_amount|floatformat:"-2g" }}{% else %}-{% endif %}</td>
+                                <td>{% if developer_program.rate_discount_percent != None %}{{ developer_program.rate_discount_percent|floatformat:"-2" }}{% else %}-{% endif %}</td>
+                                {% if can_manage_catalogs %}
+                                <td class="text-nowrap">
+                                    <div class="d-flex gap-2 flex-nowrap">
+                                        {% url 'bank:developer_mortgage_program_update' developer_program.pk as update_url %}
+                                        {% include "includes/action_icon.html" with href=update_url icon="edit" label="Редактировать" %}
+                                        {% url 'bank:developer_mortgage_program_delete' developer_program.pk as delete_url %}
+                                        {% include "includes/action_icon.html" with href=delete_url icon="delete" label="Удалить" variant_class="btn-outline-danger" %}
+                                    </div>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="{% if can_manage_catalogs %}{{ columns|length|add:1 }}{% else %}{{ columns|length }}{% endif %}" class="text-center">
+                                    Программы не найдены
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if is_paginated %}
+                <nav aria-label="Пагинация">
+                    <ul class="pagination justify-content-center mb-0">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Первая</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Предыдущая</a>
+                        </li>
+                        {% endif %}
+                        <li class="page-item disabled">
+                            <span class="page-link">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+                        </li>
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Следующая</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if pagination_querystring %}&{{ pagination_querystring }}{% endif %}">Последняя</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/catalog.js' %}?v=20260713-developer-programs"></script>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if object %}Редактирование{% else %}Создание{% endif %} программы застройщика{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <h1 class="mb-0">{% if object %}Редактирование{% else %}Создание{% endif %} программы застройщика</h1>
+        {% url 'bank:developer_mortgage_program_list' as list_url %}
+        {% include "includes/action_icon.html" with href=list_url icon="back" label="Назад к списку" size_class="action-icon-button-lg" variant_class="btn-outline-secondary" %}
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post" novalidate data-developer-mortgage-program-form data-complex-options-url="{% url 'bank:developer_mortgage_program_complex_options' %}">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                    <div>{{ error }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <section class="mb-4" aria-labelledby="program-scope-heading">
+                    <h2 id="program-scope-heading" class="h5 mb-3">Программа и область действия</h2>
+                    <div class="row g-3">
+                        {% include "bank/includes/developer_mortgage_program_form_field.html" with field=form.company_group column_class="col-md-6" %}
+                        {% include "bank/includes/developer_mortgage_program_form_field.html" with field=form.real_estate_complex column_class="col-md-6" %}
+                        {% include "bank/includes/developer_mortgage_program_form_field.html" with field=form.bank column_class="col-md-6" %}
+                        {% include "bank/includes/developer_mortgage_program_form_field.html" with field=form.mortgage_program column_class="col-md-6" %}
+                    </div>
+                </section>
+
+                <section class="mb-4" aria-labelledby="program-rates-heading">
+                    <h2 id="program-rates-heading" class="h5 mb-3">Ставки и первоначальный взнос</h2>
+                    <div class="row g-3">
+                        {% include "bank/includes/developer_mortgage_program_form_field.html" with field=form.price_increase_percent column_class="col-md-6 col-xl-3" %}
+                        {% include "bank/includes/developer_mortgage_program_form_field.html" with field=form.minimum_initial_payment_percent column_class="col-md-6 col-xl-3" %}
+                        {% include "bank/includes/developer_mortgage_program_form_field.html" with field=form.interest_rate column_class="col-md-6 col-xl-3" %}
+                        {% include "bank/includes/developer_mortgage_program_form_field.html" with field=form.rate_discount_percent column_class="col-md-6 col-xl-3" %}
+                    </div>
+                </section>
+
+                <section class="mb-4" aria-labelledby="program-grace-heading">
+                    <h2 id="program-grace-heading" class="h5 mb-3">Льготный период</h2>
+                    <div class="row g-3">
+                        {% include "bank/includes/developer_mortgage_program_form_field.html" with field=form.grace_period_months column_class="col-md-6" %}
+                        {% include "bank/includes/developer_mortgage_program_form_field.html" with field=form.grace_period_interest_rate column_class="col-md-6" %}
+                    </div>
+                </section>
+
+                <section class="mb-4" aria-labelledby="program-limits-heading">
+                    <h2 id="program-limits-heading" class="h5 mb-3">Ограничения кредита</h2>
+                    <div class="row g-3">
+                        {% include "bank/includes/developer_mortgage_program_form_field.html" with field=form.maximum_loan_term_years column_class="col-md-6" %}
+                        {% include "bank/includes/developer_mortgage_program_form_field.html" with field=form.maximum_loan_amount column_class="col-md-6" %}
+                    </div>
+                </section>
+
+                <div class="d-flex justify-content-between gap-2">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                    <a href="{% url 'bank:developer_mortgage_program_list' %}" class="btn btn-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/developer_mortgage_program_form.js' %}?v=20260713"></script>
+{% endblock %}
