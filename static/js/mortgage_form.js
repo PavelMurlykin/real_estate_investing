@@ -5,6 +5,9 @@
     const propertyCostApiTemplate = scriptElement
         ? scriptElement.dataset.propertyCostApiTemplate || ''
         : '';
+    const developerMortgageProgramsApiUrl = scriptElement
+        ? scriptElement.dataset.developerMortgageProgramsApiUrl || ''
+        : '';
     let propertyFormData = {
         properties: [],
     };
@@ -13,6 +16,13 @@
         programs: [],
         key_rate: '0',
     };
+    let developerMortgageProgramData = {
+        has_programs: false,
+        bank_ids: [],
+        programs: [],
+    };
+    let developerMortgageProgramDefaults = null;
+    let developerMortgageProgramRequestSequence = 0;
     let apartmentMenuItems = [];
     let activeApartmentMenuIndex = -1;
 
@@ -63,6 +73,12 @@
 
     function getMortgageProgramLimitOptions() {
         return document.getElementById('mortgage-program-limit-options');
+    }
+
+    function getDeveloperMortgageProgramMessage() {
+        return document.getElementById(
+            'developer-mortgage-program-message'
+        );
     }
 
     function getMortgageProgramChoiceId(program) {
@@ -400,6 +416,12 @@
 
         const selectedBankId = String(bankSelect.value || '');
         const allowedBankIds = new Set();
+        const developerBankIds = new Set(
+            (developerMortgageProgramData.bank_ids || []).map(String)
+        );
+        const filterByDeveloperPrograms = (
+            developerMortgageProgramData.has_programs === true
+        );
         if (selectedProgramId) {
             (mortgageProgramFormData.programs || []).forEach(
                 function (program) {
@@ -417,6 +439,12 @@
         appendSelectOption(bankSelect, '', 'Выберите банк');
         (mortgageProgramFormData.banks || []).forEach(function (bank) {
             const bankId = String(bank.id);
+            if (
+                filterByDeveloperPrograms
+                && !developerBankIds.has(bankId)
+            ) {
+                return;
+            }
             if (selectedProgramId && !allowedBankIds.has(bankId)) {
                 return;
             }
@@ -492,12 +520,418 @@
         updateMortgageProgramLimitOptions();
     }
 
+    function hasDeveloperMortgageProgramValue(value) {
+        return (
+            value !== null
+            && value !== undefined
+            && String(value).trim() !== ''
+        );
+    }
+
+    function getRadioGroupValue(name, fallbackValue) {
+        const selectedInput = document.querySelector(
+            `input[name="${name}"]:checked`
+        );
+        return selectedInput ? selectedInput.value : fallbackValue;
+    }
+
+    function setRadioGroupValue(name, value) {
+        document
+            .querySelectorAll(`input[name="${name}"]`)
+            .forEach(function (input) {
+                input.checked = input.value === value;
+            });
+    }
+
+    function getInputValue(id) {
+        const input = document.getElementById(id);
+        return input ? input.value : '';
+    }
+
+    function captureDeveloperMortgageProgramDefaults() {
+        return {
+            discount_markup_type: getSelectedDiscountType(),
+            discount_markup_percent: getInputValue(
+                'discount_markup_percent'
+            ),
+            discount_markup_rubles: getInputValue(
+                'discount_markup_rubles'
+            ),
+            discount_markup_source: getDiscountMarkupSource(),
+            initial_payment_percent: getInputValue(
+                'initial_payment_percent'
+            ),
+            initial_payment_rubles: getInputValue(
+                'initial_payment_rubles'
+            ),
+            initial_payment_source: getInitialPaymentSource(),
+            mortgage_term_years: getInputValue('mortgage_term_years'),
+            mortgage_term_months: getInputValue('mortgage_term_months'),
+            annual_rate: getInputValue('id_ANNUAL_RATE'),
+            has_grace_period: getRadioGroupValue(
+                'HAS_GRACE_PERIOD',
+                'no'
+            ),
+            grace_period_term_years: getInputValue(
+                'grace_period_term_years'
+            ),
+            grace_period_term_months: getInputValue(
+                'grace_period_term_months'
+            ),
+            grace_period_rate: getInputValue('id_GRACE_PERIOD_RATE'),
+        };
+    }
+
+    function restoreDeveloperMortgageProgramDefaults() {
+        if (!developerMortgageProgramDefaults) {
+            return;
+        }
+
+        setRadioGroupValue(
+            'DISCOUNT_MARKUP_TYPE',
+            developerMortgageProgramDefaults.discount_markup_type
+        );
+        setFieldValue(
+            'discount_markup_percent',
+            developerMortgageProgramDefaults.discount_markup_percent
+        );
+        setFieldValue(
+            'discount_markup_rubles',
+            developerMortgageProgramDefaults.discount_markup_rubles
+        );
+        setDiscountMarkupSource(
+            developerMortgageProgramDefaults.discount_markup_source
+        );
+        setFieldValue(
+            'initial_payment_percent',
+            developerMortgageProgramDefaults.initial_payment_percent
+        );
+        setFieldValue(
+            'initial_payment_rubles',
+            developerMortgageProgramDefaults.initial_payment_rubles
+        );
+        setInitialPaymentSource(
+            developerMortgageProgramDefaults.initial_payment_source
+        );
+        setFieldValue(
+            'mortgage_term_years',
+            developerMortgageProgramDefaults.mortgage_term_years
+        );
+        setFieldValue(
+            'mortgage_term_months',
+            developerMortgageProgramDefaults.mortgage_term_months
+        );
+        setFieldValue(
+            'id_ANNUAL_RATE',
+            developerMortgageProgramDefaults.annual_rate
+        );
+        setRadioGroupValue(
+            'HAS_GRACE_PERIOD',
+            developerMortgageProgramDefaults.has_grace_period
+        );
+        setFieldValue(
+            'grace_period_term_years',
+            developerMortgageProgramDefaults.grace_period_term_years
+        );
+        setFieldValue(
+            'grace_period_term_months',
+            developerMortgageProgramDefaults.grace_period_term_months
+        );
+        setFieldValue(
+            'id_GRACE_PERIOD_RATE',
+            developerMortgageProgramDefaults.grace_period_rate
+        );
+
+        updateDiscountMarkupLabels();
+        syncDiscountMarkupValues();
+        updateFinalPropertyCost();
+        toggleGracePeriod();
+        syncAnnualRateToAllTrenches(true);
+        updateTrenchRows();
+    }
+
+    function clearDeveloperMortgageProgramMessage() {
+        const message = getDeveloperMortgageProgramMessage();
+        if (!message) {
+            return;
+        }
+
+        message.textContent = '';
+        message.classList.add('d-none');
+    }
+
+    function showDeveloperMortgageProgramMessage(developerProgram) {
+        const message = getDeveloperMortgageProgramMessage();
+        if (!message) {
+            return;
+        }
+
+        const scope = developerProgram.real_estate_complex_name
+            ? `для ЖК «${developerProgram.real_estate_complex_name}»`
+            : 'для всех ЖК группы';
+        message.textContent = (
+            'Выбрана программа застройщика: '
+            + `${developerProgram.bank_name} — `
+            + `${developerProgram.mortgage_program_name} (${scope}).`
+        );
+        message.classList.remove('d-none');
+    }
+
+    function hasDeveloperMortgageProgramParameters(developerProgram) {
+        return [
+            developerProgram.price_increase_percent,
+            developerProgram.minimum_initial_payment_percent,
+            developerProgram.maximum_loan_term_years,
+            developerProgram.interest_rate,
+        ].some(hasDeveloperMortgageProgramValue) || (
+            hasDeveloperMortgageProgramValue(
+                developerProgram.grace_period_months
+            )
+            && hasDeveloperMortgageProgramValue(
+                developerProgram.grace_period_interest_rate
+            )
+        );
+    }
+
+    function getSelectedDeveloperMortgageProgram() {
+        const bankSelect = getMortgageBankSelect();
+        const programSelect = getMortgageProgramSelect();
+        const complexSelect = document.getElementById('complex-select');
+        const selectedBankId = bankSelect
+            ? String(bankSelect.value || '')
+            : '';
+        const selectedProgramId = programSelect
+            ? String(programSelect.value || '')
+            : '';
+        const selectedComplexId = complexSelect
+            ? String(complexSelect.value || '')
+            : '';
+        if (!selectedBankId || !selectedProgramId) {
+            return null;
+        }
+
+        const matchingPrograms = (
+            developerMortgageProgramData.programs || []
+        ).filter(function (developerProgram) {
+            return (
+                String(developerProgram.bank_id) === selectedBankId
+                && String(developerProgram.mortgage_program_id)
+                    === selectedProgramId
+            );
+        });
+        if (selectedComplexId) {
+            const complexProgram = matchingPrograms.find(
+                function (developerProgram) {
+                    return String(
+                        developerProgram.real_estate_complex_id || ''
+                    ) === selectedComplexId;
+                }
+            );
+            if (complexProgram) {
+                return complexProgram;
+            }
+        }
+
+        return matchingPrograms.find(function (developerProgram) {
+            return !developerProgram.real_estate_complex_id;
+        }) || null;
+    }
+
+    function applySelectedDeveloperMortgageProgram() {
+        const developerProgram = getSelectedDeveloperMortgageProgram();
+        if (
+            !developerProgram
+            || !hasDeveloperMortgageProgramParameters(developerProgram)
+        ) {
+            return;
+        }
+
+        if (
+            hasDeveloperMortgageProgramValue(
+                developerProgram.price_increase_percent
+            )
+        ) {
+            const priceIncreasePercent = parseNumber(
+                developerProgram.price_increase_percent
+            );
+            setRadioGroupValue(
+                'DISCOUNT_MARKUP_TYPE',
+                priceIncreasePercent > 0 ? 'markup' : 'discount'
+            );
+            setFieldValue(
+                'discount_markup_percent',
+                Math.abs(priceIncreasePercent).toFixed(2)
+            );
+            setDiscountMarkupSource('percent');
+            updateDiscountMarkupLabels();
+            syncDiscountMarkupValues();
+            updateFinalPropertyCost();
+        }
+
+        if (
+            hasDeveloperMortgageProgramValue(
+                developerProgram.minimum_initial_payment_percent
+            )
+        ) {
+            setInitialPaymentSource('percent');
+            setFieldValue(
+                'initial_payment_percent',
+                parseNumber(
+                    developerProgram.minimum_initial_payment_percent
+                ).toFixed(2)
+            );
+            updateInitialPaymentRubles();
+        }
+
+        if (
+            hasDeveloperMortgageProgramValue(
+                developerProgram.maximum_loan_term_years
+            )
+        ) {
+            const maximumLoanTermYears = Math.floor(
+                parseNumber(developerProgram.maximum_loan_term_years)
+            );
+            if (maximumLoanTermYears > 0) {
+                setFieldValue(
+                    'mortgage_term_years',
+                    maximumLoanTermYears
+                );
+                setFieldValue(
+                    'mortgage_term_months',
+                    maximumLoanTermYears * 12
+                );
+            }
+        }
+
+        if (
+            hasDeveloperMortgageProgramValue(
+                developerProgram.interest_rate
+            )
+        ) {
+            setFieldValue(
+                'id_ANNUAL_RATE',
+                parseNumber(developerProgram.interest_rate).toFixed(2)
+            );
+            syncAnnualRateToAllTrenches(true);
+        }
+
+        if (
+            hasDeveloperMortgageProgramValue(
+                developerProgram.grace_period_months
+            )
+            && hasDeveloperMortgageProgramValue(
+                developerProgram.grace_period_interest_rate
+            )
+        ) {
+            const gracePeriodMonths = Math.floor(
+                parseNumber(developerProgram.grace_period_months)
+            );
+            if (gracePeriodMonths > 0) {
+                setRadioGroupValue('HAS_GRACE_PERIOD', 'yes');
+                setFieldValue(
+                    'grace_period_term_years',
+                    Math.floor(gracePeriodMonths / 12)
+                );
+                setFieldValue(
+                    'grace_period_term_months',
+                    gracePeriodMonths
+                );
+                setFieldValue(
+                    'id_GRACE_PERIOD_RATE',
+                    parseNumber(
+                        developerProgram.grace_period_interest_rate
+                    ).toFixed(2)
+                );
+                toggleGracePeriod();
+            }
+        }
+
+        updateTrenchRows();
+        updateMortgageProgramLimitOptions();
+        showDeveloperMortgageProgramMessage(developerProgram);
+    }
+
+    function setDeveloperMortgageProgramData(payload) {
+        if (
+            !payload
+            || payload.has_programs !== true
+            || !Array.isArray(payload.bank_ids)
+            || !Array.isArray(payload.programs)
+        ) {
+            developerMortgageProgramData = {
+                has_programs: false,
+                bank_ids: [],
+                programs: [],
+            };
+            return;
+        }
+
+        developerMortgageProgramData = payload;
+    }
+
+    function loadDeveloperMortgagePrograms() {
+        const developerSelect = document.getElementById('developer-select');
+        const developerId = developerSelect
+            ? String(developerSelect.value || '')
+            : '';
+        developerMortgageProgramRequestSequence += 1;
+        const requestSequence = developerMortgageProgramRequestSequence;
+
+        setDeveloperMortgageProgramData(null);
+        syncMortgageProgramSelectors();
+        applyMortgageProgram();
+        if (!developerId || !developerMortgageProgramsApiUrl) {
+            return;
+        }
+
+        const requestUrl = new URL(
+            developerMortgageProgramsApiUrl,
+            window.location.origin
+        );
+        requestUrl.searchParams.set('developer', developerId);
+        fetch(requestUrl.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Developer mortgage programs unavailable');
+                }
+                return response.json();
+            })
+            .then(function (payload) {
+                if (
+                    requestSequence
+                    !== developerMortgageProgramRequestSequence
+                ) {
+                    return;
+                }
+                setDeveloperMortgageProgramData(payload);
+                syncMortgageProgramSelectors();
+                applyMortgageProgram();
+            })
+            .catch(function () {
+                if (
+                    requestSequence
+                    !== developerMortgageProgramRequestSequence
+                ) {
+                    return;
+                }
+                setDeveloperMortgageProgramData(null);
+                syncMortgageProgramSelectors();
+                applyMortgageProgram();
+            });
+    }
+
     function handleMortgageProgramSelectionChange() {
         syncMortgageProgramSelectors();
         applyMortgageProgram();
     }
 
     function applyMortgageProgram() {
+        restoreDeveloperMortgageProgramDefaults();
+        clearDeveloperMortgageProgramMessage();
         const program = getSelectedMortgageProgram();
         if (!program) {
             updateMortgageProgramLimitOptions();
@@ -538,6 +972,7 @@
 
         updateTrenchRows();
         updateMortgageProgramLimitOptions();
+        applySelectedDeveloperMortgageProgram();
     }
 
     function updateInitialPaymentPercent() {
@@ -1326,7 +1761,13 @@
         bindInput('city-select', 'change', updateMortgageProgramLimitOptions);
         bindInput('district-select', 'change', scheduleApartmentSelectionSync);
         bindInput('developer-select', 'change', scheduleApartmentSelectionSync);
+        bindInput(
+            'developer-select',
+            'change',
+            loadDeveloperMortgagePrograms
+        );
         bindInput('complex-select', 'change', scheduleApartmentSelectionSync);
+        bindInput('complex-select', 'change', applyMortgageProgram);
         bindInput(
             'mortgage-bank-select',
             'change',
@@ -1436,6 +1877,9 @@
     onReady(function () {
         propertyFormData = readJson('#mortgage-property-form-data');
         mortgageProgramFormData = readJson('#mortgage-program-form-data');
+        developerMortgageProgramDefaults = (
+            captureDeveloperMortgageProgramDefaults()
+        );
         bindEvents();
         document.addEventListener('mousedown', function (event) {
             const menu = getApartmentMenu();
@@ -1465,8 +1909,7 @@
         syncFirstTrenchDateFromInitialPayment();
         syncAnnualRateToAllTrenches();
         updateTrenchRows();
-        syncMortgageProgramSelectors();
-        updateMortgageProgramLimitOptions();
+        loadDeveloperMortgagePrograms();
         const selectedPropertyInput = getSelectedPropertyInput();
         const selectedPropertyId = selectedPropertyInput
             ? selectedPropertyInput.value
