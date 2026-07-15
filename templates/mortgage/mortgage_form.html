@@ -256,6 +256,11 @@
                             </div>
                         </div>
                         <div id="mortgage-program-limit-options" class="mt-3 d-none"></div>
+                        <div
+                            id="developer-mortgage-program-message"
+                            class="alert alert-info mt-3 mb-0 d-none"
+                            role="status"
+                        ></div>
                     </div>
                 </div>
             </div>
@@ -859,5 +864,9 @@
 
 {% block extra_scripts %}
 <script src="{% static 'js/dependent_selects.js' %}"></script>
-<script src="{% static 'js/mortgage_form.js' %}?v=20260611-mortgage-programs-4" data-property-cost-api-template="{% url 'mortgage:property_cost_api' 0 %}"></script>
+<script
+    src="{% static 'js/mortgage_form.js' %}?v=20260715-developer-programs-1"
+    data-property-cost-api-template="{% url 'mortgage:property_cost_api' 0 %}"
+    data-developer-mortgage-programs-api-url="{% url 'mortgage:developer_mortgage_programs_api' %}"
+></script>
 {% endblock %}

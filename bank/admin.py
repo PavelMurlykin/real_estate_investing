@@ -3,6 +3,7 @@ from django.contrib import admin
 from .models import (
     Bank,
     BankProgram,
+    DeveloperMortgageProgram,
     KeyRate,
     MortgageProgramAlias,
     MortgageProgram,
@@ -115,6 +116,57 @@ class BankProgramAdmin(admin.ModelAdmin):
     list_filter = ('bank', 'mortgage_program', 'is_active', 'created_at')
     search_fields = ('bank__name', 'mortgage_program__name')
     ordering = ('bank__name', 'mortgage_program__name')
+
+
+@admin.register(DeveloperMortgageProgram)
+class DeveloperMortgageProgramAdmin(admin.ModelAdmin):
+    """Администрирование ипотечных программ застройщиков."""
+
+    list_display = (
+        'company_group',
+        'real_estate_complex',
+        'bank',
+        'mortgage_program',
+        'price_increase_percent',
+        'grace_period_months',
+        'grace_period_interest_rate',
+        'minimum_initial_payment_percent',
+        'interest_rate',
+        'maximum_loan_term_years',
+        'maximum_loan_amount',
+        'rate_discount_percent',
+        'is_active',
+    )
+    list_filter = (
+        'company_group',
+        'bank',
+        'mortgage_program',
+        'is_active',
+    )
+    search_fields = (
+        'company_group__name',
+        'real_estate_complex__name',
+        'bank__name',
+        'mortgage_program__name',
+    )
+    list_select_related = (
+        'company_group',
+        'real_estate_complex',
+        'bank',
+        'mortgage_program',
+    )
+    autocomplete_fields = (
+        'company_group',
+        'real_estate_complex',
+        'bank',
+        'mortgage_program',
+    )
+    ordering = (
+        'company_group__name',
+        'real_estate_complex__name',
+        'bank__name',
+        'mortgage_program__name',
+    )
 
 
 @admin.register(KeyRate)

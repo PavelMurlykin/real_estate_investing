@@ -426,7 +426,7 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, 'property-apartment-menu')
         self.assertContains(
             response,
-            'mortgage_form.js?v=20260611-mortgage-programs',
+            'mortgage_form.js?v=20260715-developer-programs',
         )
         self.assertContains(response, 'Ипотечная программа')
         self.assertContains(response, 'mortgage-bank-select')

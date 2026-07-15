@@ -39,7 +39,12 @@ from trench_mortgage.views import (
 from trench_mortgage.models import Trench, TrenchMortgageCalculation
 from users.roles import can_manage_catalogs, can_view_all_private_records
 
-from bank.models import Bank, BankProgram, KeyRate
+from bank.models import (
+    Bank,
+    BankProgram,
+    DeveloperMortgageProgram,
+    KeyRate,
+)
 
 from .excel import (
     MortgageExcelData,
@@ -479,6 +484,54 @@ def _decimal_to_json_value(value):
     if value in (None, ''):
         return ''
     return str(value)
+
+
+def _empty_developer_mortgage_program_payload():
+    """Return the fallback payload that keeps all calculator banks visible."""
+    return {
+        'has_programs': False,
+        'bank_ids': [],
+        'programs': [],
+    }
+
+
+def _serialize_developer_mortgage_program(developer_program_values):
+    """Return calculator fields for one developer mortgage program."""
+    return {
+        'id': developer_program_values['id'],
+        'bank_id': developer_program_values['bank_id'],
+        'bank_name': developer_program_values['bank__name'],
+        'mortgage_program_id': developer_program_values[
+            'mortgage_program_id'
+        ],
+        'mortgage_program_name': developer_program_values[
+            'mortgage_program__name'
+        ],
+        'real_estate_complex_id': (
+            developer_program_values['real_estate_complex_id'] or ''
+        ),
+        'real_estate_complex_name': (
+            developer_program_values['real_estate_complex__name'] or ''
+        ),
+        'price_increase_percent': _decimal_to_json_value(
+            developer_program_values['price_increase_percent']
+        ),
+        'minimum_initial_payment_percent': _decimal_to_json_value(
+            developer_program_values['minimum_initial_payment_percent']
+        ),
+        'maximum_loan_term_years': (
+            developer_program_values['maximum_loan_term_years'] or ''
+        ),
+        'interest_rate': _decimal_to_json_value(
+            developer_program_values['interest_rate']
+        ),
+        'grace_period_months': (
+            developer_program_values['grace_period_months'] or ''
+        ),
+        'grace_period_interest_rate': _decimal_to_json_value(
+            developer_program_values['grace_period_interest_rate']
+        ),
+    }
 
 
 def _get_mortgage_program_form_data():
@@ -1210,6 +1263,60 @@ def property_cost_api(request, pk):
         pk=pk,
     )
     return JsonResponse(_get_property_payload(property_obj))
+
+
+@require_GET
+def developer_mortgage_programs_api(request):
+    """Return active mortgage conditions for the selected developer group."""
+    developer_id = request.GET.get('developer', '')
+    if not developer_id.isdecimal():
+        return JsonResponse(_empty_developer_mortgage_program_payload())
+
+    developer_programs = list(
+        DeveloperMortgageProgram.objects.filter(
+            company_group__developers__pk=developer_id,
+            is_active=True,
+        )
+        .order_by(
+            'bank__name',
+            'mortgage_program__name',
+            'real_estate_complex_id',
+            'pk',
+        )
+        .values(
+            'id',
+            'bank_id',
+            'bank__name',
+            'mortgage_program_id',
+            'mortgage_program__name',
+            'real_estate_complex_id',
+            'real_estate_complex__name',
+            'price_increase_percent',
+            'minimum_initial_payment_percent',
+            'maximum_loan_term_years',
+            'interest_rate',
+            'grace_period_months',
+            'grace_period_interest_rate',
+        )
+    )
+    if not developer_programs:
+        return JsonResponse(_empty_developer_mortgage_program_payload())
+
+    return JsonResponse(
+        {
+            'has_programs': True,
+            'bank_ids': sorted(
+                {
+                    developer_program['bank_id']
+                    for developer_program in developer_programs
+                }
+            ),
+            'programs': [
+                _serialize_developer_mortgage_program(developer_program)
+                for developer_program in developer_programs
+            ],
+        }
+    )
 
 
 @login_required

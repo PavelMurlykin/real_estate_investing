@@ -12,6 +12,11 @@ urlpatterns = [
         views.property_cost_api,
         name='property_cost_api',
     ),
+    path(
+        'developer-mortgage-programs/',
+        views.developer_mortgage_programs_api,
+        name='developer_mortgage_programs_api',
+    ),
     path('calculations/', views.calculation_list, name='calculation_list'),
     path(
         'calculations/<int:pk>/delete/',
