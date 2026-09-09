@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { propertyListQueryOptions, sessionQueryOptions } from '@/api/queries'
 import type { PropertyListItem } from '@/api/schemas'
@@ -38,9 +38,17 @@ function PropertyMobileCard({ property }: { property: PropertyListItem }) {
         <div><dt>Площадь</dt><dd>{formatArea(property.area)}</dd></div>
         <div><dt>Этаж</dt><dd>{property.floor}</dd></div>
       </dl>
-      <a className="text-link" href={property.detailUrl}>
-        Подробнее об объекте <span aria-hidden="true">→</span>
-      </a>
+      <div className="property-mobile-card__actions">
+        <a className="text-link" href={property.detailUrl}>
+          Подробнее <span aria-hidden="true">→</span>
+        </a>
+        <Link
+          className="text-link"
+          to={`/mortgage?propertyCost=${encodeURIComponent(property.propertyCost)}`}
+        >
+          Рассчитать ипотеку
+        </Link>
+      </div>
     </article>
   )
 }
@@ -188,13 +196,22 @@ export function PropertyListPage() {
                     <td>{formatArea(property.area)}</td>
                     <td><strong>{formatCurrency(property.propertyCost)}</strong></td>
                     <td>
-                      <a
-                        className="row-action"
-                        href={property.detailUrl}
-                        aria-label={`Открыть квартиру ${property.apartmentNumber}`}
-                      >
-                        →
-                      </a>
+                      <div className="row-actions">
+                        <a
+                          className="row-action"
+                          href={property.detailUrl}
+                          aria-label={`Открыть квартиру ${property.apartmentNumber}`}
+                        >
+                          →
+                        </a>
+                        <Link
+                          className="row-action row-action--calculator"
+                          to={`/mortgage?propertyCost=${encodeURIComponent(property.propertyCost)}`}
+                          aria-label={`Рассчитать ипотеку для квартиры ${property.apartmentNumber}`}
+                        >
+                          ₽
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}

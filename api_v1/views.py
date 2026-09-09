@@ -1,6 +1,7 @@
 from django.contrib.auth import login, logout
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.middleware.csrf import get_token
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from rest_framework import status
@@ -9,7 +10,12 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from bank.models import Bank
+from bank.models import (
+    Bank,
+    BankProgram,
+    KeyRate,
+    MortgageProgramRegionalCreditLimit,
+)
 from location.models import City
 from property.models import Developer, Property, RealEstateComplex
 from users.forms import UserLoginForm
@@ -21,8 +27,10 @@ from users.roles import (
 )
 
 from .pagination import ApplicationPageNumberPagination
+from .mortgage_service import calculate_market_mortgage
 from .serializers import (
     LoginRequestSerializer,
+    MortgageCalculationRequestSerializer,
     PropertyListItemSerializer,
     PropertyListQuerySerializer,
 )
@@ -145,7 +153,9 @@ class OverviewAPIView(APIView):
                     {
                         'key': 'developers',
                         'label': 'Застройщики',
-                        'value': Developer.objects.filter(is_active=True).count(),
+                        'value': Developer.objects.filter(
+                            is_active=True
+                        ).count(),
                     },
                     {
                         'key': 'cities',
@@ -163,6 +173,112 @@ class OverviewAPIView(APIView):
                     many=True,
                 ).data,
             }
+        )
+
+
+class MortgageOptionsAPIView(APIView):
+    """Return active bank programs and defaults for the calculator."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request):
+        """Return a bounded, query-efficient set of mortgage options."""
+        latest_key_rate = (
+            KeyRate.objects.filter(is_active=True)
+            .order_by('-meeting_date')
+            .values_list('key_rate', flat=True)
+            .first()
+        )
+        active_regional_limits = (
+            MortgageProgramRegionalCreditLimit.objects.filter(is_active=True)
+            .order_by('region_id')
+        )
+        bank_programs = list(
+            BankProgram.objects.select_related('bank', 'mortgage_program')
+            .prefetch_related(
+                Prefetch(
+                    'mortgage_program__regional_credit_limits',
+                    queryset=active_regional_limits,
+                    to_attr='active_regional_credit_limits',
+                )
+            )
+            .filter(
+                is_active=True,
+                bank__is_active=True,
+                mortgage_program__is_active=True,
+            )
+            .order_by('bank__name', 'mortgage_program__name', 'id')
+        )
+
+        banks_by_identifier = {}
+        programs = []
+        for bank_program in bank_programs:
+            banks_by_identifier.setdefault(
+                bank_program.bank_id,
+                {
+                    'id': bank_program.bank_id,
+                    'name': bank_program.bank.name,
+                    'logoUrl': bank_program.bank.logo_url,
+                },
+            )
+            mortgage_program = bank_program.mortgage_program
+            programs.append(
+                {
+                    'id': bank_program.pk,
+                    'bankId': bank_program.bank_id,
+                    'programId': mortgage_program.pk,
+                    'programName': mortgage_program.name,
+                    'interestRate': str(bank_program.interest_rate),
+                    'minimumInitialPaymentPercent': str(
+                        bank_program.minimum_initial_payment_percent
+                    ),
+                    'maximumLoanTermYears': (
+                        bank_program.maximum_loan_term_years
+                    ),
+                    'isPreferential': mortgage_program.is_preferential,
+                    'creditLimit': (
+                        str(mortgage_program.credit_limit)
+                        if mortgage_program.credit_limit is not None
+                        else None
+                    ),
+                    'regionalCreditLimits': [
+                        {
+                            'regionId': regional_limit.region_id,
+                            'creditLimit': str(
+                                regional_limit.credit_limit
+                            ),
+                        }
+                        for regional_limit in (
+                            mortgage_program.active_regional_credit_limits
+                        )
+                    ],
+                }
+            )
+
+        return Response(
+            {
+                'defaultInitialPaymentDate': timezone.localdate().isoformat(),
+                'keyRate': str(latest_key_rate or 0),
+                'banks': list(banks_by_identifier.values()),
+                'programs': programs,
+            }
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class MortgageCalculationAPIView(APIView):
+    """Calculate a market mortgage without persisting user data."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request):
+        """Validate calculator inputs and return summary plus schedule."""
+        request_serializer = MortgageCalculationRequestSerializer(
+            data=request.data
+        )
+        request_serializer.is_valid(raise_exception=True)
+        return Response(
+            calculate_market_mortgage(request_serializer.validated_data)
         )
 
 

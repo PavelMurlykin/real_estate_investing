@@ -32,9 +32,9 @@ export function HomePage() {
             <Link className="button button--primary" to="/properties">
               Смотреть объекты
             </Link>
-            <a className="button button--secondary" href="/mortgage/">
+            <Link className="button button--secondary" to="/mortgage">
               Рассчитать ипотеку
-            </a>
+            </Link>
           </div>
         </div>
         <div className="hero-panel__visual" aria-hidden="true">

@@ -3,6 +3,8 @@ from django.urls import path
 from .views import (
     LoginAPIView,
     LogoutAPIView,
+    MortgageCalculationAPIView,
+    MortgageOptionsAPIView,
     OverviewAPIView,
     PropertyListAPIView,
     SessionAPIView,
@@ -16,4 +18,14 @@ urlpatterns = [
     path('auth/logout/', LogoutAPIView.as_view(), name='logout'),
     path('overview/', OverviewAPIView.as_view(), name='overview'),
     path('properties/', PropertyListAPIView.as_view(), name='property_list'),
+    path(
+        'mortgage/options/',
+        MortgageOptionsAPIView.as_view(),
+        name='mortgage_options',
+    ),
+    path(
+        'mortgage/calculate/',
+        MortgageCalculationAPIView.as_view(),
+        name='mortgage_calculate',
+    ),
 ]

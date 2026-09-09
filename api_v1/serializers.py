@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from property.models import Property
@@ -119,3 +121,118 @@ class PropertyListItemSerializer(serializers.ModelSerializer):
     def get_detail_url(self, property_object):
         """Return the existing detail URL during incremental migration."""
         return property_object.get_absolute_url()
+
+
+class MortgageCalculationRequestSerializer(serializers.Serializer):
+    """Validate a side-effect-free market mortgage calculation request."""
+
+    propertyCost = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        min_value=Decimal('0.01'),
+    )
+    priceAdjustmentType = serializers.ChoiceField(
+        choices=('discount', 'markup'),
+        default='discount',
+    )
+    priceAdjustmentUnit = serializers.ChoiceField(
+        choices=('percent', 'rubles'),
+        default='percent',
+    )
+    priceAdjustmentValue = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        default=Decimal('0'),
+    )
+    initialPaymentUnit = serializers.ChoiceField(
+        choices=('percent', 'rubles'),
+        default='percent',
+    )
+    initialPaymentValue = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        min_value=Decimal('0'),
+    )
+    initialPaymentDate = serializers.DateField()
+    mortgageTermMonths = serializers.IntegerField(
+        min_value=1,
+        max_value=600,
+    )
+    annualRate = serializers.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        min_value=Decimal('0.01'),
+        max_value=Decimal('100'),
+    )
+    hasGracePeriod = serializers.BooleanField(default=False)
+    gracePeriodTermMonths = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        min_value=1,
+        max_value=599,
+    )
+    gracePeriodRate = serializers.DecimalField(
+        required=False,
+        allow_null=True,
+        max_digits=5,
+        decimal_places=2,
+        min_value=Decimal('0.01'),
+        max_value=Decimal('100'),
+    )
+
+    def validate(self, attributes):
+        """Validate cross-field monetary and grace-period constraints."""
+        property_cost = attributes['propertyCost']
+        adjustment_value = attributes['priceAdjustmentValue']
+        adjustment_unit = attributes['priceAdjustmentUnit']
+
+        if adjustment_unit == 'percent':
+            adjustment_rubles = property_cost * adjustment_value / 100
+        else:
+            adjustment_rubles = adjustment_value
+
+        if attributes['priceAdjustmentType'] == 'discount':
+            final_property_cost = property_cost - adjustment_rubles
+        else:
+            final_property_cost = property_cost + adjustment_rubles
+
+        errors = {}
+        if final_property_cost <= 0:
+            errors['priceAdjustmentValue'] = (
+                'Скидка должна быть меньше стоимости объекта.'
+            )
+
+        initial_payment_value = attributes['initialPaymentValue']
+        if attributes['initialPaymentUnit'] == 'percent':
+            if initial_payment_value > 100:
+                errors['initialPaymentValue'] = (
+                    'Первоначальный взнос не может превышать 100%.'
+                )
+        elif initial_payment_value > final_property_cost:
+            errors['initialPaymentValue'] = (
+                'Первоначальный взнос не может превышать итоговую стоимость.'
+            )
+
+        if attributes['hasGracePeriod']:
+            grace_period_term = attributes.get('gracePeriodTermMonths')
+            grace_period_rate = attributes.get('gracePeriodRate')
+            if grace_period_term is None:
+                errors['gracePeriodTermMonths'] = (
+                    'Укажите срок льготного периода.'
+                )
+            elif grace_period_term >= attributes['mortgageTermMonths']:
+                errors['gracePeriodTermMonths'] = (
+                    'Льготный период должен быть короче срока ипотеки.'
+                )
+            if grace_period_rate is None:
+                errors['gracePeriodRate'] = (
+                    'Укажите ставку льготного периода.'
+                )
+        else:
+            attributes['gracePeriodTermMonths'] = 0
+            attributes['gracePeriodRate'] = None
+
+        if errors:
+            raise serializers.ValidationError(errors)
+        return attributes

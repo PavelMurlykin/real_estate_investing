@@ -49,6 +49,9 @@ describe('PropertyListPage', () => {
     expect(screen.getByRole('table')).toHaveAccessibleName(
       'Список объектов недвижимости',
     )
+    expect(
+      screen.getAllByRole('link', { name: /Рассчитать ипотеку/ })[0],
+    ).toHaveAttribute('href', '/mortgage?propertyCost=12500000.00')
   })
 
   it('shows an empty state with a reset action', () => {

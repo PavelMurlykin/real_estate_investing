@@ -30,6 +30,6 @@ describe('TopNavigation', () => {
     ).toHaveAttribute('href', '/properties')
     expect(
       screen.getByRole('link', { name: 'Ипотечный калькулятор' }),
-    ).toHaveAttribute('href', '/mortgage/')
+    ).toHaveAttribute('href', '/mortgage')
   })
 })

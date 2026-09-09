@@ -33,7 +33,7 @@ export function TopNavigation({
           Главная
         </NavLink>
         <NavLink to="/properties">Объекты недвижимости</NavLink>
-        <a href="/mortgage/">Ипотечный калькулятор</a>
+        <NavLink to="/mortgage">Ипотечный калькулятор</NavLink>
       </nav>
 
       <button

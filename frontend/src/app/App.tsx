@@ -11,6 +11,10 @@ const HomePage = lazy(async () => ({
 const PropertyListPage = lazy(async () => ({
   default: (await import('@/pages/PropertyListPage')).PropertyListPage,
 }))
+const MortgageCalculatorPage = lazy(async () => ({
+  default: (await import('@/pages/MortgageCalculatorPage'))
+    .MortgageCalculatorPage,
+}))
 const NotFoundPage = lazy(async () => ({
   default: (await import('@/pages/NotFoundPage')).NotFoundPage,
 }))
@@ -22,6 +26,7 @@ export function App() {
         <Route element={<AppShell />}>
           <Route index element={<HomePage />} />
           <Route path="properties" element={<PropertyListPage />} />
+          <Route path="mortgage" element={<MortgageCalculatorPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
