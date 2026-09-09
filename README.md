@@ -29,6 +29,39 @@ Django-приложение для учета объектов недвижим�
 - pytest + pytest-django
 - OpenPyXL
 
+## Новый React frontend
+
+Новый интерфейс доступен по адресу /app/. Он внедряется поэтапно и работает
+рядом с существующими Django-шаблонами: старые URL остаются доступными до
+завершения миграции и полного тестирования.
+
+Первый рабочий срез включает общую React-оболочку, левую навигацию,
+адаптивную главную страницу и каталог объектов с серверным поиском,
+сортировкой и пагинацией. API имеет версию /api/v1/ и использует текущие
+Django session authentication, CSRF-защиту, правила доступа и PostgreSQL.
+
+Установить зависимости и запустить frontend для разработки:
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+Vite проксирует API и переходы к ещё не перенесённым Django-страницам на
+локальный сервер http://127.0.0.1:8000. Production-сборка:
+
+```powershell
+cd frontend
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+Команда docker compose up -d --build собирает React автоматически отдельным
+Node-этапом и добавляет результат в общий Django static pipeline.
+
 ## Архитектура Docker Compose
 
 Compose запускает три сервиса:
@@ -229,6 +262,8 @@ real_estate_investing/
 ├── bank/                    # Банки, программы и ключевая ставка
 ├── core/                    # Общие endpoint'ы и healthcheck
 ├── customer/                # Клиенты и клиентские расчеты
+├── api_v1/                  # Версионированный API нового frontend
+├── frontend/                # React + TypeScript + Vite
 ├── homepage/                # Главная страница
 ├── location/                # Регионы, города, районы, метро
 ├── mortgage/                # Ипотечный калькулятор
@@ -236,6 +271,7 @@ real_estate_investing/
 ├── trench_mortgage/         # Траншевая ипотека
 ├── users/                   # Пользователи и аутентификация
 ├── real_estate_investing/   # Настройки, urls, wsgi/asgi
+├── react_frontend/          # Django gateway для React routes
 ├── static/                  # CSS, JS, изображения
 ├── templates/               # Django templates
 ├── docker/                  # nginx config и Django entrypoint

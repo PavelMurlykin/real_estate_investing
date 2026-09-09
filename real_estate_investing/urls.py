@@ -11,6 +11,8 @@ from core.views import health_check
 urlpatterns = [
     path('health/', health_check, name='health_check'),
     path('admin/', admin.site.urls),
+    path('api/v1/', include('api_v1.urls', namespace='api_v1')),
+    path('app/', include('react_frontend.urls', namespace='react_frontend')),
     path('users/', include('users.urls', namespace='users')),
     path('', include('homepage.urls')),
     path('locations/', include('location.urls', namespace='location')),

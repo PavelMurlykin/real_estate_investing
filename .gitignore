@@ -213,3 +213,8 @@ todo.txt
 AGENTS.md
 media/
 outputs/
+
+# React build and local dependencies
+frontend/node_modules/
+frontend/coverage/
+static/react/
