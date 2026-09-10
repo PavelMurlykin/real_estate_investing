@@ -52,6 +52,96 @@ class CustomerListQuerySerializer(serializers.Serializer):
     )
 
 
+class CustomerCalculationListQuerySerializer(serializers.Serializer):
+    """Validate filters and pagination for a customer's calculations."""
+
+    ORDERING_CHOICES = (
+        'createdAt',
+        '-createdAt',
+        'city',
+        '-city',
+        'realEstateComplex',
+        '-realEstateComplex',
+        'finalPropertyCost',
+        '-finalPropertyCost',
+        'monthlyPayment',
+        '-monthlyPayment',
+        'annualRate',
+        '-annualRate',
+    )
+
+    q = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=100,
+        trim_whitespace=True,
+    )
+    programType = serializers.ChoiceField(
+        required=False,
+        choices=('all', 'market', 'trench'),
+        default='all',
+    )
+    ordering = serializers.ChoiceField(
+        required=False,
+        choices=ORDERING_CHOICES,
+        default='-createdAt',
+    )
+    page = serializers.IntegerField(required=False, min_value=1, default=1)
+    pageSize = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=100,
+        default=20,
+    )
+
+
+class CustomerCalculationLinkCreateSerializer(serializers.Serializer):
+    """Validate saved calculations selected for a customer."""
+
+    programType = serializers.ChoiceField(choices=('market', 'trench'))
+    calculationIds = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        allow_empty=False,
+        max_length=100,
+    )
+
+    def validate_calculationIds(self, calculation_identifiers):
+        """Remove duplicate identifiers while preserving request order."""
+        return list(dict.fromkeys(calculation_identifiers))
+
+
+class CustomerCalculationSelectionSerializer(serializers.Serializer):
+    """Validate one linked calculation selected for an export."""
+
+    programType = serializers.ChoiceField(choices=('market', 'trench'))
+    linkId = serializers.IntegerField(min_value=1)
+
+
+class CustomerCalculationExportRequestSerializer(serializers.Serializer):
+    """Validate a bounded set of calculation links for Word export."""
+
+    selections = CustomerCalculationSelectionSerializer(
+        many=True,
+        allow_empty=False,
+    )
+
+    def validate_selections(self, selections):
+        """Reject oversized or duplicate synchronous export requests."""
+        if len(selections) > 100:
+            raise serializers.ValidationError(
+                'За один раз можно выгрузить не более 100 расчётов.'
+            )
+        selection_keys = {
+            (selection['programType'], selection['linkId'])
+            for selection in selections
+        }
+        if len(selection_keys) != len(selections):
+            raise serializers.ValidationError(
+                'Один расчёт выбран несколько раз.'
+            )
+        return selections
+
+
 class CustomerFormOptionsQuerySerializer(serializers.Serializer):
     """Validate the city used to load a bounded district list."""
 
@@ -1215,6 +1305,7 @@ class SavedMortgageCalculationCreateSerializer(serializers.Serializer):
         source='property',
         queryset=Property.objects.all(),
     )
+    customerId = serializers.IntegerField(required=False, min_value=1)
     parameters = MortgageCalculationRequestSerializer()
 
 
@@ -1225,6 +1316,7 @@ class SavedTrenchMortgageCalculationCreateSerializer(serializers.Serializer):
         source='property',
         queryset=Property.objects.all(),
     )
+    customerId = serializers.IntegerField(required=False, min_value=1)
     parameters = TrenchMortgageCalculationRequestSerializer()
 
 
@@ -1250,6 +1342,46 @@ class SavedMortgageCalculationListQuerySerializer(serializers.Serializer):
         max_length=100,
         trim_whitespace=True,
     )
+    customerId = serializers.IntegerField(required=False, min_value=1)
+    ordering = serializers.ChoiceField(
+        required=False,
+        choices=ORDERING_CHOICES,
+        default='-createdAt',
+    )
+    page = serializers.IntegerField(required=False, min_value=1, default=1)
+    pageSize = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=100,
+        default=20,
+    )
+
+
+class SavedTrenchMortgageCalculationListQuerySerializer(
+    serializers.Serializer
+):
+    """Validate bounded filtering and ordering for tranche history."""
+
+    ORDERING_CHOICES = (
+        'createdAt',
+        '-createdAt',
+        'finalPropertyCost',
+        '-finalPropertyCost',
+        'mortgageTermMonths',
+        '-mortgageTermMonths',
+        'annualRate',
+        '-annualRate',
+        'trenchCount',
+        '-trenchCount',
+    )
+
+    q = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=100,
+        trim_whitespace=True,
+    )
+    customerId = serializers.IntegerField(required=False, min_value=1)
     ordering = serializers.ChoiceField(
         required=False,
         choices=ORDERING_CHOICES,

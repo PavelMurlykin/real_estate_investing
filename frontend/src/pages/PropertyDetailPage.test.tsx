@@ -72,7 +72,7 @@ const administratorSession: Session = {
   },
 }
 
-function renderPropertyDetail(session?: Session) {
+function renderPropertyDetail(session?: Session, initialRoute = '/properties/1') {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['property', 1], propertyDetail)
   if (session) queryClient.setQueryData(['session'], session)
@@ -80,7 +80,7 @@ function renderPropertyDetail(session?: Session) {
     <Routes>
       <Route path="/properties/:propertyId" element={<PropertyDetailPage />} />
     </Routes>,
-    { initialRoute: '/properties/1', queryClient },
+    { initialRoute, queryClient },
   )
 }
 
@@ -146,5 +146,20 @@ describe('PropertyDetailPage', () => {
     expect(
       screen.getByRole('heading', { name: 'Объект не найден' }),
     ).toBeInTheDocument()
+  })
+
+  it('keeps the customer context in catalog and calculator navigation', () => {
+    renderPropertyDetail(undefined, '/properties/1?customerId=12')
+
+    expect(screen.getByRole('link', { name: 'К каталогу' })).toHaveAttribute(
+      'href',
+      '/properties?customerId=12',
+    )
+    expect(
+      screen.getByRole('link', { name: 'Рассчитать ипотеку' }),
+    ).toHaveAttribute(
+      'href',
+      '/mortgage?propertyId=1&propertyCost=12500000.00&customerId=12',
+    )
   })
 })

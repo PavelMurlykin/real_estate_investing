@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type {
   MortgageOptions,
+  SavedTrenchMortgageCalculationDetail,
   Session,
   TrenchMortgageCalculationResponse,
 } from '@/api/schemas'
@@ -100,6 +101,27 @@ const calculationResponse: TrenchMortgageCalculationResponse = {
   ],
 }
 
+const savedSample: SavedTrenchMortgageCalculationDetail = {
+  id: 17,
+  createdAt: '2026-09-10T10:30:00+03:00',
+  property: {
+    id: 42,
+    city: 'Казань',
+    developer: 'Надёжный застройщик',
+    realEstateComplex: 'Зелёный квартал',
+    realEstateClass: 'Комфорт',
+    building: '2',
+    apartmentNumber: '42',
+    layout: 'Евродвушка',
+    decoration: 'Чистовая',
+    area: '52.40',
+    floor: 8,
+    detailUrl: '/property/42/',
+  },
+  legacyDetailUrl: '/mortgage/trench-calculations/17/',
+  calculation: calculationResponse,
+}
+
 function renderPage({
   authenticated = false,
   route = '/mortgage/trench',
@@ -111,6 +133,12 @@ function renderPage({
   queryClient.setQueryData(['mortgage-options'], mortgageOptions)
   if (authenticated) {
     queryClient.setQueryData(['session'], authenticatedSession)
+  }
+  if (authenticated && route.includes('sample=17')) {
+    queryClient.setQueryData(
+      ['saved-trench-mortgage-calculation', 17],
+      savedSample,
+    )
   }
   return renderWithProviders(<TrenchMortgageCalculatorPage />, {
     initialRoute: route,
@@ -212,7 +240,7 @@ describe('TrenchMortgageCalculatorPage', () => {
     })).toHaveAttribute('aria-invalid', 'true')
   })
 
-  it('saves an authenticated property-backed result without duplicate writes', async () => {
+  it('saves and links an authenticated result without duplicate writes', async () => {
     const user = userEvent.setup()
     let resolveSaveRequest: ((response: Response) => void) | undefined
     const fetchMock = vi.fn<typeof fetch>()
@@ -230,7 +258,7 @@ describe('TrenchMortgageCalculatorPage', () => {
     vi.stubGlobal('fetch', fetchMock)
     renderPage({
       authenticated: true,
-      route: '/mortgage/trench?propertyId=42&propertyCost=5000000.00',
+      route: '/mortgage/trench?propertyId=42&propertyCost=5000000.00&customerId=12',
     })
     await fillTrenchDates(user)
     await user.click(screen.getByRole('button', {
@@ -254,12 +282,29 @@ describe('TrenchMortgageCalculatorPage', () => {
     )
 
     expect(await screen.findByRole('link', {
-      name: 'Открыть сохранённый расчёт',
-    })).toHaveAttribute('href', '/mortgage/trench-calculations/17/')
+      name: 'Открыть карточку клиента',
+    })).toHaveAttribute('href', '/customers/12')
     expect(fetchMock).toHaveBeenCalledTimes(2)
     const saveRequestOptions = fetchMock.mock.calls[1][1] as RequestInit
     expect(JSON.parse(saveRequestOptions.body as string)).toMatchObject({
       propertyId: 42,
+      customerId: 12,
     })
+  })
+
+  it('loads a saved owner scenario into the form as a new sample', () => {
+    renderPage({
+      authenticated: true,
+      route: '/mortgage/trench?sample=17',
+    })
+
+    expect(screen.getByLabelText('Первоначальный взнос')).toHaveValue(20)
+    expect(screen.getAllByLabelText('Дата транша')[0]).toHaveValue(
+      '2026-01-15',
+    )
+    expect(screen.getAllByLabelText('Дата транша')[1]).toHaveValue(
+      '2026-07-15',
+    )
+    expect(screen.getAllByLabelText('Годовая ставка, %')[1]).toHaveValue(10)
   })
 })

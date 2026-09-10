@@ -1,8 +1,13 @@
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-import type { CustomerDetail, Session } from '@/api/schemas'
+import type {
+  CustomerCalculationListResponse,
+  CustomerDetail,
+  Session,
+} from '@/api/schemas'
 import { createTestQueryClient, renderWithProviders } from '@/test/render'
 
 import { CustomerDetailPage } from './CustomerDetailPage'
@@ -70,13 +75,46 @@ const customerDetail: CustomerDetail = {
   legacyMortgageUrl: '/mortgage/?customer=12',
 }
 
+const customerCalculations: CustomerCalculationListResponse = {
+  page: 1,
+  pageSize: 10,
+  totalCount: 1,
+  totalPages: 1,
+  results: [
+    {
+      linkId: 31,
+      calculationId: 7,
+      programType: 'market',
+      createdAt: '2026-09-09T10:30:00+03:00',
+      property: {
+        id: 3,
+        city: 'Казань',
+        realEstateComplex: 'Зелёный квартал',
+        building: '2',
+        apartmentNumber: '42',
+      },
+      finalPropertyCost: '4500000.00',
+      initialPaymentRubles: '900000.00',
+      monthlyPayment: '319832.06',
+      mortgageTermMonths: 12,
+      annualRate: '12.00',
+      trenchCount: 1,
+    },
+  ],
+}
+
 function renderCustomerDetail(session?: Session) {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['customer', 12], customerDetail)
+  queryClient.setQueryData(
+    ['customer-calculations', 12, 'pageSize=10'],
+    customerCalculations,
+  )
   if (session) queryClient.setQueryData(['session'], session)
   return renderWithProviders(
     <Routes>
       <Route path="/customers/:customerId" element={<CustomerDetailPage />} />
+      <Route path="/customers" element={<h1>Список после удаления</h1>} />
     </Routes>,
     { initialRoute: '/customers/12', queryClient },
   )
@@ -109,10 +147,13 @@ describe('CustomerDetailPage', () => {
     expect(screen.getByText('Евро-3')).toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: 'Рассчитать ипотеку' }),
-    ).toHaveAttribute('href', '/mortgage/?customer=12')
+    ).toHaveAttribute('href', '/properties?customerId=12')
     expect(
-      screen.getByRole('link', { name: 'Django-версии карточки' }),
+      screen.getByRole('link', { name: 'Открыть Django-версию карточки' }),
     ).toHaveAttribute('href', '/customers/12/')
+    expect(
+      screen.getByRole('table', { name: 'Связанные расчёты клиента' }),
+    ).toBeInTheDocument()
   })
 
   it('handles an invalid direct route without requesting private data', () => {
@@ -126,5 +167,34 @@ describe('CustomerDetailPage', () => {
     expect(
       screen.getByRole('heading', { name: 'Клиент не найден' }),
     ).toBeInTheDocument()
+  })
+
+  it('requires confirmation before deleting a customer', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(null, { status: 204 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    renderCustomerDetail(authenticatedSession)
+
+    await user.click(screen.getByRole('button', { name: 'Удалить' }))
+
+    expect(screen.getByRole('alertdialog')).toHaveAccessibleName(
+      'Удалить клиента?',
+    )
+    const confirmButton = screen.getByRole('button', {
+      name: 'Удалить клиента',
+    })
+    expect(confirmButton).toHaveFocus()
+
+    await user.click(confirmButton)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Список после удаления' }),
+    ).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/customers/12/',
+      expect.objectContaining({ method: 'DELETE' }),
+    )
   })
 })

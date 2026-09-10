@@ -3,12 +3,15 @@ from decimal import Decimal, ROUND_HALF_UP
 from django.db import transaction
 from django.urls import reverse
 
+from mortgage.views import _build_saved_trench_calculation_data
 from trench_mortgage.views import (
     _calculate_trench_mortgage,
     _parse_trench_inputs,
     _prepare_mortgage_data,
     _save_trench_calculation,
 )
+
+from .mortgage_service import serialize_saved_property
 
 
 MONEY_QUANTUM = Decimal('0.01')
@@ -237,4 +240,61 @@ def create_saved_trench_mortgage(parameters, property_object, user):
             kwargs={'pk': saved_calculation.pk},
         ),
         'calculation': response_payload,
+    }
+
+
+def serialize_saved_trench_mortgage_list_item(
+    calculation,
+    is_linked=False,
+):
+    """Serialize one owner-scoped history row without extra queries."""
+    maximum_monthly_payment = max(
+        (
+            trench.monthly_payment
+            for trench in calculation.trenches.all()
+        ),
+        default=None,
+    )
+    return {
+        'id': calculation.pk,
+        'createdAt': calculation.timestamp.isoformat(),
+        'property': serialize_saved_property(calculation.property),
+        'finalPropertyCost': _format_decimal(
+            calculation.final_property_cost
+        ),
+        'initialPaymentRubles': _format_decimal(
+            calculation.initial_payment_amount
+        ),
+        'maximumMonthlyPayment': (
+            _format_decimal(maximum_monthly_payment)
+            if maximum_monthly_payment is not None
+            else None
+        ),
+        'mortgageTermMonths': calculation.mortgage_term,
+        'annualRate': _format_decimal(
+            calculation.annual_rate,
+            PERCENT_QUANTUM,
+        ),
+        'trenchCount': calculation.trench_count,
+        'isLinked': is_linked,
+    }
+
+
+def build_saved_trench_mortgage_data(calculation):
+    """Rebuild the established report payload for detail and export."""
+    return _build_saved_trench_calculation_data(calculation)
+
+
+def serialize_saved_trench_mortgage_detail(calculation):
+    """Serialize a saved tranche scenario with its bounded schedule."""
+    calculation_data = build_saved_trench_mortgage_data(calculation)
+    return {
+        'id': calculation.pk,
+        'createdAt': calculation.timestamp.isoformat(),
+        'property': serialize_saved_property(calculation.property),
+        'legacyDetailUrl': reverse(
+            'mortgage:trench_calculation_detail',
+            kwargs={'pk': calculation.pk},
+        ),
+        'calculation': _serialize_trench_result(calculation_data),
     }

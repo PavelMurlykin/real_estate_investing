@@ -19,7 +19,19 @@ const orderingOptions = [
   { value: '-propertyCost', label: 'Цене: сначала дороже' },
 ]
 
-function PropertyMobileCard({ property }: { property: PropertyListItem }) {
+function PropertyMobileCard({
+  property,
+  customerIdentifier,
+}: {
+  property: PropertyListItem
+  customerIdentifier: number | null
+}) {
+  const customerQuery = customerIdentifier
+    ? `?customerId=${customerIdentifier}`
+    : ''
+  const customerMortgageParameter = customerIdentifier
+    ? `&customerId=${customerIdentifier}`
+    : ''
   return (
     <article className="property-mobile-card">
       <div className="property-mobile-card__heading">
@@ -39,12 +51,12 @@ function PropertyMobileCard({ property }: { property: PropertyListItem }) {
         <div><dt>Этаж</dt><dd>{property.floor}</dd></div>
       </dl>
       <div className="property-mobile-card__actions">
-        <Link className="text-link" to={`/properties/${property.id}`}>
+        <Link className="text-link" to={`/properties/${property.id}${customerQuery}`}>
           Подробнее <span aria-hidden="true">→</span>
         </Link>
         <Link
           className="text-link"
-          to={`/mortgage?propertyId=${property.id}&propertyCost=${encodeURIComponent(property.propertyCost)}`}
+          to={`/mortgage?propertyId=${property.id}&propertyCost=${encodeURIComponent(property.propertyCost)}${customerMortgageParameter}`}
         >
           Рассчитать ипотеку
         </Link>
@@ -56,6 +68,17 @@ function PropertyMobileCard({ property }: { property: PropertyListItem }) {
 export function PropertyListPage() {
   useDocumentTitle('Объекты недвижимости')
   const [searchParameters, setSearchParameters] = useSearchParams()
+  const rawCustomerIdentifier = Number(searchParameters.get('customerId'))
+  const customerIdentifier = Number.isInteger(rawCustomerIdentifier)
+    && rawCustomerIdentifier > 0
+    ? rawCustomerIdentifier
+    : null
+  const customerQuery = customerIdentifier
+    ? `?customerId=${customerIdentifier}`
+    : ''
+  const customerMortgageParameter = customerIdentifier
+    ? `&customerId=${customerIdentifier}`
+    : ''
   const sessionQuery = useQuery(sessionQueryOptions)
   const propertyQuery = useQuery(propertyListQueryOptions(searchParameters))
 
@@ -98,11 +121,16 @@ export function PropertyListPage() {
           <span className="eyebrow">Каталог</span>
           <h1>Объекты недвижимости</h1>
           <p>
-            Подберите объект по адресу, застройщику, жилому комплексу или
-            номеру квартиры.
+            {customerIdentifier
+              ? 'Выберите объект для нового расчёта клиента.'
+              : 'Подберите объект по адресу, застройщику, жилому комплексу или номеру квартиры.'}
           </p>
         </div>
-        {sessionQuery.data?.capabilities.manageCatalogs ? (
+        {customerIdentifier ? (
+          <Link className="button button--secondary" to={`/customers/${customerIdentifier}`}>
+            К карточке клиента
+          </Link>
+        ) : sessionQuery.data?.capabilities.manageCatalogs ? (
           <a className="button button--primary" href="/property/create/">
             Добавить объект
           </a>
@@ -158,7 +186,9 @@ export function PropertyListPage() {
             <button
               className="button button--secondary"
               type="button"
-              onClick={() => setSearchParameters({})}
+              onClick={() => setSearchParameters(
+                customerIdentifier ? { customerId: String(customerIdentifier) } : {},
+              )}
             >
               Сбросить фильтры
             </button>
@@ -199,14 +229,14 @@ export function PropertyListPage() {
                       <div className="row-actions">
                         <Link
                           className="row-action"
-                          to={`/properties/${property.id}`}
+                          to={`/properties/${property.id}${customerQuery}`}
                           aria-label={`Открыть квартиру ${property.apartmentNumber}`}
                         >
                           →
                         </Link>
                         <Link
                           className="row-action row-action--calculator"
-                          to={`/mortgage?propertyId=${property.id}&propertyCost=${encodeURIComponent(property.propertyCost)}`}
+                          to={`/mortgage?propertyId=${property.id}&propertyCost=${encodeURIComponent(property.propertyCost)}${customerMortgageParameter}`}
                           aria-label={`Рассчитать ипотеку для квартиры ${property.apartmentNumber}`}
                         >
                           ₽
@@ -220,7 +250,11 @@ export function PropertyListPage() {
           </div>
           <div className="property-mobile-list">
             {results.map((property) => (
-              <PropertyMobileCard property={property} key={property.id} />
+              <PropertyMobileCard
+                property={property}
+                customerIdentifier={customerIdentifier}
+                key={property.id}
+              />
             ))}
           </div>
         </>

@@ -1,10 +1,13 @@
-import { useQuery } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import {
   customerDetailQueryOptions,
+  deleteCustomer,
   sessionQueryOptions,
 } from '@/api/queries'
+import { CustomerCalculationsSection } from '@/features/customer/CustomerCalculationsSection'
 import { formatArea, formatCurrency, formatDate, formatDateTime, formatPercent } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
@@ -23,6 +26,8 @@ function formatBoolean(value: boolean | null) {
 }
 
 export function CustomerDetailPage() {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { customerId = '' } = useParams()
   const customerIdentifier = Number(customerId)
   const hasValidIdentifier = Number.isInteger(customerIdentifier)
@@ -33,11 +38,44 @@ export function CustomerDetailPage() {
     enabled: hasValidIdentifier
       && sessionQuery.data?.isAuthenticated === true,
   })
+  const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false)
+  const deleteTriggerRef = useRef<HTMLButtonElement>(null)
+  const deleteConfirmRef = useRef<HTMLButtonElement>(null)
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteCustomer(customerIdentifier),
+    onSuccess: async () => {
+      queryClient.removeQueries({
+        queryKey: ['customer', customerIdentifier],
+        exact: true,
+      })
+      await queryClient.invalidateQueries({ queryKey: ['customers'] })
+      navigate('/customers', { replace: true })
+    },
+  })
   useDocumentTitle(
     customerQuery.data?.fullName
       ? `Клиент: ${customerQuery.data.fullName}`
       : 'Карточка клиента',
   )
+
+  useEffect(() => {
+    if (!isDeleteConfirmationOpen) return
+    deleteConfirmRef.current?.focus()
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setIsDeleteConfirmationOpen(false)
+      deleteMutation.reset()
+      window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [deleteMutation, isDeleteConfirmationOpen])
+
+  const closeDeleteConfirmation = () => {
+    setIsDeleteConfirmationOpen(false)
+    deleteMutation.reset()
+    window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+  }
 
   if (!hasValidIdentifier) {
     return (
@@ -111,11 +149,57 @@ export function CustomerDetailPage() {
           >
             Редактировать
           </Link>
-          <a className="button button--danger" href={customer.legacyDeleteUrl}>
+          <button
+            className="button button--danger"
+            type="button"
+            ref={deleteTriggerRef}
+            onClick={() => setIsDeleteConfirmationOpen(true)}
+          >
             Удалить
-          </a>
+          </button>
         </div>
       </header>
+
+      {isDeleteConfirmationOpen ? (
+        <section
+          className="delete-confirmation"
+          role="alertdialog"
+          aria-labelledby="delete-customer-title"
+          aria-describedby="delete-customer-description"
+        >
+          <div>
+            <h2 id="delete-customer-title">Удалить клиента?</h2>
+            <p id="delete-customer-description">
+              Карточка клиента будет удалена. Сохранённые ипотечные расчёты
+              останутся в вашей истории.
+            </p>
+            {deleteMutation.isError ? (
+              <p className="form-error" role="alert">
+                Не удалось удалить клиента. Повторите попытку.
+              </p>
+            ) : null}
+          </div>
+          <div className="delete-confirmation__actions">
+            <button
+              className="button button--secondary"
+              type="button"
+              disabled={deleteMutation.isPending}
+              onClick={closeDeleteConfirmation}
+            >
+              Отмена
+            </button>
+            <button
+              className="button button--danger"
+              type="button"
+              ref={deleteConfirmRef}
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate()}
+            >
+              {deleteMutation.isPending ? 'Удаляем…' : 'Удалить клиента'}
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <section
         className="customer-capacity-card"
@@ -145,9 +229,12 @@ export function CustomerDetailPage() {
             <dd>{customer.calculated.maximumTermYears} лет</dd>
           </div>
         </dl>
-        <a className="button button--primary" href={customer.legacyMortgageUrl}>
+        <Link
+          className="button button--primary"
+          to={`/properties?customerId=${customer.id}`}
+        >
           Рассчитать ипотеку
-        </a>
+        </Link>
       </section>
 
       {customer.calculated.hasPreferentialProgram ? (
@@ -315,15 +402,20 @@ export function CustomerDetailPage() {
         </section>
       </div>
 
+      <CustomerCalculationsSection
+        customerIdentifier={customer.id}
+        customerName={customerName}
+      />
+
       <section className="property-system-information" aria-label="Системная информация">
         <span>Создано: {formatDateTime(customer.createdAt)}</span>
         <span>Обновлено: {formatDateTime(customer.updatedAt)}</span>
       </section>
 
       <p className="legacy-fallback">
-        Связанные расчёты, отчёты Word и операции изменения пока работают в{' '}
+        Нужен прежний экран?{' '}
         <a className="text-link" href={customer.legacyDetailUrl}>
-          Django-версии карточки
+          Открыть Django-версию карточки
         </a>
         .
       </p>

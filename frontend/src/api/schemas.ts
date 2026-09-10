@@ -347,6 +347,7 @@ export const savedMortgageCalculationListItemSchema = z.object({
   mainMonthlyPayment: z.string().nullable(),
   mortgageTermMonths: z.number().int().positive(),
   annualRate: z.string(),
+  isLinked: z.boolean(),
 })
 
 export const savedMortgageCalculationListResponseSchema = z.object({
@@ -364,6 +365,68 @@ export const savedMortgageCalculationDetailSchema = z.object({
   legacyDetailUrl: z.string(),
   legacySampleUrl: z.string(),
   calculation: mortgageCalculationResponseSchema,
+})
+
+export const savedTrenchMortgageCalculationListItemSchema = z.object({
+  id: z.number().int().positive(),
+  createdAt: z.iso.datetime({ offset: true }),
+  property: savedMortgagePropertySchema,
+  finalPropertyCost: z.string(),
+  initialPaymentRubles: z.string(),
+  maximumMonthlyPayment: z.string().nullable(),
+  mortgageTermMonths: z.number().int().positive(),
+  annualRate: z.string(),
+  trenchCount: z.number().int().min(1).max(5),
+  isLinked: z.boolean(),
+})
+
+export const savedTrenchMortgageCalculationListResponseSchema = z.object({
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  totalCount: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  results: z.array(savedTrenchMortgageCalculationListItemSchema),
+})
+
+export const savedTrenchMortgageCalculationDetailSchema = z.object({
+  id: z.number().int().positive(),
+  createdAt: z.iso.datetime({ offset: true }),
+  property: savedMortgagePropertySchema,
+  legacyDetailUrl: z.string(),
+  calculation: trenchMortgageCalculationResponseSchema,
+})
+
+export const customerCalculationListItemSchema = z.object({
+  linkId: z.number().int().positive(),
+  calculationId: z.number().int().positive(),
+  programType: z.enum(['market', 'trench']),
+  createdAt: z.iso.datetime({ offset: true }),
+  property: z.object({
+    id: z.number().int().positive(),
+    city: z.string(),
+    realEstateComplex: z.string(),
+    building: z.string(),
+    apartmentNumber: z.string(),
+  }),
+  finalPropertyCost: z.string(),
+  initialPaymentRubles: z.string(),
+  monthlyPayment: z.string().nullable(),
+  mortgageTermMonths: z.number().int().positive(),
+  annualRate: z.string(),
+  trenchCount: z.number().int().positive(),
+})
+
+export const customerCalculationListResponseSchema = z.object({
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  totalCount: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  results: z.array(customerCalculationListItemSchema),
+})
+
+export const customerCalculationLinkResponseSchema = z.object({
+  createdCount: z.number().int().nonnegative(),
+  linkedCalculationIds: z.array(z.number().int().positive()),
 })
 
 export type MortgageCalculationRequest = {
@@ -384,6 +447,7 @@ export type MortgageCalculationRequest = {
 export type SavedMortgageCalculationCreateRequest = {
   propertyId: number
   parameters: MortgageCalculationRequest
+  customerId?: number
 }
 
 export type TrenchMortgageEntryRequest = {
@@ -409,6 +473,19 @@ export type TrenchMortgageCalculationRequest = {
 export type SavedTrenchMortgageCalculationCreateRequest = {
   propertyId: number
   parameters: TrenchMortgageCalculationRequest
+  customerId?: number
+}
+
+export type CustomerCalculationProgramType = 'market' | 'trench'
+
+export type CustomerCalculationLinkCreateRequest = {
+  programType: CustomerCalculationProgramType
+  calculationIds: number[]
+}
+
+export type CustomerCalculationSelection = {
+  programType: CustomerCalculationProgramType
+  linkId: number
 }
 
 export type Session = z.infer<typeof sessionSchema>
@@ -438,6 +515,21 @@ export type SavedMortgageCalculationListResponse = z.infer<
 >
 export type SavedMortgageCalculationDetail = z.infer<
   typeof savedMortgageCalculationDetailSchema
+>
+export type SavedTrenchMortgageCalculationListItem = z.infer<
+  typeof savedTrenchMortgageCalculationListItemSchema
+>
+export type SavedTrenchMortgageCalculationListResponse = z.infer<
+  typeof savedTrenchMortgageCalculationListResponseSchema
+>
+export type SavedTrenchMortgageCalculationDetail = z.infer<
+  typeof savedTrenchMortgageCalculationDetailSchema
+>
+export type CustomerCalculationListItem = z.infer<
+  typeof customerCalculationListItemSchema
+>
+export type CustomerCalculationListResponse = z.infer<
+  typeof customerCalculationListResponseSchema
 >
 
 export type CustomerWriteRequest = {

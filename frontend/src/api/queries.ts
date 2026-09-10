@@ -1,7 +1,9 @@
 import { queryOptions } from '@tanstack/react-query'
 
-import { requestJson, requestWithoutResponse } from './client'
+import { requestFile, requestJson, requestWithoutResponse } from './client'
 import {
+  customerCalculationLinkResponseSchema,
+  customerCalculationListResponseSchema,
   customerDetailSchema,
   customerFormOptionsSchema,
   customerListResponseSchema,
@@ -14,10 +16,15 @@ import {
   savedMortgageCalculationDetailSchema,
   savedMortgageCalculationListResponseSchema,
   savedTrenchMortgageCalculationCreateResponseSchema,
+  savedTrenchMortgageCalculationDetailSchema,
+  savedTrenchMortgageCalculationListResponseSchema,
   sessionSchema,
   trenchMortgageCalculationResponseSchema,
 } from './schemas'
 import type {
+  CustomerCalculationLinkCreateRequest,
+  CustomerCalculationSelection,
+  CustomerCalculationProgramType,
   CustomerWriteRequest,
   MortgageCalculationRequest,
   SavedMortgageCalculationCreateRequest,
@@ -83,6 +90,50 @@ export function saveTrenchMortgageCalculation(
   )
 }
 
+export function savedTrenchMortgageCalculationListQueryOptions(
+  searchParameters: URLSearchParams,
+) {
+  const normalizedParameters = new URLSearchParams(searchParameters)
+  const queryString = normalizedParameters.toString()
+
+  return queryOptions({
+    queryKey: ['saved-trench-mortgage-calculations', queryString],
+    queryFn: ({ signal }) =>
+      requestJson(
+        `/api/v1/mortgage/trench/calculations/${
+          queryString ? `?${queryString}` : ''
+        }`,
+        savedTrenchMortgageCalculationListResponseSchema,
+        { signal },
+      ),
+    placeholderData: (previousData) => previousData,
+    staleTime: 30_000,
+  })
+}
+
+export function savedTrenchMortgageCalculationDetailQueryOptions(
+  calculationIdentifier: number,
+) {
+  return queryOptions({
+    queryKey: ['saved-trench-mortgage-calculation', calculationIdentifier],
+    queryFn: ({ signal }) =>
+      requestJson(
+        `/api/v1/mortgage/trench/calculations/${calculationIdentifier}/`,
+        savedTrenchMortgageCalculationDetailSchema,
+        { signal },
+      ),
+  })
+}
+
+export function deleteSavedTrenchMortgageCalculation(
+  calculationIdentifier: number,
+) {
+  return requestWithoutResponse(
+    `/api/v1/mortgage/trench/calculations/${calculationIdentifier}/`,
+    { method: 'DELETE' },
+  )
+}
+
 export function saveMortgageCalculation(
   payload: SavedMortgageCalculationCreateRequest,
 ) {
@@ -111,6 +162,7 @@ export function savedMortgageCalculationListQueryOptions(
         { signal },
       ),
     placeholderData: (previousData) => previousData,
+    staleTime: 30_000,
   })
 }
 
@@ -166,6 +218,73 @@ export function customerDetailQueryOptions(customerIdentifier: number) {
   })
 }
 
+export function customerCalculationListQueryOptions(
+  customerIdentifier: number,
+  searchParameters: URLSearchParams,
+) {
+  const normalizedParameters = new URLSearchParams(searchParameters)
+  const queryString = normalizedParameters.toString()
+
+  return queryOptions({
+    queryKey: ['customer-calculations', customerIdentifier, queryString],
+    queryFn: ({ signal }) =>
+      requestJson(
+        `/api/v1/customers/${customerIdentifier}/calculations/${
+          queryString ? `?${queryString}` : ''
+        }`,
+        customerCalculationListResponseSchema,
+        { signal },
+      ),
+    placeholderData: (previousData) => previousData,
+    staleTime: 30_000,
+  })
+}
+
+export function linkCustomerCalculations(
+  customerIdentifier: number,
+  payload: CustomerCalculationLinkCreateRequest,
+) {
+  return requestJson(
+    `/api/v1/customers/${customerIdentifier}/calculations/`,
+    customerCalculationLinkResponseSchema,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  )
+}
+
+export function unlinkCustomerCalculation(
+  customerIdentifier: number,
+  programType: CustomerCalculationProgramType,
+  linkIdentifier: number,
+) {
+  return requestWithoutResponse(
+    `/api/v1/customers/${customerIdentifier}/calculations/${programType}/${linkIdentifier}/`,
+    { method: 'DELETE' },
+  )
+}
+
+export function exportCustomerCalculationsWord(
+  customerIdentifier: number,
+  selections: CustomerCalculationSelection[],
+) {
+  return requestFile(
+    `/api/v1/customers/${customerIdentifier}/calculations/export/word/`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ selections }),
+    },
+    'customer_mortgage_calculations.docx',
+  )
+}
+
+export function deleteCustomer(customerIdentifier: number) {
+  return requestWithoutResponse(`/api/v1/customers/${customerIdentifier}/`, {
+    method: 'DELETE',
+  })
+}
+
 export function customerFormOptionsQueryOptions(
   desiredCityIdentifier: number | null,
 ) {
@@ -214,6 +333,7 @@ export function updateCustomer(
 
 export function propertyListQueryOptions(searchParameters: URLSearchParams) {
   const normalizedParameters = new URLSearchParams(searchParameters)
+  normalizedParameters.delete('customerId')
   const queryString = normalizedParameters.toString()
 
   return queryOptions({

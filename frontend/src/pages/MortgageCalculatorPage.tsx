@@ -80,6 +80,11 @@ export function MortgageCalculatorPage() {
     && rawPropertyIdentifier > 0
     ? rawPropertyIdentifier
     : null
+  const rawCustomerIdentifier = Number(searchParameters.get('customerId'))
+  const customerIdentifier = Number.isInteger(rawCustomerIdentifier)
+    && rawCustomerIdentifier > 0
+    ? rawCustomerIdentifier
+    : null
   const rawSampleIdentifier = Number(searchParameters.get('sample'))
   const sampleIdentifier = Number.isInteger(rawSampleIdentifier)
     && rawSampleIdentifier > 0
@@ -117,6 +122,11 @@ export function MortgageCalculatorPage() {
       await queryClient.invalidateQueries({
         queryKey: ['saved-mortgage-calculations'],
       })
+      if (customerIdentifier) {
+        await queryClient.invalidateQueries({
+          queryKey: ['customer-calculations', customerIdentifier],
+        })
+      }
     },
   })
   const propertyIdentifier = directPropertyIdentifier
@@ -356,7 +366,9 @@ export function MortgageCalculatorPage() {
           <strong>{optionsQuery.data ? formatPercent(optionsQuery.data.keyRate) : '—'}</strong>
           <p>Актуальная ключевая ставка из справочника приложения.</p>
           {optionsQuery.isError ? <p className="reference-warning" role="status">Программы банков временно недоступны. Ручной расчёт продолжает работать.</p> : null}
-          <Link to="/properties">Выбрать объект в каталоге <span aria-hidden="true">→</span></Link>
+          <Link to={`/properties${customerIdentifier ? `?customerId=${customerIdentifier}` : ''}`}>
+            Выбрать объект в каталоге <span aria-hidden="true">→</span>
+          </Link>
         </aside>
       </div>
 
@@ -374,7 +386,10 @@ export function MortgageCalculatorPage() {
                   {!sessionQuery.data?.isAuthenticated ? (
                     <p>Войдите в аккаунт, чтобы сохранить расчёт и вернуться к нему позже.</p>
                   ) : propertyIdentifier ? (
-                    <p>Расчёт будет связан с выбранным объектом недвижимости.</p>
+                    <p>
+                      Расчёт будет связан с выбранным объектом
+                      {customerIdentifier ? ' и карточкой клиента' : ''}.
+                    </p>
                   ) : (
                     <p>Для сохранения сначала выберите объект в каталоге недвижимости.</p>
                   )}
@@ -393,7 +408,14 @@ export function MortgageCalculatorPage() {
                       Войти
                     </a>
                   ) : propertyIdentifier && calculationMutation.variables ? (
-                    saveMutation.data ? (
+                    saveMutation.data && customerIdentifier ? (
+                      <Link
+                        className="button button--primary"
+                        to={`/customers/${customerIdentifier}`}
+                      >
+                        Открыть карточку клиента
+                      </Link>
+                    ) : saveMutation.data ? (
                       <Link
                         className="button button--primary"
                         to={`/mortgage/calculations/${saveMutation.data.id}`}
@@ -408,13 +430,17 @@ export function MortgageCalculatorPage() {
                         onClick={() => saveMutation.mutate({
                           propertyId: propertyIdentifier,
                           parameters: calculationMutation.variables,
+                          ...(customerIdentifier ? { customerId: customerIdentifier } : {}),
                         })}
                       >
                         {saveMutation.isPending ? 'Сохраняем…' : 'Сохранить расчёт'}
                       </button>
                     )
                   ) : (
-                    <Link className="button button--secondary" to="/properties">
+                    <Link
+                      className="button button--secondary"
+                      to={`/properties${customerIdentifier ? `?customerId=${customerIdentifier}` : ''}`}
+                    >
                       Выбрать объект
                     </Link>
                   )}

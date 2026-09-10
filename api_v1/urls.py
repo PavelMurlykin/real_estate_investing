@@ -2,6 +2,9 @@ from django.urls import path
 
 from .views import (
     CustomerDetailAPIView,
+    CustomerCalculationLinkDetailAPIView,
+    CustomerCalculationListCreateAPIView,
+    CustomerCalculationWordExportAPIView,
     CustomerFormOptionsAPIView,
     CustomerListAPIView,
     LoginAPIView,
@@ -14,7 +17,9 @@ from .views import (
     SavedMortgageCalculationDetailAPIView,
     SavedMortgageCalculationExportAPIView,
     SavedMortgageCalculationListCreateAPIView,
-    SavedTrenchMortgageCalculationCreateAPIView,
+    SavedTrenchMortgageCalculationDetailAPIView,
+    SavedTrenchMortgageCalculationExportAPIView,
+    SavedTrenchMortgageCalculationListCreateAPIView,
     SessionAPIView,
     TrenchMortgageCalculationAPIView,
 )
@@ -36,6 +41,21 @@ urlpatterns = [
         'customers/<int:pk>/',
         CustomerDetailAPIView.as_view(),
         name='customer_detail',
+    ),
+    path(
+        'customers/<int:pk>/calculations/',
+        CustomerCalculationListCreateAPIView.as_view(),
+        name='customer_calculation_list',
+    ),
+    path(
+        'customers/<int:pk>/calculations/export/word/',
+        CustomerCalculationWordExportAPIView.as_view(),
+        name='customer_calculation_export_word',
+    ),
+    path(
+        'customers/<int:pk>/calculations/<str:program_type>/<int:link_pk>/',
+        CustomerCalculationLinkDetailAPIView.as_view(),
+        name='customer_calculation_link_detail',
     ),
     path('properties/', PropertyListAPIView.as_view(), name='property_list'),
     path(
@@ -60,8 +80,25 @@ urlpatterns = [
     ),
     path(
         'mortgage/trench/calculations/',
-        SavedTrenchMortgageCalculationCreateAPIView.as_view(),
+        SavedTrenchMortgageCalculationListCreateAPIView.as_view(),
         name='saved_trench_mortgage_calculation_create',
+    ),
+    path(
+        'mortgage/trench/calculations/<int:pk>/',
+        SavedTrenchMortgageCalculationDetailAPIView.as_view(),
+        name='saved_trench_mortgage_calculation_detail',
+    ),
+    path(
+        'mortgage/trench/calculations/<int:pk>/export/excel/',
+        SavedTrenchMortgageCalculationExportAPIView.as_view(),
+        {'export_format': 'excel'},
+        name='saved_trench_mortgage_calculation_export_excel',
+    ),
+    path(
+        'mortgage/trench/calculations/<int:pk>/export/word/',
+        SavedTrenchMortgageCalculationExportAPIView.as_view(),
+        {'export_format': 'word'},
+        name='saved_trench_mortgage_calculation_export_word',
     ),
     path(
         'mortgage/calculations/',

@@ -99,3 +99,51 @@ export async function requestWithoutResponse(
     )
   }
 }
+
+export type DownloadedFile = {
+  blob: Blob
+  filename: string
+}
+
+function getResponseFilename(response: Response, fallbackFilename: string) {
+  const contentDisposition = response.headers.get('content-disposition') ?? ''
+  const encodedFilename = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
+  if (encodedFilename?.[1]) {
+    return decodeURIComponent(encodedFilename[1].replace(/["']/g, ''))
+  }
+  const filename = contentDisposition.match(/filename="?([^";]+)"?/i)
+  return filename?.[1] ?? fallbackFilename
+}
+
+export async function requestFile(
+  path: string,
+  options: RequestInit,
+  fallbackFilename: string,
+): Promise<DownloadedFile> {
+  const headers = new Headers(options.headers)
+  headers.set('Accept', 'application/octet-stream')
+  if (options.body && !(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json')
+  }
+  const csrfToken = getCookie('csrftoken')
+  if (csrfToken) {
+    headers.set('X-CSRFToken', csrfToken)
+  }
+
+  const response = await fetch(path, {
+    ...options,
+    credentials: 'same-origin',
+    headers,
+  })
+  if (!response.ok) {
+    throw new ApiError(
+      'Сервер не смог сформировать файл. Попробуйте ещё раз.',
+      response.status,
+      await readResponseBody(response),
+    )
+  }
+  return {
+    blob: await response.blob(),
+    filename: getResponseFilename(response, fallbackFilename),
+  }
+}

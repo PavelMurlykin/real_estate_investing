@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth import login, logout
+from django.db import transaction
 from django.db.models import Prefetch, Q
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
@@ -12,7 +13,7 @@ from rest_framework.generics import (
     ListAPIView,
     ListCreateAPIView,
     RetrieveAPIView,
-    RetrieveUpdateAPIView,
+    RetrieveUpdateDestroyAPIView,
 )
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -25,17 +26,32 @@ from bank.models import (
     MortgageProgram,
     MortgageProgramRegionalCreditLimit,
 )
-from customer.models import Customer
+from customer.models import (
+    Customer,
+    CustomerCalculation,
+    CustomerTrenchCalculation,
+)
+from customer.views import (
+    _build_customer_word_calculation,
+    _export_single_customer_word_calculation,
+    _get_selected_customer_calculation_links,
+)
 from location.models import City, District
 from mortgage.excel import export_saved_mortgage_calculation_excel
 from mortgage.models import MortgageCalculation
-from mortgage.word import export_saved_mortgage_calculation_word
+from mortgage.word import (
+    export_customer_mortgage_calculations_word,
+    export_saved_mortgage_calculation_word,
+    export_trench_mortgage_word,
+)
 from property.models import (
     ApartmentLayout,
     Developer,
     Property,
     RealEstateComplex,
 )
+from trench_mortgage.models import TrenchMortgageCalculation
+from trench_mortgage.views import _export_trench_excel
 from users.forms import UserLoginForm
 from users.roles import (
     can_manage_catalogs,
@@ -44,6 +60,10 @@ from users.roles import (
     can_view_private_records,
 )
 
+from .customer_calculation_service import (
+    build_customer_calculation_queryset,
+    serialize_customer_calculation_link,
+)
 from .mortgage_service import (
     build_saved_mortgage_payment_schedule,
     calculate_market_mortgage,
@@ -54,6 +74,9 @@ from .mortgage_service import (
 from .pagination import ApplicationPageNumberPagination
 from .serializers import (
     CustomerDetailSerializer,
+    CustomerCalculationExportRequestSerializer,
+    CustomerCalculationLinkCreateSerializer,
+    CustomerCalculationListQuerySerializer,
     CustomerFormOptionsQuerySerializer,
     CustomerListItemSerializer,
     CustomerListQuerySerializer,
@@ -66,12 +89,16 @@ from .serializers import (
     SavedMortgageCalculationCreateSerializer,
     SavedMortgageCalculationListQuerySerializer,
     SavedTrenchMortgageCalculationCreateSerializer,
+    SavedTrenchMortgageCalculationListQuerySerializer,
     TrenchMortgageCalculationRequestSerializer,
 )
 from .trench_mortgage_service import (
     TrenchMortgageValidationError,
+    build_saved_trench_mortgage_data,
     calculate_trench_mortgage,
     create_saved_trench_mortgage,
+    serialize_saved_trench_mortgage_detail,
+    serialize_saved_trench_mortgage_list_item,
 )
 
 
@@ -349,11 +376,104 @@ class TrenchMortgageCalculationAPIView(APIView):
         return Response(response_payload)
 
 
+def _saved_trench_mortgage_calculation_queryset(user):
+    """Return saved tranche calculations scoped to the current role."""
+    queryset = TrenchMortgageCalculation.objects.select_related(
+        'property',
+        'property__layout',
+        'property__decoration',
+        'property__building',
+        'property__building__real_estate_complex',
+        'property__building__real_estate_complex__developer__company_group',
+        'property__building__real_estate_complex__district__city',
+        'property__building__real_estate_complex__real_estate_class',
+    ).prefetch_related('trenches')
+    if can_view_all_private_records(user):
+        return queryset
+    return queryset.filter(user=user)
+
+
 @method_decorator(csrf_protect, name='dispatch')
-class SavedTrenchMortgageCalculationCreateAPIView(APIView):
-    """Persist an authenticated user's property-backed trench scenario."""
+class SavedTrenchMortgageCalculationListCreateAPIView(APIView):
+    """List owner-scoped tranche scenarios and persist new ones."""
 
     permission_classes = (IsAuthenticated,)
+    ordering_fields = {
+        'createdAt': 'timestamp',
+        'finalPropertyCost': 'final_property_cost',
+        'mortgageTermMonths': 'mortgage_term',
+        'annualRate': 'annual_rate',
+        'trenchCount': 'trench_count',
+    }
+
+    def get(self, request):
+        """Return bounded, searchable tranche-calculation history."""
+        query_serializer = SavedTrenchMortgageCalculationListQuerySerializer(
+            data=request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        filters = query_serializer.validated_data
+        queryset = _saved_trench_mortgage_calculation_queryset(request.user)
+
+        search = filters.get('q', '')
+        if search:
+            queryset = queryset.filter(
+                Q(property__apartment_number__icontains=search)
+                | Q(property__building__number__icontains=search)
+                | Q(
+                    property__building__real_estate_complex__name__icontains=(
+                        search
+                    )
+                )
+                | Q(
+                    property__building__real_estate_complex__district__city__name__icontains=(
+                        search
+                    )
+                )
+            )
+
+        ordering = filters['ordering']
+        descending = ordering.startswith('-')
+        ordering_key = ordering.removeprefix('-')
+        ordering_field = self.ordering_fields[ordering_key]
+        ordering_prefix = '-' if descending else ''
+        queryset = queryset.order_by(
+            f'{ordering_prefix}{ordering_field}',
+            '-pk',
+        )
+
+        paginator = ApplicationPageNumberPagination()
+        calculations = paginator.paginate_queryset(
+            queryset,
+            request,
+            view=self,
+        )
+        linked_calculation_identifiers = set()
+        customer_identifier = filters.get('customerId')
+        if customer_identifier:
+            customer = get_object_or_404(
+                _customer_queryset(request.user),
+                pk=customer_identifier,
+            )
+            linked_calculation_identifiers = set(
+                CustomerTrenchCalculation.objects.filter(
+                    customer=customer,
+                    calculation_id__in=(
+                        calculation.pk for calculation in calculations
+                    ),
+                ).values_list('calculation_id', flat=True)
+            )
+        return paginator.get_paginated_response(
+            [
+                serialize_saved_trench_mortgage_list_item(
+                    calculation,
+                    is_linked=(
+                        calculation.pk in linked_calculation_identifiers
+                    ),
+                )
+                for calculation in calculations
+            ]
+        )
 
     def post(self, request):
         """Recalculate and save a validated trench mortgage atomically."""
@@ -362,15 +482,74 @@ class SavedTrenchMortgageCalculationCreateAPIView(APIView):
         )
         request_serializer.is_valid(raise_exception=True)
         validated_data = request_serializer.validated_data
-        try:
-            response_payload = create_saved_trench_mortgage(
-                parameters=validated_data['parameters'],
-                property_object=validated_data['property'],
-                user=request.user,
+        customer = None
+        customer_identifier = validated_data.get('customerId')
+        if customer_identifier:
+            customer = get_object_or_404(
+                _customer_queryset(request.user),
+                pk=customer_identifier,
             )
-        except TrenchMortgageValidationError as error:
-            _raise_trench_mortgage_validation_error(error)
+        with transaction.atomic():
+            try:
+                response_payload = create_saved_trench_mortgage(
+                    parameters=validated_data['parameters'],
+                    property_object=validated_data['property'],
+                    user=request.user,
+                )
+            except TrenchMortgageValidationError as error:
+                _raise_trench_mortgage_validation_error(error)
+            if customer is not None:
+                CustomerTrenchCalculation.objects.create(
+                    customer=customer,
+                    calculation_id=response_payload['id'],
+                )
         return Response(response_payload, status=status.HTTP_201_CREATED)
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class SavedTrenchMortgageCalculationDetailAPIView(APIView):
+    """Return or delete one owner-scoped saved tranche scenario."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, pk):
+        """Return a private tranche scenario or a non-disclosing 404."""
+        calculation = get_object_or_404(
+            _saved_trench_mortgage_calculation_queryset(request.user),
+            pk=pk,
+        )
+        return Response(serialize_saved_trench_mortgage_detail(calculation))
+
+    def delete(self, request, pk):
+        """Delete a private tranche scenario without exposing owners."""
+        calculation = get_object_or_404(
+            _saved_trench_mortgage_calculation_queryset(request.user),
+            pk=pk,
+        )
+        calculation.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SavedTrenchMortgageCalculationExportAPIView(APIView):
+    """Export one owner-scoped tranche calculation in a safe format."""
+
+    permission_classes = (IsAuthenticated,)
+    exporters = {
+        'excel': _export_trench_excel,
+        'word': export_trench_mortgage_word,
+    }
+
+    def get(self, request, pk, export_format):
+        """Return a private tranche scenario as a file attachment."""
+        exporter = self.exporters.get(export_format)
+        if exporter is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        calculation = get_object_or_404(
+            _saved_trench_mortgage_calculation_queryset(request.user),
+            pk=pk,
+        )
+        calculation_data = build_saved_trench_mortgage_data(calculation)
+        return exporter(calculation_data)
 
 
 def _saved_mortgage_calculation_queryset(user):
@@ -459,9 +638,29 @@ class SavedMortgageCalculationListCreateAPIView(APIView):
             request,
             view=self,
         )
+        linked_calculation_identifiers = set()
+        customer_identifier = filters.get('customerId')
+        if customer_identifier:
+            customer = get_object_or_404(
+                _customer_queryset(request.user),
+                pk=customer_identifier,
+            )
+            linked_calculation_identifiers = set(
+                CustomerCalculation.objects.filter(
+                    customer=customer,
+                    calculation_id__in=(
+                        calculation.pk for calculation in calculations
+                    ),
+                ).values_list('calculation_id', flat=True)
+            )
         return paginator.get_paginated_response(
             [
-                serialize_saved_mortgage_list_item(calculation)
+                serialize_saved_mortgage_list_item(
+                    calculation,
+                    is_linked=(
+                        calculation.pk in linked_calculation_identifiers
+                    ),
+                )
                 for calculation in calculations
             ]
         )
@@ -473,11 +672,24 @@ class SavedMortgageCalculationListCreateAPIView(APIView):
         )
         request_serializer.is_valid(raise_exception=True)
         validated_data = request_serializer.validated_data
-        calculation = create_saved_market_mortgage(
-            parameters=validated_data['parameters'],
-            property_object=validated_data['property'],
-            user=request.user,
-        )
+        customer = None
+        customer_identifier = validated_data.get('customerId')
+        if customer_identifier:
+            customer = get_object_or_404(
+                _customer_queryset(request.user),
+                pk=customer_identifier,
+            )
+        with transaction.atomic():
+            calculation = create_saved_market_mortgage(
+                parameters=validated_data['parameters'],
+                property_object=validated_data['property'],
+                user=request.user,
+            )
+            if customer is not None:
+                CustomerCalculation.objects.create(
+                    customer=customer,
+                    calculation=calculation,
+                )
         calculation = _saved_mortgage_calculation_queryset(
             request.user
         ).get(pk=calculation.pk)
@@ -746,8 +958,8 @@ class CustomerListAPIView(ListCreateAPIView):
 
 
 @method_decorator(csrf_protect, name='dispatch')
-class CustomerDetailAPIView(RetrieveUpdateAPIView):
-    """Return one owner-scoped customer and calculated buying capacity."""
+class CustomerDetailAPIView(RetrieveUpdateDestroyAPIView):
+    """Return, update, or delete one owner-scoped customer."""
 
     serializer_class = CustomerDetailSerializer
     permission_classes = (IsAuthenticated,)
@@ -784,3 +996,179 @@ class CustomerDetailAPIView(RetrieveUpdateAPIView):
         if self.request.method == 'GET':
             context['key_rate'] = Customer.get_actual_cbr_key_rate()
         return context
+
+
+def _customer_calculation_link_configuration(program_type, user):
+    """Return the link model and owner-scoped calculation queryset."""
+    if program_type == 'market':
+        return CustomerCalculation, _saved_mortgage_calculation_queryset(user)
+    if program_type == 'trench':
+        return (
+            CustomerTrenchCalculation,
+            _saved_trench_mortgage_calculation_queryset(user),
+        )
+    return None, None
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class CustomerCalculationListCreateAPIView(APIView):
+    """List and attach owner-scoped calculations for one customer."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, pk):
+        """Return a filtered and paginated union of linked calculations."""
+        customer = get_object_or_404(
+            _customer_queryset(request.user),
+            pk=pk,
+        )
+        query_serializer = CustomerCalculationListQuerySerializer(
+            data=request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        queryset = build_customer_calculation_queryset(
+            customer,
+            request.user,
+            query_serializer.validated_data,
+        )
+        paginator = ApplicationPageNumberPagination()
+        calculation_rows = paginator.paginate_queryset(
+            queryset,
+            request,
+            view=self,
+        )
+        return paginator.get_paginated_response(
+            [
+                serialize_customer_calculation_link(row)
+                for row in calculation_rows
+            ]
+        )
+
+    def post(self, request, pk):
+        """Attach a bounded set of accessible saved calculations."""
+        customer = get_object_or_404(
+            _customer_queryset(request.user),
+            pk=pk,
+        )
+        request_serializer = CustomerCalculationLinkCreateSerializer(
+            data=request.data
+        )
+        request_serializer.is_valid(raise_exception=True)
+        validated_data = request_serializer.validated_data
+        program_type = validated_data['programType']
+        calculation_identifiers = validated_data['calculationIds']
+        link_model, calculation_queryset = (
+            _customer_calculation_link_configuration(
+                program_type,
+                request.user,
+            )
+        )
+        accessible_identifiers = set(
+            calculation_queryset.filter(
+                pk__in=calculation_identifiers
+            ).values_list('pk', flat=True)
+        )
+        if len(accessible_identifiers) != len(calculation_identifiers):
+            raise ValidationError(
+                {
+                    'calculationIds': [
+                        'Один или несколько расчётов недоступны.'
+                    ]
+                }
+            )
+        existing_identifiers = set(
+            link_model.objects.filter(
+                customer=customer,
+                calculation_id__in=accessible_identifiers,
+            ).values_list('calculation_id', flat=True)
+        )
+        new_identifiers = accessible_identifiers - existing_identifiers
+        with transaction.atomic():
+            link_model.objects.bulk_create(
+                [
+                    link_model(
+                        customer=customer,
+                        calculation_id=calculation_identifier,
+                    )
+                    for calculation_identifier in new_identifiers
+                ],
+                ignore_conflicts=True,
+            )
+        return Response(
+            {
+                'createdCount': len(new_identifiers),
+                'linkedCalculationIds': sorted(accessible_identifiers),
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class CustomerCalculationLinkDetailAPIView(APIView):
+    """Remove one calculation link while preserving the calculation."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def delete(self, request, pk, program_type, link_pk):
+        """Delete an owner-scoped customer link or return a safe 404."""
+        customer = get_object_or_404(
+            _customer_queryset(request.user),
+            pk=pk,
+        )
+        link_model, _ = _customer_calculation_link_configuration(
+            program_type,
+            request.user,
+        )
+        if link_model is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        link_queryset = link_model.objects.filter(customer=customer)
+        if not can_view_all_private_records(request.user):
+            link_queryset = link_queryset.filter(
+                calculation__user=request.user
+            )
+        calculation_link = get_object_or_404(link_queryset, pk=link_pk)
+        calculation_link.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class CustomerCalculationWordExportAPIView(APIView):
+    """Export selected owner-scoped customer calculations to Word."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, pk):
+        """Return one established or one grouped Word report."""
+        customer = get_object_or_404(
+            _customer_queryset(request.user),
+            pk=pk,
+        )
+        request_serializer = CustomerCalculationExportRequestSerializer(
+            data=request.data
+        )
+        request_serializer.is_valid(raise_exception=True)
+        selections = [
+            (selection['programType'], selection['linkId'])
+            for selection in request_serializer.validated_data['selections']
+        ]
+        selected_links = _get_selected_customer_calculation_links(
+            customer,
+            request.user,
+            selections,
+        )
+        if len(selected_links) != len(selections):
+            raise ValidationError(
+                {
+                    'selections': [
+                        'Один или несколько расчётов недоступны.'
+                    ]
+                }
+            )
+        if len(selected_links) == 1:
+            return _export_single_customer_word_calculation(
+                selected_links[0]
+            )
+        return export_customer_mortgage_calculations_word(
+            _build_customer_word_calculation(link)
+            for link in selected_links
+        )

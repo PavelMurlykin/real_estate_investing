@@ -266,7 +266,7 @@ describe('MortgageCalculatorPage', () => {
     expect(initialPaymentInput).toHaveAttribute('aria-invalid', 'true')
   })
 
-  it('saves the authoritative result for a catalog property', async () => {
+  it('saves and links the authoritative result from a customer flow', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(
@@ -283,7 +283,7 @@ describe('MortgageCalculatorPage', () => {
       )
     vi.stubGlobal('fetch', fetchMock)
     renderCalculator({
-      initialRoute: '/?propertyId=3&propertyCost=5000000.00',
+      initialRoute: '/?propertyId=3&propertyCost=5000000.00&customerId=12',
       session: authenticatedSession,
     })
 
@@ -293,12 +293,13 @@ describe('MortgageCalculatorPage', () => {
     )
 
     expect(
-      await screen.findByRole('link', { name: 'Открыть сохранённый расчёт' }),
-    ).toHaveAttribute('href', '/mortgage/calculations/7')
+      await screen.findByRole('link', { name: 'Открыть карточку клиента' }),
+    ).toHaveAttribute('href', '/customers/12')
     const saveRequest = fetchMock.mock.calls[1]
     expect(saveRequest[0]).toBe('/api/v1/mortgage/calculations/')
     expect(JSON.parse(saveRequest[1].body as string)).toEqual({
       propertyId: 3,
+      customerId: 12,
       parameters: expect.objectContaining({
         propertyCost: '5000000.00',
         mortgageTermMonths: 360,

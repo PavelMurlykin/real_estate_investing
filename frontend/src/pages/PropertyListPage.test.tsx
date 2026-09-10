@@ -81,4 +81,26 @@ describe('PropertyListPage', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Сбросить фильтры' })).toBeInTheDocument()
   })
+
+  it('preserves the customer context in property and mortgage links', () => {
+    const queryClient = createTestQueryClient()
+    queryClient.setQueryData(['properties', ''], propertyList)
+
+    renderWithProviders(<PropertyListPage />, {
+      initialRoute: '/?customerId=12',
+      queryClient,
+    })
+
+    expect(screen.getByRole('link', { name: 'К карточке клиента' }))
+      .toHaveAttribute('href', '/customers/12')
+    expect(
+      screen.getAllByRole('link', { name: /Открыть квартиру 101/ })[0],
+    ).toHaveAttribute('href', '/properties/1?customerId=12')
+    expect(
+      screen.getAllByRole('link', { name: /Рассчитать ипотеку/ })[0],
+    ).toHaveAttribute(
+      'href',
+      '/mortgage?propertyId=1&propertyCost=12500000.00&customerId=12',
+    )
+  })
 })

@@ -1,5 +1,7 @@
-import { screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { Route, Routes } from 'react-router-dom'
+import { describe, expect, it, vi } from 'vitest'
 
 import type {
   SavedMortgageCalculationListResponse,
@@ -53,6 +55,7 @@ const calculationHistory: SavedMortgageCalculationListResponse = {
       mainMonthlyPayment: '319832.06',
       mortgageTermMonths: 12,
       annualRate: '12.00',
+      isLinked: false,
     },
   ],
 }
@@ -90,5 +93,54 @@ describe('SavedMortgageCalculationListPage', () => {
     expect(
       screen.getAllByRole('link', { name: /Открыть расчёт/ })[0],
     ).toHaveAttribute('href', '/mortgage/calculations/7')
+  })
+
+  it('adds selected saved calculations to a customer', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        createdCount: 1,
+        linkedCalculationIds: [7],
+      }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const queryClient = createTestQueryClient()
+    queryClient.setQueryData(['session'], authenticatedSession)
+    queryClient.setQueryData(
+      ['saved-mortgage-calculations', 'customerId=12'],
+      calculationHistory,
+    )
+
+    renderWithProviders(
+      <Routes>
+        <Route
+          path="/mortgage/calculations"
+          element={<SavedMortgageCalculationListPage />}
+        />
+        <Route path="/customers/:customerId" element={<h1>Карточка клиента</h1>} />
+      </Routes>,
+      {
+      initialRoute: '/mortgage/calculations?customerId=12',
+      queryClient,
+      },
+    )
+
+    await user.click(screen.getByRole('checkbox', {
+      name: /Добавить расчёт от .* клиенту/,
+    }))
+    await user.click(screen.getByRole('button', { name: 'Добавить клиенту' }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/customers/12/calculations/',
+      expect.objectContaining({ method: 'POST' }),
+    )
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({
+      programType: 'market',
+      calculationIds: [7],
+    })
   })
 })

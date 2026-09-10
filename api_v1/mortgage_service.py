@@ -217,7 +217,7 @@ def create_saved_market_mortgage(parameters, property_object, user):
     )
 
 
-def _serialize_saved_property(property_object):
+def serialize_saved_property(property_object):
     """Return the property context shared by list and detail responses."""
     real_estate_complex = property_object.building.real_estate_complex
     return {
@@ -239,7 +239,7 @@ def _serialize_saved_property(property_object):
     }
 
 
-def serialize_saved_mortgage_list_item(calculation):
+def serialize_saved_mortgage_list_item(calculation, is_linked=False):
     """Serialize one bounded history row without additional queries."""
     initial_payment = (
         calculation.final_property_cost
@@ -249,7 +249,7 @@ def serialize_saved_mortgage_list_item(calculation):
     return {
         'id': calculation.pk,
         'createdAt': calculation.timestamp.isoformat(),
-        'property': _serialize_saved_property(calculation.property),
+        'property': serialize_saved_property(calculation.property),
         'finalPropertyCost': _format_decimal(
             calculation.final_property_cost
         ),
@@ -264,6 +264,7 @@ def serialize_saved_mortgage_list_item(calculation):
             calculation.annual_rate,
             PERCENT_QUANTUM,
         ),
+        'isLinked': is_linked,
     }
 
 
@@ -328,7 +329,7 @@ def serialize_saved_mortgage_detail(calculation):
     return {
         'id': calculation.pk,
         'createdAt': calculation.timestamp.isoformat(),
-        'property': _serialize_saved_property(calculation.property),
+        'property': serialize_saved_property(calculation.property),
         'legacyDetailUrl': reverse(
             'mortgage:calculation_detail',
             kwargs={'pk': calculation.pk},

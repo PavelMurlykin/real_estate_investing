@@ -8,6 +8,7 @@ import {
   calculateTrenchMortgage,
   mortgageOptionsQueryOptions,
   saveTrenchMortgageCalculation,
+  savedTrenchMortgageCalculationDetailQueryOptions,
   sessionQueryOptions,
 } from '@/api/queries'
 import type {
@@ -145,12 +146,30 @@ export function TrenchMortgageCalculatorPage() {
   const optionsQuery = useQuery(mortgageOptionsQueryOptions)
   const sessionQuery = useQuery(sessionQueryOptions)
   const resultHeadingRef = useRef<HTMLHeadingElement>(null)
+  const appliedSampleIdentifierRef = useRef<number | null>(null)
   const initialPaymentDate = getLocalDateInputValue()
   const rawPropertyIdentifier = Number(searchParameters.get('propertyId'))
-  const propertyIdentifier = Number.isInteger(rawPropertyIdentifier)
+  const directPropertyIdentifier = Number.isInteger(rawPropertyIdentifier)
     && rawPropertyIdentifier > 0
     ? rawPropertyIdentifier
     : null
+  const rawCustomerIdentifier = Number(searchParameters.get('customerId'))
+  const customerIdentifier = Number.isInteger(rawCustomerIdentifier)
+    && rawCustomerIdentifier > 0
+    ? rawCustomerIdentifier
+    : null
+  const rawSampleIdentifier = Number(searchParameters.get('sample'))
+  const sampleIdentifier = Number.isInteger(rawSampleIdentifier)
+    && rawSampleIdentifier > 0
+    ? rawSampleIdentifier
+    : null
+  const sampleQuery = useQuery({
+    ...savedTrenchMortgageCalculationDetailQueryOptions(
+      sampleIdentifier ?? 0,
+    ),
+    enabled: sessionQuery.data?.isAuthenticated === true
+      && sampleIdentifier !== null,
+  })
   const calculationQueryString = searchParameters.toString()
   const marketCalculatorPath = `/mortgage${
     calculationQueryString ? `?${calculationQueryString}` : ''
@@ -185,8 +204,16 @@ export function TrenchMortgageCalculatorPage() {
       await queryClient.invalidateQueries({
         queryKey: ['saved-trench-mortgage-calculations'],
       })
+      if (customerIdentifier) {
+        await queryClient.invalidateQueries({
+          queryKey: ['customer-calculations', customerIdentifier],
+        })
+      }
     },
   })
+  const propertyIdentifier = directPropertyIdentifier
+    ?? sampleQuery.data?.property.id
+    ?? null
   const fieldErrors = extractFieldErrors(calculationMutation.error)
   const availablePrograms = useMemo(
     () => optionsQuery.data?.programs.filter(
@@ -201,6 +228,48 @@ export function TrenchMortgageCalculatorPage() {
       resultHeadingRef.current?.scrollIntoView?.({ block: 'start' })
     }
   }, [calculationMutation.isSuccess, calculationMutation.data])
+
+  useEffect(() => {
+    if (
+      !sampleQuery.data
+      || appliedSampleIdentifierRef.current === sampleQuery.data.id
+    ) {
+      return
+    }
+    const assumptions = sampleQuery.data.calculation.assumptions
+    const savedTrenches = sampleQuery.data.calculation.trenches
+    const initialTrenches = buildInitialTrenches(
+      assumptions.initialPaymentDate,
+      assumptions.annualRate,
+    )
+    setFormState({
+      propertyCost: assumptions.basePropertyCost,
+      priceAdjustmentType: assumptions.priceAdjustmentType,
+      priceAdjustmentUnit: 'percent',
+      priceAdjustmentValue: assumptions.priceAdjustmentPercent,
+      initialPaymentUnit: 'percent',
+      initialPaymentValue: assumptions.initialPaymentPercent,
+      initialPaymentDate: assumptions.initialPaymentDate,
+      mortgageTermMonths: String(assumptions.mortgageTermMonths),
+      annualRate: assumptions.annualRate,
+      bankId: '',
+      bankProgramId: '',
+      trenchCount: savedTrenches.length,
+      trenches: initialTrenches.map((trench, index) => {
+        const savedTrench = savedTrenches[index]
+        if (!savedTrench) return trench
+        return {
+          date: savedTrench.date,
+          amountUnit: 'percent',
+          amountValue: index === savedTrenches.length - 1
+            ? ''
+            : savedTrench.percent,
+          annualRate: savedTrench.annualRate,
+        }
+      }),
+    })
+    appliedSampleIdentifierRef.current = sampleQuery.data.id
+  }, [sampleQuery.data])
 
   const updateField = <FieldName extends keyof TrenchMortgageFormState>(
     fieldName: FieldName,
@@ -316,6 +385,23 @@ export function TrenchMortgageCalculatorPage() {
           </a>
         </div>
       </header>
+
+      {sampleIdentifier && !sessionQuery.data?.isAuthenticated ? (
+        <p className="status-notice" role="status">
+          Войдите в аккаунт, чтобы загрузить параметры сохранённого расчёта.
+        </p>
+      ) : null}
+      {sampleQuery.isLoading ? (
+        <p className="status-notice" role="status">
+          Загружаем параметры сохранённого траншевого расчёта…
+        </p>
+      ) : null}
+      {sampleQuery.isError ? (
+        <p className="form-error" role="alert">
+          Сохранённый расчёт не найден или недоступен. Можно заполнить форму
+          вручную.
+        </p>
+      ) : null}
 
       <div className="mortgage-layout">
         <form className="calculator-card" onSubmit={handleSubmit}>
@@ -730,9 +816,11 @@ export function TrenchMortgageCalculatorPage() {
               работать.
             </p>
           ) : null}
-          <a href="/mortgage/trench-calculations/">
+          <Link to={`/mortgage/trench/calculations${
+            customerIdentifier ? `?customerId=${customerIdentifier}` : ''
+          }`}>
             История траншевых расчётов <span aria-hidden="true">→</span>
-          </a>
+          </Link>
         </aside>
       </div>
 
@@ -753,7 +841,10 @@ export function TrenchMortgageCalculatorPage() {
                   {!sessionQuery.data?.isAuthenticated ? (
                     <p>Войдите в аккаунт, чтобы сохранить расчёт.</p>
                   ) : propertyIdentifier ? (
-                    <p>Расчёт будет связан с выбранным объектом недвижимости.</p>
+                    <p>
+                      Расчёт будет связан с выбранным объектом
+                      {customerIdentifier ? ' и карточкой клиента' : ''}.
+                    </p>
                   ) : (
                     <p>Для сохранения сначала выберите объект в каталоге.</p>
                   )}
@@ -772,13 +863,22 @@ export function TrenchMortgageCalculatorPage() {
                       Войти
                     </a>
                   ) : propertyIdentifier && calculationMutation.variables ? (
-                    saveMutation.data ? (
-                      <a
+                    saveMutation.data && customerIdentifier ? (
+                      <Link
                         className="button button--primary"
-                        href={saveMutation.data.legacyDetailUrl}
+                        to={`/customers/${customerIdentifier}`}
+                      >
+                        Открыть карточку клиента
+                      </Link>
+                    ) : saveMutation.data ? (
+                      <Link
+                        className="button button--primary"
+                        to={`/mortgage/trench/calculations/${
+                          saveMutation.data.id
+                        }`}
                       >
                         Открыть сохранённый расчёт
-                      </a>
+                      </Link>
                     ) : (
                       <button
                         className="button button--primary"
@@ -787,6 +887,7 @@ export function TrenchMortgageCalculatorPage() {
                         onClick={() => saveMutation.mutate({
                           propertyId: propertyIdentifier,
                           parameters: calculationMutation.variables,
+                          ...(customerIdentifier ? { customerId: customerIdentifier } : {}),
                         })}
                       >
                         {saveMutation.isPending
@@ -795,7 +896,10 @@ export function TrenchMortgageCalculatorPage() {
                       </button>
                     )
                   ) : (
-                    <Link className="button button--secondary" to="/properties">
+                    <Link
+                      className="button button--secondary"
+                      to={`/properties${customerIdentifier ? `?customerId=${customerIdentifier}` : ''}`}
+                    >
                       Выбрать объект
                     </Link>
                   )}

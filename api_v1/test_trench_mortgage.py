@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import reverse
 
@@ -294,3 +295,210 @@ def test_trench_mortgage_writes_require_csrf_when_checks_are_enabled(
     assert calculate_response.status_code == 403
     assert save_response.status_code == 403
     assert not Trench.objects.exists()
+
+
+@pytest.mark.django_db
+def test_saved_trench_history_supports_search_ordering_and_detail(
+    client,
+    calculation_user,
+    saved_calculation_property,
+):
+    """Return stable owner history and a rebuilt detail schedule."""
+    client.force_login(calculation_user)
+    list_url = reverse('api_v1:saved_trench_mortgage_calculation_create')
+    for annual_rate in ('12.00', '10.00'):
+        response = client.post(
+            list_url,
+            data=build_saved_trench_mortgage_payload(
+                saved_calculation_property,
+                annualRate=annual_rate,
+            ),
+            content_type='application/json',
+        )
+        assert response.status_code == 201
+
+    response = client.get(
+        list_url,
+        {'q': 'Зелёный', 'pageSize': 1, 'ordering': 'annualRate'},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['totalCount'] == 2
+    assert payload['totalPages'] == 2
+    assert payload['results'][0]['annualRate'] == '10.00'
+    assert payload['results'][0]['trenchCount'] == 2
+    assert payload['results'][0]['maximumMonthlyPayment'] is not None
+
+    calculation_identifier = payload['results'][0]['id']
+    detail_response = client.get(
+        reverse(
+            'api_v1:saved_trench_mortgage_calculation_detail',
+            kwargs={'pk': calculation_identifier},
+        )
+    )
+
+    assert detail_response.status_code == 200
+    detail_payload = detail_response.json()
+    assert detail_payload['property']['realEstateComplex'] == (
+        'Зелёный квартал'
+    )
+    assert detail_payload['calculation']['summary']['paymentsCount'] == 24
+    assert len(detail_payload['calculation']['trenches']) == 2
+
+
+@pytest.mark.django_db
+def test_saved_trench_history_and_detail_are_scoped_to_owner(
+    client,
+    calculation_user,
+    saved_calculation_property,
+):
+    """Hide guessed tranche calculation identifiers from other owners."""
+    client.force_login(calculation_user)
+    created_response = client.post(
+        reverse('api_v1:saved_trench_mortgage_calculation_create'),
+        data=build_saved_trench_mortgage_payload(
+            saved_calculation_property
+        ),
+        content_type='application/json',
+    )
+    calculation_identifier = created_response.json()['id']
+    other_user = get_user_model().objects.create_user(
+        email='other-trench-owner@example.com',
+        password='safe-test-password',
+        phone_number='+79991110008',
+    )
+    client.force_login(other_user)
+
+    list_response = client.get(
+        reverse('api_v1:saved_trench_mortgage_calculation_create')
+    )
+    detail_response = client.get(
+        reverse(
+            'api_v1:saved_trench_mortgage_calculation_detail',
+            kwargs={'pk': calculation_identifier},
+        )
+    )
+
+    assert list_response.status_code == 200
+    assert list_response.json()['results'] == []
+    assert detail_response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_saved_trench_history_uses_constant_query_count(
+    client,
+    calculation_user,
+    saved_calculation_property,
+    django_assert_num_queries,
+):
+    """Prefetch tranche rows instead of querying once per history item."""
+    client.force_login(calculation_user)
+    list_url = reverse('api_v1:saved_trench_mortgage_calculation_create')
+    for annual_rate in ('10.00', '11.00', '12.00'):
+        response = client.post(
+            list_url,
+            data=build_saved_trench_mortgage_payload(
+                saved_calculation_property,
+                annualRate=annual_rate,
+            ),
+            content_type='application/json',
+        )
+        assert response.status_code == 201
+
+    with django_assert_num_queries(6):
+        response = client.get(list_url)
+
+    assert response.status_code == 200
+    assert len(response.json()['results']) == 3
+
+
+@pytest.mark.django_db
+def test_saved_trench_owner_can_delete_with_csrf_protection(
+    client,
+    calculation_user,
+    saved_calculation_property,
+):
+    """Delete owned scenarios while rejecting tokenless session writes."""
+    client.force_login(calculation_user)
+    created_response = client.post(
+        reverse('api_v1:saved_trench_mortgage_calculation_create'),
+        data=build_saved_trench_mortgage_payload(
+            saved_calculation_property
+        ),
+        content_type='application/json',
+    )
+    calculation_identifier = created_response.json()['id']
+    detail_url = reverse(
+        'api_v1:saved_trench_mortgage_calculation_detail',
+        kwargs={'pk': calculation_identifier},
+    )
+    csrf_client = Client(enforce_csrf_checks=True)
+    csrf_client.force_login(calculation_user)
+
+    rejected_response = csrf_client.delete(detail_url)
+    deleted_response = client.delete(detail_url)
+
+    assert rejected_response.status_code == 403
+    assert deleted_response.status_code == 204
+    assert not TrenchMortgageCalculation.objects.filter(
+        pk=calculation_identifier
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_saved_trench_exports_are_downloadable_and_owner_scoped(
+    client,
+    calculation_user,
+    saved_calculation_property,
+):
+    """Reuse established exporters without exposing another user's data."""
+    client.force_login(calculation_user)
+    created_response = client.post(
+        reverse('api_v1:saved_trench_mortgage_calculation_create'),
+        data=build_saved_trench_mortgage_payload(
+            saved_calculation_property
+        ),
+        content_type='application/json',
+    )
+    calculation_identifier = created_response.json()['id']
+
+    excel_response = client.get(
+        reverse(
+            'api_v1:saved_trench_mortgage_calculation_export_excel',
+            kwargs={'pk': calculation_identifier},
+        )
+    )
+    word_response = client.get(
+        reverse(
+            'api_v1:saved_trench_mortgage_calculation_export_word',
+            kwargs={'pk': calculation_identifier},
+        )
+    )
+
+    assert excel_response.status_code == 200
+    assert excel_response['Content-Type'] == (
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    assert excel_response.content.startswith(b'PK')
+    assert word_response.status_code == 200
+    assert word_response['Content-Type'] == (
+        'application/vnd.openxmlformats-officedocument.'
+        'wordprocessingml.document'
+    )
+    assert word_response.content.startswith(b'PK')
+
+    other_user = get_user_model().objects.create_user(
+        email='export-trench-owner@example.com',
+        password='safe-test-password',
+        phone_number='+79991110009',
+    )
+    client.force_login(other_user)
+    hidden_response = client.get(
+        reverse(
+            'api_v1:saved_trench_mortgage_calculation_export_excel',
+            kwargs={'pk': calculation_identifier},
+        )
+    )
+
+    assert hidden_response.status_code == 404

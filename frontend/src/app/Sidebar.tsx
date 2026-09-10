@@ -55,6 +55,12 @@ const privateItems: NavigationItem[] = [
     symbol: 'Т',
     reactRoute: true,
   },
+  {
+    label: 'История траншей',
+    href: '/mortgage/trench/calculations',
+    symbol: 'Э',
+    reactRoute: true,
+  },
 ]
 
 function NavigationGroup({ title, items, onNavigate }: NavigationGroupProps) {

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 
 import {
   propertyDetailQueryOptions,
@@ -27,10 +27,19 @@ function formatBuildingPeriod(value: string | null) {
 }
 
 export function PropertyDetailPage() {
+  const [searchParameters] = useSearchParams()
   const { propertyId = '' } = useParams()
   const propertyIdentifier = Number(propertyId)
   const hasValidIdentifier = Number.isInteger(propertyIdentifier)
     && propertyIdentifier > 0
+  const rawCustomerIdentifier = Number(searchParameters.get('customerId'))
+  const customerIdentifier = Number.isInteger(rawCustomerIdentifier)
+    && rawCustomerIdentifier > 0
+    ? rawCustomerIdentifier
+    : null
+  const catalogPath = `/properties${
+    customerIdentifier ? `?customerId=${customerIdentifier}` : ''
+  }`
   const propertyQuery = useQuery({
     ...propertyDetailQueryOptions(propertyIdentifier),
     enabled: hasValidIdentifier,
@@ -68,7 +77,7 @@ export function PropertyDetailPage() {
         title="Объект не найден"
         description="Проверьте адрес или вернитесь к каталогу недвижимости."
         action={(
-          <Link className="button button--secondary" to="/properties">
+          <Link className="button button--secondary" to={catalogPath}>
             К каталогу
           </Link>
         )}
@@ -89,6 +98,7 @@ export function PropertyDetailPage() {
   const mortgagePath = (
     `/mortgage?propertyId=${property.id}`
     + `&propertyCost=${encodeURIComponent(property.propertyCost)}`
+    + (customerIdentifier ? `&customerId=${customerIdentifier}` : '')
   )
 
   return (
@@ -104,7 +114,7 @@ export function PropertyDetailPage() {
           </p>
         </div>
         <div className="page-header__actions">
-          <Link className="button button--secondary" to="/properties">
+          <Link className="button button--secondary" to={catalogPath}>
             К каталогу
           </Link>
           {sessionQuery.data?.capabilities.manageCatalogs ? (

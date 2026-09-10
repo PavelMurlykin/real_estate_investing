@@ -2723,6 +2723,107 @@ select:focus-visible {
   overflow-wrap: anywhere;
 }
 
+.customer-calculations {
+  display: grid;
+  gap: 20px;
+}
+
+.customer-calculations .section-heading,
+.customer-calculations .results-heading {
+  margin-bottom: 0;
+}
+
+.customer-calculations .section-heading p {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.customer-calculation-toolbar {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(150px, 0.35fr) minmax(190px, 0.45fr);
+  gap: 14px;
+  padding: 18px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.customer-calculation-results > div,
+.results-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.customer-calculation-results .button,
+.results-heading > div .button {
+  min-height: 38px;
+  padding: 8px 14px;
+}
+
+.customer-calculation-table td:nth-child(4) strong,
+.customer-calculation-table td:nth-child(4) small {
+  display: block;
+}
+
+.customer-calculation-table td:nth-child(4) small {
+  max-width: 260px;
+  margin-top: 4px;
+  color: var(--text-muted);
+  white-space: normal;
+}
+
+.customer-calculation-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.row-action--button {
+  padding: 0;
+  color: var(--danger);
+  border: 0;
+  cursor: pointer;
+}
+
+.calculation-selection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.calculation-selection input,
+.customer-calculation-table input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--brand);
+}
+
+.text-button {
+  padding: 0;
+  color: var(--brand);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.text-button--danger {
+  color: var(--danger);
+}
+
+.customer-calculations .delete-confirmation h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
 @media (max-width: 1080px) {
   .customer-capacity-card {
     grid-template-columns: 1fr;
@@ -2736,6 +2837,14 @@ select:focus-visible {
   .customer-preferential-card {
     grid-template-columns: 1fr;
     gap: 16px;
+  }
+
+  .customer-calculation-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .customer-calculation-toolbar .search-form {
+    grid-column: 1 / -1;
   }
 }
 
@@ -2751,6 +2860,24 @@ select:focus-visible {
   .customer-preferential-card dl {
     flex-direction: column;
     gap: 12px;
+  }
+
+  .customer-calculation-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-calculation-toolbar .search-form {
+    grid-column: auto;
+  }
+
+  .customer-calculation-results {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .customer-calculation-results,
+  .customer-calculation-results > div {
+    flex-direction: column;
   }
 }
 

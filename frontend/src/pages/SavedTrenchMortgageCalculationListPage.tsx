@@ -5,10 +5,10 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
   linkCustomerCalculations,
-  savedMortgageCalculationListQueryOptions,
+  savedTrenchMortgageCalculationListQueryOptions,
   sessionQueryOptions,
 } from '@/api/queries'
-import type { SavedMortgageCalculationListItem } from '@/api/schemas'
+import type { SavedTrenchMortgageCalculationListItem } from '@/api/schemas'
 import {
   formatCurrency,
   formatDateTime,
@@ -24,19 +24,19 @@ const orderingOptions = [
   { value: 'createdAt', label: 'Сначала старые' },
   { value: 'finalPropertyCost', label: 'Стоимость: по возрастанию' },
   { value: '-finalPropertyCost', label: 'Стоимость: по убыванию' },
-  { value: 'mainMonthlyPayment', label: 'Платёж: по возрастанию' },
-  { value: '-mainMonthlyPayment', label: 'Платёж: по убыванию' },
   { value: 'annualRate', label: 'Ставка: по возрастанию' },
   { value: '-annualRate', label: 'Ставка: по убыванию' },
+  { value: 'trenchCount', label: 'Транши: по возрастанию' },
+  { value: '-trenchCount', label: 'Транши: по убыванию' },
 ]
 
-function CalculationMobileCard({
+function TrenchCalculationMobileCard({
   calculation,
   customerIdentifier,
   isSelected,
   onToggle,
 }: {
-  calculation: SavedMortgageCalculationListItem
+  calculation: SavedTrenchMortgageCalculationListItem
   customerIdentifier: number | null
   isSelected: boolean
   onToggle: () => void
@@ -67,27 +67,39 @@ function CalculationMobileCard({
       <dl>
         <div>
           <dt>Корпус / квартира</dt>
-          <dd>{calculation.property.building} / {calculation.property.apartmentNumber}</dd>
+          <dd>
+            {calculation.property.building} /{' '}
+            {calculation.property.apartmentNumber}
+          </dd>
         </div>
         <div>
-          <dt>Платёж</dt>
+          <dt>Максимальный платёж</dt>
           <dd>
-            {calculation.mainMonthlyPayment
-              ? formatCurrency(calculation.mainMonthlyPayment)
+            {calculation.maximumMonthlyPayment
+              ? formatCurrency(calculation.maximumMonthlyPayment)
               : '—'}
           </dd>
         </div>
-        <div><dt>Срок</dt><dd>{formatMonths(calculation.mortgageTermMonths)}</dd></div>
-        <div><dt>Ставка</dt><dd>{formatPercent(calculation.annualRate)}</dd></div>
+        <div>
+          <dt>Срок</dt>
+          <dd>{formatMonths(calculation.mortgageTermMonths)}</dd>
+        </div>
+        <div>
+          <dt>Траншей</dt>
+          <dd>{calculation.trenchCount}</dd>
+        </div>
       </dl>
-      <Link className="text-link" to={`/mortgage/calculations/${calculation.id}`}>
+      <Link
+        className="text-link"
+        to={`/mortgage/trench/calculations/${calculation.id}`}
+      >
         Открыть расчёт <span aria-hidden="true">→</span>
       </Link>
     </article>
   )
 }
 
-export function SavedMortgageCalculationListPage() {
+export function SavedTrenchMortgageCalculationListPage() {
   const [searchParameters, setSearchParameters] = useSearchParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -100,17 +112,17 @@ export function SavedMortgageCalculationListPage() {
     useState<Set<number>>(() => new Set())
   useDocumentTitle(
     customerIdentifier
-      ? 'Добавление рыночных расчётов'
-      : 'История расчётов ипотеки',
+      ? 'Добавление траншевых расчётов'
+      : 'История траншевой ипотеки',
   )
   const sessionQuery = useQuery(sessionQueryOptions)
   const calculationQuery = useQuery({
-    ...savedMortgageCalculationListQueryOptions(searchParameters),
+    ...savedTrenchMortgageCalculationListQueryOptions(searchParameters),
     enabled: sessionQuery.data?.isAuthenticated === true,
   })
   const linkMutation = useMutation({
     mutationFn: () => linkCustomerCalculations(customerIdentifier ?? 0, {
-      programType: 'market',
+      programType: 'trench',
       calculationIds: Array.from(selectedCalculationIdentifiers),
     }),
     onSuccess: async () => {
@@ -159,16 +171,18 @@ export function SavedMortgageCalculationListPage() {
         <header className="page-header">
           <div>
             <span className="eyebrow">Личный раздел</span>
-            <h1>История расчётов ипотеки</h1>
+            <h1>История траншевой ипотеки</h1>
           </div>
         </header>
         <EmptyState
           title="Войдите, чтобы открыть историю"
-          description="Сохранённые расчёты доступны только владельцу аккаунта."
+          description="Сохранённые траншевые расчёты доступны только владельцу аккаунта."
           action={(
             <a
               className="button button--primary"
-              href={`/users/login/?next=${encodeURIComponent('/app/mortgage/calculations')}`}
+              href={`/users/login/?next=${encodeURIComponent(
+                '/app/mortgage/trench/calculations',
+              )}`}
             >
               Войти
             </a>
@@ -191,11 +205,11 @@ export function SavedMortgageCalculationListPage() {
       <header className="page-header">
         <div>
           <span className="eyebrow">Личный раздел</span>
-          <h1>{customerIdentifier ? 'Добавление рыночных расчётов' : 'История расчётов ипотеки'}</h1>
+          <h1>{customerIdentifier ? 'Добавление траншевых расчётов' : 'История траншевой ипотеки'}</h1>
           <p>
             {customerIdentifier
-              ? 'Выберите сохранённые сценарии, которые нужно связать с карточкой клиента.'
-              : 'Сохранённые сценарии доступны владельцу аккаунта и готовы для повторного анализа.'}
+              ? 'Выберите сохранённые траншевые сценарии для карточки клиента.'
+              : 'Сохранённые сценарии поэтапного финансирования с повторным расчётом и выгрузкой отчётов.'}
           </p>
         </div>
         <div className="page-header__actions">
@@ -204,36 +218,41 @@ export function SavedMortgageCalculationListPage() {
               К клиенту
             </Link>
           ) : (
-            <a className="button button--secondary" href="/mortgage/calculations/">
+            <a
+              className="button button--secondary"
+              href="/mortgage/trench-calculations/"
+            >
               Прежняя версия
             </a>
           )}
-          <Link className="button button--primary" to="/mortgage">
+          <Link className="button button--primary" to="/mortgage/trench">
             Новый расчёт
           </Link>
         </div>
       </header>
 
-      <section className="filter-panel" aria-label="Фильтры истории расчётов">
+      <section className="filter-panel" aria-label="Фильтры траншевой истории">
         <form className="search-form" role="search" onSubmit={handleSearch}>
-          <label htmlFor="calculation-search">Поиск по объекту</label>
+          <label htmlFor="trench-calculation-search">Поиск по объекту</label>
           <div className="search-control">
             <span aria-hidden="true">⌕</span>
             <input
-              id="calculation-search"
+              id="trench-calculation-search"
               name="q"
               type="search"
               key={searchParameters.get('q') ?? ''}
               defaultValue={searchParameters.get('q') ?? ''}
               placeholder="Город, ЖК, корпус или квартира"
             />
-            <button className="button button--dark" type="submit">Найти</button>
+            <button className="button button--dark" type="submit">
+              Найти
+            </button>
           </div>
         </form>
         <div className="sort-control">
-          <label htmlFor="calculation-ordering">Сортировка</label>
+          <label htmlFor="trench-calculation-ordering">Сортировка</label>
           <select
-            id="calculation-ordering"
+            id="trench-calculation-ordering"
             value={ordering}
             onChange={(event) => updateParameters({
               ordering: event.target.value,
@@ -241,14 +260,18 @@ export function SavedMortgageCalculationListPage() {
             })}
           >
             {orderingOptions.map((option) => (
-              <option value={option.value} key={option.value}>{option.label}</option>
+              <option value={option.value} key={option.value}>
+                {option.label}
+              </option>
             ))}
           </select>
         </div>
       </section>
 
       <div className="results-heading" aria-live="polite">
-        <p>Сохранено расчётов: <strong>{formatInteger(totalCount)}</strong></p>
+        <p>
+          Сохранено расчётов: <strong>{formatInteger(totalCount)}</strong>
+        </p>
         {customerIdentifier ? (
           <div>
             <span>Выбрано: {selectedCalculationIdentifiers.size}</span>
@@ -274,7 +297,7 @@ export function SavedMortgageCalculationListPage() {
           title="Сохранённых расчётов пока нет"
           description={searchParameters.get('q')
             ? 'По вашему запросу ничего не найдено.'
-            : 'Выберите объект, рассчитайте ипотеку и сохраните результат.'}
+            : 'Выберите объект, рассчитайте траншевую ипотеку и сохраните результат.'}
           action={searchParameters.get('q') ? (
             <button
               className="button button--secondary"
@@ -295,7 +318,9 @@ export function SavedMortgageCalculationListPage() {
         <>
           <div className="table-card property-table-wrapper">
             <table className="property-table calculation-table">
-              <caption className="visually-hidden">История ипотечных расчётов</caption>
+              <caption className="visually-hidden">
+                История траншевых ипотечных расчётов
+              </caption>
               <thead>
                 <tr>
                   {customerIdentifier ? <th scope="col"><span className="visually-hidden">Выбор</span></th> : null}
@@ -304,10 +329,12 @@ export function SavedMortgageCalculationListPage() {
                   <th scope="col">Объект</th>
                   <th scope="col">Стоимость</th>
                   <th scope="col">Первый взнос</th>
-                  <th scope="col">Платёж</th>
+                  <th scope="col">Макс. платёж</th>
                   <th scope="col">Срок</th>
-                  <th scope="col">Ставка</th>
-                  <th scope="col"><span className="visually-hidden">Действия</span></th>
+                  <th scope="col">Ставка / транши</th>
+                  <th scope="col">
+                    <span className="visually-hidden">Действия</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -330,24 +357,32 @@ export function SavedMortgageCalculationListPage() {
                     <td>{calculation.property.city}</td>
                     <td>
                       <strong>{calculation.property.realEstateComplex}</strong>
-                      <small>корп. {calculation.property.building}, кв. {calculation.property.apartmentNumber}</small>
+                      <small>
+                        корп. {calculation.property.building}, кв.{' '}
+                        {calculation.property.apartmentNumber}
+                      </small>
                     </td>
                     <td>{formatCurrency(calculation.finalPropertyCost)}</td>
                     <td>{formatCurrency(calculation.initialPaymentRubles)}</td>
                     <td>
                       <strong>
-                        {calculation.mainMonthlyPayment
-                          ? formatCurrency(calculation.mainMonthlyPayment)
+                        {calculation.maximumMonthlyPayment
+                          ? formatCurrency(calculation.maximumMonthlyPayment)
                           : '—'}
                       </strong>
                     </td>
                     <td>{formatMonths(calculation.mortgageTermMonths)}</td>
-                    <td>{formatPercent(calculation.annualRate)}</td>
+                    <td>
+                      {formatPercent(calculation.annualRate)}
+                      <small>{calculation.trenchCount} транша</small>
+                    </td>
                     <td>
                       <Link
                         className="row-action"
-                        to={`/mortgage/calculations/${calculation.id}`}
-                        aria-label={`Открыть расчёт от ${formatDateTime(calculation.createdAt)}`}
+                        to={`/mortgage/trench/calculations/${calculation.id}`}
+                        aria-label={`Открыть расчёт от ${formatDateTime(
+                          calculation.createdAt,
+                        )}`}
                       >
                         →
                       </Link>
@@ -359,7 +394,7 @@ export function SavedMortgageCalculationListPage() {
           </div>
           <div className="property-mobile-list">
             {results.map((calculation) => (
-              <CalculationMobileCard
+              <TrenchCalculationMobileCard
                 calculation={calculation}
                 customerIdentifier={customerIdentifier}
                 isSelected={selectedCalculationIdentifiers.has(calculation.id)}
@@ -372,7 +407,7 @@ export function SavedMortgageCalculationListPage() {
       )}
 
       {totalPages > 1 ? (
-        <nav className="pagination" aria-label="Страницы истории расчётов">
+        <nav className="pagination" aria-label="Страницы траншевой истории">
           <button
             type="button"
             disabled={page <= 1}
@@ -380,7 +415,9 @@ export function SavedMortgageCalculationListPage() {
           >
             <span aria-hidden="true">←</span> Назад
           </button>
-          <span>Страница <strong>{page}</strong> из {totalPages}</span>
+          <span>
+            Страница <strong>{page}</strong> из {totalPages}
+          </span>
           <button
             type="button"
             disabled={page >= totalPages}
