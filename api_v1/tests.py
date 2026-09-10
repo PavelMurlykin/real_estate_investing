@@ -768,6 +768,241 @@ def test_company_group_mutations_require_csrf():
 
 
 @pytest.mark.django_db
+def test_developer_list_api_is_public_filtered_and_hides_sensitive_fields(
+    client,
+    property_catalog,
+    django_assert_num_queries,
+):
+    """Return a bounded public directory without addresses or requisites."""
+    property_object, _ = property_catalog
+    developer = property_object.building.real_estate_complex.developer
+    region = property_object.building.real_estate_complex.district.city.region
+    developer.regions.add(region)
+    Developer.objects.create(name='Южный девелопер', is_active=False)
+
+    with django_assert_num_queries(3):
+        response = client.get(
+            reverse('api_v1:developer_list'),
+            {
+                'q': 'Север',
+                'companyGroupId': developer.company_group_id,
+                'regionId': region.pk,
+                'status': 'active',
+                'pageSize': 10,
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['totalCount'] == 1
+    assert payload['results'] == [
+        {
+            'id': developer.pk,
+            'name': 'Северный девелопер',
+            'companyGroup': {
+                'id': developer.company_group_id,
+                'name': 'Группа Север',
+            },
+            'regions': [{'id': region.pk, 'name': 'Тестовый регион'}],
+            'complexCount': 1,
+            'isActive': True,
+        }
+    ]
+    assert 'legalAddress' not in payload['results'][0]
+    assert 'taxpayerIdentificationNumber' not in payload['results'][0]
+
+
+@pytest.mark.django_db
+def test_developer_detail_api_requires_catalog_management_permission(
+    client,
+    property_catalog,
+):
+    """Keep addresses and requisites behind catalog management permission."""
+    property_object, _ = property_catalog
+    developer = property_object.building.real_estate_complex.developer
+    developer.legal_address = 'Невский проспект, 1'
+    developer.taxpayer_identification_number = '7812345678'
+    developer.save(
+        update_fields=('legal_address', 'taxpayer_identification_number')
+    )
+    detail_url = reverse(
+        'api_v1:developer_detail',
+        kwargs={'pk': developer.pk},
+    )
+
+    anonymous_response = client.get(detail_url)
+    regular_user = get_user_model().objects.create_user(
+        email='developer-reader@example.com',
+        password='safe-test-password',
+        phone_number='+79990000006',
+    )
+    client.force_login(regular_user)
+    forbidden_response = client.get(detail_url)
+    client.force_login(create_catalog_manager())
+    manager_response = client.get(detail_url)
+
+    assert anonymous_response.status_code == 403
+    assert forbidden_response.status_code == 403
+    assert manager_response.status_code == 200
+    assert manager_response.json()['legalAddress'] == 'Невский проспект, 1'
+    assert (
+        manager_response.json()['taxpayerIdentificationNumber']
+        == '7812345678'
+    )
+
+
+@pytest.mark.django_db
+def test_developer_options_api_returns_bounded_public_dictionaries(
+    client,
+    property_catalog,
+    django_assert_num_queries,
+):
+    """Provide only bounded company group and region selector data."""
+    property_object, _ = property_catalog
+    company_group = (
+        property_object.building.real_estate_complex.developer.company_group
+    )
+    region = property_object.building.real_estate_complex.district.city.region
+
+    with django_assert_num_queries(2):
+        response = client.get(reverse('api_v1:developer_options'))
+
+    assert response.status_code == 200
+    assert response.json() == {
+        'companyGroups': [{'id': company_group.pk, 'name': 'Группа Север'}],
+        'regions': [{'id': region.pk, 'name': 'Тестовый регион'}],
+        'truncated': {
+            'companyGroups': False,
+            'regions': False,
+        },
+    }
+
+
+@pytest.mark.django_db
+def test_developer_api_supports_manager_create_update_and_delete(
+    client,
+    property_catalog,
+):
+    """A catalog manager should complete the developer CRUD workflow."""
+    property_object, _ = property_catalog
+    company_group = (
+        property_object.building.real_estate_complex.developer.company_group
+    )
+    region = property_object.building.real_estate_complex.district.city.region
+    client.force_login(create_catalog_manager())
+
+    create_response = client.post(
+        reverse('api_v1:developer_list'),
+        data={
+            'name': 'Новый застройщик',
+            'companyGroupId': company_group.pk,
+            'regionIds': [region.pk],
+            'legalAddress': 'Юридический адрес',
+            'actualAddress': 'Фактический адрес',
+            'taxpayerIdentificationNumber': '7812345678',
+            'taxRegistrationReasonCode': '781201001',
+            'primaryStateRegistrationNumber': '1234567890123',
+            'description': 'Описание',
+            'isActive': True,
+        },
+        content_type='application/json',
+    )
+
+    assert create_response.status_code == 201
+    developer_identifier = create_response.json()['id']
+    assert create_response.json()['regions'] == [
+        {'id': region.pk, 'name': 'Тестовый регион'}
+    ]
+    developer = Developer.objects.get(pk=developer_identifier)
+    assert developer.company_group == company_group
+    assert list(developer.regions.all()) == [region]
+
+    update_response = client.patch(
+        reverse(
+            'api_v1:developer_detail',
+            kwargs={'pk': developer_identifier},
+        ),
+        data={
+            'name': 'Обновлённый застройщик',
+            'companyGroupId': None,
+            'regionIds': [],
+            'isActive': False,
+        },
+        content_type='application/json',
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()['name'] == 'Обновлённый застройщик'
+    assert update_response.json()['companyGroup'] is None
+    assert update_response.json()['regions'] == []
+    assert update_response.json()['isActive'] is False
+
+    delete_response = client.delete(
+        reverse(
+            'api_v1:developer_detail',
+            kwargs={'pk': developer_identifier},
+        )
+    )
+    assert delete_response.status_code == 204
+    assert not Developer.objects.filter(pk=developer_identifier).exists()
+
+
+@pytest.mark.django_db
+def test_developer_api_rejects_invalid_permissions_and_protected_delete(
+    client,
+    property_catalog,
+):
+    """Reject unauthorized writes, duplicates, and deletion of used entries."""
+    property_object, _ = property_catalog
+    developer = property_object.building.real_estate_complex.developer
+    regular_user = get_user_model().objects.create_user(
+        email='developer-writer@example.com',
+        password='safe-test-password',
+        phone_number='+79990000005',
+    )
+    client.force_login(regular_user)
+    forbidden_response = client.post(
+        reverse('api_v1:developer_list'),
+        data={'name': 'Запрещённый застройщик'},
+        content_type='application/json',
+    )
+
+    client.force_login(create_catalog_manager())
+    duplicate_response = client.post(
+        reverse('api_v1:developer_list'),
+        data={'name': developer.name},
+        content_type='application/json',
+    )
+    protected_response = client.delete(
+        reverse(
+            'api_v1:developer_detail',
+            kwargs={'pk': developer.pk},
+        )
+    )
+
+    assert forbidden_response.status_code == 403
+    assert duplicate_response.status_code == 400
+    assert 'name' in duplicate_response.json()
+    assert protected_response.status_code == 409
+    assert 'жилые комплексы' in protected_response.json()['detail']
+
+
+@pytest.mark.django_db
+def test_developer_mutations_require_csrf():
+    """Require a CSRF token for session-authenticated developer writes."""
+    csrf_client = Client(enforce_csrf_checks=True)
+    csrf_client.force_login(create_catalog_manager())
+
+    response = csrf_client.post(
+        reverse('api_v1:developer_list'),
+        data={'name': 'Без CSRF'},
+        content_type='application/json',
+    )
+
+    assert response.status_code == 403
+    assert not Developer.objects.filter(name='Без CSRF').exists()
+
+
+@pytest.mark.django_db
 def test_overview_api_returns_counts_and_bounded_recent_properties(
     client,
     property_catalog,

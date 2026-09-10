@@ -30,7 +30,12 @@ const realEstateItems: NavigationItem[] = [
     symbol: 'Г',
     reactRoute: true,
   },
-  { label: 'Застройщики', href: '/property/developers/', symbol: 'З' },
+  {
+    label: 'Застройщики',
+    href: '/developers',
+    symbol: 'З',
+    reactRoute: true,
+  },
   { label: 'Жилые комплексы', href: '/property/complexes/', symbol: 'Ж' },
   { label: 'Справочники объектов', href: '/property/dictionaries/', symbol: 'О' },
 ]

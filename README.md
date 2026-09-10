@@ -52,19 +52,25 @@ React. Карточка клиента объединяет связанные �
 Word и удалить после явного подтверждения. Публичный справочник групп компаний
 также перенесён в React: доступны поиск, сортировка, пагинация и защищённые
 операции создания, редактирования и удаления для модераторов каталога.
+Справочник застройщиков перенесён вместе с фильтрами, регионами работы,
+привязкой к группе компаний и полным циклом управления. Адреса и реквизиты в
+новом API доступны только модераторам, а публичный список содержит только
+справочные поля. Импорт ЕРЗ на этом этапе остаётся в сохранённом
+Django-интерфейсе.
 React-маршруты доступны по
 адресам /app/, /app/properties, /app/properties/new,
 /app/properties/:id, /app/properties/:id/edit, /app/customers,
 /app/customers/new, /app/customers/:id, /app/customers/:id/edit,
 /app/company-groups, /app/company-groups/new, /app/company-groups/:id/edit,
+/app/developers, /app/developers/new, /app/developers/:id/edit,
 /app/mortgage, /app/mortgage/trench, /app/mortgage/calculations,
 /app/mortgage/calculations/:id, /app/mortgage/trench/calculations и
 /app/mortgage/trench/calculations/:id.
 API имеет версию /api/v1/ и использует текущие Django session authentication,
 CSRF-защиту, правила доступа и PostgreSQL. Старые формы, обработчики и шаблоны
-объектов, клиентов, групп компаний и ипотеки не удалены: Django-версии остаются
-резервным интерфейсом для проверки функционального паритета до завершения
-миграции.
+объектов, клиентов, групп компаний, застройщиков и ипотеки не удалены:
+Django-версии остаются резервным интерфейсом для проверки функционального
+паритета до завершения миграции.
 
 Установить зависимости и запустить frontend для разработки:
 

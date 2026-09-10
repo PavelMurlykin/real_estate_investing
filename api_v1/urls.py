@@ -3,6 +3,9 @@ from django.urls import path
 from .views import (
     CompanyGroupDetailAPIView,
     CompanyGroupListCreateAPIView,
+    DeveloperDetailAPIView,
+    DeveloperListCreateAPIView,
+    DeveloperOptionsAPIView,
     CustomerDetailAPIView,
     CustomerCalculationLinkDetailAPIView,
     CustomerCalculationListCreateAPIView,
@@ -43,6 +46,21 @@ urlpatterns = [
         'company-groups/<int:pk>/',
         CompanyGroupDetailAPIView.as_view(),
         name='company_group_detail',
+    ),
+    path(
+        'developers/',
+        DeveloperListCreateAPIView.as_view(),
+        name='developer_list',
+    ),
+    path(
+        'developers/options/',
+        DeveloperOptionsAPIView.as_view(),
+        name='developer_options',
+    ),
+    path(
+        'developers/<int:pk>/',
+        DeveloperDetailAPIView.as_view(),
+        name='developer_detail',
     ),
     path('customers/', CustomerListAPIView.as_view(), name='customer_list'),
     path(

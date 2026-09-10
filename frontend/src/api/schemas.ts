@@ -140,6 +140,45 @@ const namedOptionSchema = z.object({
   name: z.string(),
 })
 
+export const developerPublicSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  companyGroup: namedOptionSchema.nullable(),
+  regions: z.array(namedOptionSchema),
+  complexCount: z.number().int().nonnegative(),
+  isActive: z.boolean(),
+})
+
+export const developerSchema = developerPublicSchema.extend({
+  description: z.string().nullable(),
+  legalAddress: z.string().nullable(),
+  actualAddress: z.string().nullable(),
+  taxpayerIdentificationNumber: z.string().nullable(),
+  taxRegistrationReasonCode: z.string().nullable(),
+  primaryStateRegistrationNumber: z.string().nullable(),
+  createdAt: z.iso.datetime({ offset: true }),
+  updatedAt: z.iso.datetime({ offset: true }),
+  legacyEditUrl: z.string(),
+  legacyDeleteUrl: z.string(),
+})
+
+export const developerListResponseSchema = z.object({
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  totalCount: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  results: z.array(developerPublicSchema),
+})
+
+export const developerOptionsSchema = z.object({
+  companyGroups: z.array(namedOptionSchema),
+  regions: z.array(namedOptionSchema),
+  truncated: z.object({
+    companyGroups: z.boolean(),
+    regions: z.boolean(),
+  }),
+})
+
 export const customerFormOptionsSchema = z.object({
   cities: z.array(namedOptionSchema),
   districts: z.array(namedOptionSchema),
@@ -553,6 +592,12 @@ export type CompanyGroup = z.infer<typeof companyGroupSchema>
 export type CompanyGroupListResponse = z.infer<
   typeof companyGroupListResponseSchema
 >
+export type DeveloperPublic = z.infer<typeof developerPublicSchema>
+export type Developer = z.infer<typeof developerSchema>
+export type DeveloperListResponse = z.infer<
+  typeof developerListResponseSchema
+>
+export type DeveloperOptions = z.infer<typeof developerOptionsSchema>
 export type CustomerListItem = z.infer<typeof customerListItemSchema>
 export type CustomerListResponse = z.infer<typeof customerListResponseSchema>
 export type CustomerDetail = z.infer<typeof customerDetailSchema>
@@ -617,4 +662,17 @@ export type CustomerWriteRequest = {
   desiredFloor: string
   cardinalDirections: string[]
   comment: string
+}
+
+export type DeveloperWriteRequest = {
+  name: string
+  companyGroupId: number | null
+  regionIds: number[]
+  legalAddress: string | null
+  actualAddress: string | null
+  taxpayerIdentificationNumber: string | null
+  taxRegistrationReasonCode: string | null
+  primaryStateRegistrationNumber: string | null
+  description: string | null
+  isActive: boolean
 }

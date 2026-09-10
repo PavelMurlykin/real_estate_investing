@@ -9,11 +9,12 @@ from rest_framework import serializers
 
 from bank.models import MortgageProgram
 from customer.models import Customer
-from location.models import City, District
+from location.models import City, District, Region
 from property.models import (
     ApartmentDecoration,
     ApartmentLayout,
     CompanyGroup,
+    Developer,
     Property,
     RealEstateComplexBuilding,
     WindowView,
@@ -121,6 +122,179 @@ class CompanyGroupSerializer(serializers.ModelSerializer):
         return reverse(
             'property:company_group_delete',
             kwargs={'pk': company_group.pk},
+        )
+
+
+class DeveloperListQuerySerializer(serializers.Serializer):
+    """Validate URL-driven developer filters and pagination."""
+
+    q = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=100,
+        trim_whitespace=True,
+    )
+    companyGroupId = serializers.IntegerField(required=False, min_value=1)
+    regionId = serializers.IntegerField(required=False, min_value=1)
+    status = serializers.ChoiceField(
+        required=False,
+        choices=('all', 'active', 'inactive'),
+        default='all',
+    )
+    ordering = serializers.ChoiceField(
+        required=False,
+        choices=(
+            'name',
+            '-name',
+            'companyGroup',
+            '-companyGroup',
+            'createdAt',
+            '-createdAt',
+        ),
+        default='name',
+    )
+    page = serializers.IntegerField(required=False, min_value=1, default=1)
+    pageSize = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=100,
+        default=20,
+    )
+
+
+class DeveloperPublicSerializer(serializers.ModelSerializer):
+    """Serialize the non-sensitive developer directory fields."""
+
+    companyGroup = serializers.SerializerMethodField(
+        method_name='get_company_group'
+    )
+    regions = serializers.SerializerMethodField(method_name='get_regions')
+    complexCount = serializers.IntegerField(
+        source='complex_count',
+        read_only=True,
+    )
+    isActive = serializers.BooleanField(source='is_active', read_only=True)
+
+    class Meta:
+        """Define the public developer list contract."""
+
+        model = Developer
+        fields = (
+            'id',
+            'name',
+            'companyGroup',
+            'regions',
+            'complexCount',
+            'isActive',
+        )
+
+    def get_company_group(self, developer):
+        """Return the optional company group without another query."""
+        if not developer.company_group_id:
+            return None
+        return {
+            'id': developer.company_group_id,
+            'name': developer.company_group.name,
+        }
+
+    def get_regions(self, developer):
+        """Return prefetched developer regions in deterministic order."""
+        return [
+            {'id': region.pk, 'name': region.name}
+            for region in sorted(
+                developer.regions.all(),
+                key=lambda region: (region.name, region.pk),
+            )
+        ]
+
+
+class DeveloperSerializer(DeveloperPublicSerializer):
+    """Validate mutations and expose full data only to catalog managers."""
+
+    companyGroupId = serializers.PrimaryKeyRelatedField(
+        source='company_group',
+        queryset=CompanyGroup.objects.order_by('name', 'pk'),
+        allow_null=True,
+        required=False,
+        write_only=True,
+    )
+    regionIds = serializers.PrimaryKeyRelatedField(
+        source='regions',
+        queryset=Region.objects.order_by('name', 'pk'),
+        many=True,
+        required=False,
+        write_only=True,
+    )
+    legalAddress = serializers.CharField(
+        source='legal_address',
+        allow_blank=True,
+        allow_null=True,
+        required=False,
+    )
+    actualAddress = serializers.CharField(
+        source='actual_address',
+        allow_blank=True,
+        allow_null=True,
+        required=False,
+    )
+    taxpayerIdentificationNumber = serializers.CharField(
+        source='taxpayer_identification_number',
+        allow_blank=True,
+        allow_null=True,
+        required=False,
+    )
+    taxRegistrationReasonCode = serializers.CharField(
+        source='tax_registration_reason_code',
+        allow_blank=True,
+        allow_null=True,
+        required=False,
+    )
+    primaryStateRegistrationNumber = serializers.CharField(
+        source='primary_state_registration_number',
+        allow_blank=True,
+        allow_null=True,
+        required=False,
+    )
+    isActive = serializers.BooleanField(source='is_active', required=False)
+    createdAt = serializers.DateTimeField(source='created_at', read_only=True)
+    updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
+    legacyEditUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_edit_url'
+    )
+    legacyDeleteUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_delete_url'
+    )
+
+    class Meta(DeveloperPublicSerializer.Meta):
+        """Define the manager-only developer detail contract."""
+
+        fields = DeveloperPublicSerializer.Meta.fields + (
+            'description',
+            'companyGroupId',
+            'regionIds',
+            'legalAddress',
+            'actualAddress',
+            'taxpayerIdentificationNumber',
+            'taxRegistrationReasonCode',
+            'primaryStateRegistrationNumber',
+            'createdAt',
+            'updatedAt',
+            'legacyEditUrl',
+            'legacyDeleteUrl',
+        )
+
+    def get_legacy_edit_url(self, developer):
+        """Return the preserved Django developer edit form URL."""
+        return reverse(
+            'property:developer_update',
+            kwargs={'pk': developer.pk},
+        )
+
+    def get_legacy_delete_url(self, developer):
+        """Return the preserved Django developer delete form URL."""
+        return reverse(
+            'property:developer_delete',
+            kwargs={'pk': developer.pk},
         )
 
 

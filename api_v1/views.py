@@ -84,6 +84,9 @@ from .pagination import ApplicationPageNumberPagination
 from .serializers import (
     CompanyGroupListQuerySerializer,
     CompanyGroupSerializer,
+    DeveloperListQuerySerializer,
+    DeveloperPublicSerializer,
+    DeveloperSerializer,
     CustomerDetailSerializer,
     CustomerCalculationExportRequestSerializer,
     CustomerCalculationLinkCreateSerializer,
@@ -854,6 +857,158 @@ class CompanyGroupDetailAPIView(RetrieveUpdateDestroyAPIView):
                 status=status.HTTP_409_CONFLICT,
             )
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def _developer_queryset():
+    """Return developers with all data needed by their API representation."""
+    return (
+        Developer.objects.select_related('company_group')
+        .prefetch_related('regions')
+        .annotate(
+            complex_count=Count('realestatecomplex', distinct=True)
+        )
+    )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class DeveloperListCreateAPIView(ListCreateAPIView):
+    """List safe developer fields and let moderators create entries."""
+
+    pagination_class = ApplicationPageNumberPagination
+    ordering_fields = {
+        'name': 'name',
+        'companyGroup': 'company_group__name',
+        'createdAt': 'created_at',
+    }
+
+    def get_permissions(self):
+        """Keep safe directory reads public and protect creation."""
+        if self.request.method == 'GET':
+            return (AllowAny(),)
+        return (IsAuthenticated(), CanManageCatalogs())
+
+    def get_serializer_class(self):
+        """Keep sensitive developer fields out of public list responses."""
+        if self.request.method == 'GET':
+            return DeveloperPublicSerializer
+        return DeveloperSerializer
+
+    def get_queryset(self):
+        """Apply validated public filters and deterministic ordering."""
+        query_serializer = DeveloperListQuerySerializer(
+            data=self.request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        filters = query_serializer.validated_data
+        queryset = _developer_queryset()
+
+        search = filters.get('q', '')
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search)
+                | Q(company_group__name__icontains=search)
+            )
+        if filters.get('companyGroupId'):
+            queryset = queryset.filter(
+                company_group_id=filters['companyGroupId']
+            )
+        if filters.get('regionId'):
+            queryset = queryset.filter(regions__id=filters['regionId'])
+        if filters['status'] != 'all':
+            queryset = queryset.filter(
+                is_active=filters['status'] == 'active'
+            )
+
+        ordering = filters['ordering']
+        ordering_prefix = '-' if ordering.startswith('-') else ''
+        ordering_key = ordering.removeprefix('-')
+        ordering_field = self.ordering_fields[ordering_key]
+        return queryset.order_by(
+            f'{ordering_prefix}{ordering_field}',
+            'name',
+            'pk',
+        )
+
+    def create(self, request, *args, **kwargs):
+        """Create a developer and return its manager-only representation."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            developer = serializer.save()
+        developer = _developer_queryset().get(pk=developer.pk)
+        return Response(
+            self.get_serializer(developer).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class DeveloperDetailAPIView(RetrieveUpdateDestroyAPIView):
+    """Expose full developer data only to catalog managers."""
+
+    serializer_class = DeveloperSerializer
+    queryset = _developer_queryset()
+    permission_classes = (IsAuthenticated, CanManageCatalogs)
+
+    def update(self, request, *args, **kwargs):
+        """Update a developer and return its complete representation."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=partial,
+        )
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            developer = serializer.save()
+        developer = _developer_queryset().get(pk=developer.pk)
+        return Response(self.get_serializer(developer).data)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete an unused developer or explain its protected dependency."""
+        instance = self.get_object()
+        try:
+            instance.delete()
+        except ProtectedError:
+            return Response(
+                {
+                    'detail': (
+                        'Застройщика нельзя удалить, пока с ним связаны '
+                        'жилые комплексы.'
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class DeveloperOptionsAPIView(APIView):
+    """Return bounded non-sensitive dictionaries for developer screens."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request):
+        """Return company groups and regions with truncation metadata."""
+        maximum_results = settings.PUBLIC_CATALOG_API_MAX_RESULTS
+        company_groups, company_groups_truncated = _build_bounded_option_rows(
+            CompanyGroup.objects.order_by('name', 'pk'),
+            maximum_results,
+        )
+        regions, regions_truncated = _build_bounded_option_rows(
+            Region.objects.order_by('name', 'pk'),
+            maximum_results,
+        )
+        return Response(
+            {
+                'companyGroups': company_groups,
+                'regions': regions,
+                'truncated': {
+                    'companyGroups': company_groups_truncated,
+                    'regions': regions_truncated,
+                },
+            }
+        )
 
 
 def _property_detail_queryset():

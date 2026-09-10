@@ -23,6 +23,12 @@ const CompanyGroupListPage = lazy(async () => ({
 const CompanyGroupFormPage = lazy(async () => ({
   default: (await import('@/pages/CompanyGroupFormPage')).CompanyGroupFormPage,
 }))
+const DeveloperListPage = lazy(async () => ({
+  default: (await import('@/pages/DeveloperListPage')).DeveloperListPage,
+}))
+const DeveloperFormPage = lazy(async () => ({
+  default: (await import('@/pages/DeveloperFormPage')).DeveloperFormPage,
+}))
 const CustomerListPage = lazy(async () => ({
   default: (await import('@/pages/CustomerListPage')).CustomerListPage,
 }))
@@ -86,6 +92,12 @@ export function App() {
           <Route
             path="company-groups/:companyGroupId/edit"
             element={<CompanyGroupFormPage />}
+          />
+          <Route path="developers" element={<DeveloperListPage />} />
+          <Route path="developers/new" element={<DeveloperFormPage />} />
+          <Route
+            path="developers/:developerId/edit"
+            element={<DeveloperFormPage />}
           />
           <Route path="customers" element={<CustomerListPage />} />
           <Route path="customers/new" element={<CustomerFormPage />} />

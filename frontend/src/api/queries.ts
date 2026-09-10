@@ -10,6 +10,9 @@ import {
   customerFormOptionsSchema,
   customerListResponseSchema,
   customerMutationResponseSchema,
+  developerListResponseSchema,
+  developerOptionsSchema,
+  developerSchema,
   mortgageCalculationResponseSchema,
   mortgageOptionsSchema,
   overviewSchema,
@@ -29,6 +32,7 @@ import type {
   CustomerCalculationSelection,
   CustomerCalculationProgramType,
   CustomerWriteRequest,
+  DeveloperWriteRequest,
   MortgageCalculationRequest,
   SavedMortgageCalculationCreateRequest,
   SavedTrenchMortgageCalculationCreateRequest,
@@ -113,6 +117,86 @@ export function updateCompanyGroup(
 export function deleteCompanyGroup(companyGroupIdentifier: number) {
   return requestWithoutResponse(
     `/api/v1/company-groups/${companyGroupIdentifier}/`,
+    { method: 'DELETE' },
+  )
+}
+
+export function developerListQueryOptions(
+  searchParameters: URLSearchParams,
+) {
+  const normalizedParameters = new URLSearchParams()
+  for (const fieldName of [
+    'q',
+    'companyGroupId',
+    'regionId',
+    'status',
+    'ordering',
+    'page',
+    'pageSize',
+  ]) {
+    const value = searchParameters.get(fieldName)
+    if (value) normalizedParameters.set(fieldName, value)
+  }
+  const queryString = normalizedParameters.toString()
+
+  return queryOptions({
+    queryKey: ['developers', queryString],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/developers/${queryString ? `?${queryString}` : ''}`,
+      developerListResponseSchema,
+      { signal },
+    ),
+    placeholderData: (previousData) => previousData,
+    staleTime: 30_000,
+  })
+}
+
+export const developerOptionsQueryOptions = queryOptions({
+  queryKey: ['developer-options'],
+  queryFn: ({ signal }) => requestJson(
+    '/api/v1/developers/options/',
+    developerOptionsSchema,
+    { signal },
+  ),
+  staleTime: 5 * 60_000,
+})
+
+export function developerDetailQueryOptions(developerIdentifier: number) {
+  return queryOptions({
+    queryKey: ['developer', developerIdentifier],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/developers/${developerIdentifier}/`,
+      developerSchema,
+      { signal },
+    ),
+    staleTime: 60_000,
+  })
+}
+
+export function createDeveloper(payload: DeveloperWriteRequest) {
+  return requestJson('/api/v1/developers/', developerSchema, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function updateDeveloper(
+  developerIdentifier: number,
+  payload: DeveloperWriteRequest,
+) {
+  return requestJson(
+    `/api/v1/developers/${developerIdentifier}/`,
+    developerSchema,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    },
+  )
+}
+
+export function deleteDeveloper(developerIdentifier: number) {
+  return requestWithoutResponse(
+    `/api/v1/developers/${developerIdentifier}/`,
     { method: 'DELETE' },
   )
 }
