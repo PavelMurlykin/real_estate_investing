@@ -105,9 +105,12 @@ export function CustomerDetailPage() {
           <Link className="button button--secondary" to="/customers">
             К списку
           </Link>
-          <a className="button button--secondary" href={customer.legacyEditUrl}>
+          <Link
+            className="button button--secondary"
+            to={`/customers/${customer.id}/edit`}
+          >
             Редактировать
-          </a>
+          </Link>
           <a className="button button--danger" href={customer.legacyDeleteUrl}>
             Удалить
           </a>

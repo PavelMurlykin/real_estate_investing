@@ -1,12 +1,16 @@
+from copy import copy
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import URLValidator
+from django.db import transaction
 from django.urls import reverse
 from rest_framework import serializers
 
+from bank.models import MortgageProgram
 from customer.models import Customer
-from property.models import Property
+from location.models import City, District
+from property.models import ApartmentLayout, Property
 
 from .customer_service import build_customer_financial_capacity
 
@@ -46,6 +50,317 @@ class CustomerListQuerySerializer(serializers.Serializer):
         max_value=100,
         default=20,
     )
+
+
+class CustomerFormOptionsQuerySerializer(serializers.Serializer):
+    """Validate the city used to load a bounded district list."""
+
+    desiredCity = serializers.IntegerField(required=False, min_value=1)
+
+
+class CustomerWriteSerializer(serializers.ModelSerializer):
+    """Validate and atomically persist a customer form payload."""
+
+    MODEL_TO_API_FIELD_NAMES = {
+        'first_name': 'firstName',
+        'last_name': 'lastName',
+        'birth_date': 'birthDate',
+        'birth_year': 'birthYear',
+        'residence_city': 'residenceCityId',
+        'initial_payment_amount': 'initialPaymentAmount',
+        'max_monthly_payment': 'maximumMonthlyPayment',
+        'has_owned_property': 'hasOwnedProperty',
+        'purchase_goal': 'purchaseGoal',
+        'desired_city': 'desiredCityId',
+        'desired_district': 'desiredDistrictId',
+        'area_min': 'areaMinimum',
+        'area_max': 'areaMaximum',
+        'desired_floor': 'desiredFloor',
+        'cardinal_directions': 'cardinalDirections',
+    }
+    NORMALIZED_FIELD_NAMES = (
+        'first_name',
+        'last_name',
+        'phone',
+        'email',
+        'age',
+        'birth_date',
+        'birth_year',
+        'residence_city',
+        'initial_payment_amount',
+        'max_monthly_payment',
+        'has_owned_property',
+        'purchase_goal',
+        'desired_city',
+        'desired_district',
+        'area_min',
+        'area_max',
+        'desired_floor',
+        'cardinal_directions',
+        'comment',
+    )
+
+    firstName = serializers.CharField(
+        source='first_name',
+        max_length=150,
+        trim_whitespace=True,
+        write_only=True,
+        error_messages={'blank': 'Поле "Имя" обязательно для заполнения.'},
+    )
+    lastName = serializers.CharField(
+        source='last_name',
+        max_length=150,
+        required=False,
+        allow_blank=True,
+        trim_whitespace=True,
+        write_only=True,
+    )
+    phone = serializers.CharField(
+        max_length=30,
+        required=False,
+        allow_blank=True,
+        trim_whitespace=True,
+        write_only=True,
+    )
+    email = serializers.EmailField(
+        required=False,
+        allow_blank=True,
+        trim_whitespace=True,
+        write_only=True,
+    )
+    age = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        min_value=0,
+        max_value=32767,
+        write_only=True,
+    )
+    birthDate = serializers.DateField(
+        source='birth_date',
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
+    birthYear = serializers.IntegerField(
+        source='birth_year',
+        required=False,
+        allow_null=True,
+        min_value=0,
+        max_value=32767,
+        write_only=True,
+    )
+    residenceCityId = serializers.PrimaryKeyRelatedField(
+        source='residence_city',
+        queryset=City.objects.all(),
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
+    initialPaymentAmount = serializers.DecimalField(
+        source='initial_payment_amount',
+        max_digits=15,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
+    maximumMonthlyPayment = serializers.DecimalField(
+        source='max_monthly_payment',
+        max_digits=15,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
+    preferentialProgramIds = serializers.PrimaryKeyRelatedField(
+        source='preferential_programs',
+        queryset=MortgageProgram.objects.filter(is_preferential=True),
+        many=True,
+        required=False,
+        write_only=True,
+    )
+    hasOwnedProperty = serializers.BooleanField(
+        source='has_owned_property',
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
+    purchaseGoal = serializers.ChoiceField(
+        source='purchase_goal',
+        choices=Customer.PURCHASE_GOAL_CHOICES,
+        required=False,
+        allow_blank=True,
+        write_only=True,
+    )
+    desiredCityId = serializers.PrimaryKeyRelatedField(
+        source='desired_city',
+        queryset=City.objects.all(),
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
+    desiredDistrictId = serializers.PrimaryKeyRelatedField(
+        source='desired_district',
+        queryset=District.objects.all(),
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
+    desiredLayoutIds = serializers.PrimaryKeyRelatedField(
+        source='desired_layouts',
+        queryset=ApartmentLayout.objects.all(),
+        many=True,
+        required=False,
+        write_only=True,
+    )
+    areaMinimum = serializers.DecimalField(
+        source='area_min',
+        max_digits=10,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
+    areaMaximum = serializers.DecimalField(
+        source='area_max',
+        max_digits=10,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
+    desiredFloor = serializers.CharField(
+        source='desired_floor',
+        max_length=100,
+        required=False,
+        allow_blank=True,
+        trim_whitespace=True,
+        write_only=True,
+    )
+    cardinalDirections = serializers.ListField(
+        source='cardinal_directions',
+        child=serializers.ChoiceField(
+            choices=Customer.CARDINAL_DIRECTION_CHOICES
+        ),
+        required=False,
+        allow_empty=True,
+        write_only=True,
+    )
+    comment = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        trim_whitespace=True,
+        write_only=True,
+    )
+
+    class Meta:
+        """Define the explicit mutable customer fields."""
+
+        model = Customer
+        fields = (
+            'id',
+            'firstName',
+            'lastName',
+            'phone',
+            'email',
+            'age',
+            'birthDate',
+            'birthYear',
+            'residenceCityId',
+            'initialPaymentAmount',
+            'maximumMonthlyPayment',
+            'preferentialProgramIds',
+            'hasOwnedProperty',
+            'purchaseGoal',
+            'desiredCityId',
+            'desiredDistrictId',
+            'desiredLayoutIds',
+            'areaMinimum',
+            'areaMaximum',
+            'desiredFloor',
+            'cardinalDirections',
+            'comment',
+        )
+        read_only_fields = ('id',)
+
+    def _raise_customer_validation_error(self, error):
+        """Translate model validation field names to the API contract."""
+        if hasattr(error, 'message_dict'):
+            details = {
+                self.MODEL_TO_API_FIELD_NAMES.get(field_name, field_name): (
+                    messages
+                )
+                for field_name, messages in error.message_dict.items()
+            }
+        else:
+            details = {'nonFieldErrors': error.messages}
+        raise serializers.ValidationError(details) from error
+
+    def validate(self, attributes):
+        """Apply the established Customer model validation and normalization."""
+        if 'cardinal_directions' in attributes:
+            attributes['cardinal_directions'] = ', '.join(
+                attributes['cardinal_directions']
+            )
+
+        customer = (
+            copy(self.instance)
+            if self.instance is not None
+            else Customer(user=self.context['request'].user)
+        )
+        many_to_many_field_names = {
+            'preferential_programs',
+            'desired_layouts',
+        }
+        for field_name, value in attributes.items():
+            if field_name not in many_to_many_field_names:
+                setattr(customer, field_name, value)
+
+        try:
+            customer.clean()
+        except DjangoValidationError as error:
+            self._raise_customer_validation_error(error)
+
+        for field_name in self.NORMALIZED_FIELD_NAMES:
+            attributes[field_name] = getattr(customer, field_name)
+        return attributes
+
+    @transaction.atomic
+    def create(self, validated_data):
+        """Create the owner-scoped customer and its many-to-many links."""
+        preferential_programs = validated_data.pop(
+            'preferential_programs',
+            [],
+        )
+        desired_layouts = validated_data.pop('desired_layouts', [])
+        customer = Customer.objects.create(
+            user=self.context['request'].user,
+            **validated_data,
+        )
+        customer.preferential_programs.set(preferential_programs)
+        customer.desired_layouts.set(desired_layouts)
+        return customer
+
+    @transaction.atomic
+    def update(self, customer, validated_data):
+        """Update an allowed customer and replace supplied relation choices."""
+        preferential_programs = validated_data.pop(
+            'preferential_programs',
+            None,
+        )
+        desired_layouts = validated_data.pop('desired_layouts', None)
+        for field_name, value in validated_data.items():
+            setattr(customer, field_name, value)
+        customer.save()
+        if preferential_programs is not None:
+            customer.preferential_programs.set(preferential_programs)
+        if desired_layouts is not None:
+            customer.desired_layouts.set(desired_layouts)
+        return customer
 
 
 class CustomerListItemSerializer(serializers.ModelSerializer):
@@ -107,6 +422,11 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         allow_null=True,
         read_only=True,
     )
+    residenceCityId = serializers.IntegerField(
+        source='residence_city_id',
+        allow_null=True,
+        read_only=True,
+    )
     initialPaymentAmount = serializers.DecimalField(
         source='initial_payment_amount',
         max_digits=15,
@@ -141,8 +461,18 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         allow_null=True,
         read_only=True,
     )
+    desiredCityId = serializers.IntegerField(
+        source='desired_city_id',
+        allow_null=True,
+        read_only=True,
+    )
     desiredDistrict = serializers.CharField(
         source='desired_district.name',
+        allow_null=True,
+        read_only=True,
+    )
+    desiredDistrictId = serializers.IntegerField(
+        source='desired_district_id',
         allow_null=True,
         read_only=True,
     )
@@ -209,6 +539,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             'birthDate',
             'birthYear',
             'residenceCity',
+            'residenceCityId',
             'initialPaymentAmount',
             'maximumMonthlyPayment',
             'preferentialPrograms',
@@ -216,7 +547,9 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             'purchaseGoal',
             'purchaseGoalLabel',
             'desiredCity',
+            'desiredCityId',
             'desiredDistrict',
+            'desiredDistrictId',
             'desiredLayouts',
             'areaMinimum',
             'areaMaximum',

@@ -3,6 +3,7 @@ from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.test import Client, override_settings
 from django.urls import reverse
 
 from bank.models import (
@@ -93,6 +94,37 @@ def customer_profile(customer_users):
     return customer
 
 
+def build_customer_write_payload(customer):
+    """Build a complete camelCase customer form payload."""
+    return {
+        'firstName': ' Мария ',
+        'lastName': ' Соколова ',
+        'phone': '+79990001122',
+        'email': 'MARIA@EXAMPLE.COM',
+        'age': None,
+        'birthDate': '1990-05-10',
+        'birthYear': None,
+        'residenceCityId': customer.residence_city_id,
+        'initialPaymentAmount': '1800000.00',
+        'maximumMonthlyPayment': '120000.00',
+        'preferentialProgramIds': list(
+            customer.preferential_programs.values_list('pk', flat=True)
+        ),
+        'hasOwnedProperty': False,
+        'purchaseGoal': Customer.PURCHASE_GOAL_LIVING,
+        'desiredCityId': customer.desired_city_id,
+        'desiredDistrictId': customer.desired_district_id,
+        'desiredLayoutIds': list(
+            customer.desired_layouts.values_list('pk', flat=True)
+        ),
+        'areaMinimum': '45.00',
+        'areaMaximum': '70.00',
+        'desiredFloor': ' 5–12 ',
+        'cardinalDirections': ['Юг', 'Восток'],
+        'comment': ' Светлая кухня ',
+    }
+
+
 @pytest.mark.django_db
 def test_customer_api_requires_authentication(client, customer_profile):
     """Keep customer contact and financial data private."""
@@ -103,9 +135,188 @@ def test_customer_api_requires_authentication(client, customer_profile):
             kwargs={'pk': customer_profile.pk},
         )
     )
+    options_response = client.get(reverse('api_v1:customer_form_options'))
+    create_response = client.post(
+        reverse('api_v1:customer_list'),
+        {'firstName': 'Скрытый'},
+        content_type='application/json',
+    )
 
     assert list_response.status_code == 403
     assert detail_response.status_code == 403
+    assert options_response.status_code == 403
+    assert create_response.status_code == 403
+
+
+@pytest.mark.django_db
+@override_settings(PUBLIC_CATALOG_API_MAX_RESULTS=1)
+def test_customer_form_options_are_filtered_and_bounded(
+    client,
+    customer_users,
+    customer_profile,
+):
+    """Return active form choices and only the selected city's districts."""
+    owner, _other_owner = customer_users
+    ApartmentLayout.objects.create(name='Студия')
+    other_region = Region.objects.create(name='Татарстан', code='CUST16')
+    other_city = City.objects.create(name='Казань', region=other_region)
+    District.objects.create(name='Центр', city=other_city)
+    client.force_login(owner)
+
+    response = client.get(
+        reverse('api_v1:customer_form_options'),
+        {'desiredCity': customer_profile.desired_city_id},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload['cities']) == 1
+    assert payload['districts'] == [
+        {
+            'id': customer_profile.desired_district_id,
+            'name': 'Хамовники',
+        }
+    ]
+    assert payload['purchaseGoals'][0] == {
+        'value': Customer.PURCHASE_GOAL_LIVING,
+        'label': 'Для жизни',
+    }
+    assert payload['truncated']['cities'] is True
+    assert payload['truncated']['layouts'] is True
+
+
+@pytest.mark.django_db
+def test_customer_create_api_normalizes_and_saves_relations(
+    client,
+    customer_users,
+    customer_profile,
+):
+    """Create a customer owned by the requester with all selected relations."""
+    owner, _other_owner = customer_users
+    client.force_login(owner)
+
+    response = client.post(
+        reverse('api_v1:customer_list'),
+        build_customer_write_payload(customer_profile),
+        content_type='application/json',
+    )
+
+    assert response.status_code == 201
+    created_customer = Customer.objects.get(pk=response.json()['id'])
+    assert created_customer.user == owner
+    assert created_customer.first_name == 'Мария'
+    assert created_customer.last_name == 'Соколова'
+    assert created_customer.email == 'maria@example.com'
+    assert created_customer.age == 36
+    assert created_customer.birth_year == 1990
+    assert created_customer.cardinal_directions == 'Юг, Восток'
+    assert list(created_customer.desired_layouts.values_list('name', flat=True)) == [
+        'Евро-3'
+    ]
+    assert list(
+        created_customer.preferential_programs.values_list('name', flat=True)
+    ) == ['Семейная ипотека']
+
+
+@pytest.mark.django_db
+def test_customer_write_api_returns_model_validation_errors(
+    client,
+    customer_users,
+    customer_profile,
+):
+    """Reject blank names and inconsistent property preferences."""
+    owner, _other_owner = customer_users
+    client.force_login(owner)
+    payload = build_customer_write_payload(customer_profile)
+    payload['firstName'] = ' '
+    blank_name_response = client.post(
+        reverse('api_v1:customer_list'),
+        payload,
+        content_type='application/json',
+    )
+
+    payload = build_customer_write_payload(customer_profile)
+    payload['areaMinimum'] = '90.00'
+    payload['areaMaximum'] = '70.00'
+    area_response = client.post(
+        reverse('api_v1:customer_list'),
+        payload,
+        content_type='application/json',
+    )
+
+    assert blank_name_response.status_code == 400
+    assert 'firstName' in blank_name_response.json()
+    assert area_response.status_code == 400
+    assert area_response.json()['areaMaximum'] == [
+        'Максимальная площадь должна быть не меньше минимальной.'
+    ]
+
+
+@pytest.mark.django_db
+def test_customer_update_api_is_owner_scoped_and_can_clear_relations(
+    client,
+    customer_users,
+    customer_profile,
+):
+    """Allow the owner to update a profile while hiding it from other users."""
+    owner, other_owner = customer_users
+    detail_url = reverse(
+        'api_v1:customer_detail',
+        kwargs={'pk': customer_profile.pk},
+    )
+    client.force_login(other_owner)
+
+    hidden_response = client.patch(
+        detail_url,
+        {'firstName': 'Чужое имя'},
+        content_type='application/json',
+    )
+
+    client.force_login(owner)
+    response = client.patch(
+        detail_url,
+        {
+            'firstName': ' Пётр ',
+            'desiredLayoutIds': [],
+        },
+        content_type='application/json',
+    )
+
+    assert hidden_response.status_code == 404
+    assert response.status_code == 200
+    assert response.json() == {'id': customer_profile.pk}
+    customer_profile.refresh_from_db()
+    assert customer_profile.first_name == 'Пётр'
+    assert customer_profile.desired_layouts.count() == 0
+    assert customer_profile.preferential_programs.count() == 1
+
+
+@pytest.mark.django_db
+def test_customer_write_api_requires_csrf_token(
+    customer_users,
+    customer_profile,
+):
+    """Reject session-authenticated unsafe requests without a CSRF token."""
+    owner, _other_owner = customer_users
+    csrf_client = Client(enforce_csrf_checks=True)
+    csrf_client.force_login(owner)
+
+    create_response = csrf_client.post(
+        reverse('api_v1:customer_list'),
+        build_customer_write_payload(customer_profile),
+        content_type='application/json',
+    )
+    update_response = csrf_client.patch(
+        reverse(
+            'api_v1:customer_detail',
+            kwargs={'pk': customer_profile.pk},
+        ),
+        {'firstName': 'Пётр'},
+        content_type='application/json',
+    )
+
+    assert create_response.status_code == 403
+    assert update_response.status_code == 403
 
 
 @pytest.mark.django_db

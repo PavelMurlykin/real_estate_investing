@@ -3,7 +3,9 @@ import { queryOptions } from '@tanstack/react-query'
 import { requestJson, requestWithoutResponse } from './client'
 import {
   customerDetailSchema,
+  customerFormOptionsSchema,
   customerListResponseSchema,
+  customerMutationResponseSchema,
   mortgageCalculationResponseSchema,
   mortgageOptionsSchema,
   overviewSchema,
@@ -14,6 +16,7 @@ import {
   sessionSchema,
 } from './schemas'
 import type {
+  CustomerWriteRequest,
   MortgageCalculationRequest,
   SavedMortgageCalculationCreateRequest,
 } from './schemas'
@@ -131,6 +134,52 @@ export function customerDetailQueryOptions(customerIdentifier: number) {
       ),
     staleTime: 60_000,
   })
+}
+
+export function customerFormOptionsQueryOptions(
+  desiredCityIdentifier: number | null,
+) {
+  const queryString = desiredCityIdentifier
+    ? `?desiredCity=${desiredCityIdentifier}`
+    : ''
+  return queryOptions({
+    queryKey: [
+      'customer-form-options',
+      desiredCityIdentifier?.toString() ?? '',
+    ],
+    queryFn: ({ signal }) =>
+      requestJson(
+        `/api/v1/customers/options/${queryString}`,
+        customerFormOptionsSchema,
+        { signal },
+      ),
+    staleTime: 5 * 60_000,
+  })
+}
+
+export function createCustomer(payload: CustomerWriteRequest) {
+  return requestJson(
+    '/api/v1/customers/',
+    customerMutationResponseSchema,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  )
+}
+
+export function updateCustomer(
+  customerIdentifier: number,
+  payload: CustomerWriteRequest,
+) {
+  return requestJson(
+    `/api/v1/customers/${customerIdentifier}/`,
+    customerMutationResponseSchema,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    },
+  )
 }
 
 export function propertyListQueryOptions(searchParameters: URLSearchParams) {

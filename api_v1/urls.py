@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     CustomerDetailAPIView,
+    CustomerFormOptionsAPIView,
     CustomerListAPIView,
     LoginAPIView,
     LogoutAPIView,
@@ -24,6 +25,11 @@ urlpatterns = [
     path('auth/logout/', LogoutAPIView.as_view(), name='logout'),
     path('overview/', OverviewAPIView.as_view(), name='overview'),
     path('customers/', CustomerListAPIView.as_view(), name='customer_list'),
+    path(
+        'customers/options/',
+        CustomerFormOptionsAPIView.as_view(),
+        name='customer_form_options',
+    ),
     path(
         'customers/<int:pk>/',
         CustomerDetailAPIView.as_view(),

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import login, logout
 from django.db.models import Prefetch, Q
 from django.middleware.csrf import get_token
@@ -6,7 +7,12 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from rest_framework import status
-from rest_framework.generics import ListAPIView, RetrieveAPIView
+from rest_framework.generics import (
+    ListAPIView,
+    ListCreateAPIView,
+    RetrieveAPIView,
+    RetrieveUpdateAPIView,
+)
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -19,11 +25,16 @@ from bank.models import (
     MortgageProgramRegionalCreditLimit,
 )
 from customer.models import Customer
-from location.models import City
+from location.models import City, District
 from mortgage.excel import export_saved_mortgage_calculation_excel
 from mortgage.models import MortgageCalculation
 from mortgage.word import export_saved_mortgage_calculation_word
-from property.models import Developer, Property, RealEstateComplex
+from property.models import (
+    ApartmentLayout,
+    Developer,
+    Property,
+    RealEstateComplex,
+)
 from users.forms import UserLoginForm
 from users.roles import (
     can_manage_catalogs,
@@ -42,8 +53,10 @@ from .mortgage_service import (
 from .pagination import ApplicationPageNumberPagination
 from .serializers import (
     CustomerDetailSerializer,
+    CustomerFormOptionsQuerySerializer,
     CustomerListItemSerializer,
     CustomerListQuerySerializer,
+    CustomerWriteSerializer,
     LoginRequestSerializer,
     MortgageCalculationRequestSerializer,
     PropertyDetailSerializer,
@@ -325,6 +338,12 @@ def _customer_queryset(user):
     return queryset.filter(user=user)
 
 
+def _build_bounded_option_rows(queryset, maximum_results):
+    """Serialize a name queryset and report whether its bound was reached."""
+    rows = list(queryset.values('id', 'name')[:maximum_results + 1])
+    return rows[:maximum_results], len(rows) > maximum_results
+
+
 @method_decorator(csrf_protect, name='dispatch')
 class SavedMortgageCalculationListCreateAPIView(APIView):
     """List owner-scoped calculations and save a validated scenario."""
@@ -543,7 +562,79 @@ class PropertyDetailAPIView(RetrieveAPIView):
     ).prefetch_related('window_views')
 
 
-class CustomerListAPIView(ListAPIView):
+class CustomerFormOptionsAPIView(APIView):
+    """Return bounded dictionaries needed by the React customer form."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        """Return active choices and districts for the selected city."""
+        query_serializer = CustomerFormOptionsQuerySerializer(
+            data=request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        maximum_results = settings.PUBLIC_CATALOG_API_MAX_RESULTS
+        desired_city_identifier = query_serializer.validated_data.get(
+            'desiredCity'
+        )
+
+        cities, cities_truncated = _build_bounded_option_rows(
+            City.objects.filter(is_active=True).order_by('name', 'pk'),
+            maximum_results,
+        )
+        districts_queryset = District.objects.none()
+        if desired_city_identifier:
+            districts_queryset = District.objects.filter(
+                is_active=True,
+                city_id=desired_city_identifier,
+            ).order_by('name', 'pk')
+        districts, districts_truncated = _build_bounded_option_rows(
+            districts_queryset,
+            maximum_results,
+        )
+        layouts, layouts_truncated = _build_bounded_option_rows(
+            ApartmentLayout.objects.filter(is_active=True).order_by(
+                'name',
+                'pk',
+            ),
+            maximum_results,
+        )
+        preferential_programs, programs_truncated = (
+            _build_bounded_option_rows(
+                MortgageProgram.objects.filter(
+                    is_active=True,
+                    is_preferential=True,
+                ).order_by('name', 'pk'),
+                maximum_results,
+            )
+        )
+
+        return Response(
+            {
+                'cities': cities,
+                'districts': districts,
+                'layouts': layouts,
+                'preferentialPrograms': preferential_programs,
+                'purchaseGoals': [
+                    {'value': value, 'label': label}
+                    for value, label in Customer.PURCHASE_GOAL_CHOICES
+                ],
+                'cardinalDirections': [
+                    {'value': value, 'label': label}
+                    for value, label in Customer.CARDINAL_DIRECTION_CHOICES
+                ],
+                'truncated': {
+                    'cities': cities_truncated,
+                    'districts': districts_truncated,
+                    'layouts': layouts_truncated,
+                    'preferentialPrograms': programs_truncated,
+                },
+            }
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class CustomerListAPIView(ListCreateAPIView):
     """Return a searchable, owner-scoped, paginated customer directory."""
 
     serializer_class = CustomerListItemSerializer
@@ -553,6 +644,16 @@ class CustomerListAPIView(ListAPIView):
         'createdAt': ('created_at',),
         'name': ('first_name', 'last_name'),
     }
+
+    def get_serializer_class(self):
+        """Use a dedicated write contract for customer creation."""
+        if self.request.method == 'POST':
+            return CustomerWriteSerializer
+        return CustomerListItemSerializer
+
+    def perform_create(self, serializer):
+        """Create a customer owned by the authenticated request user."""
+        serializer.save()
 
     def get_queryset(self):
         """Apply validated customer filters and deterministic ordering."""
@@ -584,11 +685,18 @@ class CustomerListAPIView(ListAPIView):
         return queryset.order_by(*ordering_fields, '-pk')
 
 
-class CustomerDetailAPIView(RetrieveAPIView):
+@method_decorator(csrf_protect, name='dispatch')
+class CustomerDetailAPIView(RetrieveUpdateAPIView):
     """Return one owner-scoped customer and calculated buying capacity."""
 
     serializer_class = CustomerDetailSerializer
     permission_classes = (IsAuthenticated,)
+
+    def get_serializer_class(self):
+        """Use the private read or write serializer for the HTTP method."""
+        if self.request.method in {'PUT', 'PATCH'}:
+            return CustomerWriteSerializer
+        return CustomerDetailSerializer
 
     def get_queryset(self):
         """Load the customer profile relations without per-field queries."""
@@ -611,7 +719,8 @@ class CustomerDetailAPIView(RetrieveAPIView):
         )
 
     def get_serializer_context(self):
-        """Add one authoritative key-rate lookup for derived values."""
+        """Add the authoritative key rate only to read serialization."""
         context = super().get_serializer_context()
-        context['key_rate'] = Customer.get_actual_cbr_key_rate()
+        if self.request.method == 'GET':
+            context['key_rate'] = Customer.get_actual_cbr_key_rate()
         return context

@@ -2324,6 +2324,221 @@ select:focus-visible {
   }
 }
 
+.customer-form {
+  display: grid;
+  gap: 18px;
+}
+
+.customer-form-section {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.42fr) minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 54px);
+  padding: clamp(24px, 4vw, 38px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: var(--shadow-sm);
+}
+
+.customer-form-section__heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+}
+
+.customer-form-section__heading > span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  color: var(--brand);
+  background: var(--brand-soft);
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.customer-form-section__heading h2 {
+  margin: 2px 0 7px;
+  font-size: 19px;
+}
+
+.customer-form-section__heading p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.customer-form-grid {
+  align-content: start;
+}
+
+.customer-form .form-field textarea {
+  width: 100%;
+  min-height: 116px;
+  padding: 13px;
+  color: var(--text);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 500;
+  letter-spacing: normal;
+  line-height: 1.5;
+  resize: vertical;
+  text-transform: none;
+}
+
+.customer-form .form-field textarea[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.customer-form input:disabled,
+.customer-form select:disabled,
+.customer-form textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.customer-choice-field {
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.customer-choice-field legend {
+  padding: 0;
+  margin-bottom: 8px;
+}
+
+.customer-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 7px;
+  padding: 10px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.customer-choice-grid--compact {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.customer-choice-grid label,
+.customer-radio-row label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  padding: 8px 10px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.customer-choice-grid label:has(input:checked),
+.customer-radio-row label:has(input:checked) {
+  color: var(--brand);
+  background: var(--brand-soft);
+  border-color: color-mix(in srgb, var(--brand) 28%, var(--border));
+}
+
+.customer-choice-grid input,
+.customer-radio-row input {
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  accent-color: var(--brand);
+}
+
+.customer-choice-grid label:has(input:focus-visible),
+.customer-radio-row label:has(input:focus-visible) {
+  outline: 3px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.customer-choice-grid > p {
+  padding: 8px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.customer-radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.customer-radio-row label {
+  min-width: 116px;
+  background: var(--background);
+  border-color: var(--border);
+}
+
+.customer-form-loading {
+  margin: -22px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-align: right;
+}
+
+.customer-form .form-error {
+  margin: 0;
+}
+
+.customer-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 22px 24px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+}
+
+.customer-form-actions .button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+@media (max-width: 900px) {
+  .customer-form-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .customer-form-section {
+    padding: 22px;
+  }
+
+  .customer-choice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-radio-row {
+    flex-direction: column;
+  }
+
+  .customer-form-actions,
+  .customer-form-actions .button {
+    width: 100%;
+  }
+}
+
 @media (max-width: 360px) {
   .topbar {
     grid-template-columns: 40px 34px minmax(0, 1fr);

@@ -73,6 +73,6 @@ describe('CustomerListPage', () => {
     ).toHaveAttribute('href', '/customers/12')
     expect(
       screen.getByRole('link', { name: 'Добавить клиента' }),
-    ).toHaveAttribute('href', '/customers/create/')
+    ).toHaveAttribute('href', '/customers/new')
   })
 })

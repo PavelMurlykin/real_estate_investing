@@ -73,6 +73,7 @@ export const customerDetailSchema = z.object({
   birthDate: z.iso.date().nullable(),
   birthYear: z.number().int().nullable(),
   residenceCity: z.string().nullable(),
+  residenceCityId: z.number().int().positive().nullable(),
   initialPaymentAmount: z.string().nullable(),
   maximumMonthlyPayment: z.string().nullable(),
   preferentialPrograms: z.array(
@@ -85,7 +86,9 @@ export const customerDetailSchema = z.object({
   purchaseGoal: z.string(),
   purchaseGoalLabel: z.string(),
   desiredCity: z.string().nullable(),
+  desiredCityId: z.number().int().positive().nullable(),
   desiredDistrict: z.string().nullable(),
+  desiredDistrictId: z.number().int().positive().nullable(),
   desiredLayouts: z.array(
     z.object({
       id: z.number().int().positive(),
@@ -114,6 +117,40 @@ export const customerDetailSchema = z.object({
   legacyEditUrl: z.string(),
   legacyDeleteUrl: z.string(),
   legacyMortgageUrl: z.string(),
+})
+
+const namedOptionSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+})
+
+export const customerFormOptionsSchema = z.object({
+  cities: z.array(namedOptionSchema),
+  districts: z.array(namedOptionSchema),
+  layouts: z.array(namedOptionSchema),
+  preferentialPrograms: z.array(namedOptionSchema),
+  purchaseGoals: z.array(
+    z.object({
+      value: z.string(),
+      label: z.string(),
+    }),
+  ),
+  cardinalDirections: z.array(
+    z.object({
+      value: z.string(),
+      label: z.string(),
+    }),
+  ),
+  truncated: z.object({
+    cities: z.boolean(),
+    districts: z.boolean(),
+    layouts: z.boolean(),
+    preferentialPrograms: z.boolean(),
+  }),
+})
+
+export const customerMutationResponseSchema = z.object({
+  id: z.number().int().positive(),
 })
 
 export const propertyDetailSchema = z.object({
@@ -307,6 +344,7 @@ export type PropertyListResponse = z.infer<typeof propertyListResponseSchema>
 export type CustomerListItem = z.infer<typeof customerListItemSchema>
 export type CustomerListResponse = z.infer<typeof customerListResponseSchema>
 export type CustomerDetail = z.infer<typeof customerDetailSchema>
+export type CustomerFormOptions = z.infer<typeof customerFormOptionsSchema>
 export type PropertyDetail = z.infer<typeof propertyDetailSchema>
 export type Overview = z.infer<typeof overviewSchema>
 export type MortgageOptions = z.infer<typeof mortgageOptionsSchema>
@@ -322,3 +360,27 @@ export type SavedMortgageCalculationListResponse = z.infer<
 export type SavedMortgageCalculationDetail = z.infer<
   typeof savedMortgageCalculationDetailSchema
 >
+
+export type CustomerWriteRequest = {
+  firstName: string
+  lastName: string
+  phone: string
+  email: string
+  age: number | null
+  birthDate: string | null
+  birthYear: number | null
+  residenceCityId: number | null
+  initialPaymentAmount: string | null
+  maximumMonthlyPayment: string | null
+  preferentialProgramIds: number[]
+  hasOwnedProperty: boolean | null
+  purchaseGoal: string
+  desiredCityId: number | null
+  desiredDistrictId: number | null
+  desiredLayoutIds: number[]
+  areaMinimum: string | null
+  areaMaximum: string | null
+  desiredFloor: string
+  cardinalDirections: string[]
+  comment: string
+}

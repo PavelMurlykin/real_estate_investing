@@ -130,9 +130,9 @@ export function CustomerListPage() {
           <a className="button button--secondary" href="/customers/">
             Прежняя версия
           </a>
-          <a className="button button--primary" href="/customers/create/">
+          <Link className="button button--primary" to="/customers/new">
             Добавить клиента
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -193,9 +193,9 @@ export function CustomerListPage() {
               Сбросить фильтры
             </button>
           ) : (
-            <a className="button button--primary" href="/customers/create/">
+            <Link className="button button--primary" to="/customers/new">
               Добавить клиента
-            </a>
+            </Link>
           )}
         />
       ) : (
