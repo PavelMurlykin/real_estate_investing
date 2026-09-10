@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import login, logout
 from django.db import transaction
+from django.db.models.deletion import ProtectedError
 from django.db.models import Prefetch, Q
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
@@ -15,7 +16,11 @@ from rest_framework.generics import (
     RetrieveAPIView,
     RetrieveUpdateDestroyAPIView,
 )
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import (
+    AllowAny,
+    BasePermission,
+    IsAuthenticated,
+)
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -36,7 +41,7 @@ from customer.views import (
     _export_single_customer_word_calculation,
     _get_selected_customer_calculation_links,
 )
-from location.models import City, District
+from location.models import City, District, Region
 from mortgage.excel import export_saved_mortgage_calculation_excel
 from mortgage.models import MortgageCalculation
 from mortgage.word import (
@@ -45,10 +50,13 @@ from mortgage.word import (
     export_trench_mortgage_word,
 )
 from property.models import (
+    ApartmentDecoration,
     ApartmentLayout,
     Developer,
     Property,
     RealEstateComplex,
+    RealEstateComplexBuilding,
+    WindowView,
 )
 from trench_mortgage.models import TrenchMortgageCalculation
 from trench_mortgage.views import _export_trench_excel
@@ -84,8 +92,10 @@ from .serializers import (
     LoginRequestSerializer,
     MortgageCalculationRequestSerializer,
     PropertyDetailSerializer,
+    PropertyFormOptionsQuerySerializer,
     PropertyListItemSerializer,
     PropertyListQuerySerializer,
+    PropertyWriteSerializer,
     SavedMortgageCalculationCreateSerializer,
     SavedMortgageCalculationListQuerySerializer,
     SavedTrenchMortgageCalculationCreateSerializer,
@@ -100,6 +110,14 @@ from .trench_mortgage_service import (
     serialize_saved_trench_mortgage_detail,
     serialize_saved_trench_mortgage_list_item,
 )
+
+
+class CanManageCatalogs(BasePermission):
+    """Allow unsafe catalog operations only to application moderators."""
+
+    def has_permission(self, request, view):
+        """Return whether the current user may manage shared catalogs."""
+        return can_manage_catalogs(request.user)
 
 
 def build_session_payload(user):
@@ -745,12 +763,24 @@ class SavedMortgageCalculationExportAPIView(APIView):
         return exporter(calculation, payment_schedule)
 
 
-class PropertyListAPIView(ListAPIView):
-    """Return a filtered and paginated public property catalog."""
+def _property_detail_queryset():
+    """Return the optimized queryset shared by property detail responses."""
+    return Property.objects.select_related(
+        'building__real_estate_complex__developer__company_group',
+        'building__real_estate_complex__district__city__region',
+        'building__real_estate_complex__real_estate_class',
+        'building__real_estate_complex__real_estate_type',
+        'layout',
+        'decoration',
+    ).prefetch_related('window_views')
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class PropertyListAPIView(ListCreateAPIView):
+    """List public properties and let moderators create a property."""
 
     serializer_class = PropertyListItemSerializer
     pagination_class = ApplicationPageNumberPagination
-    permission_classes = (AllowAny,)
     ordering_fields = {
         'city': 'building__real_estate_complex__district__city__name',
         'developer': 'building__real_estate_complex__developer__name',
@@ -761,6 +791,18 @@ class PropertyListAPIView(ListAPIView):
         'area': 'area',
         'propertyCost': 'property_cost',
     }
+
+    def get_permissions(self):
+        """Keep catalog reads public and protect the create operation."""
+        if self.request.method == 'GET':
+            return (AllowAny(),)
+        return (IsAuthenticated(), CanManageCatalogs())
+
+    def get_serializer_class(self):
+        """Use separate public read and moderator write contracts."""
+        if self.request.method == 'GET':
+            return PropertyListItemSerializer
+        return PropertyWriteSerializer
 
     def get_queryset(self):
         """Apply validated filters and deterministic ordering."""
@@ -818,20 +860,196 @@ class PropertyListAPIView(ListAPIView):
             'id',
         )
 
+    def create(self, request, *args, **kwargs):
+        """Create a property and return the full detail representation."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        property_object = serializer.save()
+        property_object = _property_detail_queryset().get(
+            pk=property_object.pk
+        )
+        response_serializer = PropertyDetailSerializer(
+            property_object,
+            context=self.get_serializer_context(),
+        )
+        return Response(
+            response_serializer.data,
+            status=status.HTTP_201_CREATED,
+        )
 
-class PropertyDetailAPIView(RetrieveAPIView):
-    """Return one public property with all detail-screen relationships."""
 
-    serializer_class = PropertyDetailSerializer
-    permission_classes = (AllowAny,)
-    queryset = Property.objects.select_related(
-        'building__real_estate_complex__developer__company_group',
-        'building__real_estate_complex__district__city__region',
-        'building__real_estate_complex__real_estate_class',
-        'building__real_estate_complex__real_estate_type',
-        'layout',
-        'decoration',
-    ).prefetch_related('window_views')
+@method_decorator(csrf_protect, name='dispatch')
+class PropertyDetailAPIView(RetrieveUpdateDestroyAPIView):
+    """Read a property publicly and protect moderator mutations."""
+
+    queryset = _property_detail_queryset()
+
+    def get_permissions(self):
+        """Keep detail reads public and protect update and delete."""
+        if self.request.method == 'GET':
+            return (AllowAny(),)
+        return (IsAuthenticated(), CanManageCatalogs())
+
+    def get_serializer_class(self):
+        """Use separate public read and moderator write contracts."""
+        if self.request.method == 'GET':
+            return PropertyDetailSerializer
+        return PropertyWriteSerializer
+
+    def update(self, request, *args, **kwargs):
+        """Update a property and return its full detail representation."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=partial,
+        )
+        serializer.is_valid(raise_exception=True)
+        property_object = serializer.save()
+        property_object = _property_detail_queryset().get(
+            pk=property_object.pk
+        )
+        response_serializer = PropertyDetailSerializer(
+            property_object,
+            context=self.get_serializer_context(),
+        )
+        return Response(response_serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete a property or report protected dependent records."""
+        instance = self.get_object()
+        try:
+            instance.delete()
+        except ProtectedError:
+            return Response(
+                {
+                    'detail': (
+                        'Объект нельзя удалить, пока с ним связаны расчёты.'
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PropertyFormOptionsAPIView(APIView):
+    """Return bounded hierarchical dictionaries for the property form."""
+
+    permission_classes = (IsAuthenticated, CanManageCatalogs)
+
+    def get(self, request):
+        """Return choices restricted by the selected parent identifiers."""
+        query_serializer = PropertyFormOptionsQuerySerializer(
+            data=request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        filters = query_serializer.validated_data
+        maximum_results = settings.PUBLIC_CATALOG_API_MAX_RESULTS
+
+        regions, regions_truncated = _build_bounded_option_rows(
+            Region.objects.order_by('name', 'pk'),
+            maximum_results,
+        )
+        cities_queryset = City.objects.none()
+        if filters.get('regionId'):
+            cities_queryset = City.objects.filter(
+                region_id=filters['regionId']
+            ).order_by('name', 'pk')
+        cities, cities_truncated = _build_bounded_option_rows(
+            cities_queryset,
+            maximum_results,
+        )
+
+        districts_queryset = District.objects.none()
+        if filters.get('cityId'):
+            districts_queryset = District.objects.filter(
+                city_id=filters['cityId']
+            ).order_by('name', 'pk')
+        districts, districts_truncated = _build_bounded_option_rows(
+            districts_queryset,
+            maximum_results,
+        )
+
+        developer_objects = list(
+            Developer.objects.select_related('company_group').order_by(
+                'name',
+                'pk',
+            )[:maximum_results + 1]
+        )
+        developers = [
+            {
+                'id': developer.pk,
+                'label': developer.get_display_name_with_company_group(),
+            }
+            for developer in developer_objects[:maximum_results]
+        ]
+        developers_truncated = len(developer_objects) > maximum_results
+
+        complexes_queryset = RealEstateComplex.objects.none()
+        if filters.get('districtId') and filters.get('developerId'):
+            complexes_queryset = RealEstateComplex.objects.filter(
+                district_id=filters['districtId'],
+                developer_id=filters['developerId'],
+            ).order_by('name', 'pk')
+        real_estate_complexes, complexes_truncated = (
+            _build_bounded_option_rows(
+                complexes_queryset,
+                maximum_results,
+            )
+        )
+
+        buildings_queryset = RealEstateComplexBuilding.objects.none()
+        if filters.get('realEstateComplexId'):
+            buildings_queryset = RealEstateComplexBuilding.objects.filter(
+                real_estate_complex_id=filters['realEstateComplexId']
+            ).order_by('number', 'pk')
+        building_objects = list(
+            buildings_queryset[:maximum_results + 1]
+        )
+        buildings = [
+            {'id': building.pk, 'number': building.number}
+            for building in building_objects[:maximum_results]
+        ]
+        buildings_truncated = len(building_objects) > maximum_results
+
+        layouts, layouts_truncated = _build_bounded_option_rows(
+            ApartmentLayout.objects.order_by('name', 'pk'),
+            maximum_results,
+        )
+        decorations, decorations_truncated = _build_bounded_option_rows(
+            ApartmentDecoration.objects.order_by('name', 'pk'),
+            maximum_results,
+        )
+        window_views, window_views_truncated = _build_bounded_option_rows(
+            WindowView.objects.order_by('name', 'pk'),
+            maximum_results,
+        )
+
+        return Response(
+            {
+                'regions': regions,
+                'cities': cities,
+                'districts': districts,
+                'developers': developers,
+                'realEstateComplexes': real_estate_complexes,
+                'buildings': buildings,
+                'layouts': layouts,
+                'decorations': decorations,
+                'windowViews': window_views,
+                'truncated': {
+                    'regions': regions_truncated,
+                    'cities': cities_truncated,
+                    'districts': districts_truncated,
+                    'developers': developers_truncated,
+                    'realEstateComplexes': complexes_truncated,
+                    'buildings': buildings_truncated,
+                    'layouts': layouts_truncated,
+                    'decorations': decorations_truncated,
+                    'windowViews': window_views_truncated,
+                },
+            }
+        )
 
 
 class CustomerFormOptionsAPIView(APIView):

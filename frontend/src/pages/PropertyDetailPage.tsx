@@ -1,8 +1,15 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
-
 import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom'
+
+import { ApiError } from '@/api/client'
+import {
+  deleteProperty,
   propertyDetailQueryOptions,
   sessionQueryOptions,
 } from '@/api/queries'
@@ -40,6 +47,8 @@ export function PropertyDetailPage() {
   const catalogPath = `/properties${
     customerIdentifier ? `?customerId=${customerIdentifier}` : ''
   }`
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const propertyQuery = useQuery({
     ...propertyDetailQueryOptions(propertyIdentifier),
     enabled: hasValidIdentifier,
@@ -50,6 +59,20 @@ export function PropertyDetailPage() {
   )
   const imageCloseButtonRef = useRef<HTMLButtonElement>(null)
   const imageTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const deleteCancelButtonRef = useRef<HTMLButtonElement>(null)
+  const deleteTriggerRef = useRef<HTMLButtonElement>(null)
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteProperty(propertyIdentifier),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['properties'] })
+      await queryClient.invalidateQueries({ queryKey: ['overview'] })
+      queryClient.removeQueries({
+        queryKey: ['property', propertyIdentifier],
+      })
+      navigate(catalogPath)
+    },
+  })
   useDocumentTitle(
     propertyQuery.data
       ? `${propertyQuery.data.realEstateComplex}, квартира ${propertyQuery.data.apartmentNumber}`
@@ -70,6 +93,19 @@ export function PropertyDetailPage() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedImage])
+
+  useEffect(() => {
+    if (!isDeleteDialogOpen) return
+    deleteCancelButtonRef.current?.focus()
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !deleteMutation.isPending) {
+        setIsDeleteDialogOpen(false)
+        window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [deleteMutation.isPending, isDeleteDialogOpen])
 
   if (!hasValidIdentifier) {
     return (
@@ -119,18 +155,25 @@ export function PropertyDetailPage() {
           </Link>
           {sessionQuery.data?.capabilities.manageCatalogs ? (
             <>
-              <a
+              <Link
                 className="button button--secondary"
-                href={property.legacyEditUrl}
+                to={`/properties/${property.id}/edit${customerIdentifier
+                  ? `?customerId=${customerIdentifier}`
+                  : ''}`}
               >
                 Редактировать
-              </a>
-              <a
+              </Link>
+              <button
                 className="button button--danger"
-                href={property.legacyDeleteUrl}
+                type="button"
+                ref={deleteTriggerRef}
+                onClick={() => {
+                  deleteMutation.reset()
+                  setIsDeleteDialogOpen(true)
+                }}
               >
                 Удалить
-              </a>
+              </button>
             </>
           ) : null}
         </div>
@@ -330,6 +373,67 @@ export function PropertyDetailPage() {
               Открыть оригинал <span aria-hidden="true">↗</span>
             </a>
           </div>
+        </div>
+      ) : null}
+
+      {isDeleteDialogOpen ? (
+        <div
+          className="confirmation-dialog-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (
+              event.currentTarget === event.target
+              && !deleteMutation.isPending
+            ) {
+              setIsDeleteDialogOpen(false)
+              window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+            }
+          }}
+        >
+          <section
+            className="confirmation-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="property-delete-title"
+            aria-describedby="property-delete-description"
+          >
+            <span className="eyebrow">Подтверждение</span>
+            <h2 id="property-delete-title">Удалить объект?</h2>
+            <p id="property-delete-description">
+              {property.realEstateComplex}, корпус {property.building},
+              квартира {property.apartmentNumber}. Это действие нельзя отменить.
+            </p>
+            {deleteMutation.isError ? (
+              <p className="form-error" role="alert">
+                {deleteMutation.error instanceof ApiError
+                  && deleteMutation.error.status === 409
+                  ? 'Объект нельзя удалить, пока с ним связаны расчёты.'
+                  : 'Не удалось удалить объект. Повторите попытку.'}
+              </p>
+            ) : null}
+            <div className="confirmation-dialog__actions">
+              <button
+                className="button button--secondary"
+                type="button"
+                ref={deleteCancelButtonRef}
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  setIsDeleteDialogOpen(false)
+                  window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                className="button button--danger"
+                type="button"
+                disabled={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate()}
+              >
+                {deleteMutation.isPending ? 'Удаляем…' : 'Удалить'}
+              </button>
+            </div>
+          </section>
         </div>
       ) : null}
     </div>

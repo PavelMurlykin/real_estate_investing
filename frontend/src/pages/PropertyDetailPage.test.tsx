@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import type { PropertyDetail, Session } from '@/api/schemas'
 import { createTestQueryClient, renderWithProviders } from '@/test/render'
@@ -11,6 +11,15 @@ import { PropertyDetailPage } from './PropertyDetailPage'
 const propertyDetail: PropertyDetail = {
   id: 1,
   apartmentNumber: '101',
+  regionId: 1,
+  cityId: 2,
+  districtId: 3,
+  developerId: 4,
+  realEstateComplexId: 5,
+  buildingId: 6,
+  layoutId: 7,
+  decorationId: 8,
+  windowViewIds: [9, 10],
   developer: 'Северный девелопер (Группа Север)',
   realEstateComplex: 'Белые ночи',
   realEstateClass: 'Бизнес',
@@ -79,6 +88,7 @@ function renderPropertyDetail(session?: Session, initialRoute = '/properties/1')
   return renderWithProviders(
     <Routes>
       <Route path="/properties/:propertyId" element={<PropertyDetailPage />} />
+      <Route path="/properties" element={<h1>Каталог объектов</h1>} />
     </Routes>,
     { initialRoute, queryClient },
   )
@@ -123,16 +133,31 @@ describe('PropertyDetailPage', () => {
     await waitFor(() => expect(imageTrigger).toHaveFocus())
   })
 
-  it('shows legacy edit and delete actions only to catalog managers', () => {
+  it('routes catalog managers to React editing and confirms deletion', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(null, { status: 204 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
     renderPropertyDetail(administratorSession)
 
     expect(
       screen.getByRole('link', { name: 'Редактировать' }),
-    ).toHaveAttribute('href', '/property/1/update/')
-    expect(screen.getByRole('link', { name: 'Удалить' })).toHaveAttribute(
-      'href',
-      '/property/1/delete/',
+    ).toHaveAttribute('href', '/properties/1/edit')
+
+    await user.click(screen.getByRole('button', { name: 'Удалить' }))
+    expect(screen.getByRole('alertdialog')).toHaveAccessibleName(
+      'Удалить объект?',
     )
+    expect(screen.getByRole('button', { name: 'Отмена' })).toHaveFocus()
+
+    await user.click(
+      screen.getAllByRole('button', { name: 'Удалить' }).at(-1)!,
+    )
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/properties/1/',
+      expect.objectContaining({ method: 'DELETE' }),
+    ))
   })
 
   it('handles an invalid direct route without requesting the API', () => {

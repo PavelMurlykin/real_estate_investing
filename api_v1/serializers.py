@@ -10,7 +10,14 @@ from rest_framework import serializers
 from bank.models import MortgageProgram
 from customer.models import Customer
 from location.models import City, District
-from property.models import ApartmentLayout, Property
+from property.models import (
+    ApartmentDecoration,
+    ApartmentLayout,
+    Property,
+    RealEstateComplexBuilding,
+    WindowView,
+)
+from property.validators import validate_property_image_upload
 
 from .customer_service import build_customer_financial_capacity
 
@@ -750,6 +757,19 @@ class PropertyListQuerySerializer(serializers.Serializer):
     )
 
 
+class PropertyFormOptionsQuerySerializer(serializers.Serializer):
+    """Validate the hierarchy selected in the React property form."""
+
+    regionId = serializers.IntegerField(required=False, min_value=1)
+    cityId = serializers.IntegerField(required=False, min_value=1)
+    districtId = serializers.IntegerField(required=False, min_value=1)
+    developerId = serializers.IntegerField(required=False, min_value=1)
+    realEstateComplexId = serializers.IntegerField(
+        required=False,
+        min_value=1,
+    )
+
+
 class PropertyListItemSerializer(serializers.ModelSerializer):
     """Serialize one property row without triggering per-row queries."""
 
@@ -841,6 +861,35 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
     apartmentNumber = serializers.CharField(
         source='apartment_number',
         read_only=True,
+    )
+    regionId = serializers.IntegerField(
+        source='building.real_estate_complex.district.city.region_id',
+        read_only=True,
+    )
+    cityId = serializers.IntegerField(
+        source='building.real_estate_complex.district.city_id',
+        read_only=True,
+    )
+    districtId = serializers.IntegerField(
+        source='building.real_estate_complex.district_id',
+        read_only=True,
+    )
+    developerId = serializers.IntegerField(
+        source='building.real_estate_complex.developer_id',
+        read_only=True,
+    )
+    realEstateComplexId = serializers.IntegerField(
+        source='building.real_estate_complex_id',
+        read_only=True,
+    )
+    buildingId = serializers.IntegerField(source='building_id', read_only=True)
+    layoutId = serializers.IntegerField(source='layout_id', read_only=True)
+    decorationId = serializers.IntegerField(
+        source='decoration_id',
+        read_only=True,
+    )
+    windowViewIds = serializers.SerializerMethodField(
+        method_name='get_window_view_ids'
     )
     developer = serializers.SerializerMethodField()
     realEstateComplex = serializers.CharField(
@@ -939,6 +988,15 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'apartmentNumber',
+            'regionId',
+            'cityId',
+            'districtId',
+            'developerId',
+            'realEstateComplexId',
+            'buildingId',
+            'layoutId',
+            'decorationId',
+            'windowViewIds',
             'developer',
             'realEstateComplex',
             'realEstateClass',
@@ -992,6 +1050,13 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
             for window_view in property_object.window_views.all()
         ]
 
+    def get_window_view_ids(self, property_object):
+        """Return prefetched identifiers used to initialize the edit form."""
+        return [
+            window_view.pk
+            for window_view in property_object.window_views.all()
+        ]
+
     def get_map_url(self, property_object):
         """Return a validated map URL or omit an unsafe stored value."""
         real_estate_complex = (
@@ -1035,6 +1100,158 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
     def get_legacy_delete_url(self, property_object):
         """Return the preserved Django delete confirmation URL."""
         return reverse('property:delete', kwargs={'pk': property_object.pk})
+
+
+class PropertyWriteSerializer(serializers.ModelSerializer):
+    """Validate and persist a property submitted by the React form."""
+
+    IMAGE_CLEAR_FIELDS = (
+        ('clearLayoutImage', 'layout_image'),
+        ('clearFloorPlanImage', 'floor_plan_image'),
+        ('clearWindowViewImage', 'window_view_image'),
+    )
+
+    apartmentNumber = serializers.CharField(
+        source='apartment_number',
+        max_length=50,
+    )
+    buildingId = serializers.PrimaryKeyRelatedField(
+        source='building',
+        queryset=RealEstateComplexBuilding.objects.all(),
+    )
+    decorationId = serializers.PrimaryKeyRelatedField(
+        source='decoration',
+        queryset=ApartmentDecoration.objects.all(),
+    )
+    layoutId = serializers.PrimaryKeyRelatedField(
+        source='layout',
+        queryset=ApartmentLayout.objects.all(),
+    )
+    propertyCost = serializers.DecimalField(
+        source='property_cost',
+        max_digits=15,
+        decimal_places=2,
+    )
+    windowViewIds = serializers.PrimaryKeyRelatedField(
+        source='window_views',
+        queryset=WindowView.objects.all(),
+        many=True,
+        required=False,
+    )
+    replaceWindowViews = serializers.BooleanField(
+        write_only=True,
+        required=False,
+        default=False,
+    )
+    layoutImage = serializers.ImageField(
+        source='layout_image',
+        required=False,
+        allow_null=True,
+        validators=(validate_property_image_upload,),
+    )
+    floorPlanImage = serializers.ImageField(
+        source='floor_plan_image',
+        required=False,
+        allow_null=True,
+        validators=(validate_property_image_upload,),
+    )
+    windowViewImage = serializers.ImageField(
+        source='window_view_image',
+        required=False,
+        allow_null=True,
+        validators=(validate_property_image_upload,),
+    )
+    clearLayoutImage = serializers.BooleanField(
+        write_only=True,
+        required=False,
+        default=False,
+    )
+    clearFloorPlanImage = serializers.BooleanField(
+        write_only=True,
+        required=False,
+        default=False,
+    )
+    clearWindowViewImage = serializers.BooleanField(
+        write_only=True,
+        required=False,
+        default=False,
+    )
+
+    class Meta:
+        """Define fields accepted by property create and update endpoints."""
+
+        model = Property
+        fields = (
+            'apartmentNumber',
+            'buildingId',
+            'decorationId',
+            'layoutId',
+            'area',
+            'floor',
+            'propertyCost',
+            'windowViewIds',
+            'replaceWindowViews',
+            'layoutImage',
+            'floorPlanImage',
+            'windowViewImage',
+            'clearLayoutImage',
+            'clearFloorPlanImage',
+            'clearWindowViewImage',
+        )
+
+    def create(self, validated_data):
+        """Create a property and its optional window-view relations."""
+        self._pop_clear_flags(validated_data)
+        validated_data.pop('replaceWindowViews', None)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        """Update fields and safely remove explicitly cleared image files."""
+        clear_flags = self._pop_clear_flags(validated_data)
+        replace_window_views = validated_data.pop(
+            'replaceWindowViews',
+            False,
+        )
+        window_views_were_submitted = 'window_views' in validated_data
+        previous_images = []
+        for clear_field, image_field in self.IMAGE_CLEAR_FIELDS:
+            if not clear_flags[clear_field]:
+                continue
+            previous_image = getattr(instance, image_field)
+            if previous_image:
+                previous_images.append(
+                    (image_field, previous_image.name, previous_image.storage)
+                )
+            if image_field not in validated_data:
+                validated_data[image_field] = None
+
+        with transaction.atomic():
+            property_object = super().update(instance, validated_data)
+            if replace_window_views and not window_views_were_submitted:
+                property_object.window_views.clear()
+            transaction.on_commit(
+                lambda: self._delete_replaced_images(
+                    property_object,
+                    previous_images,
+                )
+            )
+        return property_object
+
+    def _pop_clear_flags(self, validated_data):
+        """Remove transport-only image flags from validated model data."""
+        return {
+            clear_field: validated_data.pop(clear_field, False)
+            for clear_field, _ in self.IMAGE_CLEAR_FIELDS
+        }
+
+    def _delete_replaced_images(self, property_object, previous_images):
+        """Delete old storage objects after the database update commits."""
+        for image_field, image_name, storage in previous_images:
+            current_image = getattr(property_object, image_field)
+            if current_image and current_image.name == image_name:
+                continue
+            if storage.exists(image_name):
+                storage.delete(image_name)
 
 
 class MortgageCalculationRequestSerializer(serializers.Serializer):

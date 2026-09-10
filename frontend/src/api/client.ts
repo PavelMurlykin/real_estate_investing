@@ -96,6 +96,7 @@ export async function requestWithoutResponse(
     throw new ApiError(
       'Сервер не смог выполнить запрос. Попробуйте ещё раз.',
       response.status,
+      await readResponseBody(response),
     )
   }
 }

@@ -156,6 +156,15 @@ export const customerMutationResponseSchema = z.object({
 export const propertyDetailSchema = z.object({
   id: z.number().int().positive(),
   apartmentNumber: z.string(),
+  regionId: z.number().int().positive(),
+  cityId: z.number().int().positive(),
+  districtId: z.number().int().positive(),
+  developerId: z.number().int().positive(),
+  realEstateComplexId: z.number().int().positive(),
+  buildingId: z.number().int().positive(),
+  layoutId: z.number().int().positive(),
+  decorationId: z.number().int().positive(),
+  windowViewIds: z.array(z.number().int().positive()),
   developer: z.string(),
   realEstateComplex: z.string(),
   realEstateClass: z.string(),
@@ -189,6 +198,39 @@ export const propertyDetailSchema = z.object({
   legacyDetailUrl: z.string(),
   legacyEditUrl: z.string(),
   legacyDeleteUrl: z.string(),
+})
+
+export const propertyFormOptionsSchema = z.object({
+  regions: z.array(namedOptionSchema),
+  cities: z.array(namedOptionSchema),
+  districts: z.array(namedOptionSchema),
+  developers: z.array(
+    z.object({
+      id: z.number().int().positive(),
+      label: z.string(),
+    }),
+  ),
+  realEstateComplexes: z.array(namedOptionSchema),
+  buildings: z.array(
+    z.object({
+      id: z.number().int().positive(),
+      number: z.string(),
+    }),
+  ),
+  layouts: z.array(namedOptionSchema),
+  decorations: z.array(namedOptionSchema),
+  windowViews: z.array(namedOptionSchema),
+  truncated: z.object({
+    regions: z.boolean(),
+    cities: z.boolean(),
+    districts: z.boolean(),
+    developers: z.boolean(),
+    realEstateComplexes: z.boolean(),
+    buildings: z.boolean(),
+    layouts: z.boolean(),
+    decorations: z.boolean(),
+    windowViews: z.boolean(),
+  }),
 })
 
 export const overviewSchema = z.object({
@@ -496,6 +538,7 @@ export type CustomerListResponse = z.infer<typeof customerListResponseSchema>
 export type CustomerDetail = z.infer<typeof customerDetailSchema>
 export type CustomerFormOptions = z.infer<typeof customerFormOptionsSchema>
 export type PropertyDetail = z.infer<typeof propertyDetailSchema>
+export type PropertyFormOptions = z.infer<typeof propertyFormOptionsSchema>
 export type Overview = z.infer<typeof overviewSchema>
 export type MortgageOptions = z.infer<typeof mortgageOptionsSchema>
 export type MortgageCalculationResponse = z.infer<

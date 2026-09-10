@@ -13,6 +13,7 @@ from .views import (
     MortgageOptionsAPIView,
     OverviewAPIView,
     PropertyDetailAPIView,
+    PropertyFormOptionsAPIView,
     PropertyListAPIView,
     SavedMortgageCalculationDetailAPIView,
     SavedMortgageCalculationExportAPIView,
@@ -58,6 +59,11 @@ urlpatterns = [
         name='customer_calculation_link_detail',
     ),
     path('properties/', PropertyListAPIView.as_view(), name='property_list'),
+    path(
+        'properties/options/',
+        PropertyFormOptionsAPIView.as_view(),
+        name='property_form_options',
+    ),
     path(
         'properties/<int:pk>/',
         PropertyDetailAPIView.as_view(),

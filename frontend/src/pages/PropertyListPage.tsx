@@ -131,9 +131,9 @@ export function PropertyListPage() {
             К карточке клиента
           </Link>
         ) : sessionQuery.data?.capabilities.manageCatalogs ? (
-          <a className="button button--primary" href="/property/create/">
+          <Link className="button button--primary" to="/properties/new">
             Добавить объект
-          </a>
+          </Link>
         ) : null}
       </header>
 

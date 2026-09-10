@@ -12,6 +12,7 @@ import {
   mortgageOptionsSchema,
   overviewSchema,
   propertyDetailSchema,
+  propertyFormOptionsSchema,
   propertyListResponseSchema,
   savedMortgageCalculationDetailSchema,
   savedMortgageCalculationListResponseSchema,
@@ -359,4 +360,64 @@ export function propertyDetailQueryOptions(propertyIdentifier: number) {
       ),
     staleTime: 60_000,
   })
+}
+
+export type PropertyFormOptionFilters = {
+  regionId: number | null
+  cityId: number | null
+  districtId: number | null
+  developerId: number | null
+  realEstateComplexId: number | null
+}
+
+export function propertyFormOptionsQueryOptions(
+  filters: PropertyFormOptionFilters,
+) {
+  const searchParameters = new URLSearchParams()
+  Object.entries(filters).forEach(([fieldName, value]) => {
+    if (value) searchParameters.set(fieldName, String(value))
+  })
+  const queryString = searchParameters.toString()
+
+  return queryOptions({
+    queryKey: ['property-form-options', queryString],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/properties/options/${queryString ? `?${queryString}` : ''}`,
+      propertyFormOptionsSchema,
+      { signal },
+    ),
+    staleTime: 5 * 60_000,
+  })
+}
+
+export function createProperty(formData: FormData) {
+  return requestJson(
+    '/api/v1/properties/',
+    propertyDetailSchema,
+    {
+      method: 'POST',
+      body: formData,
+    },
+  )
+}
+
+export function updateProperty(
+  propertyIdentifier: number,
+  formData: FormData,
+) {
+  return requestJson(
+    `/api/v1/properties/${propertyIdentifier}/`,
+    propertyDetailSchema,
+    {
+      method: 'PATCH',
+      body: formData,
+    },
+  )
+}
+
+export function deleteProperty(propertyIdentifier: number) {
+  return requestWithoutResponse(
+    `/api/v1/properties/${propertyIdentifier}/`,
+    { method: 'DELETE' },
+  )
 }

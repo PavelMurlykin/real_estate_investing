@@ -2499,6 +2499,100 @@ select:focus-visible {
   margin: 0;
 }
 
+.property-window-views,
+.property-upload-grid {
+  grid-column: 2;
+}
+
+.property-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.property-upload-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.property-upload-card h3,
+.property-upload-card p {
+  margin: 0;
+}
+
+.property-upload-current {
+  display: grid;
+  gap: 8px;
+}
+
+.property-upload-current img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  background: var(--surface-muted);
+  border-radius: 10px;
+}
+
+.property-upload-current a,
+.property-upload-note {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.property-upload-current a {
+  font-weight: 750;
+}
+
+.property-upload-card .text-button {
+  justify-self: start;
+}
+
+.confirmation-dialog-backdrop {
+  position: fixed;
+  z-index: 110;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(7 15 11 / 72%);
+  backdrop-filter: blur(5px);
+}
+
+.confirmation-dialog {
+  width: min(100%, 470px);
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow-md);
+}
+
+.confirmation-dialog h2 {
+  margin: 8px 0 10px;
+}
+
+.confirmation-dialog > p {
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.confirmation-dialog .form-error {
+  color: var(--danger);
+}
+
+.confirmation-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
 .customer-form-actions {
   display: flex;
   flex-wrap: wrap;
@@ -2518,6 +2612,15 @@ select:focus-visible {
   .customer-form-section {
     grid-template-columns: 1fr;
   }
+
+  .property-window-views,
+  .property-upload-grid {
+    grid-column: auto;
+  }
+
+  .property-upload-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 600px) {
@@ -2535,6 +2638,11 @@ select:focus-visible {
 
   .customer-form-actions,
   .customer-form-actions .button {
+    width: 100%;
+  }
+
+  .confirmation-dialog__actions,
+  .confirmation-dialog__actions .button {
     width: 100%;
   }
 }

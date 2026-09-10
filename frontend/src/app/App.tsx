@@ -14,6 +14,9 @@ const PropertyListPage = lazy(async () => ({
 const PropertyDetailPage = lazy(async () => ({
   default: (await import('@/pages/PropertyDetailPage')).PropertyDetailPage,
 }))
+const PropertyFormPage = lazy(async () => ({
+  default: (await import('@/pages/PropertyFormPage')).PropertyFormPage,
+}))
 const CustomerListPage = lazy(async () => ({
   default: (await import('@/pages/CustomerListPage')).CustomerListPage,
 }))
@@ -60,9 +63,14 @@ export function App() {
         <Route element={<AppShell />}>
           <Route index element={<HomePage />} />
           <Route path="properties" element={<PropertyListPage />} />
+          <Route path="properties/new" element={<PropertyFormPage />} />
           <Route
             path="properties/:propertyId"
             element={<PropertyDetailPage />}
+          />
+          <Route
+            path="properties/:propertyId/edit"
+            element={<PropertyFormPage />}
           />
           <Route path="customers" element={<CustomerListPage />} />
           <Route path="customers/new" element={<CustomerFormPage />} />

@@ -3,10 +3,13 @@ from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.urls import reverse
 
 from location.models import City, District, Region
+from mortgage.models import MortgageCalculation
 from property.models import (
     ApartmentDecoration,
     ApartmentLayout,
@@ -19,6 +22,7 @@ from property.models import (
     RealEstateType,
     WindowView,
 )
+from users.roles import MODERATOR_GROUP_NAME
 
 
 @pytest.fixture
@@ -69,6 +73,20 @@ def property_catalog():
         property_cost=Decimal('16800000.00'),
     )
     return first_property, second_property
+
+
+def create_catalog_manager(email='moderator@example.com'):
+    """Create a user who may mutate shared property catalogs."""
+    user = get_user_model().objects.create_user(
+        email=email,
+        password='safe-test-password',
+        phone_number='+79990000009',
+    )
+    moderator_group, _ = Group.objects.get_or_create(
+        name=MODERATOR_GROUP_NAME
+    )
+    user.groups.add(moderator_group)
+    return user
 
 
 @pytest.mark.django_db
@@ -292,6 +310,15 @@ def test_property_detail_api_returns_complete_public_card(
     payload = response.json()
     assert payload['id'] == property_object.pk
     assert payload['apartmentNumber'] == '101'
+    assert payload['regionId'] == real_estate_complex.district.city.region_id
+    assert payload['cityId'] == real_estate_complex.district.city_id
+    assert payload['districtId'] == real_estate_complex.district_id
+    assert payload['developerId'] == real_estate_complex.developer_id
+    assert payload['realEstateComplexId'] == real_estate_complex.pk
+    assert payload['buildingId'] == building.pk
+    assert payload['layoutId'] == property_object.layout_id
+    assert payload['decorationId'] == property_object.decoration_id
+    assert payload['windowViewIds'] == [window_view.pk]
     assert payload['developer'] == (
         'Северный девелопер (Группа Север)'
     )
@@ -345,6 +372,261 @@ def test_property_detail_api_returns_404_for_unknown_identifier(client):
     )
 
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_property_form_options_are_manager_only_and_hierarchical(
+    client,
+    property_catalog,
+):
+    """Return only bounded choices for the selected location hierarchy."""
+    property_object, _ = property_catalog
+    building = property_object.building
+    real_estate_complex = building.real_estate_complex
+    district = real_estate_complex.district
+    city = district.city
+    layout = property_object.layout
+    decoration = property_object.decoration
+    window_view = WindowView.objects.create(name='Парк')
+
+    anonymous_response = client.get(
+        reverse('api_v1:property_form_options')
+    )
+    assert anonymous_response.status_code == 403
+
+    client.force_login(create_catalog_manager())
+    response = client.get(
+        reverse('api_v1:property_form_options'),
+        {
+            'regionId': city.region_id,
+            'cityId': city.pk,
+            'districtId': district.pk,
+            'developerId': real_estate_complex.developer_id,
+            'realEstateComplexId': real_estate_complex.pk,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['regions'] == [
+        {'id': city.region_id, 'name': 'Тестовый регион'}
+    ]
+    assert payload['cities'] == [
+        {'id': city.pk, 'name': 'Санкт-Петербург'}
+    ]
+    assert payload['districts'] == [
+        {'id': district.pk, 'name': 'Петроградский'}
+    ]
+    assert payload['developers'] == [
+        {
+            'id': real_estate_complex.developer_id,
+            'label': 'Северный девелопер (Группа Север)',
+        }
+    ]
+    assert payload['realEstateComplexes'] == [
+        {'id': real_estate_complex.pk, 'name': 'Белые ночи'}
+    ]
+    assert payload['buildings'] == [
+        {'id': building.pk, 'number': '1'}
+    ]
+    assert payload['layouts'] == [{'id': layout.pk, 'name': 'Евродвушка'}]
+    assert payload['decorations'] == [
+        {'id': decoration.pk, 'name': 'Чистовая'}
+    ]
+    assert payload['windowViews'] == [
+        {'id': window_view.pk, 'name': 'Парк'}
+    ]
+    assert not any(payload['truncated'].values())
+
+
+@pytest.mark.django_db
+def test_property_create_api_persists_form_data_and_image(
+    client,
+    property_catalog,
+    settings,
+    tmp_path,
+):
+    """A moderator should create a property through the multipart API."""
+    settings.MEDIA_ROOT = tmp_path
+    property_object, _ = property_catalog
+    window_view = WindowView.objects.create(name='Двор')
+    client.force_login(create_catalog_manager())
+    image = SimpleUploadedFile(
+        'layout.gif',
+        (
+            b'GIF87a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xff\xff\xff,\x00\x00\x00\x00\x01\x00\x01\x00\x00'
+            b'\x02\x02D\x01\x00;'
+        ),
+        content_type='image/gif',
+    )
+
+    response = client.post(
+        reverse('api_v1:property_list'),
+        data={
+            'apartmentNumber': '303',
+            'buildingId': property_object.building_id,
+            'decorationId': property_object.decoration_id,
+            'layoutId': property_object.layout_id,
+            'area': '61.25',
+            'floor': '12',
+            'propertyCost': '19000000.00',
+            'windowViewIds': [window_view.pk],
+            'replaceWindowViews': 'true',
+            'layoutImage': image,
+        },
+    )
+
+    assert response.status_code == 201
+    created_property = Property.objects.get(apartment_number='303')
+    assert response.json()['id'] == created_property.pk
+    assert created_property.window_views.get() == window_view
+    assert created_property.layout_image.name.startswith('property/layouts/')
+
+
+@pytest.mark.django_db
+def test_property_create_api_rejects_unsafe_image_and_non_manager(
+    client,
+    property_catalog,
+):
+    """Reject invalid uploads and users without catalog permissions."""
+    property_object, _ = property_catalog
+    initial_count = Property.objects.count()
+    regular_user = get_user_model().objects.create_user(
+        email='regular@example.com',
+        password='safe-test-password',
+        phone_number='+79990000008',
+    )
+    client.force_login(regular_user)
+    forbidden_response = client.post(
+        reverse('api_v1:property_list'),
+        data={'apartmentNumber': 'blocked'},
+    )
+    assert forbidden_response.status_code == 403
+
+    client.force_login(create_catalog_manager())
+    invalid_response = client.post(
+        reverse('api_v1:property_list'),
+        data={
+            'apartmentNumber': 'unsafe',
+            'buildingId': property_object.building_id,
+            'decorationId': property_object.decoration_id,
+            'layoutId': property_object.layout_id,
+            'area': '40.00',
+            'floor': '4',
+            'propertyCost': '9000000.00',
+            'layoutImage': SimpleUploadedFile(
+                'payload.exe',
+                b'not-an-image',
+                content_type='image/png',
+            ),
+        },
+    )
+
+    assert invalid_response.status_code == 400
+    assert 'layoutImage' in invalid_response.json()
+    assert Property.objects.count() == initial_count
+
+
+@pytest.mark.django_db
+def test_property_update_api_can_clear_images_and_window_views(
+    client,
+    django_capture_on_commit_callbacks,
+    property_catalog,
+    settings,
+    tmp_path,
+):
+    """Explicit clear flags should remove stored values on partial update."""
+    settings.MEDIA_ROOT = tmp_path
+    property_object, _ = property_catalog
+    window_view = WindowView.objects.create(name='Река')
+    property_object.window_views.add(window_view)
+    property_object.layout_image = SimpleUploadedFile(
+        'old-layout.gif',
+        (
+            b'GIF87a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xff\xff\xff,\x00\x00\x00\x00\x01\x00\x01\x00\x00'
+            b'\x02\x02D\x01\x00;'
+        ),
+        content_type='image/gif',
+    )
+    property_object.save(update_fields=('layout_image',))
+    previous_image_name = property_object.layout_image.name
+    previous_image_storage = property_object.layout_image.storage
+    assert previous_image_storage.exists(previous_image_name)
+    client.force_login(create_catalog_manager())
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = client.patch(
+            reverse(
+                'api_v1:property_detail',
+                kwargs={'pk': property_object.pk},
+            ),
+            data={
+                'apartmentNumber': '101-А',
+                'replaceWindowViews': True,
+                'clearLayoutImage': True,
+            },
+            content_type='application/json',
+        )
+
+    assert response.status_code == 200
+    property_object.refresh_from_db()
+    assert property_object.apartment_number == '101-А'
+    assert not property_object.layout_image
+    assert not property_object.window_views.exists()
+    assert not previous_image_storage.exists(previous_image_name)
+    assert response.json()['windowViewIds'] == []
+
+
+@pytest.mark.django_db
+def test_property_mutations_require_csrf_and_report_protected_delete(
+    property_catalog,
+):
+    """Unsafe property requests require CSRF and explain protected deletes."""
+    property_object, deletable_property = property_catalog
+    manager = create_catalog_manager()
+    csrf_client = Client(enforce_csrf_checks=True)
+    csrf_client.force_login(manager)
+    csrf_response = csrf_client.patch(
+        reverse(
+            'api_v1:property_detail',
+            kwargs={'pk': property_object.pk},
+        ),
+        data={'apartmentNumber': 'blocked'},
+        content_type='application/json',
+    )
+    assert csrf_response.status_code == 403
+
+    MortgageCalculation.objects.create(
+        property=property_object,
+        base_property_cost=property_object.property_cost,
+        initial_payment_percent=Decimal('20.00'),
+        initial_payment_date=date(2026, 1, 1),
+        mortgage_term=240,
+        annual_rate=Decimal('18.00'),
+        has_grace_period=False,
+        final_property_cost=property_object.property_cost,
+    )
+    client = Client()
+    client.force_login(manager)
+    protected_response = client.delete(
+        reverse(
+            'api_v1:property_detail',
+            kwargs={'pk': property_object.pk},
+        )
+    )
+    deleted_response = client.delete(
+        reverse(
+            'api_v1:property_detail',
+            kwargs={'pk': deletable_property.pk},
+        )
+    )
+
+    assert protected_response.status_code == 409
+    assert 'расчёты' in protected_response.json()['detail']
+    assert deleted_response.status_code == 204
+    assert not Property.objects.filter(pk=deletable_property.pk).exists()
 
 
 @pytest.mark.django_db
