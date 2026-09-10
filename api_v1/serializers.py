@@ -13,6 +13,7 @@ from location.models import City, District
 from property.models import (
     ApartmentDecoration,
     ApartmentLayout,
+    CompanyGroup,
     Property,
     RealEstateComplexBuilding,
     WindowView,
@@ -57,6 +58,70 @@ class CustomerListQuerySerializer(serializers.Serializer):
         max_value=100,
         default=20,
     )
+
+
+class CompanyGroupListQuerySerializer(serializers.Serializer):
+    """Validate search, ordering, and pagination for company groups."""
+
+    q = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=100,
+        trim_whitespace=True,
+    )
+    ordering = serializers.ChoiceField(
+        required=False,
+        choices=('name', '-name'),
+        default='name',
+    )
+    page = serializers.IntegerField(required=False, min_value=1, default=1)
+    pageSize = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=100,
+        default=20,
+    )
+
+
+class CompanyGroupSerializer(serializers.ModelSerializer):
+    """Serialize and validate a company group catalog entry."""
+
+    developerCount = serializers.IntegerField(
+        source='developer_count',
+        read_only=True,
+    )
+    legacyEditUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_edit_url'
+    )
+    legacyDeleteUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_delete_url'
+    )
+
+    class Meta:
+        """Define the stable company group API contract."""
+
+        model = CompanyGroup
+        fields = (
+            'id',
+            'name',
+            'developerCount',
+            'legacyEditUrl',
+            'legacyDeleteUrl',
+        )
+
+    def get_legacy_edit_url(self, company_group):
+        """Return the preserved Django edit form URL."""
+        return reverse(
+            'property:company_group_update',
+            kwargs={'pk': company_group.pk},
+        )
+
+    def get_legacy_delete_url(self, company_group):
+        """Return the preserved Django delete form URL."""
+        return reverse(
+            'property:company_group_delete',
+            kwargs={'pk': company_group.pk},
+        )
 
 
 class CustomerCalculationListQuerySerializer(serializers.Serializer):

@@ -31,6 +31,9 @@ describe('Sidebar', () => {
     })
     expect(within(sidebar).getByText('Недвижимость')).toBeInTheDocument()
     expect(within(sidebar).getByText('Справочники')).toBeInTheDocument()
+    expect(
+      within(sidebar).getByRole('link', { name: 'Группы компаний' }),
+    ).toHaveAttribute('href', '/company-groups')
     expect(within(sidebar).queryByText('Клиенты')).not.toBeInTheDocument()
     expect(within(sidebar).getByRole('link', { name: 'Войти' })).toHaveAttribute(
       'href',

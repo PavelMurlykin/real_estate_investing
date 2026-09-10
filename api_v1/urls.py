@@ -1,6 +1,8 @@
 from django.urls import path
 
 from .views import (
+    CompanyGroupDetailAPIView,
+    CompanyGroupListCreateAPIView,
     CustomerDetailAPIView,
     CustomerCalculationLinkDetailAPIView,
     CustomerCalculationListCreateAPIView,
@@ -32,6 +34,16 @@ urlpatterns = [
     path('auth/login/', LoginAPIView.as_view(), name='login'),
     path('auth/logout/', LogoutAPIView.as_view(), name='logout'),
     path('overview/', OverviewAPIView.as_view(), name='overview'),
+    path(
+        'company-groups/',
+        CompanyGroupListCreateAPIView.as_view(),
+        name='company_group_list',
+    ),
+    path(
+        'company-groups/<int:pk>/',
+        CompanyGroupDetailAPIView.as_view(),
+        name='company_group_detail',
+    ),
     path('customers/', CustomerListAPIView.as_view(), name='customer_list'),
     path(
         'customers/options/',

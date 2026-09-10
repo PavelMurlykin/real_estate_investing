@@ -17,6 +17,12 @@ const PropertyDetailPage = lazy(async () => ({
 const PropertyFormPage = lazy(async () => ({
   default: (await import('@/pages/PropertyFormPage')).PropertyFormPage,
 }))
+const CompanyGroupListPage = lazy(async () => ({
+  default: (await import('@/pages/CompanyGroupListPage')).CompanyGroupListPage,
+}))
+const CompanyGroupFormPage = lazy(async () => ({
+  default: (await import('@/pages/CompanyGroupFormPage')).CompanyGroupFormPage,
+}))
 const CustomerListPage = lazy(async () => ({
   default: (await import('@/pages/CustomerListPage')).CustomerListPage,
 }))
@@ -71,6 +77,15 @@ export function App() {
           <Route
             path="properties/:propertyId/edit"
             element={<PropertyFormPage />}
+          />
+          <Route path="company-groups" element={<CompanyGroupListPage />} />
+          <Route
+            path="company-groups/new"
+            element={<CompanyGroupFormPage />}
+          />
+          <Route
+            path="company-groups/:companyGroupId/edit"
+            element={<CompanyGroupFormPage />}
           />
           <Route path="customers" element={<CustomerListPage />} />
           <Route path="customers/new" element={<CustomerFormPage />} />

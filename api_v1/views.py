@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib.auth import login, logout
 from django.db import transaction
 from django.db.models.deletion import ProtectedError
-from django.db.models import Prefetch, Q
+from django.db.models import Count, Prefetch, Q
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -52,6 +52,7 @@ from mortgage.word import (
 from property.models import (
     ApartmentDecoration,
     ApartmentLayout,
+    CompanyGroup,
     Developer,
     Property,
     RealEstateComplex,
@@ -81,6 +82,8 @@ from .mortgage_service import (
 )
 from .pagination import ApplicationPageNumberPagination
 from .serializers import (
+    CompanyGroupListQuerySerializer,
+    CompanyGroupSerializer,
     CustomerDetailSerializer,
     CustomerCalculationExportRequestSerializer,
     CustomerCalculationLinkCreateSerializer,
@@ -761,6 +764,96 @@ class SavedMortgageCalculationExportAPIView(APIView):
         )
         payment_schedule = build_saved_mortgage_payment_schedule(calculation)
         return exporter(calculation, payment_schedule)
+
+
+def _company_group_queryset():
+    """Return company groups annotated with their developer count."""
+    return CompanyGroup.objects.annotate(developer_count=Count('developers'))
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class CompanyGroupListCreateAPIView(ListCreateAPIView):
+    """List company groups publicly and let moderators create entries."""
+
+    serializer_class = CompanyGroupSerializer
+    pagination_class = ApplicationPageNumberPagination
+
+    def get_permissions(self):
+        """Keep reads public and protect catalog creation."""
+        if self.request.method == 'GET':
+            return (AllowAny(),)
+        return (IsAuthenticated(), CanManageCatalogs())
+
+    def get_queryset(self):
+        """Apply validated search and deterministic ordering."""
+        query_serializer = CompanyGroupListQuerySerializer(
+            data=self.request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        filters = query_serializer.validated_data
+        queryset = _company_group_queryset()
+        search = filters.get('q', '')
+        if search:
+            queryset = queryset.filter(name__icontains=search)
+        ordering = filters['ordering']
+        return queryset.order_by(ordering, 'pk')
+
+    def create(self, request, *args, **kwargs):
+        """Create an entry and return its annotated representation."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        company_group = serializer.save()
+        company_group = _company_group_queryset().get(pk=company_group.pk)
+        response_serializer = self.get_serializer(company_group)
+        return Response(
+            response_serializer.data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class CompanyGroupDetailAPIView(RetrieveUpdateDestroyAPIView):
+    """Retrieve a company group and protect its mutations."""
+
+    serializer_class = CompanyGroupSerializer
+    queryset = _company_group_queryset()
+
+    def get_permissions(self):
+        """Keep reads public and protect update and delete operations."""
+        if self.request.method == 'GET':
+            return (AllowAny(),)
+        return (IsAuthenticated(), CanManageCatalogs())
+
+    def update(self, request, *args, **kwargs):
+        """Update an entry and return its annotated representation."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=partial,
+        )
+        serializer.is_valid(raise_exception=True)
+        company_group = serializer.save()
+        company_group = _company_group_queryset().get(pk=company_group.pk)
+        return Response(self.get_serializer(company_group).data)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete an unused group or explain its protected dependency."""
+        instance = self.get_object()
+        try:
+            instance.delete()
+        except ProtectedError:
+            return Response(
+                {
+                    'detail': (
+                        'Группу компаний нельзя удалить, пока с ней '
+                        'связаны застройщики.'
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 def _property_detail_queryset():

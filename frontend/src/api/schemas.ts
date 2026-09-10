@@ -43,6 +43,22 @@ export const propertyListResponseSchema = z.object({
   results: z.array(propertyListItemSchema),
 })
 
+export const companyGroupSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  developerCount: z.number().int().nonnegative(),
+  legacyEditUrl: z.string(),
+  legacyDeleteUrl: z.string(),
+})
+
+export const companyGroupListResponseSchema = z.object({
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  totalCount: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  results: z.array(companyGroupSchema),
+})
+
 export const customerListItemSchema = z.object({
   id: z.number().int().positive(),
   fullName: z.string(),
@@ -533,6 +549,10 @@ export type CustomerCalculationSelection = {
 export type Session = z.infer<typeof sessionSchema>
 export type PropertyListItem = z.infer<typeof propertyListItemSchema>
 export type PropertyListResponse = z.infer<typeof propertyListResponseSchema>
+export type CompanyGroup = z.infer<typeof companyGroupSchema>
+export type CompanyGroupListResponse = z.infer<
+  typeof companyGroupListResponseSchema
+>
 export type CustomerListItem = z.infer<typeof customerListItemSchema>
 export type CustomerListResponse = z.infer<typeof customerListResponseSchema>
 export type CustomerDetail = z.infer<typeof customerDetailSchema>

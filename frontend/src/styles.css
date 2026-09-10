@@ -952,6 +952,30 @@ select:focus-visible {
   font-size: 12px;
 }
 
+.row-action--danger {
+  padding: 0;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.catalog-table th:last-child,
+.catalog-table td:last-child {
+  width: 84px;
+}
+
+.catalog-entry-form {
+  max-width: 920px;
+}
+
+.catalog-entry-form__section .customer-form-grid {
+  grid-template-columns: 1fr;
+}
+
 .property-mobile-list {
   display: none;
 }

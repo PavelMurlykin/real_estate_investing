@@ -630,6 +630,144 @@ def test_property_mutations_require_csrf_and_report_protected_delete(
 
 
 @pytest.mark.django_db
+def test_company_group_list_api_is_public_filtered_and_constant_query_count(
+    client,
+    property_catalog,
+    django_assert_num_queries,
+):
+    """Return paginated company groups with a set-based developer count."""
+    property_object, _ = property_catalog
+    company_group = (
+        property_object.building.real_estate_complex.developer.company_group
+    )
+    CompanyGroup.objects.create(name='Группа Юг')
+
+    with django_assert_num_queries(2):
+        response = client.get(
+            reverse('api_v1:company_group_list'),
+            {'q': 'Север', 'pageSize': 10},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        'page': 1,
+        'pageSize': 10,
+        'totalCount': 1,
+        'totalPages': 1,
+        'results': [
+            {
+                'id': company_group.pk,
+                'name': 'Группа Север',
+                'developerCount': 1,
+                'legacyEditUrl': reverse(
+                    'property:company_group_update',
+                    kwargs={'pk': company_group.pk},
+                ),
+                'legacyDeleteUrl': reverse(
+                    'property:company_group_delete',
+                    kwargs={'pk': company_group.pk},
+                ),
+            }
+        ],
+    }
+
+
+@pytest.mark.django_db
+def test_company_group_api_supports_manager_create_update_and_delete(client):
+    """A catalog manager should complete the company group CRUD workflow."""
+    client.force_login(create_catalog_manager())
+
+    create_response = client.post(
+        reverse('api_v1:company_group_list'),
+        data={'name': 'ГК Новая'},
+        content_type='application/json',
+    )
+    assert create_response.status_code == 201
+    company_group_identifier = create_response.json()['id']
+    assert create_response.json()['developerCount'] == 0
+
+    update_response = client.patch(
+        reverse(
+            'api_v1:company_group_detail',
+            kwargs={'pk': company_group_identifier},
+        ),
+        data={'name': 'ГК Обновлённая'},
+        content_type='application/json',
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()['name'] == 'ГК Обновлённая'
+
+    delete_response = client.delete(
+        reverse(
+            'api_v1:company_group_detail',
+            kwargs={'pk': company_group_identifier},
+        )
+    )
+    assert delete_response.status_code == 204
+    assert not CompanyGroup.objects.filter(
+        pk=company_group_identifier
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_company_group_api_rejects_invalid_permissions_and_protected_delete(
+    client,
+    property_catalog,
+):
+    """Reject duplicate writes and deletion of groups used by developers."""
+    property_object, _ = property_catalog
+    company_group = (
+        property_object.building.real_estate_complex.developer.company_group
+    )
+    regular_user = get_user_model().objects.create_user(
+        email='catalog-reader@example.com',
+        password='safe-test-password',
+        phone_number='+79990000007',
+    )
+    client.force_login(regular_user)
+    forbidden_response = client.post(
+        reverse('api_v1:company_group_list'),
+        data={'name': 'Запрещённая группа'},
+        content_type='application/json',
+    )
+    assert forbidden_response.status_code == 403
+
+    client.force_login(create_catalog_manager())
+    duplicate_response = client.post(
+        reverse('api_v1:company_group_list'),
+        data={'name': company_group.name},
+        content_type='application/json',
+    )
+    protected_response = client.delete(
+        reverse(
+            'api_v1:company_group_detail',
+            kwargs={'pk': company_group.pk},
+        )
+    )
+
+    assert duplicate_response.status_code == 400
+    assert 'name' in duplicate_response.json()
+    assert protected_response.status_code == 409
+    assert 'застройщики' in protected_response.json()['detail']
+
+
+@pytest.mark.django_db
+def test_company_group_mutations_require_csrf():
+    """Require a valid CSRF token for session-authenticated catalog writes."""
+    csrf_client = Client(enforce_csrf_checks=True)
+    csrf_client.force_login(create_catalog_manager())
+
+    response = csrf_client.post(
+        reverse('api_v1:company_group_list'),
+        data={'name': 'Без CSRF'},
+        content_type='application/json',
+    )
+
+    assert response.status_code == 403
+    assert not CompanyGroup.objects.filter(name='Без CSRF').exists()
+
+
+@pytest.mark.django_db
 def test_overview_api_returns_counts_and_bounded_recent_properties(
     client,
     property_catalog,

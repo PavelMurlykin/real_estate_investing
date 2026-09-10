@@ -2,6 +2,8 @@ import { queryOptions } from '@tanstack/react-query'
 
 import { requestFile, requestJson, requestWithoutResponse } from './client'
 import {
+  companyGroupListResponseSchema,
+  companyGroupSchema,
   customerCalculationLinkResponseSchema,
   customerCalculationListResponseSchema,
   customerDetailSchema,
@@ -46,6 +48,74 @@ export const overviewQueryOptions = queryOptions({
     requestJson('/api/v1/overview/', overviewSchema, { signal }),
   staleTime: 60_000,
 })
+
+export function companyGroupListQueryOptions(
+  searchParameters: URLSearchParams,
+) {
+  const normalizedParameters = new URLSearchParams()
+  for (const fieldName of ['q', 'ordering', 'page', 'pageSize']) {
+    const value = searchParameters.get(fieldName)
+    if (value) normalizedParameters.set(fieldName, value)
+  }
+  const queryString = normalizedParameters.toString()
+
+  return queryOptions({
+    queryKey: ['company-groups', queryString],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/company-groups/${queryString ? `?${queryString}` : ''}`,
+      companyGroupListResponseSchema,
+      { signal },
+    ),
+    placeholderData: (previousData) => previousData,
+    staleTime: 30_000,
+  })
+}
+
+export function companyGroupDetailQueryOptions(
+  companyGroupIdentifier: number,
+) {
+  return queryOptions({
+    queryKey: ['company-group', companyGroupIdentifier],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/company-groups/${companyGroupIdentifier}/`,
+      companyGroupSchema,
+      { signal },
+    ),
+    staleTime: 60_000,
+  })
+}
+
+export function createCompanyGroup(name: string) {
+  return requestJson(
+    '/api/v1/company-groups/',
+    companyGroupSchema,
+    {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    },
+  )
+}
+
+export function updateCompanyGroup(
+  companyGroupIdentifier: number,
+  name: string,
+) {
+  return requestJson(
+    `/api/v1/company-groups/${companyGroupIdentifier}/`,
+    companyGroupSchema,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    },
+  )
+}
+
+export function deleteCompanyGroup(companyGroupIdentifier: number) {
+  return requestWithoutResponse(
+    `/api/v1/company-groups/${companyGroupIdentifier}/`,
+    { method: 'DELETE' },
+  )
+}
 
 export const mortgageOptionsQueryOptions = queryOptions({
   queryKey: ['mortgage-options'],

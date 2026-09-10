@@ -24,7 +24,12 @@ type NavigationGroupProps = {
 }
 
 const realEstateItems: NavigationItem[] = [
-  { label: 'Группы компаний', href: '/property/company-groups/', symbol: 'Г' },
+  {
+    label: 'Группы компаний',
+    href: '/company-groups',
+    symbol: 'Г',
+    reactRoute: true,
+  },
   { label: 'Застройщики', href: '/property/developers/', symbol: 'З' },
   { label: 'Жилые комплексы', href: '/property/complexes/', symbol: 'Ж' },
   { label: 'Справочники объектов', href: '/property/dictionaries/', symbol: 'О' },
