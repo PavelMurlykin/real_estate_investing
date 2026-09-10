@@ -236,3 +236,49 @@ class MortgageCalculationRequestSerializer(serializers.Serializer):
         if errors:
             raise serializers.ValidationError(errors)
         return attributes
+
+
+class SavedMortgageCalculationCreateSerializer(serializers.Serializer):
+    """Validate a request to persist a property-backed calculation."""
+
+    propertyId = serializers.PrimaryKeyRelatedField(
+        source='property',
+        queryset=Property.objects.all(),
+    )
+    parameters = MortgageCalculationRequestSerializer()
+
+
+class SavedMortgageCalculationListQuerySerializer(serializers.Serializer):
+    """Validate bounded filtering and ordering for saved calculations."""
+
+    ORDERING_CHOICES = (
+        'createdAt',
+        '-createdAt',
+        'finalPropertyCost',
+        '-finalPropertyCost',
+        'mainMonthlyPayment',
+        '-mainMonthlyPayment',
+        'mortgageTermMonths',
+        '-mortgageTermMonths',
+        'annualRate',
+        '-annualRate',
+    )
+
+    q = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=100,
+        trim_whitespace=True,
+    )
+    ordering = serializers.ChoiceField(
+        required=False,
+        choices=ORDERING_CHOICES,
+        default='-createdAt',
+    )
+    page = serializers.IntegerField(required=False, min_value=1, default=1)
+    pageSize = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=100,
+        default=20,
+    )

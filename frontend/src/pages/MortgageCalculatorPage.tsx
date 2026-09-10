@@ -1,17 +1,18 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
-import type { FormEvent, ReactNode, RefObject } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { FormEvent } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { ApiError } from '@/api/client'
-import { calculateMortgage, mortgageOptionsQueryOptions } from '@/api/queries'
-import type {
-  MortgageCalculationRequest,
-  MortgageCalculationResponse,
-} from '@/api/schemas'
 import {
-  formatCurrency,
-  formatDate,
+  calculateMortgage,
+  mortgageOptionsQueryOptions,
+  saveMortgageCalculation,
+  sessionQueryOptions,
+} from '@/api/queries'
+import type { MortgageCalculationRequest } from '@/api/schemas'
+import { MortgageResult } from '@/features/mortgage/MortgageResult'
+import {
   formatMonths,
   formatPercent,
 } from '@/shared/lib/formatters'
@@ -65,129 +66,22 @@ function FieldError({ fieldName, errors }: { fieldName: string; errors: FieldErr
   return <span className="field-error" id={`${fieldName}-error`}>{message}</span>
 }
 
-function SummaryItem({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="mortgage-summary__item">
-      <span>{label}</span>
-      <strong>{children}</strong>
-    </div>
-  )
-}
-
-function MortgageResult({
-  result,
-  headingRef,
-}: {
-  result: MortgageCalculationResponse
-  headingRef: RefObject<HTMLHeadingElement | null>
-}) {
-  const [showFullSchedule, setShowFullSchedule] = useState(false)
-  const visibleSchedule = showFullSchedule
-    ? result.schedule
-    : result.schedule.slice(0, 12)
-
-  return (
-    <div className="mortgage-result">
-      <section className="mortgage-summary" aria-labelledby="mortgage-result-title">
-        <div className="mortgage-summary__heading">
-          <div>
-            <span className="eyebrow">Результат расчёта</span>
-            <h2 id="mortgage-result-title" ref={headingRef} tabIndex={-1}>
-              Параметры кредита
-            </h2>
-          </div>
-          <span className="mortgage-summary__term">
-            {formatMonths(result.assumptions.mortgageTermMonths)}
-          </span>
-        </div>
-        <div className="mortgage-summary__primary">
-          <span>Ежемесячный платёж</span>
-          <strong>{formatCurrency(result.summary.mainMonthlyPayment)}</strong>
-          <small>до {formatDate(result.summary.mortgageEndDate)}</small>
-        </div>
-        <div className="mortgage-summary__grid">
-          <SummaryItem label="Стоимость после корректировки">
-            {formatCurrency(result.assumptions.finalPropertyCost)}
-          </SummaryItem>
-          <SummaryItem label="Первоначальный взнос">
-            {formatCurrency(result.assumptions.initialPaymentRubles)}
-          </SummaryItem>
-          <SummaryItem label="Сумма кредита">
-            {formatCurrency(result.summary.loanAmount)}
-          </SummaryItem>
-          <SummaryItem label="Переплата">
-            {formatCurrency(result.summary.overpayment)}
-          </SummaryItem>
-          <SummaryItem label="Всего выплат">
-            {formatCurrency(result.summary.totalPayments)}
-          </SummaryItem>
-          <SummaryItem label="Годовая ставка">
-            {formatPercent(result.assumptions.annualRate)}
-          </SummaryItem>
-        </div>
-        {result.summary.graceMonthlyPayment ? (
-          <div className="grace-result">
-            Льготный платёж: <strong>
-              {formatCurrency(result.summary.graceMonthlyPayment)}
-            </strong>{' '}
-            до {formatDate(result.summary.gracePeriodEndDate ?? '')}
-          </div>
-        ) : null}
-      </section>
-
-      <section className="schedule-panel" aria-labelledby="schedule-title">
-        <div className="section-heading section-heading--with-action">
-          <div>
-            <span className="eyebrow">Детализация</span>
-            <h2 id="schedule-title">График платежей</h2>
-          </div>
-          {result.schedule.length > 12 ? (
-            <button
-              className="button button--secondary"
-              type="button"
-              onClick={() => setShowFullSchedule((current) => !current)}
-            >
-              {showFullSchedule ? 'Первые 12 платежей' : 'Показать весь график'}
-            </button>
-          ) : null}
-        </div>
-        <div className="mortgage-schedule-wrapper">
-          <table className="property-table mortgage-schedule">
-            <caption className="visually-hidden">График ежемесячных платежей</caption>
-            <thead>
-              <tr>
-                <th scope="col">№</th>
-                <th scope="col">Дата</th>
-                <th scope="col">Платёж</th>
-                <th scope="col">Проценты</th>
-                <th scope="col">Основной долг</th>
-                <th scope="col">Остаток</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleSchedule.map((payment) => (
-                <tr key={payment.paymentNumber}>
-                  <td>{payment.paymentNumber}</td>
-                  <td>{formatDate(payment.paymentDate)}</td>
-                  <td><strong>{formatCurrency(payment.paymentAmount)}</strong></td>
-                  <td>{formatCurrency(payment.interestAmount)}</td>
-                  <td>{formatCurrency(payment.principalAmount)}</td>
-                  <td>{formatCurrency(payment.remainingDebt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-  )
-}
-
 export function MortgageCalculatorPage() {
   useDocumentTitle('Ипотечный калькулятор')
   const [searchParameters] = useSearchParams()
+  const queryClient = useQueryClient()
   const optionsQuery = useQuery(mortgageOptionsQueryOptions)
+  const sessionQuery = useQuery(sessionQueryOptions)
   const resultHeadingRef = useRef<HTMLHeadingElement>(null)
+  const rawPropertyIdentifier = Number(searchParameters.get('propertyId'))
+  const propertyIdentifier = Number.isInteger(rawPropertyIdentifier)
+    && rawPropertyIdentifier > 0
+    ? rawPropertyIdentifier
+    : null
+  const calculationQueryString = searchParameters.toString()
+  const loginReturnPath = `/app/mortgage${
+    calculationQueryString ? `?${calculationQueryString}` : ''
+  }`
   const [formState, setFormState] = useState<MortgageFormState>(() => ({
     propertyCost: searchParameters.get('propertyCost') ?? '5000000',
     priceAdjustmentType: 'discount',
@@ -205,6 +99,14 @@ export function MortgageCalculatorPage() {
     gracePeriodRate: '6',
   }))
   const calculationMutation = useMutation({ mutationFn: calculateMortgage })
+  const saveMutation = useMutation({
+    mutationFn: saveMortgageCalculation,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['saved-mortgage-calculations'],
+      })
+    },
+  })
   const fieldErrors = extractFieldErrors(calculationMutation.error)
   const initialPaymentDate = formState.initialPaymentDate
     || optionsQuery.data?.defaultInitialPaymentDate
@@ -254,6 +156,7 @@ export function MortgageCalculatorPage() {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    saveMutation.reset()
     const payload: MortgageCalculationRequest = {
       propertyCost: formState.propertyCost,
       priceAdjustmentType: formState.priceAdjustmentType,
@@ -284,7 +187,8 @@ export function MortgageCalculatorPage() {
           <h1>Ипотечный калькулятор</h1>
           <p>
             Сравните параметры сделки и получите аннуитетный платёж с полным
-            графиком. Расчёт не сохраняет персональные данные.
+            графиком. Авторизованные пользователи могут сохранить результат
+            для объекта из каталога.
           </p>
         </div>
         <a className="button button--secondary" href="/mortgage/">
@@ -391,6 +295,61 @@ export function MortgageCalculatorPage() {
             key={calculationMutation.submittedAt}
             headingRef={resultHeadingRef}
             result={calculationMutation.data}
+            summaryAction={(
+              <section className="save-calculation-panel" aria-label="Сохранение расчёта">
+                <div>
+                  <span className="eyebrow">История расчётов</span>
+                  <h2>Сохранить этот сценарий</h2>
+                  {!sessionQuery.data?.isAuthenticated ? (
+                    <p>Войдите в аккаунт, чтобы сохранить расчёт и вернуться к нему позже.</p>
+                  ) : propertyIdentifier ? (
+                    <p>Расчёт будет связан с выбранным объектом недвижимости.</p>
+                  ) : (
+                    <p>Для сохранения сначала выберите объект в каталоге недвижимости.</p>
+                  )}
+                  {saveMutation.isError ? (
+                    <p className="save-calculation-panel__error" role="alert">
+                      Не удалось сохранить расчёт. Повторите попытку.
+                    </p>
+                  ) : null}
+                </div>
+                <div className="save-calculation-panel__actions">
+                  {!sessionQuery.data?.isAuthenticated ? (
+                    <a
+                      className="button button--primary"
+                      href={`/users/login/?next=${encodeURIComponent(loginReturnPath)}`}
+                    >
+                      Войти
+                    </a>
+                  ) : propertyIdentifier && calculationMutation.variables ? (
+                    saveMutation.data ? (
+                      <Link
+                        className="button button--primary"
+                        to={`/mortgage/calculations/${saveMutation.data.id}`}
+                      >
+                        Открыть сохранённый расчёт
+                      </Link>
+                    ) : (
+                      <button
+                        className="button button--primary"
+                        type="button"
+                        disabled={saveMutation.isPending}
+                        onClick={() => saveMutation.mutate({
+                          propertyId: propertyIdentifier,
+                          parameters: calculationMutation.variables,
+                        })}
+                      >
+                        {saveMutation.isPending ? 'Сохраняем…' : 'Сохранить расчёт'}
+                      </button>
+                    )
+                  ) : (
+                    <Link className="button button--secondary" to="/properties">
+                      Выбрать объект
+                    </Link>
+                  )}
+                </div>
+              </section>
+            )}
           />
         ) : null}
       </div>

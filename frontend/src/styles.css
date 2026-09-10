@@ -1417,6 +1417,107 @@ select:focus-visible {
   min-width: 780px;
 }
 
+.page-header__actions,
+.save-calculation-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.save-calculation-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 28px;
+  background: var(--brand-soft);
+  border: 1px solid color-mix(in srgb, var(--brand) 22%, var(--border));
+  border-radius: 18px;
+}
+
+.save-calculation-panel h2 {
+  margin: 3px 0 0;
+  font-size: 20px;
+}
+
+.save-calculation-panel p {
+  margin: 7px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.save-calculation-panel .save-calculation-panel__error {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.calculation-table td:nth-child(3) strong,
+.calculation-table td:nth-child(3) small {
+  display: block;
+}
+
+.calculation-table td:nth-child(3) small {
+  margin-top: 4px;
+  color: var(--text-muted);
+}
+
+.calculation-mobile-card__date {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.saved-property-card {
+  padding: 28px 30px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.saved-property-card .section-heading {
+  margin-bottom: 22px;
+}
+
+.saved-property-card .text-link {
+  margin-top: 0;
+}
+
+.saved-property-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  padding: 1px;
+  margin: 0;
+  background: var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.saved-property-grid > div {
+  min-height: 90px;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  padding: 18px;
+  background: var(--surface-muted);
+}
+
+.saved-property-grid dt {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.saved-property-grid dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 @media (max-width: 1180px) {
   .mortgage-layout {
     grid-template-columns: 1fr;
@@ -1433,6 +1534,10 @@ select:focus-visible {
   .calculator-reference .eyebrow,
   .calculator-reference > p {
     display: none;
+  }
+
+  .saved-property-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -1492,6 +1597,22 @@ select:focus-visible {
   .mortgage-summary__item:nth-child(2n) {
     border-right: 0;
   }
+
+  .page-header__actions,
+  .save-calculation-panel__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .save-calculation-panel {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 22px;
+  }
+
+  .saved-property-card {
+    padding: 22px;
+  }
 }
 
 @media (max-width: 500px) {
@@ -1517,6 +1638,15 @@ select:focus-visible {
   .mortgage-summary__item:nth-child(2n),
   .mortgage-summary__item:nth-child(3n) {
     border-right: 0;
+  }
+
+  .page-header__actions .button,
+  .save-calculation-panel__actions .button {
+    width: 100%;
+  }
+
+  .saved-property-grid {
+    grid-template-columns: 1fr;
   }
 }
 

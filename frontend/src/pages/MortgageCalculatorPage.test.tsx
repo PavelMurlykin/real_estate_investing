@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type {
   MortgageCalculationResponse,
   MortgageOptions,
+  SavedMortgageCalculationDetail,
+  Session,
 } from '@/api/schemas'
 import { createTestQueryClient, renderWithProviders } from '@/test/render'
 
@@ -68,10 +70,58 @@ const mortgageResult: MortgageCalculationResponse = {
   ],
 }
 
-function renderCalculator() {
+const authenticatedSession: Session = {
+  isAuthenticated: true,
+  user: {
+    id: 1,
+    displayName: 'Анна Смирнова',
+    email: 'anna@example.com',
+    agencyName: '',
+  },
+  capabilities: {
+    manageCatalogs: false,
+    syncExternalData: false,
+    viewPrivateRecords: true,
+    viewAllPrivateRecords: false,
+  },
+}
+
+const savedCalculation: SavedMortgageCalculationDetail = {
+  id: 7,
+  createdAt: '2026-09-09T10:30:00+03:00',
+  property: {
+    id: 3,
+    city: 'Казань',
+    developer: 'Надёжный застройщик',
+    realEstateComplex: 'Зелёный квартал',
+    realEstateClass: 'Комфорт',
+    building: '2',
+    apartmentNumber: '42',
+    layout: 'Евродвушка',
+    decoration: 'Чистовая',
+    area: '52.40',
+    floor: 8,
+    detailUrl: '/property/3/',
+  },
+  legacyDetailUrl: '/mortgage/calculations/7/',
+  legacySampleUrl: '/mortgage/?sample=7',
+  calculation: mortgageResult,
+}
+
+function renderCalculator({
+  initialRoute = '/',
+  session,
+}: {
+  initialRoute?: string
+  session?: Session
+} = {}) {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['mortgage-options'], mortgageOptions)
-  return renderWithProviders(<MortgageCalculatorPage />, { queryClient })
+  if (session) queryClient.setQueryData(['session'], session)
+  return renderWithProviders(<MortgageCalculatorPage />, {
+    initialRoute,
+    queryClient,
+  })
 }
 
 afterEach(() => {
@@ -163,5 +213,45 @@ describe('MortgageCalculatorPage', () => {
       ),
     ).toBeInTheDocument()
     expect(initialPaymentInput).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('saves the authoritative result for a catalog property', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(mortgageResult), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(savedCalculation), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    vi.stubGlobal('fetch', fetchMock)
+    renderCalculator({
+      initialRoute: '/?propertyId=3&propertyCost=5000000.00',
+      session: authenticatedSession,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Рассчитать ипотеку' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'Сохранить расчёт' }),
+    )
+
+    expect(
+      await screen.findByRole('link', { name: 'Открыть сохранённый расчёт' }),
+    ).toHaveAttribute('href', '/mortgage/calculations/7')
+    const saveRequest = fetchMock.mock.calls[1]
+    expect(saveRequest[0]).toBe('/api/v1/mortgage/calculations/')
+    expect(JSON.parse(saveRequest[1].body as string)).toEqual({
+      propertyId: 3,
+      parameters: expect.objectContaining({
+        propertyCost: '5000000.00',
+        mortgageTermMonths: 360,
+      }),
+    })
   })
 })

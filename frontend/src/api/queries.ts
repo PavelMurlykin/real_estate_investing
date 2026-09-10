@@ -6,9 +6,14 @@ import {
   mortgageOptionsSchema,
   overviewSchema,
   propertyListResponseSchema,
+  savedMortgageCalculationDetailSchema,
+  savedMortgageCalculationListResponseSchema,
   sessionSchema,
 } from './schemas'
-import type { MortgageCalculationRequest } from './schemas'
+import type {
+  MortgageCalculationRequest,
+  SavedMortgageCalculationCreateRequest,
+} from './schemas'
 
 export const sessionQueryOptions = queryOptions({
   queryKey: ['session'],
@@ -40,6 +45,51 @@ export function calculateMortgage(payload: MortgageCalculationRequest) {
       body: JSON.stringify(payload),
     },
   )
+}
+
+export function saveMortgageCalculation(
+  payload: SavedMortgageCalculationCreateRequest,
+) {
+  return requestJson(
+    '/api/v1/mortgage/calculations/',
+    savedMortgageCalculationDetailSchema,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  )
+}
+
+export function savedMortgageCalculationListQueryOptions(
+  searchParameters: URLSearchParams,
+) {
+  const normalizedParameters = new URLSearchParams(searchParameters)
+  const queryString = normalizedParameters.toString()
+
+  return queryOptions({
+    queryKey: ['saved-mortgage-calculations', queryString],
+    queryFn: ({ signal }) =>
+      requestJson(
+        `/api/v1/mortgage/calculations/${queryString ? `?${queryString}` : ''}`,
+        savedMortgageCalculationListResponseSchema,
+        { signal },
+      ),
+    placeholderData: (previousData) => previousData,
+  })
+}
+
+export function savedMortgageCalculationDetailQueryOptions(
+  calculationIdentifier: number,
+) {
+  return queryOptions({
+    queryKey: ['saved-mortgage-calculation', calculationIdentifier],
+    queryFn: ({ signal }) =>
+      requestJson(
+        `/api/v1/mortgage/calculations/${calculationIdentifier}/`,
+        savedMortgageCalculationDetailSchema,
+        { signal },
+      ),
+  })
 }
 
 export function propertyListQueryOptions(searchParameters: URLSearchParams) {

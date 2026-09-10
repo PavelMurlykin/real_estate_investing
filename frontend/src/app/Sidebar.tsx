@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MouseEventHandler } from 'react'
+import { Link } from 'react-router-dom'
 
 import { requestWithoutResponse } from '@/api/client'
 import { sessionQueryOptions } from '@/api/queries'
@@ -13,6 +14,7 @@ type NavigationItem = {
   label: string
   href: string
   symbol: string
+  reactRoute?: boolean
 }
 
 type NavigationGroupProps = {
@@ -36,7 +38,12 @@ const catalogItems: NavigationItem[] = [
 
 const privateItems: NavigationItem[] = [
   { label: 'Клиенты', href: '/customers/', symbol: 'К' },
-  { label: 'Расчёты ипотеки', href: '/mortgage/calculations/', symbol: 'И' },
+  {
+    label: 'Расчёты ипотеки',
+    href: '/mortgage/calculations',
+    symbol: 'И',
+    reactRoute: true,
+  },
   { label: 'Траншевая ипотека', href: '/mortgage/trench-calculations/', symbol: 'Т' },
 ]
 
@@ -47,12 +54,21 @@ function NavigationGroup({ title, items, onNavigate }: NavigationGroupProps) {
       <ul>
         {items.map((item) => (
           <li key={item.href}>
-            <a href={item.href} onClick={onNavigate}>
-              <span className="sidebar-link__symbol" aria-hidden="true">
-                {item.symbol}
-              </span>
-              <span>{item.label}</span>
-            </a>
+            {item.reactRoute ? (
+              <Link to={item.href} onClick={onNavigate}>
+                <span className="sidebar-link__symbol" aria-hidden="true">
+                  {item.symbol}
+                </span>
+                <span>{item.label}</span>
+              </Link>
+            ) : (
+              <a href={item.href} onClick={onNavigate}>
+                <span className="sidebar-link__symbol" aria-hidden="true">
+                  {item.symbol}
+                </span>
+                <span>{item.label}</span>
+              </a>
+            )}
           </li>
         ))}
       </ul>

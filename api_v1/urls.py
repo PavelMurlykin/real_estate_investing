@@ -7,6 +7,8 @@ from .views import (
     MortgageOptionsAPIView,
     OverviewAPIView,
     PropertyListAPIView,
+    SavedMortgageCalculationDetailAPIView,
+    SavedMortgageCalculationListCreateAPIView,
     SessionAPIView,
 )
 
@@ -27,5 +29,15 @@ urlpatterns = [
         'mortgage/calculate/',
         MortgageCalculationAPIView.as_view(),
         name='mortgage_calculate',
+    ),
+    path(
+        'mortgage/calculations/',
+        SavedMortgageCalculationListCreateAPIView.as_view(),
+        name='saved_mortgage_calculation_list',
+    ),
+    path(
+        'mortgage/calculations/<int:pk>/',
+        SavedMortgageCalculationDetailAPIView.as_view(),
+        name='saved_mortgage_calculation_detail',
     ),
 ]

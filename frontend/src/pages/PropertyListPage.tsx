@@ -44,7 +44,7 @@ function PropertyMobileCard({ property }: { property: PropertyListItem }) {
         </a>
         <Link
           className="text-link"
-          to={`/mortgage?propertyCost=${encodeURIComponent(property.propertyCost)}`}
+          to={`/mortgage?propertyId=${property.id}&propertyCost=${encodeURIComponent(property.propertyCost)}`}
         >
           Рассчитать ипотеку
         </Link>
@@ -206,7 +206,7 @@ export function PropertyListPage() {
                         </a>
                         <Link
                           className="row-action row-action--calculator"
-                          to={`/mortgage?propertyCost=${encodeURIComponent(property.propertyCost)}`}
+                          to={`/mortgage?propertyId=${property.id}&propertyCost=${encodeURIComponent(property.propertyCost)}`}
                           aria-label={`Рассчитать ипотеку для квартиры ${property.apartmentNumber}`}
                         >
                           ₽

@@ -15,6 +15,14 @@ const MortgageCalculatorPage = lazy(async () => ({
   default: (await import('@/pages/MortgageCalculatorPage'))
     .MortgageCalculatorPage,
 }))
+const SavedMortgageCalculationListPage = lazy(async () => ({
+  default: (await import('@/pages/SavedMortgageCalculationListPage'))
+    .SavedMortgageCalculationListPage,
+}))
+const SavedMortgageCalculationDetailPage = lazy(async () => ({
+  default: (await import('@/pages/SavedMortgageCalculationDetailPage'))
+    .SavedMortgageCalculationDetailPage,
+}))
 const NotFoundPage = lazy(async () => ({
   default: (await import('@/pages/NotFoundPage')).NotFoundPage,
 }))
@@ -27,6 +35,14 @@ export function App() {
           <Route index element={<HomePage />} />
           <Route path="properties" element={<PropertyListPage />} />
           <Route path="mortgage" element={<MortgageCalculatorPage />} />
+          <Route
+            path="mortgage/calculations"
+            element={<SavedMortgageCalculationListPage />}
+          />
+          <Route
+            path="mortgage/calculations/:calculationId"
+            element={<SavedMortgageCalculationDetailPage />}
+          />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

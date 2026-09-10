@@ -127,6 +127,49 @@ export const mortgageCalculationResponseSchema = z.object({
   schedule: z.array(mortgagePaymentSchema).max(600),
 })
 
+const savedMortgagePropertySchema = z.object({
+  id: z.number().int().positive(),
+  city: z.string(),
+  developer: z.string(),
+  realEstateComplex: z.string(),
+  realEstateClass: z.string(),
+  building: z.string(),
+  apartmentNumber: z.string(),
+  layout: z.string(),
+  decoration: z.string(),
+  area: z.string(),
+  floor: z.number().int(),
+  detailUrl: z.string(),
+})
+
+export const savedMortgageCalculationListItemSchema = z.object({
+  id: z.number().int().positive(),
+  createdAt: z.iso.datetime({ offset: true }),
+  property: savedMortgagePropertySchema,
+  finalPropertyCost: z.string(),
+  initialPaymentRubles: z.string(),
+  mainMonthlyPayment: z.string().nullable(),
+  mortgageTermMonths: z.number().int().positive(),
+  annualRate: z.string(),
+})
+
+export const savedMortgageCalculationListResponseSchema = z.object({
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  totalCount: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  results: z.array(savedMortgageCalculationListItemSchema),
+})
+
+export const savedMortgageCalculationDetailSchema = z.object({
+  id: z.number().int().positive(),
+  createdAt: z.iso.datetime({ offset: true }),
+  property: savedMortgagePropertySchema,
+  legacyDetailUrl: z.string(),
+  legacySampleUrl: z.string(),
+  calculation: mortgageCalculationResponseSchema,
+})
+
 export type MortgageCalculationRequest = {
   propertyCost: string
   priceAdjustmentType: 'discount' | 'markup'
@@ -142,6 +185,11 @@ export type MortgageCalculationRequest = {
   gracePeriodRate?: string
 }
 
+export type SavedMortgageCalculationCreateRequest = {
+  propertyId: number
+  parameters: MortgageCalculationRequest
+}
+
 export type Session = z.infer<typeof sessionSchema>
 export type PropertyListItem = z.infer<typeof propertyListItemSchema>
 export type PropertyListResponse = z.infer<typeof propertyListResponseSchema>
@@ -149,4 +197,13 @@ export type Overview = z.infer<typeof overviewSchema>
 export type MortgageOptions = z.infer<typeof mortgageOptionsSchema>
 export type MortgageCalculationResponse = z.infer<
   typeof mortgageCalculationResponseSchema
+>
+export type SavedMortgageCalculationListItem = z.infer<
+  typeof savedMortgageCalculationListItemSchema
+>
+export type SavedMortgageCalculationListResponse = z.infer<
+  typeof savedMortgageCalculationListResponseSchema
+>
+export type SavedMortgageCalculationDetail = z.infer<
+  typeof savedMortgageCalculationDetailSchema
 >

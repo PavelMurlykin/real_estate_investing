@@ -1,6 +1,7 @@
 from django.contrib.auth import login, logout
 from django.db.models import Prefetch, Q
 from django.middleware.csrf import get_token
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
@@ -17,6 +18,7 @@ from bank.models import (
     MortgageProgramRegionalCreditLimit,
 )
 from location.models import City
+from mortgage.models import MortgageCalculation
 from property.models import Developer, Property, RealEstateComplex
 from users.forms import UserLoginForm
 from users.roles import (
@@ -26,13 +28,20 @@ from users.roles import (
     can_view_private_records,
 )
 
+from .mortgage_service import (
+    calculate_market_mortgage,
+    create_saved_market_mortgage,
+    serialize_saved_mortgage_detail,
+    serialize_saved_mortgage_list_item,
+)
 from .pagination import ApplicationPageNumberPagination
-from .mortgage_service import calculate_market_mortgage
 from .serializers import (
     LoginRequestSerializer,
     MortgageCalculationRequestSerializer,
     PropertyListItemSerializer,
     PropertyListQuerySerializer,
+    SavedMortgageCalculationCreateSerializer,
+    SavedMortgageCalculationListQuerySerializer,
 )
 
 
@@ -280,6 +289,120 @@ class MortgageCalculationAPIView(APIView):
         return Response(
             calculate_market_mortgage(request_serializer.validated_data)
         )
+
+
+def _saved_mortgage_calculation_queryset(user):
+    """Return saved calculations scoped to the current application role."""
+    queryset = MortgageCalculation.objects.select_related(
+        'property',
+        'property__layout',
+        'property__decoration',
+        'property__building',
+        'property__building__real_estate_complex',
+        'property__building__real_estate_complex__developer__company_group',
+        'property__building__real_estate_complex__district__city',
+        'property__building__real_estate_complex__real_estate_class',
+    )
+    if can_view_all_private_records(user):
+        return queryset
+    return queryset.filter(user=user)
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class SavedMortgageCalculationListCreateAPIView(APIView):
+    """List owner-scoped calculations and save a validated scenario."""
+
+    permission_classes = (IsAuthenticated,)
+    ordering_fields = {
+        'createdAt': 'timestamp',
+        'finalPropertyCost': 'final_property_cost',
+        'mainMonthlyPayment': 'main_monthly_payment',
+        'mortgageTermMonths': 'mortgage_term',
+        'annualRate': 'annual_rate',
+    }
+
+    def get(self, request):
+        """Return a bounded, filterable saved-calculation history."""
+        query_serializer = SavedMortgageCalculationListQuerySerializer(
+            data=request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        filters = query_serializer.validated_data
+        queryset = _saved_mortgage_calculation_queryset(request.user)
+
+        search = filters.get('q', '')
+        if search:
+            queryset = queryset.filter(
+                Q(property__apartment_number__icontains=search)
+                | Q(property__building__number__icontains=search)
+                | Q(
+                    property__building__real_estate_complex__name__icontains=(
+                        search
+                    )
+                )
+                | Q(
+                    property__building__real_estate_complex__district__city__name__icontains=(
+                        search
+                    )
+                )
+            )
+
+        ordering = filters['ordering']
+        descending = ordering.startswith('-')
+        ordering_key = ordering.removeprefix('-')
+        ordering_field = self.ordering_fields[ordering_key]
+        ordering_prefix = '-' if descending else ''
+        queryset = queryset.order_by(
+            f'{ordering_prefix}{ordering_field}',
+            '-pk',
+        )
+
+        paginator = ApplicationPageNumberPagination()
+        calculations = paginator.paginate_queryset(
+            queryset,
+            request,
+            view=self,
+        )
+        return paginator.get_paginated_response(
+            [
+                serialize_saved_mortgage_list_item(calculation)
+                for calculation in calculations
+            ]
+        )
+
+    def post(self, request):
+        """Recalculate and persist an authenticated user's scenario."""
+        request_serializer = SavedMortgageCalculationCreateSerializer(
+            data=request.data
+        )
+        request_serializer.is_valid(raise_exception=True)
+        validated_data = request_serializer.validated_data
+        calculation = create_saved_market_mortgage(
+            parameters=validated_data['parameters'],
+            property_object=validated_data['property'],
+            user=request.user,
+        )
+        calculation = _saved_mortgage_calculation_queryset(
+            request.user
+        ).get(pk=calculation.pk)
+        return Response(
+            serialize_saved_mortgage_detail(calculation),
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class SavedMortgageCalculationDetailAPIView(APIView):
+    """Return one owner-scoped saved calculation with its schedule."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, pk):
+        """Return a private calculation or a non-disclosing 404."""
+        calculation = get_object_or_404(
+            _saved_mortgage_calculation_queryset(request.user),
+            pk=pk,
+        )
+        return Response(serialize_saved_mortgage_detail(calculation))
 
 
 class PropertyListAPIView(ListAPIView):

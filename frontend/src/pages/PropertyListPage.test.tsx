@@ -51,7 +51,10 @@ describe('PropertyListPage', () => {
     )
     expect(
       screen.getAllByRole('link', { name: /Рассчитать ипотеку/ })[0],
-    ).toHaveAttribute('href', '/mortgage?propertyCost=12500000.00')
+    ).toHaveAttribute(
+      'href',
+      '/mortgage?propertyId=1&propertyCost=12500000.00',
+    )
   })
 
   it('shows an empty state with a reset action', () => {
