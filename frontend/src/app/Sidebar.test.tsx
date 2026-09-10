@@ -47,7 +47,7 @@ describe('Sidebar', () => {
     expect(screen.getByText('Работа с клиентами')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Клиенты' })).toHaveAttribute(
       'href',
-      '/customers/',
+      '/customers',
     )
     expect(
       screen.getByRole('link', { name: 'Расчёты ипотеки' }),

@@ -14,6 +14,12 @@ const PropertyListPage = lazy(async () => ({
 const PropertyDetailPage = lazy(async () => ({
   default: (await import('@/pages/PropertyDetailPage')).PropertyDetailPage,
 }))
+const CustomerListPage = lazy(async () => ({
+  default: (await import('@/pages/CustomerListPage')).CustomerListPage,
+}))
+const CustomerDetailPage = lazy(async () => ({
+  default: (await import('@/pages/CustomerDetailPage')).CustomerDetailPage,
+}))
 const MortgageCalculatorPage = lazy(async () => ({
   default: (await import('@/pages/MortgageCalculatorPage'))
     .MortgageCalculatorPage,
@@ -40,6 +46,11 @@ export function App() {
           <Route
             path="properties/:propertyId"
             element={<PropertyDetailPage />}
+          />
+          <Route path="customers" element={<CustomerListPage />} />
+          <Route
+            path="customers/:customerId"
+            element={<CustomerDetailPage />}
           />
           <Route path="mortgage" element={<MortgageCalculatorPage />} />
           <Route

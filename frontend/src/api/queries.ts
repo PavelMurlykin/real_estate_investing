@@ -2,6 +2,8 @@ import { queryOptions } from '@tanstack/react-query'
 
 import { requestJson, requestWithoutResponse } from './client'
 import {
+  customerDetailSchema,
+  customerListResponseSchema,
   mortgageCalculationResponseSchema,
   mortgageOptionsSchema,
   overviewSchema,
@@ -100,6 +102,35 @@ export function deleteSavedMortgageCalculation(
     `/api/v1/mortgage/calculations/${calculationIdentifier}/`,
     { method: 'DELETE' },
   )
+}
+
+export function customerListQueryOptions(searchParameters: URLSearchParams) {
+  const normalizedParameters = new URLSearchParams(searchParameters)
+  const queryString = normalizedParameters.toString()
+
+  return queryOptions({
+    queryKey: ['customers', queryString],
+    queryFn: ({ signal }) =>
+      requestJson(
+        `/api/v1/customers/${queryString ? `?${queryString}` : ''}`,
+        customerListResponseSchema,
+        { signal },
+      ),
+    placeholderData: (previousData) => previousData,
+  })
+}
+
+export function customerDetailQueryOptions(customerIdentifier: number) {
+  return queryOptions({
+    queryKey: ['customer', customerIdentifier],
+    queryFn: ({ signal }) =>
+      requestJson(
+        `/api/v1/customers/${customerIdentifier}/`,
+        customerDetailSchema,
+        { signal },
+      ),
+    staleTime: 60_000,
+  })
 }
 
 export function propertyListQueryOptions(searchParameters: URLSearchParams) {

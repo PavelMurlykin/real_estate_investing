@@ -37,7 +37,12 @@ const catalogItems: NavigationItem[] = [
 ]
 
 const privateItems: NavigationItem[] = [
-  { label: 'Клиенты', href: '/customers/', symbol: 'К' },
+  {
+    label: 'Клиенты',
+    href: '/customers',
+    symbol: 'К',
+    reactRoute: true,
+  },
   {
     label: 'Расчёты ипотеки',
     href: '/mortgage/calculations',

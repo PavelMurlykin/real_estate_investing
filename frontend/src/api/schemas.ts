@@ -43,6 +43,79 @@ export const propertyListResponseSchema = z.object({
   results: z.array(propertyListItemSchema),
 })
 
+export const customerListItemSchema = z.object({
+  id: z.number().int().positive(),
+  fullName: z.string(),
+  phone: z.string(),
+  email: z.string(),
+  residenceCity: z.string().nullable(),
+  createdAt: z.iso.datetime({ offset: true }),
+  isActive: z.boolean(),
+  legacyDetailUrl: z.string(),
+})
+
+export const customerListResponseSchema = z.object({
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  totalCount: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  results: z.array(customerListItemSchema),
+})
+
+export const customerDetailSchema = z.object({
+  id: z.number().int().positive(),
+  firstName: z.string(),
+  lastName: z.string(),
+  fullName: z.string(),
+  phone: z.string(),
+  email: z.string(),
+  age: z.number().int().nonnegative().nullable(),
+  birthDate: z.iso.date().nullable(),
+  birthYear: z.number().int().nullable(),
+  residenceCity: z.string().nullable(),
+  initialPaymentAmount: z.string().nullable(),
+  maximumMonthlyPayment: z.string().nullable(),
+  preferentialPrograms: z.array(
+    z.object({
+      id: z.number().int().positive(),
+      name: z.string(),
+    }),
+  ),
+  hasOwnedProperty: z.boolean().nullable(),
+  purchaseGoal: z.string(),
+  purchaseGoalLabel: z.string(),
+  desiredCity: z.string().nullable(),
+  desiredDistrict: z.string().nullable(),
+  desiredLayouts: z.array(
+    z.object({
+      id: z.number().int().positive(),
+      name: z.string(),
+    }),
+  ),
+  areaMinimum: z.string().nullable(),
+  areaMaximum: z.string().nullable(),
+  desiredFloor: z.string(),
+  cardinalDirections: z.string(),
+  comment: z.string(),
+  calculated: z.object({
+    maximumTermYears: z.number().int().nonnegative(),
+    actualKeyRate: z.string(),
+    annualRate: z.string(),
+    maximumPropertyCost: z.string().nullable(),
+    hasPreferentialProgram: z.boolean(),
+    preferentialAnnualRate: z.string(),
+    preferentialMaximumPropertyCost: z.string().nullable(),
+    preferentialCreditLimit: z.string().nullable(),
+  }),
+  isActive: z.boolean(),
+  createdAt: z.iso.datetime({ offset: true }),
+  updatedAt: z.iso.datetime({ offset: true }),
+  legacyDetailUrl: z.string(),
+  legacyEditUrl: z.string(),
+  legacyDeleteUrl: z.string(),
+  legacyMortgageUrl: z.string(),
+})
+
 export const propertyDetailSchema = z.object({
   id: z.number().int().positive(),
   apartmentNumber: z.string(),
@@ -231,6 +304,9 @@ export type SavedMortgageCalculationCreateRequest = {
 export type Session = z.infer<typeof sessionSchema>
 export type PropertyListItem = z.infer<typeof propertyListItemSchema>
 export type PropertyListResponse = z.infer<typeof propertyListResponseSchema>
+export type CustomerListItem = z.infer<typeof customerListItemSchema>
+export type CustomerListResponse = z.infer<typeof customerListResponseSchema>
+export type CustomerDetail = z.infer<typeof customerDetailSchema>
 export type PropertyDetail = z.infer<typeof propertyDetailSchema>
 export type Overview = z.infer<typeof overviewSchema>
 export type MortgageOptions = z.infer<typeof mortgageOptionsSchema>

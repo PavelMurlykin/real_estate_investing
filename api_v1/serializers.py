@@ -5,7 +5,10 @@ from django.core.validators import URLValidator
 from django.urls import reverse
 from rest_framework import serializers
 
+from customer.models import Customer
 from property.models import Property
+
+from .customer_service import build_customer_financial_capacity
 
 
 class LoginRequestSerializer(serializers.Serializer):
@@ -13,6 +16,268 @@ class LoginRequestSerializer(serializers.Serializer):
 
     identifier = serializers.CharField(max_length=254, trim_whitespace=True)
     password = serializers.CharField(max_length=128, trim_whitespace=False)
+
+
+class CustomerListQuerySerializer(serializers.Serializer):
+    """Validate URL-driven customer search, ordering, and pagination."""
+
+    ORDERING_CHOICES = (
+        '-createdAt',
+        'createdAt',
+        'name',
+        '-name',
+    )
+
+    q = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=100,
+        trim_whitespace=True,
+    )
+    ordering = serializers.ChoiceField(
+        required=False,
+        choices=ORDERING_CHOICES,
+        default='-createdAt',
+    )
+    page = serializers.IntegerField(required=False, min_value=1, default=1)
+    pageSize = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=100,
+        default=20,
+    )
+
+
+class CustomerListItemSerializer(serializers.ModelSerializer):
+    """Serialize one private customer list row without additional queries."""
+
+    fullName = serializers.CharField(source='full_name', read_only=True)
+    residenceCity = serializers.CharField(
+        source='residence_city.name',
+        allow_null=True,
+        read_only=True,
+    )
+    createdAt = serializers.DateTimeField(
+        source='created_at',
+        read_only=True,
+    )
+    isActive = serializers.BooleanField(source='is_active', read_only=True)
+    legacyDetailUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_detail_url'
+    )
+
+    class Meta:
+        """Define the bounded fields used by the customer list."""
+
+        model = Customer
+        fields = (
+            'id',
+            'fullName',
+            'phone',
+            'email',
+            'residenceCity',
+            'createdAt',
+            'isActive',
+            'legacyDetailUrl',
+        )
+
+    def get_legacy_detail_url(self, customer):
+        """Return the preserved Django customer detail URL."""
+        return reverse('customer:detail', kwargs={'pk': customer.pk})
+
+
+class CustomerDetailSerializer(serializers.ModelSerializer):
+    """Serialize an owner-scoped customer profile and financial capacity."""
+
+    firstName = serializers.CharField(source='first_name', read_only=True)
+    lastName = serializers.CharField(source='last_name', read_only=True)
+    fullName = serializers.CharField(source='full_name', read_only=True)
+    birthDate = serializers.DateField(
+        source='birth_date',
+        allow_null=True,
+        read_only=True,
+    )
+    birthYear = serializers.IntegerField(
+        source='birth_year',
+        allow_null=True,
+        read_only=True,
+    )
+    residenceCity = serializers.CharField(
+        source='residence_city.name',
+        allow_null=True,
+        read_only=True,
+    )
+    initialPaymentAmount = serializers.DecimalField(
+        source='initial_payment_amount',
+        max_digits=15,
+        decimal_places=2,
+        allow_null=True,
+        read_only=True,
+    )
+    maximumMonthlyPayment = serializers.DecimalField(
+        source='max_monthly_payment',
+        max_digits=15,
+        decimal_places=2,
+        allow_null=True,
+        read_only=True,
+    )
+    preferentialPrograms = serializers.SerializerMethodField(
+        method_name='get_preferential_programs'
+    )
+    hasOwnedProperty = serializers.BooleanField(
+        source='has_owned_property',
+        allow_null=True,
+        read_only=True,
+    )
+    purchaseGoal = serializers.CharField(
+        source='purchase_goal',
+        read_only=True,
+    )
+    purchaseGoalLabel = serializers.SerializerMethodField(
+        method_name='get_purchase_goal_label'
+    )
+    desiredCity = serializers.CharField(
+        source='desired_city.name',
+        allow_null=True,
+        read_only=True,
+    )
+    desiredDistrict = serializers.CharField(
+        source='desired_district.name',
+        allow_null=True,
+        read_only=True,
+    )
+    desiredLayouts = serializers.SerializerMethodField(
+        method_name='get_desired_layouts'
+    )
+    areaMinimum = serializers.DecimalField(
+        source='area_min',
+        max_digits=10,
+        decimal_places=2,
+        allow_null=True,
+        read_only=True,
+    )
+    areaMaximum = serializers.DecimalField(
+        source='area_max',
+        max_digits=10,
+        decimal_places=2,
+        allow_null=True,
+        read_only=True,
+    )
+    desiredFloor = serializers.CharField(
+        source='desired_floor',
+        read_only=True,
+    )
+    cardinalDirections = serializers.CharField(
+        source='cardinal_directions',
+        read_only=True,
+    )
+    calculated = serializers.SerializerMethodField()
+    isActive = serializers.BooleanField(source='is_active', read_only=True)
+    createdAt = serializers.DateTimeField(
+        source='created_at',
+        read_only=True,
+    )
+    updatedAt = serializers.DateTimeField(
+        source='updated_at',
+        read_only=True,
+    )
+    legacyDetailUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_detail_url'
+    )
+    legacyEditUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_edit_url'
+    )
+    legacyDeleteUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_delete_url'
+    )
+    legacyMortgageUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_mortgage_url'
+    )
+
+    class Meta:
+        """Define private fields used by the React customer profile."""
+
+        model = Customer
+        fields = (
+            'id',
+            'firstName',
+            'lastName',
+            'fullName',
+            'phone',
+            'email',
+            'age',
+            'birthDate',
+            'birthYear',
+            'residenceCity',
+            'initialPaymentAmount',
+            'maximumMonthlyPayment',
+            'preferentialPrograms',
+            'hasOwnedProperty',
+            'purchaseGoal',
+            'purchaseGoalLabel',
+            'desiredCity',
+            'desiredDistrict',
+            'desiredLayouts',
+            'areaMinimum',
+            'areaMaximum',
+            'desiredFloor',
+            'cardinalDirections',
+            'comment',
+            'calculated',
+            'isActive',
+            'createdAt',
+            'updatedAt',
+            'legacyDetailUrl',
+            'legacyEditUrl',
+            'legacyDeleteUrl',
+            'legacyMortgageUrl',
+        )
+
+    def get_preferential_programs(self, customer):
+        """Return prefetched preferential program names."""
+        return [
+            {'id': program.pk, 'name': program.name}
+            for program in customer.preferential_programs.all()
+        ]
+
+    def get_purchase_goal_label(self, customer):
+        """Return the translated purchase-goal label or an empty string."""
+        if not customer.purchase_goal:
+            return ''
+        return customer.get_purchase_goal_display()
+
+    def get_desired_layouts(self, customer):
+        """Return prefetched desired layout labels."""
+        return [
+            {'id': layout.pk, 'name': layout.name}
+            for layout in customer.desired_layouts.all()
+        ]
+
+    def get_calculated(self, customer):
+        """Return financial capacity using the view's single key-rate lookup."""
+        return build_customer_financial_capacity(
+            customer,
+            self.context['key_rate'],
+        )
+
+    def get_legacy_detail_url(self, customer):
+        """Return the preserved Django customer profile URL."""
+        return reverse('customer:detail', kwargs={'pk': customer.pk})
+
+    def get_legacy_edit_url(self, customer):
+        """Return the preserved Django customer edit URL."""
+        return reverse('customer:update', kwargs={'pk': customer.pk})
+
+    def get_legacy_delete_url(self, customer):
+        """Return the preserved Django customer delete URL."""
+        return reverse('customer:delete', kwargs={'pk': customer.pk})
+
+    def get_legacy_mortgage_url(self, customer):
+        """Return the preserved customer-aware mortgage calculator URL."""
+        return (
+            f"{reverse('mortgage:mortgage_calculator')}"
+            f'?customer={customer.pk}'
+        )
 
 
 class PropertyListQuerySerializer(serializers.Serializer):

@@ -15,8 +15,10 @@ from bank.models import (
     Bank,
     BankProgram,
     KeyRate,
+    MortgageProgram,
     MortgageProgramRegionalCreditLimit,
 )
+from customer.models import Customer
 from location.models import City
 from mortgage.excel import export_saved_mortgage_calculation_excel
 from mortgage.models import MortgageCalculation
@@ -39,6 +41,9 @@ from .mortgage_service import (
 )
 from .pagination import ApplicationPageNumberPagination
 from .serializers import (
+    CustomerDetailSerializer,
+    CustomerListItemSerializer,
+    CustomerListQuerySerializer,
     LoginRequestSerializer,
     MortgageCalculationRequestSerializer,
     PropertyDetailSerializer,
@@ -312,6 +317,14 @@ def _saved_mortgage_calculation_queryset(user):
     return queryset.filter(user=user)
 
 
+def _customer_queryset(user):
+    """Return customers visible to their owner or an application admin."""
+    queryset = Customer.objects.all()
+    if can_view_all_private_records(user):
+        return queryset
+    return queryset.filter(user=user)
+
+
 @method_decorator(csrf_protect, name='dispatch')
 class SavedMortgageCalculationListCreateAPIView(APIView):
     """List owner-scoped calculations and save a validated scenario."""
@@ -528,3 +541,77 @@ class PropertyDetailAPIView(RetrieveAPIView):
         'layout',
         'decoration',
     ).prefetch_related('window_views')
+
+
+class CustomerListAPIView(ListAPIView):
+    """Return a searchable, owner-scoped, paginated customer directory."""
+
+    serializer_class = CustomerListItemSerializer
+    pagination_class = ApplicationPageNumberPagination
+    permission_classes = (IsAuthenticated,)
+    ordering_fields = {
+        'createdAt': ('created_at',),
+        'name': ('first_name', 'last_name'),
+    }
+
+    def get_queryset(self):
+        """Apply validated customer filters and deterministic ordering."""
+        query_serializer = CustomerListQuerySerializer(
+            data=self.request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        filters = query_serializer.validated_data
+        queryset = _customer_queryset(self.request.user).select_related(
+            'residence_city'
+        )
+        search = filters.get('q', '')
+        if search:
+            queryset = queryset.filter(
+                Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+                | Q(phone__icontains=search)
+                | Q(email__icontains=search)
+            )
+
+        ordering = filters['ordering']
+        descending = ordering.startswith('-')
+        ordering_key = ordering.removeprefix('-')
+        ordering_prefix = '-' if descending else ''
+        ordering_fields = [
+            f'{ordering_prefix}{field_name}'
+            for field_name in self.ordering_fields[ordering_key]
+        ]
+        return queryset.order_by(*ordering_fields, '-pk')
+
+
+class CustomerDetailAPIView(RetrieveAPIView):
+    """Return one owner-scoped customer and calculated buying capacity."""
+
+    serializer_class = CustomerDetailSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        """Load the customer profile relations without per-field queries."""
+        return (
+            _customer_queryset(self.request.user)
+            .select_related(
+                'residence_city',
+                'desired_city__region',
+                'desired_district',
+            )
+            .prefetch_related(
+                'desired_layouts',
+                Prefetch(
+                    'preferential_programs',
+                    queryset=MortgageProgram.objects.prefetch_related(
+                        'regional_credit_limits'
+                    ),
+                ),
+            )
+        )
+
+    def get_serializer_context(self):
+        """Add one authoritative key-rate lookup for derived values."""
+        context = super().get_serializer_context()
+        context['key_rate'] = Customer.get_actual_cbr_key_rate()
+        return context
