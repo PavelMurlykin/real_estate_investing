@@ -267,9 +267,9 @@ def serialize_saved_mortgage_list_item(calculation):
     }
 
 
-def serialize_saved_mortgage_detail(calculation):
-    """Serialize a saved scenario and rebuild its bounded payment schedule."""
-    calculator = MortgageCalculator(
+def _build_saved_mortgage_calculator(calculation):
+    """Rebuild the calculator used by saved-detail and export views."""
+    return MortgageCalculator(
         property_cost=float(calculation.final_property_cost),
         initial_payment_percent=float(calculation.initial_payment_percent),
         initial_payment_date=calculation.initial_payment_date,
@@ -279,6 +279,18 @@ def serialize_saved_mortgage_detail(calculation):
         grace_period_term=calculation.grace_period_term or 0,
         grace_period_rate=float(calculation.grace_period_rate or 0),
     )
+
+
+def build_saved_mortgage_payment_schedule(calculation):
+    """Return the payment schedule expected by the existing file exporters."""
+    calculator = _build_saved_mortgage_calculator(calculation)
+    calculator.calculate()
+    return calculator.get_payment_schedule()
+
+
+def serialize_saved_mortgage_detail(calculation):
+    """Serialize a saved scenario and rebuild its bounded payment schedule."""
+    calculator = _build_saved_mortgage_calculator(calculation)
     recalculated_result = calculator.calculate()
     loan_amount = calculation.total_loan_amount
     if loan_amount is None:

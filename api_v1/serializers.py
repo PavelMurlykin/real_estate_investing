@@ -1,5 +1,8 @@
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import URLValidator
+from django.urls import reverse
 from rest_framework import serializers
 
 from property.models import Property
@@ -121,6 +124,229 @@ class PropertyListItemSerializer(serializers.ModelSerializer):
     def get_detail_url(self, property_object):
         """Return the existing detail URL during incremental migration."""
         return property_object.get_absolute_url()
+
+
+def _serialize_building_period(value):
+    """Return a stable date or quarter label for a building milestone."""
+    if not value:
+        return None
+    if hasattr(value, 'isoformat'):
+        return value.isoformat()
+    return str(value)
+
+
+def _validate_external_url(value):
+    """Return only external HTTP(S) URLs safe to place in a client link."""
+    if not value:
+        return None
+    validator = URLValidator(schemes=('http', 'https'))
+    try:
+        validator(value)
+    except DjangoValidationError:
+        return None
+    return value
+
+
+class PropertyDetailSerializer(serializers.ModelSerializer):
+    """Serialize the complete public property card without extra queries."""
+
+    apartmentNumber = serializers.CharField(
+        source='apartment_number',
+        read_only=True,
+    )
+    developer = serializers.SerializerMethodField()
+    realEstateComplex = serializers.CharField(
+        source='building.real_estate_complex.name',
+        read_only=True,
+    )
+    realEstateClass = serializers.CharField(
+        source='building.real_estate_complex.real_estate_class.name',
+        read_only=True,
+    )
+    realEstateType = serializers.CharField(
+        source='building.real_estate_complex.real_estate_type.name',
+        read_only=True,
+    )
+    district = serializers.CharField(
+        source='building.real_estate_complex.district.name',
+        read_only=True,
+    )
+    city = serializers.CharField(
+        source='building.real_estate_complex.district.city.name',
+        read_only=True,
+    )
+    region = serializers.CharField(
+        source='building.real_estate_complex.district.city.region.name',
+        read_only=True,
+    )
+    building = serializers.CharField(
+        source='building.number',
+        read_only=True,
+    )
+    buildingAddress = serializers.CharField(
+        source='building.address',
+        allow_null=True,
+        read_only=True,
+    )
+    commissioning = serializers.SerializerMethodField()
+    keyHandover = serializers.SerializerMethodField(
+        method_name='get_key_handover'
+    )
+    layout = serializers.CharField(source='layout.name', read_only=True)
+    layoutDescription = serializers.CharField(
+        source='layout.description',
+        allow_null=True,
+        read_only=True,
+    )
+    decoration = serializers.CharField(
+        source='decoration.name',
+        read_only=True,
+    )
+    decorationDescription = serializers.CharField(
+        source='decoration.description',
+        allow_null=True,
+        read_only=True,
+    )
+    windowViews = serializers.SerializerMethodField(
+        method_name='get_window_views'
+    )
+    area = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        read_only=True,
+    )
+    propertyCost = serializers.DecimalField(
+        source='property_cost',
+        max_digits=15,
+        decimal_places=2,
+        read_only=True,
+    )
+    mapUrl = serializers.SerializerMethodField(method_name='get_map_url')
+    presentationUrl = serializers.SerializerMethodField(
+        method_name='get_presentation_url'
+    )
+    images = serializers.SerializerMethodField()
+    createdAt = serializers.DateTimeField(
+        source='created_at',
+        read_only=True,
+    )
+    updatedAt = serializers.DateTimeField(
+        source='updated_at',
+        read_only=True,
+    )
+    legacyDetailUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_detail_url'
+    )
+    legacyEditUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_edit_url'
+    )
+    legacyDeleteUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_delete_url'
+    )
+
+    class Meta:
+        """Define fields used by the React property detail screen."""
+
+        model = Property
+        fields = (
+            'id',
+            'apartmentNumber',
+            'developer',
+            'realEstateComplex',
+            'realEstateClass',
+            'realEstateType',
+            'district',
+            'city',
+            'region',
+            'building',
+            'buildingAddress',
+            'commissioning',
+            'keyHandover',
+            'layout',
+            'layoutDescription',
+            'decoration',
+            'decorationDescription',
+            'windowViews',
+            'area',
+            'floor',
+            'propertyCost',
+            'mapUrl',
+            'presentationUrl',
+            'images',
+            'createdAt',
+            'updatedAt',
+            'legacyDetailUrl',
+            'legacyEditUrl',
+            'legacyDeleteUrl',
+        )
+
+    def get_developer(self, property_object):
+        """Return the established developer label including company group."""
+        developer = property_object.building.real_estate_complex.developer
+        return developer.get_display_name_with_company_group()
+
+    def get_commissioning(self, property_object):
+        """Return a date or quarter label for commissioning."""
+        return _serialize_building_period(
+            property_object.building.get_commissioning_display()
+        )
+
+    def get_key_handover(self, property_object):
+        """Return a date or quarter label for key handover."""
+        return _serialize_building_period(
+            property_object.building.get_key_handover_display()
+        )
+
+    def get_window_views(self, property_object):
+        """Return prefetched window-view labels in dictionary order."""
+        return [
+            window_view.name
+            for window_view in property_object.window_views.all()
+        ]
+
+    def get_map_url(self, property_object):
+        """Return a validated map URL or omit an unsafe stored value."""
+        real_estate_complex = (
+            property_object.building.real_estate_complex
+        )
+        return _validate_external_url(real_estate_complex.map_link)
+
+    def get_presentation_url(self, property_object):
+        """Return a validated presentation URL or omit an unsafe value."""
+        real_estate_complex = (
+            property_object.building.real_estate_complex
+        )
+        return _validate_external_url(
+            real_estate_complex.presentation_link
+        )
+
+    def get_images(self, property_object):
+        """Return all supported image slots with nullable media URLs."""
+        image_fields = (
+            ('layout', 'Планировка', property_object.layout_image),
+            ('floorPlan', 'План этажа', property_object.floor_plan_image),
+            ('windowView', 'Вид из окна', property_object.window_view_image),
+        )
+        return [
+            {
+                'kind': kind,
+                'label': label,
+                'url': image_field.url if image_field else None,
+            }
+            for kind, label, image_field in image_fields
+        ]
+
+    def get_legacy_detail_url(self, property_object):
+        """Return the preserved Django property detail URL."""
+        return property_object.get_absolute_url()
+
+    def get_legacy_edit_url(self, property_object):
+        """Return the preserved Django edit form URL."""
+        return reverse('property:update', kwargs={'pk': property_object.pk})
+
+    def get_legacy_delete_url(self, property_object):
+        """Return the preserved Django delete confirmation URL."""
+        return reverse('property:delete', kwargs={'pk': property_object.pk})
 
 
 class MortgageCalculationRequestSerializer(serializers.Serializer):

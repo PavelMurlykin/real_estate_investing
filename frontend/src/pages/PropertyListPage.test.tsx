@@ -50,6 +50,9 @@ describe('PropertyListPage', () => {
       'Список объектов недвижимости',
     )
     expect(
+      screen.getAllByRole('link', { name: /Открыть квартиру 101/ })[0],
+    ).toHaveAttribute('href', '/properties/1')
+    expect(
       screen.getAllByRole('link', { name: /Рассчитать ипотеку/ })[0],
     ).toHaveAttribute(
       'href',

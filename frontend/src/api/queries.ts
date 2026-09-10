@@ -1,10 +1,11 @@
 import { queryOptions } from '@tanstack/react-query'
 
-import { requestJson } from './client'
+import { requestJson, requestWithoutResponse } from './client'
 import {
   mortgageCalculationResponseSchema,
   mortgageOptionsSchema,
   overviewSchema,
+  propertyDetailSchema,
   propertyListResponseSchema,
   savedMortgageCalculationDetailSchema,
   savedMortgageCalculationListResponseSchema,
@@ -92,6 +93,15 @@ export function savedMortgageCalculationDetailQueryOptions(
   })
 }
 
+export function deleteSavedMortgageCalculation(
+  calculationIdentifier: number,
+) {
+  return requestWithoutResponse(
+    `/api/v1/mortgage/calculations/${calculationIdentifier}/`,
+    { method: 'DELETE' },
+  )
+}
+
 export function propertyListQueryOptions(searchParameters: URLSearchParams) {
   const normalizedParameters = new URLSearchParams(searchParameters)
   const queryString = normalizedParameters.toString()
@@ -105,5 +115,18 @@ export function propertyListQueryOptions(searchParameters: URLSearchParams) {
         { signal },
       ),
     placeholderData: (previousData) => previousData,
+  })
+}
+
+export function propertyDetailQueryOptions(propertyIdentifier: number) {
+  return queryOptions({
+    queryKey: ['property', propertyIdentifier],
+    queryFn: ({ signal }) =>
+      requestJson(
+        `/api/v1/properties/${propertyIdentifier}/`,
+        propertyDetailSchema,
+        { signal },
+      ),
+    staleTime: 60_000,
   })
 }

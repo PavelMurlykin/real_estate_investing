@@ -43,6 +43,44 @@ export const propertyListResponseSchema = z.object({
   results: z.array(propertyListItemSchema),
 })
 
+export const propertyDetailSchema = z.object({
+  id: z.number().int().positive(),
+  apartmentNumber: z.string(),
+  developer: z.string(),
+  realEstateComplex: z.string(),
+  realEstateClass: z.string(),
+  realEstateType: z.string(),
+  district: z.string(),
+  city: z.string(),
+  region: z.string(),
+  building: z.string(),
+  buildingAddress: z.string().nullable(),
+  commissioning: z.string().nullable(),
+  keyHandover: z.string().nullable(),
+  layout: z.string(),
+  layoutDescription: z.string().nullable(),
+  decoration: z.string(),
+  decorationDescription: z.string().nullable(),
+  windowViews: z.array(z.string()),
+  area: z.string(),
+  floor: z.number().int(),
+  propertyCost: z.string(),
+  mapUrl: z.string().nullable(),
+  presentationUrl: z.string().nullable(),
+  images: z.array(
+    z.object({
+      kind: z.enum(['layout', 'floorPlan', 'windowView']),
+      label: z.string(),
+      url: z.string().nullable(),
+    }),
+  ).max(3),
+  createdAt: z.iso.datetime({ offset: true }),
+  updatedAt: z.iso.datetime({ offset: true }),
+  legacyDetailUrl: z.string(),
+  legacyEditUrl: z.string(),
+  legacyDeleteUrl: z.string(),
+})
+
 export const overviewSchema = z.object({
   statistics: z.array(
     z.object({
@@ -193,6 +231,7 @@ export type SavedMortgageCalculationCreateRequest = {
 export type Session = z.infer<typeof sessionSchema>
 export type PropertyListItem = z.infer<typeof propertyListItemSchema>
 export type PropertyListResponse = z.infer<typeof propertyListResponseSchema>
+export type PropertyDetail = z.infer<typeof propertyDetailSchema>
 export type Overview = z.infer<typeof overviewSchema>
 export type MortgageOptions = z.infer<typeof mortgageOptionsSchema>
 export type MortgageCalculationResponse = z.infer<

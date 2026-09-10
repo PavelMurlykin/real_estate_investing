@@ -299,3 +299,147 @@ def test_saved_calculation_save_requires_csrf_token(
 
     assert response.status_code == 403
     assert not MortgageCalculation.objects.exists()
+
+
+@pytest.mark.django_db
+def test_saved_calculation_owner_can_delete_scenario(
+    client,
+    calculation_user,
+    saved_calculation_property,
+):
+    """Delete only the authenticated owner's saved calculation."""
+    client.force_login(calculation_user)
+    created_response = client.post(
+        reverse('api_v1:saved_mortgage_calculation_list'),
+        data=build_save_payload(saved_calculation_property),
+        content_type='application/json',
+    )
+    calculation_id = created_response.json()['id']
+
+    response = client.delete(
+        reverse(
+            'api_v1:saved_mortgage_calculation_detail',
+            kwargs={'pk': calculation_id},
+        )
+    )
+
+    assert response.status_code == 204
+    assert not MortgageCalculation.objects.filter(
+        pk=calculation_id
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_saved_calculation_delete_is_owner_scoped(
+    client,
+    calculation_user,
+    saved_calculation_property,
+):
+    """Hide another owner's calculation during destructive operations."""
+    client.force_login(calculation_user)
+    created_response = client.post(
+        reverse('api_v1:saved_mortgage_calculation_list'),
+        data=build_save_payload(saved_calculation_property),
+        content_type='application/json',
+    )
+    calculation_id = created_response.json()['id']
+    other_user = get_user_model().objects.create_user(
+        email='delete-other-owner@example.com',
+        password='safe-test-password',
+        phone_number='+79991110004',
+    )
+    client.force_login(other_user)
+
+    response = client.delete(
+        reverse(
+            'api_v1:saved_mortgage_calculation_detail',
+            kwargs={'pk': calculation_id},
+        )
+    )
+
+    assert response.status_code == 404
+    assert MortgageCalculation.objects.filter(pk=calculation_id).exists()
+
+
+@pytest.mark.django_db
+def test_saved_calculation_delete_requires_csrf_token(
+    client,
+    calculation_user,
+    saved_calculation_property,
+):
+    """Require a CSRF token before deleting session-owned data."""
+    client.force_login(calculation_user)
+    created_response = client.post(
+        reverse('api_v1:saved_mortgage_calculation_list'),
+        data=build_save_payload(saved_calculation_property),
+        content_type='application/json',
+    )
+    calculation_id = created_response.json()['id']
+    csrf_client = Client(enforce_csrf_checks=True)
+    csrf_client.force_login(calculation_user)
+
+    response = csrf_client.delete(
+        reverse(
+            'api_v1:saved_mortgage_calculation_detail',
+            kwargs={'pk': calculation_id},
+        )
+    )
+
+    assert response.status_code == 403
+    assert MortgageCalculation.objects.filter(pk=calculation_id).exists()
+
+
+@pytest.mark.django_db
+def test_saved_calculation_exports_are_downloadable_and_owner_scoped(
+    client,
+    calculation_user,
+    saved_calculation_property,
+):
+    """Reuse existing file generators without exposing private scenarios."""
+    client.force_login(calculation_user)
+    created_response = client.post(
+        reverse('api_v1:saved_mortgage_calculation_list'),
+        data=build_save_payload(saved_calculation_property),
+        content_type='application/json',
+    )
+    calculation_id = created_response.json()['id']
+
+    excel_response = client.get(
+        reverse(
+            'api_v1:saved_mortgage_calculation_export_excel',
+            kwargs={'pk': calculation_id},
+        )
+    )
+    word_response = client.get(
+        reverse(
+            'api_v1:saved_mortgage_calculation_export_word',
+            kwargs={'pk': calculation_id},
+        )
+    )
+
+    assert excel_response.status_code == 200
+    assert excel_response['Content-Type'] == (
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    assert excel_response.content.startswith(b'PK')
+    assert word_response.status_code == 200
+    assert word_response['Content-Type'] == (
+        'application/vnd.openxmlformats-officedocument.'
+        'wordprocessingml.document'
+    )
+    assert word_response.content.startswith(b'PK')
+
+    other_user = get_user_model().objects.create_user(
+        email='export-other-owner@example.com',
+        password='safe-test-password',
+        phone_number='+79991110005',
+    )
+    client.force_login(other_user)
+    hidden_response = client.get(
+        reverse(
+            'api_v1:saved_mortgage_calculation_export_excel',
+            kwargs={'pk': calculation_id},
+        )
+    )
+
+    assert hidden_response.status_code == 404

@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from rest_framework import status
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,7 +18,9 @@ from bank.models import (
     MortgageProgramRegionalCreditLimit,
 )
 from location.models import City
+from mortgage.excel import export_saved_mortgage_calculation_excel
 from mortgage.models import MortgageCalculation
+from mortgage.word import export_saved_mortgage_calculation_word
 from property.models import Developer, Property, RealEstateComplex
 from users.forms import UserLoginForm
 from users.roles import (
@@ -29,6 +31,7 @@ from users.roles import (
 )
 
 from .mortgage_service import (
+    build_saved_mortgage_payment_schedule,
     calculate_market_mortgage,
     create_saved_market_mortgage,
     serialize_saved_mortgage_detail,
@@ -38,6 +41,7 @@ from .pagination import ApplicationPageNumberPagination
 from .serializers import (
     LoginRequestSerializer,
     MortgageCalculationRequestSerializer,
+    PropertyDetailSerializer,
     PropertyListItemSerializer,
     PropertyListQuerySerializer,
     SavedMortgageCalculationCreateSerializer,
@@ -391,8 +395,9 @@ class SavedMortgageCalculationListCreateAPIView(APIView):
         )
 
 
+@method_decorator(csrf_protect, name='dispatch')
 class SavedMortgageCalculationDetailAPIView(APIView):
-    """Return one owner-scoped saved calculation with its schedule."""
+    """Return or delete one owner-scoped saved calculation."""
 
     permission_classes = (IsAuthenticated,)
 
@@ -403,6 +408,37 @@ class SavedMortgageCalculationDetailAPIView(APIView):
             pk=pk,
         )
         return Response(serialize_saved_mortgage_detail(calculation))
+
+    def delete(self, request, pk):
+        """Delete a private calculation without disclosing other owners."""
+        calculation = get_object_or_404(
+            _saved_mortgage_calculation_queryset(request.user),
+            pk=pk,
+        )
+        calculation.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SavedMortgageCalculationExportAPIView(APIView):
+    """Export one owner-scoped saved calculation in an approved format."""
+
+    permission_classes = (IsAuthenticated,)
+    exporters = {
+        'excel': export_saved_mortgage_calculation_excel,
+        'word': export_saved_mortgage_calculation_word,
+    }
+
+    def get(self, request, pk, export_format):
+        """Return a private calculation as an attachment or a safe 404."""
+        exporter = self.exporters.get(export_format)
+        if exporter is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        calculation = get_object_or_404(
+            _saved_mortgage_calculation_queryset(request.user),
+            pk=pk,
+        )
+        payment_schedule = build_saved_mortgage_payment_schedule(calculation)
+        return exporter(calculation, payment_schedule)
 
 
 class PropertyListAPIView(ListAPIView):
@@ -477,3 +513,18 @@ class PropertyListAPIView(ListAPIView):
             'apartment_number',
             'id',
         )
+
+
+class PropertyDetailAPIView(RetrieveAPIView):
+    """Return one public property with all detail-screen relationships."""
+
+    serializer_class = PropertyDetailSerializer
+    permission_classes = (AllowAny,)
+    queryset = Property.objects.select_related(
+        'building__real_estate_complex__developer__company_group',
+        'building__real_estate_complex__district__city__region',
+        'building__real_estate_complex__real_estate_class',
+        'building__real_estate_complex__real_estate_type',
+        'layout',
+        'decoration',
+    ).prefetch_related('window_views')

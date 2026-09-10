@@ -39,9 +39,9 @@ function PropertyMobileCard({ property }: { property: PropertyListItem }) {
         <div><dt>Этаж</dt><dd>{property.floor}</dd></div>
       </dl>
       <div className="property-mobile-card__actions">
-        <a className="text-link" href={property.detailUrl}>
+        <Link className="text-link" to={`/properties/${property.id}`}>
           Подробнее <span aria-hidden="true">→</span>
-        </a>
+        </Link>
         <Link
           className="text-link"
           to={`/mortgage?propertyId=${property.id}&propertyCost=${encodeURIComponent(property.propertyCost)}`}
@@ -197,13 +197,13 @@ export function PropertyListPage() {
                     <td><strong>{formatCurrency(property.propertyCost)}</strong></td>
                     <td>
                       <div className="row-actions">
-                        <a
+                        <Link
                           className="row-action"
-                          href={property.detailUrl}
+                          to={`/properties/${property.id}`}
                           aria-label={`Открыть квартиру ${property.apartmentNumber}`}
                         >
                           →
-                        </a>
+                        </Link>
                         <Link
                           className="row-action row-action--calculator"
                           to={`/mortgage?propertyId=${property.id}&propertyCost=${encodeURIComponent(property.propertyCost)}`}

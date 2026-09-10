@@ -95,7 +95,7 @@ export function HomePage() {
                     <span>{formatArea(property.area)}</span>
                     <strong>{formatCurrency(property.propertyCost)}</strong>
                   </div>
-                  <a href={property.detailUrl}>Открыть объект</a>
+                  <Link to={`/properties/${property.id}`}>Открыть объект</Link>
                 </div>
               </article>
             ))}

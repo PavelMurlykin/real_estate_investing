@@ -45,7 +45,7 @@ describe('HomePage', () => {
     expect(screen.getByRole('heading', { name: 'Белые ночи' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Открыть объект' })).toHaveAttribute(
       'href',
-      '/property/1/',
+      '/properties/1',
     )
   })
 

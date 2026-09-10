@@ -8,6 +8,7 @@ import {
   calculateMortgage,
   mortgageOptionsQueryOptions,
   saveMortgageCalculation,
+  savedMortgageCalculationDetailQueryOptions,
   sessionQueryOptions,
 } from '@/api/queries'
 import type { MortgageCalculationRequest } from '@/api/schemas'
@@ -73,11 +74,22 @@ export function MortgageCalculatorPage() {
   const optionsQuery = useQuery(mortgageOptionsQueryOptions)
   const sessionQuery = useQuery(sessionQueryOptions)
   const resultHeadingRef = useRef<HTMLHeadingElement>(null)
+  const appliedSampleIdentifierRef = useRef<number | null>(null)
   const rawPropertyIdentifier = Number(searchParameters.get('propertyId'))
-  const propertyIdentifier = Number.isInteger(rawPropertyIdentifier)
+  const directPropertyIdentifier = Number.isInteger(rawPropertyIdentifier)
     && rawPropertyIdentifier > 0
     ? rawPropertyIdentifier
     : null
+  const rawSampleIdentifier = Number(searchParameters.get('sample'))
+  const sampleIdentifier = Number.isInteger(rawSampleIdentifier)
+    && rawSampleIdentifier > 0
+    ? rawSampleIdentifier
+    : null
+  const sampleQuery = useQuery({
+    ...savedMortgageCalculationDetailQueryOptions(sampleIdentifier ?? 0),
+    enabled: sessionQuery.data?.isAuthenticated === true
+      && sampleIdentifier !== null,
+  })
   const calculationQueryString = searchParameters.toString()
   const loginReturnPath = `/app/mortgage${
     calculationQueryString ? `?${calculationQueryString}` : ''
@@ -107,6 +119,9 @@ export function MortgageCalculatorPage() {
       })
     },
   })
+  const propertyIdentifier = directPropertyIdentifier
+    ?? sampleQuery.data?.property.id
+    ?? null
   const fieldErrors = extractFieldErrors(calculationMutation.error)
   const initialPaymentDate = formState.initialPaymentDate
     || optionsQuery.data?.defaultInitialPaymentDate
@@ -124,6 +139,35 @@ export function MortgageCalculatorPage() {
       resultHeadingRef.current?.scrollIntoView?.({ block: 'start' })
     }
   }, [calculationMutation.isSuccess, calculationMutation.data])
+
+  useEffect(() => {
+    if (
+      !sampleQuery.data
+      || appliedSampleIdentifierRef.current === sampleQuery.data.id
+    ) {
+      return
+    }
+    const assumptions = sampleQuery.data.calculation.assumptions
+    setFormState({
+      propertyCost: assumptions.basePropertyCost,
+      priceAdjustmentType: assumptions.priceAdjustmentType,
+      priceAdjustmentUnit: 'percent',
+      priceAdjustmentValue: assumptions.priceAdjustmentPercent,
+      initialPaymentUnit: 'percent',
+      initialPaymentValue: assumptions.initialPaymentPercent,
+      initialPaymentDate: assumptions.initialPaymentDate,
+      mortgageTermMonths: String(assumptions.mortgageTermMonths),
+      annualRate: assumptions.annualRate,
+      bankId: '',
+      bankProgramId: '',
+      hasGracePeriod: assumptions.hasGracePeriod,
+      gracePeriodTermMonths: String(
+        assumptions.gracePeriodTermMonths || 12,
+      ),
+      gracePeriodRate: assumptions.gracePeriodRate ?? '6',
+    })
+    appliedSampleIdentifierRef.current = sampleQuery.data.id
+  }, [sampleQuery.data])
 
   const updateField = <FieldName extends keyof MortgageFormState>(
     fieldName: FieldName,
@@ -195,6 +239,23 @@ export function MortgageCalculatorPage() {
           Прежняя версия
         </a>
       </header>
+
+      {sampleIdentifier && !sessionQuery.data?.isAuthenticated ? (
+        <p className="status-notice" role="status">
+          Войдите в аккаунт, чтобы загрузить параметры сохранённого расчёта.
+        </p>
+      ) : null}
+      {sampleQuery.isLoading ? (
+        <p className="status-notice" role="status">
+          Загружаем параметры сохранённого расчёта…
+        </p>
+      ) : null}
+      {sampleQuery.isError ? (
+        <p className="form-error" role="alert">
+          Сохранённый расчёт не найден или недоступен. Можно заполнить форму
+          вручную.
+        </p>
+      ) : null}
 
       <div className="mortgage-layout">
         <form className="calculator-card" onSubmit={handleSubmit} noValidate={false}>

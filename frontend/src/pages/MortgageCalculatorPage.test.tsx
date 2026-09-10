@@ -105,19 +105,45 @@ const savedCalculation: SavedMortgageCalculationDetail = {
   },
   legacyDetailUrl: '/mortgage/calculations/7/',
   legacySampleUrl: '/mortgage/?sample=7',
-  calculation: mortgageResult,
+  calculation: {
+    ...mortgageResult,
+    assumptions: {
+      ...mortgageResult.assumptions,
+      basePropertyCost: '6300000.00',
+      priceAdjustmentType: 'markup',
+      priceAdjustmentPercent: '7.50',
+      priceAdjustmentRubles: '472500.00',
+      finalPropertyCost: '6772500.00',
+      initialPaymentPercent: '35.00',
+      initialPaymentRubles: '2370375.00',
+      initialPaymentDate: '2026-10-20',
+      mortgageTermMonths: 180,
+      annualRate: '8.25',
+      hasGracePeriod: true,
+      gracePeriodTermMonths: 24,
+      gracePeriodRate: '5.25',
+    },
+  },
 }
 
 function renderCalculator({
   initialRoute = '/',
+  savedSample,
   session,
 }: {
   initialRoute?: string
+  savedSample?: SavedMortgageCalculationDetail
   session?: Session
 } = {}) {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['mortgage-options'], mortgageOptions)
   if (session) queryClient.setQueryData(['session'], session)
+  if (savedSample) {
+    queryClient.setQueryData(
+      ['saved-mortgage-calculation', savedSample.id],
+      savedSample,
+    )
+  }
   return renderWithProviders(<MortgageCalculatorPage />, {
     initialRoute,
     queryClient,
@@ -175,6 +201,31 @@ describe('MortgageCalculatorPage', () => {
     expect(screen.getByLabelText('Годовая ставка, %')).toHaveValue(6)
     expect(screen.getByLabelText('Первоначальный взнос')).toHaveValue(25)
     expect(screen.getByLabelText('Срок ипотеки, месяцев')).toHaveValue(240)
+  })
+
+  it('loads a private saved scenario as a new React calculation sample', async () => {
+    renderCalculator({
+      initialRoute: '/?sample=7',
+      savedSample: savedCalculation,
+      session: authenticatedSession,
+    })
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Базовая стоимость, ₽')).toHaveValue(6300000)
+    })
+    expect(screen.getByLabelText('Удорожание')).toBeChecked()
+    expect(screen.getByLabelText('Размер корректировки')).toHaveValue(7.5)
+    expect(screen.getByLabelText('Первоначальный взнос')).toHaveValue(35)
+    expect(screen.getByLabelText('Дата первого взноса')).toHaveValue(
+      '2026-10-20',
+    )
+    expect(screen.getByLabelText('Срок ипотеки, месяцев')).toHaveValue(180)
+    expect(screen.getByLabelText('Годовая ставка, %')).toHaveValue(8.25)
+    expect(screen.getByLabelText('Использовать льготный период')).toBeChecked()
+    expect(
+      screen.getByLabelText('Срок льготного периода, месяцев'),
+    ).toHaveValue(24)
+    expect(screen.getByLabelText('Ставка, %')).toHaveValue(5.25)
   })
 
   it('shows authoritative server validation next to the affected field', async () => {

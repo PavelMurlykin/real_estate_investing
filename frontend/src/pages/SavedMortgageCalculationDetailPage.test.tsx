@@ -1,6 +1,7 @@
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type {
   SavedMortgageCalculationDetail,
@@ -84,6 +85,10 @@ const savedCalculation: SavedMortgageCalculationDetail = {
   },
 }
 
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
 describe('SavedMortgageCalculationDetailPage', () => {
   it('renders property context, saved values and the payment schedule', () => {
     const queryClient = createTestQueryClient()
@@ -107,7 +112,20 @@ describe('SavedMortgageCalculationDetailPage', () => {
       'График ежемесячных платежей',
     )
     expect(
-      screen.getByRole('link', { name: 'Экспорт в прежней версии' }),
+      screen.getByRole('link', { name: 'Excel' }),
+    ).toHaveAttribute(
+      'href',
+      '/api/v1/mortgage/calculations/7/export/excel/',
+    )
+    expect(screen.getByRole('link', { name: 'Word' })).toHaveAttribute(
+      'href',
+      '/api/v1/mortgage/calculations/7/export/word/',
+    )
+    expect(
+      screen.getByRole('link', { name: 'Новый по образцу' }),
+    ).toHaveAttribute('href', '/mortgage?sample=7')
+    expect(
+      screen.getByRole('link', { name: 'Открыть Django-версию' }),
     ).toHaveAttribute('href', '/mortgage/calculations/7/')
   })
 
@@ -125,5 +143,63 @@ describe('SavedMortgageCalculationDetailPage', () => {
     expect(
       screen.getByRole('heading', { name: 'Войдите, чтобы открыть расчёт' }),
     ).toBeInTheDocument()
+  })
+
+  it('requires an explicit confirmation before deleting a calculation', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockImplementation(
+      (_path: RequestInfo | URL, options?: RequestInit) => {
+        if (options?.method === 'DELETE') {
+          return Promise.resolve(new Response(null, { status: 204 }))
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify(savedCalculation), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+      },
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const queryClient = createTestQueryClient()
+    queryClient.setQueryData(['session'], authenticatedSession)
+    queryClient.setQueryData(['saved-mortgage-calculation', 7], savedCalculation)
+
+    renderWithProviders(
+      <Routes>
+        <Route
+          path="/mortgage/calculations/:calculationId"
+          element={<SavedMortgageCalculationDetailPage />}
+        />
+        <Route
+          path="/mortgage/calculations"
+          element={<h1>История после удаления</h1>}
+        />
+      </Routes>,
+      { initialRoute: '/mortgage/calculations/7', queryClient },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Удалить' }))
+
+    expect(screen.getByRole('alertdialog')).toHaveAccessibleName(
+      'Удалить сохранённый расчёт?',
+    )
+    const confirmButton = screen.getByRole('button', {
+      name: 'Удалить расчёт',
+    })
+    expect(confirmButton).toHaveFocus()
+
+    await user.click(confirmButton)
+
+    expect(
+      await screen.findByRole('heading', { name: 'История после удаления' }),
+    ).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/mortgage/calculations/7/',
+      expect.objectContaining({
+        method: 'DELETE',
+        credentials: 'same-origin',
+      }),
+    )
   })
 })

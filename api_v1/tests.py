@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -16,6 +17,7 @@ from property.models import (
     RealEstateComplex,
     RealEstateComplexBuilding,
     RealEstateType,
+    WindowView,
 )
 
 
@@ -232,6 +234,117 @@ def test_property_list_api_uses_constant_query_count(
 
     assert response.status_code == 200
     assert len(response.json()['results']) == 2
+
+
+@pytest.mark.django_db
+def test_property_detail_api_returns_complete_public_card(
+    client,
+    property_catalog,
+    django_assert_num_queries,
+):
+    """Return related labels, images, safe links, and legacy fallbacks."""
+    property_object, _ = property_catalog
+    property_object.layout_image = 'property/layouts/layout.gif'
+    property_object.floor_plan_image = (
+        'property/floor_plans/floor-plan.gif'
+    )
+    property_object.window_view_image = (
+        'property/window_views/window-view.gif'
+    )
+    property_object.save(
+        update_fields=(
+            'layout_image',
+            'floor_plan_image',
+            'window_view_image',
+        )
+    )
+    window_view = WindowView.objects.create(name='Парк')
+    property_object.window_views.add(window_view)
+    building = property_object.building
+    building.commissioning_year = 2027
+    building.commissioning_quarter = (
+        RealEstateComplexBuilding.Quarter.SECOND
+    )
+    building.key_handover_date = date(2027, 9, 1)
+    building.save(
+        update_fields=(
+            'commissioning_year',
+            'commissioning_quarter',
+            'key_handover_date',
+        )
+    )
+    real_estate_complex = building.real_estate_complex
+    real_estate_complex.map_link = 'https://maps.example.com/complex'
+    real_estate_complex.presentation_link = 'javascript:alert(1)'
+    real_estate_complex.save(
+        update_fields=('map_link', 'presentation_link')
+    )
+
+    with django_assert_num_queries(2):
+        response = client.get(
+            reverse(
+                'api_v1:property_detail',
+                kwargs={'pk': property_object.pk},
+            )
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['id'] == property_object.pk
+    assert payload['apartmentNumber'] == '101'
+    assert payload['developer'] == (
+        'Северный девелопер (Группа Север)'
+    )
+    assert payload['realEstateComplex'] == 'Белые ночи'
+    assert payload['realEstateClass'] == 'Бизнес'
+    assert payload['realEstateType'] == 'Квартира'
+    assert payload['district'] == 'Петроградский'
+    assert payload['city'] == 'Санкт-Петербург'
+    assert payload['region'] == 'Тестовый регион'
+    assert payload['commissioning'] == 'II кв. 2027'
+    assert payload['keyHandover'] == '2027-09-01'
+    assert payload['windowViews'] == ['Парк']
+    assert payload['mapUrl'] == 'https://maps.example.com/complex'
+    assert payload['presentationUrl'] is None
+    assert payload['images'] == [
+        {
+            'kind': 'layout',
+            'label': 'Планировка',
+            'url': '/media/property/layouts/layout.gif',
+        },
+        {
+            'kind': 'floorPlan',
+            'label': 'План этажа',
+            'url': '/media/property/floor_plans/floor-plan.gif',
+        },
+        {
+            'kind': 'windowView',
+            'label': 'Вид из окна',
+            'url': '/media/property/window_views/window-view.gif',
+        },
+    ]
+    assert payload['legacyDetailUrl'] == reverse(
+        'property:detail',
+        kwargs={'pk': property_object.pk},
+    )
+    assert payload['legacyEditUrl'] == reverse(
+        'property:update',
+        kwargs={'pk': property_object.pk},
+    )
+    assert payload['legacyDeleteUrl'] == reverse(
+        'property:delete',
+        kwargs={'pk': property_object.pk},
+    )
+
+
+@pytest.mark.django_db
+def test_property_detail_api_returns_404_for_unknown_identifier(client):
+    """Return a conventional 404 for a missing public property."""
+    response = client.get(
+        reverse('api_v1:property_detail', kwargs={'pk': 999999})
+    )
+
+    assert response.status_code == 404
 
 
 @pytest.mark.django_db
