@@ -235,9 +235,19 @@ export function MortgageCalculatorPage() {
             для объекта из каталога.
           </p>
         </div>
-        <a className="button button--secondary" href="/mortgage/">
-          Прежняя версия
-        </a>
+        <div className="page-header__actions">
+          <Link
+            className="button button--secondary"
+            to={`/mortgage/trench${
+              calculationQueryString ? `?${calculationQueryString}` : ''
+            }`}
+          >
+            Траншевая ипотека
+          </Link>
+          <a className="button button--secondary" href="/mortgage/">
+            Django-версия
+          </a>
+        </div>
       </header>
 
       {sampleIdentifier && !sessionQuery.data?.isAuthenticated ? (

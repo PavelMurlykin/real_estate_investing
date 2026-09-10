@@ -14,7 +14,9 @@ from .views import (
     SavedMortgageCalculationDetailAPIView,
     SavedMortgageCalculationExportAPIView,
     SavedMortgageCalculationListCreateAPIView,
+    SavedTrenchMortgageCalculationCreateAPIView,
     SessionAPIView,
+    TrenchMortgageCalculationAPIView,
 )
 
 app_name = 'api_v1'
@@ -50,6 +52,16 @@ urlpatterns = [
         'mortgage/calculate/',
         MortgageCalculationAPIView.as_view(),
         name='mortgage_calculate',
+    ),
+    path(
+        'mortgage/trench/calculate/',
+        TrenchMortgageCalculationAPIView.as_view(),
+        name='trench_mortgage_calculate',
+    ),
+    path(
+        'mortgage/trench/calculations/',
+        SavedTrenchMortgageCalculationCreateAPIView.as_view(),
+        name='saved_trench_mortgage_calculation_create',
     ),
     path(
         'mortgage/calculations/',

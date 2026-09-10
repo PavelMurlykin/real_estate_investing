@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import (
     ListAPIView,
     ListCreateAPIView,
@@ -64,6 +65,13 @@ from .serializers import (
     PropertyListQuerySerializer,
     SavedMortgageCalculationCreateSerializer,
     SavedMortgageCalculationListQuerySerializer,
+    SavedTrenchMortgageCalculationCreateSerializer,
+    TrenchMortgageCalculationRequestSerializer,
+)
+from .trench_mortgage_service import (
+    TrenchMortgageValidationError,
+    calculate_trench_mortgage,
+    create_saved_trench_mortgage,
 )
 
 
@@ -311,6 +319,58 @@ class MortgageCalculationAPIView(APIView):
         return Response(
             calculate_market_mortgage(request_serializer.validated_data)
         )
+
+
+def _raise_trench_mortgage_validation_error(error):
+    """Translate established domain validation into the API error shape."""
+    raise ValidationError(
+        {'nonFieldErrors': list(error.messages)}
+    ) from error
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class TrenchMortgageCalculationAPIView(APIView):
+    """Calculate a trench mortgage without persisting user data."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request):
+        """Validate tranche inputs and return summary plus schedule."""
+        request_serializer = TrenchMortgageCalculationRequestSerializer(
+            data=request.data
+        )
+        request_serializer.is_valid(raise_exception=True)
+        try:
+            _, response_payload = calculate_trench_mortgage(
+                request_serializer.validated_data
+            )
+        except TrenchMortgageValidationError as error:
+            _raise_trench_mortgage_validation_error(error)
+        return Response(response_payload)
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class SavedTrenchMortgageCalculationCreateAPIView(APIView):
+    """Persist an authenticated user's property-backed trench scenario."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        """Recalculate and save a validated trench mortgage atomically."""
+        request_serializer = SavedTrenchMortgageCalculationCreateSerializer(
+            data=request.data
+        )
+        request_serializer.is_valid(raise_exception=True)
+        validated_data = request_serializer.validated_data
+        try:
+            response_payload = create_saved_trench_mortgage(
+                parameters=validated_data['parameters'],
+                property_object=validated_data['property'],
+                user=request.user,
+            )
+        except TrenchMortgageValidationError as error:
+            _raise_trench_mortgage_validation_error(error)
+        return Response(response_payload, status=status.HTTP_201_CREATED)
 
 
 def _saved_mortgage_calculation_queryset(user):

@@ -27,6 +27,10 @@ const MortgageCalculatorPage = lazy(async () => ({
   default: (await import('@/pages/MortgageCalculatorPage'))
     .MortgageCalculatorPage,
 }))
+const TrenchMortgageCalculatorPage = lazy(async () => ({
+  default: (await import('@/pages/TrenchMortgageCalculatorPage'))
+    .TrenchMortgageCalculatorPage,
+}))
 const SavedMortgageCalculationListPage = lazy(async () => ({
   default: (await import('@/pages/SavedMortgageCalculationListPage'))
     .SavedMortgageCalculationListPage,
@@ -61,6 +65,10 @@ export function App() {
             element={<CustomerFormPage />}
           />
           <Route path="mortgage" element={<MortgageCalculatorPage />} />
+          <Route
+            path="mortgage/trench"
+            element={<TrenchMortgageCalculatorPage />}
+          />
           <Route
             path="mortgage/calculations"
             element={<SavedMortgageCalculationListPage />}

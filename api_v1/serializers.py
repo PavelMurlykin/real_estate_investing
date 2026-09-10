@@ -1062,6 +1062,152 @@ class MortgageCalculationRequestSerializer(serializers.Serializer):
         return attributes
 
 
+class TrenchMortgageEntryRequestSerializer(serializers.Serializer):
+    """Validate one dated tranche in the mortgage release schedule."""
+
+    date = serializers.DateField()
+    amountUnit = serializers.ChoiceField(
+        choices=('percent', 'rubles'),
+        default='percent',
+    )
+    amountValue = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        min_value=Decimal('0.01'),
+        required=False,
+        allow_null=True,
+    )
+    annualRate = serializers.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        max_value=Decimal('100'),
+    )
+
+    def validate(self, attributes):
+        """Reject percentage tranche values above the complete loan."""
+        if (
+            attributes['amountUnit'] == 'percent'
+            and attributes.get('amountValue') is not None
+            and attributes['amountValue'] > Decimal('100')
+        ):
+            raise serializers.ValidationError(
+                {
+                    'amountValue': (
+                        'Размер одного транша не может превышать 100%.'
+                    )
+                }
+            )
+        return attributes
+
+
+class TrenchMortgageCalculationRequestSerializer(serializers.Serializer):
+    """Validate a side-effect-free trench mortgage calculation request."""
+
+    propertyCost = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        min_value=Decimal('0.01'),
+    )
+    priceAdjustmentType = serializers.ChoiceField(
+        choices=('discount', 'markup'),
+        default='discount',
+    )
+    priceAdjustmentUnit = serializers.ChoiceField(
+        choices=('percent', 'rubles'),
+        default='percent',
+    )
+    priceAdjustmentValue = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        default=Decimal('0'),
+    )
+    initialPaymentUnit = serializers.ChoiceField(
+        choices=('percent', 'rubles'),
+        default='percent',
+    )
+    initialPaymentValue = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        min_value=Decimal('0'),
+    )
+    initialPaymentDate = serializers.DateField()
+    mortgageTermMonths = serializers.IntegerField(
+        min_value=1,
+        max_value=600,
+    )
+    annualRate = serializers.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        max_value=Decimal('100'),
+    )
+    trenches = serializers.ListField(
+        child=TrenchMortgageEntryRequestSerializer(),
+        min_length=1,
+        max_length=5,
+    )
+
+    def validate(self, attributes):
+        """Validate financial values, tranche amounts, and date ordering."""
+        property_cost = attributes['propertyCost']
+        adjustment_value = attributes['priceAdjustmentValue']
+        if attributes['priceAdjustmentUnit'] == 'percent':
+            adjustment_rubles = property_cost * adjustment_value / 100
+        else:
+            adjustment_rubles = adjustment_value
+
+        if attributes['priceAdjustmentType'] == 'discount':
+            final_property_cost = property_cost - adjustment_rubles
+        else:
+            final_property_cost = property_cost + adjustment_rubles
+
+        errors = {}
+        if final_property_cost <= 0:
+            errors['priceAdjustmentValue'] = (
+                'Скидка должна быть меньше стоимости объекта.'
+            )
+
+        initial_payment_value = attributes['initialPaymentValue']
+        if attributes['initialPaymentUnit'] == 'percent':
+            if initial_payment_value >= 100:
+                errors['initialPaymentValue'] = (
+                    'Для траншевой ипотеки взнос должен быть меньше 100%.'
+                )
+        elif initial_payment_value >= final_property_cost:
+            errors['initialPaymentValue'] = (
+                'Взнос должен быть меньше итоговой стоимости объекта.'
+            )
+
+        trenches = attributes['trenches']
+        trench_errors = {}
+        for trench_index, trench in enumerate(trenches[:-1]):
+            if trench.get('amountValue') is None:
+                trench_errors[trench_index] = {
+                    'amountValue': (
+                        'Укажите размер транша; последний будет рассчитан '
+                        'автоматически.'
+                    )
+                }
+        for trench_index, (previous, current) in enumerate(
+            zip(trenches, trenches[1:]),
+            start=1,
+        ):
+            if current['date'] < previous['date']:
+                trench_errors.setdefault(trench_index, {})['date'] = (
+                    'Даты траншей должны идти по возрастанию.'
+                )
+        if trench_errors:
+            errors['trenches'] = trench_errors
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        trenches[-1]['amountValue'] = None
+        return attributes
+
+
 class SavedMortgageCalculationCreateSerializer(serializers.Serializer):
     """Validate a request to persist a property-backed calculation."""
 
@@ -1070,6 +1216,16 @@ class SavedMortgageCalculationCreateSerializer(serializers.Serializer):
         queryset=Property.objects.all(),
     )
     parameters = MortgageCalculationRequestSerializer()
+
+
+class SavedTrenchMortgageCalculationCreateSerializer(serializers.Serializer):
+    """Validate a request to persist a property-backed trench scenario."""
+
+    propertyId = serializers.PrimaryKeyRelatedField(
+        source='property',
+        queryset=Property.objects.all(),
+    )
+    parameters = TrenchMortgageCalculationRequestSerializer()
 
 
 class SavedMortgageCalculationListQuerySerializer(serializers.Serializer):

@@ -13,12 +13,16 @@ import {
   propertyListResponseSchema,
   savedMortgageCalculationDetailSchema,
   savedMortgageCalculationListResponseSchema,
+  savedTrenchMortgageCalculationCreateResponseSchema,
   sessionSchema,
+  trenchMortgageCalculationResponseSchema,
 } from './schemas'
 import type {
   CustomerWriteRequest,
   MortgageCalculationRequest,
   SavedMortgageCalculationCreateRequest,
+  SavedTrenchMortgageCalculationCreateRequest,
+  TrenchMortgageCalculationRequest,
 } from './schemas'
 
 export const sessionQueryOptions = queryOptions({
@@ -46,6 +50,32 @@ export function calculateMortgage(payload: MortgageCalculationRequest) {
   return requestJson(
     '/api/v1/mortgage/calculate/',
     mortgageCalculationResponseSchema,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  )
+}
+
+export function calculateTrenchMortgage(
+  payload: TrenchMortgageCalculationRequest,
+) {
+  return requestJson(
+    '/api/v1/mortgage/trench/calculate/',
+    trenchMortgageCalculationResponseSchema,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  )
+}
+
+export function saveTrenchMortgageCalculation(
+  payload: SavedTrenchMortgageCalculationCreateRequest,
+) {
+  return requestJson(
+    '/api/v1/mortgage/trench/calculations/',
+    savedTrenchMortgageCalculationCreateResponseSchema,
     {
       method: 'POST',
       body: JSON.stringify(payload),

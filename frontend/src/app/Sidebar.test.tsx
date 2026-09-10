@@ -52,6 +52,9 @@ describe('Sidebar', () => {
     expect(
       screen.getByRole('link', { name: 'Расчёты ипотеки' }),
     ).toHaveAttribute('href', '/mortgage/calculations')
+    expect(
+      screen.getByRole('link', { name: 'Траншевая ипотека' }),
+    ).toHaveAttribute('href', '/mortgage/trench')
     expect(screen.getByText('Анна Иванова')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Выйти' })).toBeEnabled()
   })

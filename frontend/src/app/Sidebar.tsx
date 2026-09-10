@@ -49,7 +49,12 @@ const privateItems: NavigationItem[] = [
     symbol: 'И',
     reactRoute: true,
   },
-  { label: 'Траншевая ипотека', href: '/mortgage/trench-calculations/', symbol: 'Т' },
+  {
+    label: 'Траншевая ипотека',
+    href: '/mortgage/trench',
+    symbol: 'Т',
+    reactRoute: true,
+  },
 ]
 
 function NavigationGroup({ title, items, onNavigate }: NavigationGroupProps) {

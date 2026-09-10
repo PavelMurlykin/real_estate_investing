@@ -275,6 +275,54 @@ export const mortgageCalculationResponseSchema = z.object({
   schedule: z.array(mortgagePaymentSchema).max(600),
 })
 
+const trenchMortgageAssumptionsSchema = z.object({
+  basePropertyCost: z.string(),
+  priceAdjustmentType: z.enum(['discount', 'markup']),
+  priceAdjustmentPercent: z.string(),
+  priceAdjustmentRubles: z.string(),
+  finalPropertyCost: z.string(),
+  initialPaymentPercent: z.string(),
+  initialPaymentRubles: z.string(),
+  initialPaymentDate: z.iso.date(),
+  mortgageTermMonths: z.number().int().positive(),
+  annualRate: z.string(),
+  trenchCount: z.number().int().min(1).max(5),
+})
+
+const trenchMortgageSummarySchema = z.object({
+  loanAmount: z.string(),
+  maximumMonthlyPayment: z.string(),
+  overpayment: z.string(),
+  totalPayments: z.string(),
+  paymentsCount: z.number().int().positive(),
+  mortgageEndDate: z.iso.date(),
+})
+
+const trenchMortgageEntrySchema = z.object({
+  number: z.number().int().min(1).max(5),
+  date: z.iso.date(),
+  percent: z.string(),
+  amount: z.string(),
+  annualRate: z.string(),
+  monthlyPayment: z.string(),
+  paymentsCount: z.number().int().nonnegative(),
+  remainingDebt: z.string(),
+  overpayment: z.string(),
+})
+
+export const trenchMortgageCalculationResponseSchema = z.object({
+  assumptions: trenchMortgageAssumptionsSchema,
+  summary: trenchMortgageSummarySchema,
+  trenches: z.array(trenchMortgageEntrySchema).min(1).max(5),
+  schedule: z.array(mortgagePaymentSchema).max(600),
+})
+
+export const savedTrenchMortgageCalculationCreateResponseSchema = z.object({
+  id: z.number().int().positive(),
+  legacyDetailUrl: z.string(),
+  calculation: trenchMortgageCalculationResponseSchema,
+})
+
 const savedMortgagePropertySchema = z.object({
   id: z.number().int().positive(),
   city: z.string(),
@@ -338,6 +386,31 @@ export type SavedMortgageCalculationCreateRequest = {
   parameters: MortgageCalculationRequest
 }
 
+export type TrenchMortgageEntryRequest = {
+  date: string
+  amountUnit: 'percent' | 'rubles'
+  amountValue: string | null
+  annualRate: string
+}
+
+export type TrenchMortgageCalculationRequest = {
+  propertyCost: string
+  priceAdjustmentType: 'discount' | 'markup'
+  priceAdjustmentUnit: 'percent' | 'rubles'
+  priceAdjustmentValue: string
+  initialPaymentUnit: 'percent' | 'rubles'
+  initialPaymentValue: string
+  initialPaymentDate: string
+  mortgageTermMonths: number
+  annualRate: string
+  trenches: TrenchMortgageEntryRequest[]
+}
+
+export type SavedTrenchMortgageCalculationCreateRequest = {
+  propertyId: number
+  parameters: TrenchMortgageCalculationRequest
+}
+
 export type Session = z.infer<typeof sessionSchema>
 export type PropertyListItem = z.infer<typeof propertyListItemSchema>
 export type PropertyListResponse = z.infer<typeof propertyListResponseSchema>
@@ -350,6 +423,12 @@ export type Overview = z.infer<typeof overviewSchema>
 export type MortgageOptions = z.infer<typeof mortgageOptionsSchema>
 export type MortgageCalculationResponse = z.infer<
   typeof mortgageCalculationResponseSchema
+>
+export type TrenchMortgageCalculationResponse = z.infer<
+  typeof trenchMortgageCalculationResponseSchema
+>
+export type SavedTrenchMortgageCalculationCreateResponse = z.infer<
+  typeof savedTrenchMortgageCalculationCreateResponseSchema
 >
 export type SavedMortgageCalculationListItem = z.infer<
   typeof savedMortgageCalculationListItemSchema
