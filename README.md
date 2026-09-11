@@ -58,7 +58,10 @@ Word и удалить после явного подтверждения. Пу�
 справочные поля. Каталог жилых комплексов также перенесён в React: реализованы
 фильтры, адаптивные список и карточка, фото, корпуса, доступность метро и полный
 цикл управления для модераторов. Импорт ЕРЗ на этом этапе остаётся в сохранённом
-Django-интерфейсе.
+Django-интерфейсе. Шесть справочников объектов — типы и классы недвижимости,
+планировки, отделка, виды из окон и типы транспортной доступности — доступны в
+React с общими поиском, фильтрами, сортировкой и пагинацией. Модераторы могут
+создавать и редактировать записи, а удаление используемой записи блокируется.
 React-маршруты доступны по
 адресам /app/, /app/properties, /app/properties/new,
 /app/properties/:id, /app/properties/:id/edit, /app/customers,
@@ -66,15 +69,16 @@ React-маршруты доступны по
 /app/company-groups, /app/company-groups/new, /app/company-groups/:id/edit,
 /app/developers, /app/developers/new, /app/developers/:id/edit,
 /app/complexes, /app/complexes/new, /app/complexes/:id,
-/app/complexes/:id/edit,
+/app/complexes/:id/edit, /app/dictionaries/:dictionaryKey,
+/app/dictionaries/:dictionaryKey/:id/edit,
 /app/mortgage, /app/mortgage/trench, /app/mortgage/calculations,
 /app/mortgage/calculations/:id, /app/mortgage/trench/calculations и
 /app/mortgage/trench/calculations/:id.
 API имеет версию /api/v1/ и использует текущие Django session authentication,
 CSRF-защиту, правила доступа и PostgreSQL. Старые формы, обработчики и шаблоны
-объектов, клиентов, групп компаний, застройщиков, жилых комплексов и ипотеки не удалены:
-Django-версии остаются резервным интерфейсом для проверки функционального
-паритета до завершения миграции.
+объектов, клиентов, групп компаний, застройщиков, жилых комплексов,
+справочников объектов и ипотеки не удалены: Django-версии остаются резервным
+интерфейсом для проверки функционального паритета до завершения миграции.
 
 Установить зависимости и запустить frontend для разработки:
 

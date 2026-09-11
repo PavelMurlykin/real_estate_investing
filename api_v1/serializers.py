@@ -1,5 +1,6 @@
 from copy import copy
 from decimal import Decimal
+from urllib.parse import urlencode
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import URLValidator
@@ -129,6 +130,148 @@ class CompanyGroupSerializer(serializers.ModelSerializer):
             'property:company_group_delete',
             kwargs={'pk': company_group.pk},
         )
+
+
+class PropertyDictionaryListQuerySerializer(serializers.Serializer):
+    """Validate URL-driven filters for property dictionary entries."""
+
+    q = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=100,
+        trim_whitespace=True,
+    )
+    status = serializers.ChoiceField(
+        required=False,
+        choices=('all', 'active', 'inactive'),
+        default='all',
+    )
+    ordering = serializers.ChoiceField(
+        required=False,
+        choices=(
+            'default', 'name', '-name', 'updatedAt', '-updatedAt',
+            'status', '-status', 'weight', '-weight',
+        ),
+        default='default',
+    )
+    page = serializers.IntegerField(required=False, min_value=1, default=1)
+    pageSize = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=100,
+        default=20,
+    )
+
+
+class PropertyDictionaryEntrySerializer(serializers.Serializer):
+    """Serialize one entry from a whitelisted property dictionary."""
+
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    description = serializers.CharField(allow_null=True, read_only=True)
+    weight = serializers.SerializerMethodField(method_name='get_weight')
+    usageCount = serializers.IntegerField(
+        source='usage_count', read_only=True
+    )
+    isActive = serializers.BooleanField(source='is_active', read_only=True)
+    createdAt = serializers.DateTimeField(source='created_at', read_only=True)
+    updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
+    legacyEditUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_edit_url'
+    )
+
+    def get_weight(self, dictionary_entry):
+        """Return a stable decimal coefficient only for class entries."""
+        weight = getattr(dictionary_entry, 'weight', None)
+        return format(weight, 'f') if weight is not None else None
+
+    def get_legacy_edit_url(self, dictionary_entry):
+        """Return the preserved Django inline-edit URL."""
+        dictionary_key = self.context['dictionary_configuration']['legacy_key']
+        query_string = urlencode(
+            {'model': dictionary_key, 'edit': dictionary_entry.pk}
+        )
+        return f"{reverse('property:dictionary_catalog')}?{query_string}"
+
+
+class PropertyDictionaryWriteSerializer(serializers.Serializer):
+    """Validate and persist one whitelisted property dictionary entry."""
+
+    name = serializers.CharField(max_length=100, trim_whitespace=True)
+    description = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        default=None,
+    )
+    weight = serializers.DecimalField(
+        required=False,
+        allow_null=True,
+        max_digits=5,
+        decimal_places=2,
+    )
+    isActive = serializers.BooleanField(
+        source='is_active', required=False, default=True
+    )
+
+    def validate_name(self, value):
+        """Collapse repeated whitespace without changing the display case."""
+        return ' '.join(value.split())
+
+    def validate_description(self, value):
+        """Store an empty optional description consistently as null."""
+        normalized_value = value.strip() if value else ''
+        return normalized_value or None
+
+    def validate(self, attributes):
+        """Enforce dictionary shape and case-insensitive unique names."""
+        configuration = self.context['dictionary_configuration']
+        has_weight = configuration['has_weight']
+        current_entry = self.instance
+
+        if has_weight:
+            current_weight = (
+                current_entry.weight if current_entry is not None else None
+            )
+            if attributes.get('weight', current_weight) is None:
+                raise serializers.ValidationError(
+                    {'weight': 'Укажите коэффициент класса.'}
+                )
+        elif attributes.get('weight') is not None:
+            raise serializers.ValidationError(
+                {'weight': 'У этого справочника нет коэффициента.'}
+            )
+
+        name = attributes.get(
+            'name', current_entry.name if current_entry is not None else ''
+        )
+        duplicate_entries = configuration['model'].objects.filter(
+            name__iexact=name
+        )
+        if current_entry is not None:
+            duplicate_entries = duplicate_entries.exclude(pk=current_entry.pk)
+        if duplicate_entries.exists():
+            raise serializers.ValidationError(
+                {'name': 'Запись с таким названием уже существует.'}
+            )
+        return attributes
+
+    def create(self, validated_data):
+        """Create an entry through its whitelisted model configuration."""
+        configuration = self.context['dictionary_configuration']
+        if not configuration['has_weight']:
+            validated_data.pop('weight', None)
+        return configuration['model'].objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        """Update only the fields allowed by the dictionary configuration."""
+        configuration = self.context['dictionary_configuration']
+        if not configuration['has_weight']:
+            validated_data.pop('weight', None)
+        for field_name, value in validated_data.items():
+            setattr(instance, field_name, value)
+        instance.save(update_fields=(*validated_data.keys(), 'updated_at'))
+        return instance
 
 
 class DeveloperListQuerySerializer(serializers.Serializer):

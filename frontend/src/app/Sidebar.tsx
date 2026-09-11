@@ -42,7 +42,12 @@ const realEstateItems: NavigationItem[] = [
     symbol: 'Ж',
     reactRoute: true,
   },
-  { label: 'Справочники объектов', href: '/property/dictionaries/', symbol: 'О' },
+  {
+    label: 'Справочники объектов',
+    href: '/dictionaries/real-estate-types',
+    symbol: 'О',
+    reactRoute: true,
+  },
 ]
 
 const catalogItems: NavigationItem[] = [

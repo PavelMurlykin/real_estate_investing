@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from rest_framework import status
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.generics import (
     ListAPIView,
     ListCreateAPIView,
@@ -101,6 +101,9 @@ from .serializers import (
     CustomerWriteSerializer,
     LoginRequestSerializer,
     MortgageCalculationRequestSerializer,
+    PropertyDictionaryEntrySerializer,
+    PropertyDictionaryListQuerySerializer,
+    PropertyDictionaryWriteSerializer,
     RealEstateComplexDetailSerializer,
     RealEstateComplexListItemSerializer,
     RealEstateComplexListQuerySerializer,
@@ -861,6 +864,210 @@ class CompanyGroupDetailAPIView(RetrieveUpdateDestroyAPIView):
                     'detail': (
                         'Группу компаний нельзя удалить, пока с ней '
                         'связаны застройщики.'
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+PROPERTY_DICTIONARY_CONFIGURATIONS = {
+    'real-estate-types': {
+        'model': RealEstateType,
+        'legacy_key': 'real_estate_type',
+        'has_weight': False,
+        'usage_relation': 'realestatecomplex',
+        'default_ordering': ('name', 'pk'),
+    },
+    'real-estate-classes': {
+        'model': RealEstateClass,
+        'legacy_key': 'real_estate_class',
+        'has_weight': True,
+        'usage_relation': 'realestatecomplex',
+        'default_ordering': ('weight', 'name', 'pk'),
+    },
+    'apartment-layouts': {
+        'model': ApartmentLayout,
+        'legacy_key': 'apartment_layout',
+        'has_weight': False,
+        'usage_relation': 'property',
+        'default_ordering': ('name', 'pk'),
+    },
+    'apartment-decorations': {
+        'model': ApartmentDecoration,
+        'legacy_key': 'apartment_decoration',
+        'has_weight': False,
+        'usage_relation': 'property',
+        'default_ordering': ('name', 'pk'),
+    },
+    'window-views': {
+        'model': WindowView,
+        'legacy_key': 'window_view',
+        'has_weight': False,
+        'usage_relation': 'properties',
+        'default_ordering': ('name', 'pk'),
+    },
+    'transport-accessibility-types': {
+        'model': TransportAccessibilityType,
+        'legacy_key': 'transport_accessibility_type',
+        'has_weight': False,
+        'usage_relation': 'realestatecomplexmetroavailability',
+        'default_ordering': ('id',),
+    },
+}
+
+
+class PropertyDictionaryAPIViewMixin:
+    """Resolve and serialize only explicitly supported property dictionaries."""
+
+    def get_dictionary_configuration(self):
+        """Return the URL-selected whitelist entry or a safe 404 response."""
+        dictionary_key = self.kwargs['dictionary_key']
+        try:
+            return PROPERTY_DICTIONARY_CONFIGURATIONS[dictionary_key]
+        except KeyError as error:
+            raise NotFound('Справочник не найден.') from error
+
+    def get_base_queryset(self):
+        """Return entries annotated with a dependency count for safe deletion."""
+        configuration = self.get_dictionary_configuration()
+        return configuration['model'].objects.annotate(
+            usage_count=Count(
+                configuration['usage_relation'],
+                distinct=True,
+            )
+        )
+
+    def get_serializer_context(self):
+        """Expose the resolved whitelist entry to dictionary serializers."""
+        context = super().get_serializer_context()
+        context['dictionary_configuration'] = (
+            self.get_dictionary_configuration()
+        )
+        return context
+
+    def get_permissions(self):
+        """Keep reads public and protect all shared dictionary mutations."""
+        if self.request.method == 'GET':
+            return (AllowAny(),)
+        return (IsAuthenticated(), CanManageCatalogs())
+
+    def get_serializer_class(self):
+        """Use separate read and authoritative write contracts."""
+        if self.request.method == 'GET':
+            return PropertyDictionaryEntrySerializer
+        return PropertyDictionaryWriteSerializer
+
+    def get_response_serializer(self, dictionary_entry):
+        """Serialize an annotated entry after a successful mutation."""
+        refreshed_entry = self.get_base_queryset().get(pk=dictionary_entry.pk)
+        return PropertyDictionaryEntrySerializer(
+            refreshed_entry,
+            context=self.get_serializer_context(),
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class PropertyDictionaryListCreateAPIView(
+    PropertyDictionaryAPIViewMixin,
+    ListCreateAPIView,
+):
+    """List a public property dictionary and allow moderator creation."""
+
+    pagination_class = ApplicationPageNumberPagination
+    ordering_fields = {
+        'name': 'name',
+        'updatedAt': 'updated_at',
+        'status': 'is_active',
+        'weight': 'weight',
+    }
+
+    def get_queryset(self):
+        """Apply bounded search, status, pagination, and safe ordering."""
+        query_serializer = PropertyDictionaryListQuerySerializer(
+            data=self.request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        filters = query_serializer.validated_data
+        configuration = self.get_dictionary_configuration()
+        queryset = self.get_base_queryset()
+
+        search = filters.get('q', '')
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search)
+                | Q(description__icontains=search)
+            )
+        if filters['status'] != 'all':
+            queryset = queryset.filter(
+                is_active=filters['status'] == 'active'
+            )
+
+        ordering = filters['ordering']
+        if ordering == 'default':
+            return queryset.order_by(*configuration['default_ordering'])
+        ordering_name = ordering.removeprefix('-')
+        if ordering_name == 'weight' and not configuration['has_weight']:
+            raise ValidationError(
+                {'ordering': 'Сортировка по коэффициенту здесь недоступна.'}
+            )
+        ordering_prefix = '-' if ordering.startswith('-') else ''
+        ordering_field = self.ordering_fields[ordering_name]
+        return queryset.order_by(
+            f'{ordering_prefix}{ordering_field}',
+            'name',
+            'pk',
+        )
+
+    def create(self, request, *args, **kwargs):
+        """Create an entry and return its normalized public representation."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        dictionary_entry = serializer.save()
+        response_serializer = self.get_response_serializer(dictionary_entry)
+        return Response(
+            response_serializer.data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class PropertyDictionaryDetailAPIView(
+    PropertyDictionaryAPIViewMixin,
+    RetrieveUpdateDestroyAPIView,
+):
+    """Retrieve a property dictionary entry and protect its mutations."""
+
+    def get_queryset(self):
+        """Return annotated entries from only the URL-selected dictionary."""
+        return self.get_base_queryset()
+
+    def update(self, request, *args, **kwargs):
+        """Update an entry and return its normalized public representation."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=partial,
+        )
+        serializer.is_valid(raise_exception=True)
+        dictionary_entry = serializer.save()
+        return Response(
+            self.get_response_serializer(dictionary_entry).data
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete an unused entry or explain its protected dependency."""
+        instance = self.get_object()
+        try:
+            instance.delete()
+        except ProtectedError:
+            return Response(
+                {
+                    'detail': (
+                        'Запись нельзя удалить, пока она используется '
+                        'в других разделах.'
                     )
                 },
                 status=status.HTTP_409_CONFLICT,

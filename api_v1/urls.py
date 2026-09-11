@@ -17,6 +17,8 @@ from .views import (
     MortgageCalculationAPIView,
     MortgageOptionsAPIView,
     OverviewAPIView,
+    PropertyDictionaryDetailAPIView,
+    PropertyDictionaryListCreateAPIView,
     RealEstateComplexDetailAPIView,
     RealEstateComplexListCreateAPIView,
     RealEstateComplexOptionsAPIView,
@@ -40,6 +42,16 @@ urlpatterns = [
     path('auth/login/', LoginAPIView.as_view(), name='login'),
     path('auth/logout/', LogoutAPIView.as_view(), name='logout'),
     path('overview/', OverviewAPIView.as_view(), name='overview'),
+    path(
+        'property-dictionaries/<slug:dictionary_key>/',
+        PropertyDictionaryListCreateAPIView.as_view(),
+        name='property_dictionary_list',
+    ),
+    path(
+        'property-dictionaries/<slug:dictionary_key>/<int:pk>/',
+        PropertyDictionaryDetailAPIView.as_view(),
+        name='property_dictionary_detail',
+    ),
     path(
         'company-groups/',
         CompanyGroupListCreateAPIView.as_view(),

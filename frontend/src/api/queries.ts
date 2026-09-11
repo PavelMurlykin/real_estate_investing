@@ -17,6 +17,8 @@ import {
   mortgageOptionsSchema,
   overviewSchema,
   propertyDetailSchema,
+  propertyDictionaryEntrySchema,
+  propertyDictionaryListResponseSchema,
   propertyFormOptionsSchema,
   propertyListResponseSchema,
   realEstateComplexDetailSchema,
@@ -37,6 +39,8 @@ import type {
   CustomerWriteRequest,
   DeveloperWriteRequest,
   MortgageCalculationRequest,
+  PropertyDictionaryKey,
+  PropertyDictionaryWriteRequest,
   SavedMortgageCalculationCreateRequest,
   SavedTrenchMortgageCalculationCreateRequest,
   TrenchMortgageCalculationRequest,
@@ -120,6 +124,81 @@ export function updateCompanyGroup(
 export function deleteCompanyGroup(companyGroupIdentifier: number) {
   return requestWithoutResponse(
     `/api/v1/company-groups/${companyGroupIdentifier}/`,
+    { method: 'DELETE' },
+  )
+}
+
+export function propertyDictionaryListQueryOptions(
+  dictionaryKey: PropertyDictionaryKey,
+  searchParameters: URLSearchParams,
+) {
+  const normalizedParameters = new URLSearchParams()
+  for (const fieldName of ['q', 'status', 'ordering', 'page', 'pageSize']) {
+    const value = searchParameters.get(fieldName)
+    if (value) normalizedParameters.set(fieldName, value)
+  }
+  const queryString = normalizedParameters.toString()
+
+  return queryOptions({
+    queryKey: ['property-dictionaries', dictionaryKey, queryString],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/property-dictionaries/${dictionaryKey}/${queryString ? `?${queryString}` : ''}`,
+      propertyDictionaryListResponseSchema,
+      { signal },
+    ),
+    placeholderData: (previousData) => previousData,
+    staleTime: 30_000,
+  })
+}
+
+export function propertyDictionaryDetailQueryOptions(
+  dictionaryKey: PropertyDictionaryKey,
+  dictionaryEntryIdentifier: number,
+) {
+  return queryOptions({
+    queryKey: [
+      'property-dictionary',
+      dictionaryKey,
+      dictionaryEntryIdentifier,
+    ],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/property-dictionaries/${dictionaryKey}/${dictionaryEntryIdentifier}/`,
+      propertyDictionaryEntrySchema,
+      { signal },
+    ),
+    staleTime: 60_000,
+  })
+}
+
+export function createPropertyDictionaryEntry(
+  dictionaryKey: PropertyDictionaryKey,
+  payload: PropertyDictionaryWriteRequest,
+) {
+  return requestJson(
+    `/api/v1/property-dictionaries/${dictionaryKey}/`,
+    propertyDictionaryEntrySchema,
+    { method: 'POST', body: JSON.stringify(payload) },
+  )
+}
+
+export function updatePropertyDictionaryEntry(
+  dictionaryKey: PropertyDictionaryKey,
+  dictionaryEntryIdentifier: number,
+  payload: PropertyDictionaryWriteRequest,
+) {
+  return requestJson(
+    `/api/v1/property-dictionaries/${dictionaryKey}/${dictionaryEntryIdentifier}/`,
+    propertyDictionaryEntrySchema,
+    { method: 'PATCH', body: JSON.stringify(payload) },
+  )
+}
+
+export function deletePropertyDictionaryEntry(
+  dictionaryKey: PropertyDictionaryKey,
+  dictionaryEntryIdentifier: number,
+) {
+  return requestWithoutResponse(
+    `/api/v1/property-dictionaries/${dictionaryKey}/${dictionaryEntryIdentifier}/`,
     { method: 'DELETE' },
   )
 }

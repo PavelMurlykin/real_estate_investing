@@ -59,6 +59,35 @@ export const companyGroupListResponseSchema = z.object({
   results: z.array(companyGroupSchema),
 })
 
+export const propertyDictionaryKeySchema = z.enum([
+  'real-estate-types',
+  'real-estate-classes',
+  'apartment-layouts',
+  'apartment-decorations',
+  'window-views',
+  'transport-accessibility-types',
+])
+
+export const propertyDictionaryEntrySchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  description: z.string().nullable(),
+  weight: z.string().nullable(),
+  usageCount: z.number().int().nonnegative(),
+  isActive: z.boolean(),
+  createdAt: z.iso.datetime({ offset: true }),
+  updatedAt: z.iso.datetime({ offset: true }),
+  legacyEditUrl: z.string(),
+})
+
+export const propertyDictionaryListResponseSchema = z.object({
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  totalCount: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  results: z.array(propertyDictionaryEntrySchema),
+})
+
 export const customerListItemSchema = z.object({
   id: z.number().int().positive(),
   fullName: z.string(),
@@ -710,6 +739,15 @@ export type CompanyGroup = z.infer<typeof companyGroupSchema>
 export type CompanyGroupListResponse = z.infer<
   typeof companyGroupListResponseSchema
 >
+export type PropertyDictionaryKey = z.infer<
+  typeof propertyDictionaryKeySchema
+>
+export type PropertyDictionaryEntry = z.infer<
+  typeof propertyDictionaryEntrySchema
+>
+export type PropertyDictionaryListResponse = z.infer<
+  typeof propertyDictionaryListResponseSchema
+>
 export type DeveloperPublic = z.infer<typeof developerPublicSchema>
 export type Developer = z.infer<typeof developerSchema>
 export type DeveloperListResponse = z.infer<
@@ -804,6 +842,13 @@ export type DeveloperWriteRequest = {
   taxRegistrationReasonCode: string | null
   primaryStateRegistrationNumber: string | null
   description: string | null
+  isActive: boolean
+}
+
+export type PropertyDictionaryWriteRequest = {
+  name: string
+  description: string | null
+  weight?: string
   isActive: boolean
 }
 

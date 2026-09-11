@@ -41,6 +41,10 @@ const RealEstateComplexFormPage = lazy(async () => ({
   default: (await import('@/pages/RealEstateComplexFormPage'))
     .RealEstateComplexFormPage,
 }))
+const PropertyDictionaryPage = lazy(async () => ({
+  default: (await import('@/pages/PropertyDictionaryPage'))
+    .PropertyDictionaryPage,
+}))
 const CustomerListPage = lazy(async () => ({
   default: (await import('@/pages/CustomerListPage')).CustomerListPage,
 }))
@@ -123,6 +127,14 @@ export function App() {
           <Route
             path="complexes/:complexId/edit"
             element={<RealEstateComplexFormPage />}
+          />
+          <Route
+            path="dictionaries/:dictionaryKey"
+            element={<PropertyDictionaryPage />}
+          />
+          <Route
+            path="dictionaries/:dictionaryKey/:entryId/edit"
+            element={<PropertyDictionaryPage />}
           />
           <Route path="customers" element={<CustomerListPage />} />
           <Route path="customers/new" element={<CustomerFormPage />} />
