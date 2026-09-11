@@ -13,6 +13,9 @@ from .views import (
     CustomerFormOptionsAPIView,
     CustomerListAPIView,
     LoginAPIView,
+    LocationDictionaryDetailAPIView,
+    LocationDictionaryListCreateAPIView,
+    LocationDictionaryOptionsAPIView,
     LogoutAPIView,
     MortgageCalculationAPIView,
     MortgageOptionsAPIView,
@@ -42,6 +45,21 @@ urlpatterns = [
     path('auth/login/', LoginAPIView.as_view(), name='login'),
     path('auth/logout/', LogoutAPIView.as_view(), name='logout'),
     path('overview/', OverviewAPIView.as_view(), name='overview'),
+    path(
+        'location-dictionaries/options/',
+        LocationDictionaryOptionsAPIView.as_view(),
+        name='location_dictionary_options',
+    ),
+    path(
+        'location-dictionaries/<slug:dictionary_key>/',
+        LocationDictionaryListCreateAPIView.as_view(),
+        name='location_dictionary_list',
+    ),
+    path(
+        'location-dictionaries/<slug:dictionary_key>/<int:pk>/',
+        LocationDictionaryDetailAPIView.as_view(),
+        name='location_dictionary_detail',
+    ),
     path(
         'property-dictionaries/<slug:dictionary_key>/',
         PropertyDictionaryListCreateAPIView.as_view(),

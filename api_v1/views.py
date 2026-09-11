@@ -41,7 +41,7 @@ from customer.views import (
     _export_single_customer_word_calculation,
     _get_selected_customer_calculation_links,
 )
-from location.models import City, District, Metro, Region
+from location.models import City, District, Metro, MetroLine, Region
 from mortgage.excel import export_saved_mortgage_calculation_excel
 from mortgage.models import MortgageCalculation
 from mortgage.word import (
@@ -100,6 +100,10 @@ from .serializers import (
     CustomerListQuerySerializer,
     CustomerWriteSerializer,
     LoginRequestSerializer,
+    LocationDictionaryEntrySerializer,
+    LocationDictionaryListQuerySerializer,
+    LocationDictionaryOptionsQuerySerializer,
+    LocationDictionaryWriteSerializer,
     MortgageCalculationRequestSerializer,
     PropertyDictionaryEntrySerializer,
     PropertyDictionaryListQuerySerializer,
@@ -1073,6 +1077,329 @@ class PropertyDictionaryDetailAPIView(
                 status=status.HTTP_409_CONFLICT,
             )
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+LOCATION_DICTIONARY_CONFIGURATIONS = {
+    'regions': {
+        'key': 'regions',
+        'model': Region,
+        'legacy_key': 'region',
+        'name_field': 'name',
+        'parent_model_field': None,
+        'select_related': (),
+        'search_fields': ('name', 'code'),
+        'filter_fields': {},
+        'usage_relations': (
+            'city',
+            'developers',
+            'developer_links',
+            'mortgage_program_credit_limits',
+        ),
+        'default_ordering': ('name', 'pk'),
+    },
+    'cities': {
+        'key': 'cities',
+        'model': City,
+        'legacy_key': 'city',
+        'name_field': 'name',
+        'parent_model_field': 'region',
+        'select_related': ('region',),
+        'search_fields': ('name', 'region__name'),
+        'filter_fields': {'regionId': 'region_id'},
+        'usage_relations': (
+            'district',
+            'metroline',
+            'residence_customers',
+            'desired_city_customers',
+        ),
+        'default_ordering': ('name', 'pk'),
+    },
+    'districts': {
+        'key': 'districts',
+        'model': District,
+        'legacy_key': 'district',
+        'name_field': 'name',
+        'parent_model_field': 'city',
+        'select_related': ('city__region',),
+        'search_fields': ('name', 'city__name', 'city__region__name'),
+        'filter_fields': {
+            'regionId': 'city__region_id',
+            'cityId': 'city_id',
+        },
+        'usage_relations': (
+            'realestatecomplex',
+            'desired_district_customers',
+        ),
+        'default_ordering': ('name', 'pk'),
+    },
+    'metro': {
+        'key': 'metro',
+        'model': Metro,
+        'legacy_key': 'metro',
+        'name_field': 'station',
+        'parent_model_field': 'metro_line',
+        'select_related': ('metro_line__city__region',),
+        'search_fields': (
+            'station',
+            'metro_line__line',
+            'metro_line__city__name',
+        ),
+        'filter_fields': {
+            'regionId': 'metro_line__city__region_id',
+            'cityId': 'metro_line__city_id',
+            'metroLineId': 'metro_line_id',
+        },
+        'usage_relations': ('realestatecomplexmetroavailability',),
+        'default_ordering': (
+            'metro_line__city__name',
+            'metro_line__line',
+            'station',
+            'pk',
+        ),
+    },
+}
+
+
+class LocationDictionaryAPIViewMixin:
+    """Resolve and serialize only supported location dictionaries."""
+
+    def get_dictionary_configuration(self):
+        """Return the URL-selected whitelist entry or a safe 404 response."""
+        dictionary_key = self.kwargs['dictionary_key']
+        try:
+            return LOCATION_DICTIONARY_CONFIGURATIONS[dictionary_key]
+        except KeyError as error:
+            raise NotFound('Справочник локаций не найден.') from error
+
+    def get_base_queryset(self):
+        """Return a relation-efficient queryset with dependency counts."""
+        configuration = self.get_dictionary_configuration()
+        queryset = configuration['model'].objects.all()
+        if configuration['select_related']:
+            queryset = queryset.select_related(
+                *configuration['select_related']
+            )
+
+        usage_expression = None
+        for relation_name in configuration['usage_relations']:
+            relation_count = Count(relation_name, distinct=True)
+            usage_expression = (
+                relation_count
+                if usage_expression is None
+                else usage_expression + relation_count
+            )
+        return queryset.annotate(usage_count=usage_expression)
+
+    def get_serializer_context(self):
+        """Expose the resolved whitelist entry to location serializers."""
+        context = super().get_serializer_context()
+        context['dictionary_configuration'] = (
+            self.get_dictionary_configuration()
+        )
+        return context
+
+    def get_permissions(self):
+        """Keep reads public and protect shared location mutations."""
+        if self.request.method == 'GET':
+            return (AllowAny(),)
+        return (IsAuthenticated(), CanManageCatalogs())
+
+    def get_serializer_class(self):
+        """Use separate read and authoritative write contracts."""
+        if self.request.method == 'GET':
+            return LocationDictionaryEntrySerializer
+        return LocationDictionaryWriteSerializer
+
+    def get_response_serializer(self, dictionary_entry):
+        """Serialize an annotated entry after a successful mutation."""
+        refreshed_entry = self.get_base_queryset().get(pk=dictionary_entry.pk)
+        return LocationDictionaryEntrySerializer(
+            refreshed_entry,
+            context=self.get_serializer_context(),
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class LocationDictionaryListCreateAPIView(
+    LocationDictionaryAPIViewMixin,
+    ListCreateAPIView,
+):
+    """List a public location dictionary and allow moderator creation."""
+
+    pagination_class = ApplicationPageNumberPagination
+
+    def get_queryset(self):
+        """Apply bounded search, hierarchy filters, status, and ordering."""
+        query_serializer = LocationDictionaryListQuerySerializer(
+            data=self.request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        filters = query_serializer.validated_data
+        configuration = self.get_dictionary_configuration()
+        queryset = self.get_base_queryset()
+
+        search = filters.get('q', '')
+        if search:
+            search_query = Q()
+            for field_name in configuration['search_fields']:
+                search_query |= Q(**{f'{field_name}__icontains': search})
+            queryset = queryset.filter(search_query)
+        if filters['status'] != 'all':
+            queryset = queryset.filter(
+                is_active=filters['status'] == 'active'
+            )
+        for api_field, model_field in configuration[
+            'filter_fields'
+        ].items():
+            if filters.get(api_field):
+                queryset = queryset.filter(
+                    **{model_field: filters[api_field]}
+                )
+
+        ordering = filters['ordering']
+        if ordering == 'default':
+            return queryset.order_by(*configuration['default_ordering'])
+        ordering_prefix = '-' if ordering.startswith('-') else ''
+        ordering_name = ordering.removeprefix('-')
+        ordering_field = {
+            'name': configuration['name_field'],
+            'updatedAt': 'updated_at',
+            'status': 'is_active',
+        }[ordering_name]
+        return queryset.order_by(
+            f'{ordering_prefix}{ordering_field}',
+            configuration['name_field'],
+            'pk',
+        )
+
+    def create(self, request, *args, **kwargs):
+        """Create an entry and return its normalized public representation."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        dictionary_entry = serializer.save()
+        return Response(
+            self.get_response_serializer(dictionary_entry).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class LocationDictionaryDetailAPIView(
+    LocationDictionaryAPIViewMixin,
+    RetrieveUpdateDestroyAPIView,
+):
+    """Retrieve a location entry and protect its mutations."""
+
+    def get_queryset(self):
+        """Return annotated entries from the URL-selected dictionary."""
+        return self.get_base_queryset()
+
+    def update(self, request, *args, **kwargs):
+        """Update an entry and return its normalized public representation."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=partial,
+        )
+        serializer.is_valid(raise_exception=True)
+        dictionary_entry = serializer.save()
+        return Response(
+            self.get_response_serializer(dictionary_entry).data
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete an unused entry or explain its protected dependency."""
+        instance = self.get_object()
+        try:
+            instance.delete()
+        except ProtectedError:
+            return Response(
+                {
+                    'detail': (
+                        'Локацию нельзя удалить, пока она используется '
+                        'в других разделах.'
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class LocationDictionaryOptionsAPIView(APIView):
+    """Return bounded dependent selector options for location forms."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request):
+        """Return regions, region cities, and city metro lines."""
+        query_serializer = LocationDictionaryOptionsQuerySerializer(
+            data=request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        filters = query_serializer.validated_data
+        maximum_results = settings.PUBLIC_CATALOG_API_MAX_RESULTS
+
+        regions, regions_truncated = _build_bounded_option_rows(
+            Region.objects.order_by('name', 'pk'),
+            maximum_results,
+        )
+
+        city_rows = []
+        cities_truncated = False
+        if filters.get('regionId'):
+            cities = list(
+                City.objects.filter(region_id=filters['regionId'])
+                .order_by('name', 'pk')
+                .values('id', 'name', 'region_id')[:maximum_results + 1]
+            )
+            cities_truncated = len(cities) > maximum_results
+            city_rows = [
+                {
+                    'id': city['id'],
+                    'name': city['name'],
+                    'regionId': city['region_id'],
+                }
+                for city in cities[:maximum_results]
+            ]
+
+        metro_line_rows = []
+        metro_lines_truncated = False
+        if filters.get('cityId'):
+            metro_lines = list(
+                MetroLine.objects.filter(city_id=filters['cityId'])
+                .order_by('line', 'pk')
+                .values(
+                    'id',
+                    'line',
+                    'line_color',
+                    'city_id',
+                )[:maximum_results + 1]
+            )
+            metro_lines_truncated = len(metro_lines) > maximum_results
+            metro_line_rows = [
+                {
+                    'id': metro_line['id'],
+                    'name': metro_line['line'],
+                    'color': metro_line['line_color'],
+                    'cityId': metro_line['city_id'],
+                }
+                for metro_line in metro_lines[:maximum_results]
+            ]
+
+        return Response(
+            {
+                'regions': regions,
+                'cities': city_rows,
+                'metroLines': metro_line_rows,
+                'truncated': {
+                    'regions': regions_truncated,
+                    'cities': cities_truncated,
+                    'metroLines': metro_lines_truncated,
+                },
+            }
+        )
 
 
 def _developer_queryset():

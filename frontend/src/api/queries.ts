@@ -13,6 +13,9 @@ import {
   developerListResponseSchema,
   developerOptionsSchema,
   developerSchema,
+  locationDictionaryEntrySchema,
+  locationDictionaryListResponseSchema,
+  locationDictionaryOptionsSchema,
   mortgageCalculationResponseSchema,
   mortgageOptionsSchema,
   overviewSchema,
@@ -38,6 +41,8 @@ import type {
   CustomerCalculationProgramType,
   CustomerWriteRequest,
   DeveloperWriteRequest,
+  LocationDictionaryKey,
+  LocationDictionaryWriteRequest,
   MortgageCalculationRequest,
   PropertyDictionaryKey,
   PropertyDictionaryWriteRequest,
@@ -199,6 +204,110 @@ export function deletePropertyDictionaryEntry(
 ) {
   return requestWithoutResponse(
     `/api/v1/property-dictionaries/${dictionaryKey}/${dictionaryEntryIdentifier}/`,
+    { method: 'DELETE' },
+  )
+}
+
+export function locationDictionaryListQueryOptions(
+  dictionaryKey: LocationDictionaryKey,
+  searchParameters: URLSearchParams,
+) {
+  const normalizedParameters = new URLSearchParams()
+  for (const fieldName of [
+    'q',
+    'status',
+    'ordering',
+    'regionId',
+    'cityId',
+    'metroLineId',
+    'page',
+    'pageSize',
+  ]) {
+    const value = searchParameters.get(fieldName)
+    if (value) normalizedParameters.set(fieldName, value)
+  }
+  const queryString = normalizedParameters.toString()
+
+  return queryOptions({
+    queryKey: ['location-dictionaries', dictionaryKey, queryString],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/location-dictionaries/${dictionaryKey}/${queryString ? `?${queryString}` : ''}`,
+      locationDictionaryListResponseSchema,
+      { signal },
+    ),
+    placeholderData: (previousData) => previousData,
+    staleTime: 30_000,
+  })
+}
+
+export function locationDictionaryDetailQueryOptions(
+  dictionaryKey: LocationDictionaryKey,
+  dictionaryEntryIdentifier: number,
+) {
+  return queryOptions({
+    queryKey: [
+      'location-dictionary',
+      dictionaryKey,
+      dictionaryEntryIdentifier,
+    ],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/location-dictionaries/${dictionaryKey}/${dictionaryEntryIdentifier}/`,
+      locationDictionaryEntrySchema,
+      { signal },
+    ),
+    staleTime: 60_000,
+  })
+}
+
+export function locationDictionaryOptionsQueryOptions(
+  regionIdentifier: string,
+  cityIdentifier: string,
+) {
+  const searchParameters = new URLSearchParams()
+  if (regionIdentifier) searchParameters.set('regionId', regionIdentifier)
+  if (cityIdentifier) searchParameters.set('cityId', cityIdentifier)
+  const queryString = searchParameters.toString()
+
+  return queryOptions({
+    queryKey: ['location-dictionary-options', queryString],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/location-dictionaries/options/${queryString ? `?${queryString}` : ''}`,
+      locationDictionaryOptionsSchema,
+      { signal },
+    ),
+    staleTime: 60_000,
+  })
+}
+
+export function createLocationDictionaryEntry(
+  dictionaryKey: LocationDictionaryKey,
+  payload: LocationDictionaryWriteRequest,
+) {
+  return requestJson(
+    `/api/v1/location-dictionaries/${dictionaryKey}/`,
+    locationDictionaryEntrySchema,
+    { method: 'POST', body: JSON.stringify(payload) },
+  )
+}
+
+export function updateLocationDictionaryEntry(
+  dictionaryKey: LocationDictionaryKey,
+  dictionaryEntryIdentifier: number,
+  payload: LocationDictionaryWriteRequest,
+) {
+  return requestJson(
+    `/api/v1/location-dictionaries/${dictionaryKey}/${dictionaryEntryIdentifier}/`,
+    locationDictionaryEntrySchema,
+    { method: 'PATCH', body: JSON.stringify(payload) },
+  )
+}
+
+export function deleteLocationDictionaryEntry(
+  dictionaryKey: LocationDictionaryKey,
+  dictionaryEntryIdentifier: number,
+) {
+  return requestWithoutResponse(
+    `/api/v1/location-dictionaries/${dictionaryKey}/${dictionaryEntryIdentifier}/`,
     { method: 'DELETE' },
   )
 }

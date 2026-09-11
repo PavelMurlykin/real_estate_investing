@@ -11,7 +11,7 @@ from rest_framework import serializers
 
 from bank.models import MortgageProgram
 from customer.models import Customer
-from location.models import City, District, Metro, Region
+from location.models import City, District, Metro, MetroLine, Region
 from property.models import (
     ApartmentDecoration,
     ApartmentLayout,
@@ -268,6 +268,255 @@ class PropertyDictionaryWriteSerializer(serializers.Serializer):
         configuration = self.context['dictionary_configuration']
         if not configuration['has_weight']:
             validated_data.pop('weight', None)
+        for field_name, value in validated_data.items():
+            setattr(instance, field_name, value)
+        instance.save(update_fields=(*validated_data.keys(), 'updated_at'))
+        return instance
+
+
+class LocationDictionaryListQuerySerializer(serializers.Serializer):
+    """Validate filters and pagination for location dictionaries."""
+
+    q = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=100,
+        trim_whitespace=True,
+    )
+    status = serializers.ChoiceField(
+        required=False,
+        choices=('all', 'active', 'inactive'),
+        default='all',
+    )
+    ordering = serializers.ChoiceField(
+        required=False,
+        choices=(
+            'default', 'name', '-name', 'updatedAt', '-updatedAt',
+            'status', '-status',
+        ),
+        default='default',
+    )
+    regionId = serializers.IntegerField(required=False, min_value=1)
+    cityId = serializers.IntegerField(required=False, min_value=1)
+    metroLineId = serializers.IntegerField(required=False, min_value=1)
+    page = serializers.IntegerField(required=False, min_value=1, default=1)
+    pageSize = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=100,
+        default=20,
+    )
+
+
+class LocationDictionaryOptionsQuerySerializer(serializers.Serializer):
+    """Validate parent identifiers used by dependent location selectors."""
+
+    regionId = serializers.IntegerField(required=False, min_value=1)
+    cityId = serializers.IntegerField(required=False, min_value=1)
+
+
+class LocationDictionaryEntrySerializer(serializers.Serializer):
+    """Serialize one entry from a whitelisted location dictionary."""
+
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.SerializerMethodField(method_name='get_name')
+    code = serializers.SerializerMethodField(method_name='get_code')
+    region = serializers.SerializerMethodField(method_name='get_region')
+    city = serializers.SerializerMethodField(method_name='get_city')
+    metroLine = serializers.SerializerMethodField(
+        method_name='get_metro_line'
+    )
+    usageCount = serializers.IntegerField(
+        source='usage_count', read_only=True
+    )
+    isActive = serializers.BooleanField(source='is_active', read_only=True)
+    createdAt = serializers.DateTimeField(source='created_at', read_only=True)
+    updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
+    legacyEditUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_edit_url'
+    )
+
+    def get_configuration(self):
+        """Return the location dictionary configuration for this request."""
+        return self.context['dictionary_configuration']
+
+    def get_name(self, dictionary_entry):
+        """Return the configured display field under a stable API name."""
+        return getattr(
+            dictionary_entry,
+            self.get_configuration()['name_field'],
+        )
+
+    def get_code(self, dictionary_entry):
+        """Return the region code only when the model supports it."""
+        return getattr(dictionary_entry, 'code', None)
+
+    def get_region(self, dictionary_entry):
+        """Return the owning region for nested location entries."""
+        if isinstance(dictionary_entry, City):
+            region = dictionary_entry.region
+        elif isinstance(dictionary_entry, District):
+            region = dictionary_entry.city.region
+        elif isinstance(dictionary_entry, Metro):
+            region = dictionary_entry.metro_line.city.region
+        else:
+            return None
+        return {'id': region.pk, 'name': region.name}
+
+    def get_city(self, dictionary_entry):
+        """Return the owning city for districts and metro stations."""
+        if isinstance(dictionary_entry, District):
+            city = dictionary_entry.city
+        elif isinstance(dictionary_entry, Metro):
+            city = dictionary_entry.metro_line.city
+        else:
+            return None
+        return {'id': city.pk, 'name': city.name}
+
+    def get_metro_line(self, dictionary_entry):
+        """Return metro-line identity and color for station entries."""
+        if not isinstance(dictionary_entry, Metro):
+            return None
+        metro_line = dictionary_entry.metro_line
+        return {
+            'id': metro_line.pk,
+            'name': metro_line.line,
+            'color': metro_line.line_color,
+        }
+
+    def get_legacy_edit_url(self, dictionary_entry):
+        """Return the preserved Django inline-edit URL."""
+        query_string = urlencode(
+            {
+                'model': self.get_configuration()['legacy_key'],
+                'edit': dictionary_entry.pk,
+            }
+        )
+        return f"{reverse('location:location_catalog')}?{query_string}"
+
+
+class LocationDictionaryWriteSerializer(serializers.Serializer):
+    """Validate and persist a whitelisted location dictionary entry."""
+
+    name = serializers.CharField(max_length=100, trim_whitespace=True)
+    code = serializers.CharField(
+        required=False,
+        allow_blank=False,
+        max_length=10,
+        trim_whitespace=True,
+    )
+    regionId = serializers.IntegerField(required=False, min_value=1)
+    cityId = serializers.IntegerField(required=False, min_value=1)
+    metroLineId = serializers.IntegerField(required=False, min_value=1)
+    isActive = serializers.BooleanField(
+        source='is_active', required=False, default=True
+    )
+
+    def validate_name(self, value):
+        """Collapse repeated whitespace without changing display case."""
+        return ' '.join(value.split())
+
+    def validate_code(self, value):
+        """Normalize region codes for stable comparisons and display."""
+        return value.strip().upper()
+
+    def validate(self, attributes):
+        """Resolve parent objects and enforce dictionary-specific uniqueness."""
+        configuration = self.context['dictionary_configuration']
+        current_entry = self.instance
+        dictionary_key = configuration['key']
+        relationship_fields = {
+            'cities': ('regionId', 'region', Region),
+            'districts': ('cityId', 'city', City),
+            'metro': ('metroLineId', 'metro_line', MetroLine),
+        }
+        supported_api_fields = {'name', 'is_active'}
+        if dictionary_key == 'regions':
+            supported_api_fields.add('code')
+        else:
+            supported_api_fields.add(relationship_fields[dictionary_key][0])
+
+        for field_name in ('code', 'regionId', 'cityId', 'metroLineId'):
+            if (
+                field_name in attributes
+                and field_name not in supported_api_fields
+            ):
+                raise serializers.ValidationError(
+                    {field_name: 'Поле недоступно для этого справочника.'}
+                )
+
+        model_name_field = configuration['name_field']
+        if 'name' in attributes:
+            attributes[model_name_field] = attributes.pop('name')
+
+        if dictionary_key == 'regions':
+            if current_entry is None and 'code' not in attributes:
+                raise serializers.ValidationError(
+                    {'code': 'Укажите код региона.'}
+                )
+        else:
+            api_field, model_field, parent_model = relationship_fields[
+                dictionary_key
+            ]
+            parent_identifier = attributes.pop(api_field, None)
+            if parent_identifier is None and current_entry is None:
+                raise serializers.ValidationError(
+                    {api_field: 'Выберите связанную запись.'}
+                )
+            if parent_identifier is not None:
+                try:
+                    attributes[model_field] = parent_model.objects.get(
+                        pk=parent_identifier
+                    )
+                except parent_model.DoesNotExist as error:
+                    raise serializers.ValidationError(
+                        {api_field: 'Связанная запись не найдена.'}
+                    ) from error
+
+        name = attributes.get(
+            model_name_field,
+            getattr(current_entry, model_name_field, ''),
+        )
+        duplicate_filters = {f'{model_name_field}__iexact': name}
+        parent_model_field = configuration.get('parent_model_field')
+        if parent_model_field:
+            current_parent = getattr(
+                current_entry,
+                parent_model_field,
+                None,
+            )
+            duplicate_filters[parent_model_field] = attributes.get(
+                parent_model_field,
+                current_parent,
+            )
+        duplicate_entries = configuration['model'].objects.filter(
+            **duplicate_filters
+        )
+        if current_entry is not None:
+            duplicate_entries = duplicate_entries.exclude(pk=current_entry.pk)
+        if duplicate_entries.exists():
+            raise serializers.ValidationError(
+                {'name': 'Запись с таким названием уже существует.'}
+            )
+
+        if dictionary_key == 'regions':
+            code = attributes.get('code', getattr(current_entry, 'code', ''))
+            duplicate_codes = Region.objects.filter(code__iexact=code)
+            if current_entry is not None:
+                duplicate_codes = duplicate_codes.exclude(pk=current_entry.pk)
+            if duplicate_codes.exists():
+                raise serializers.ValidationError(
+                    {'code': 'Регион с таким кодом уже существует.'}
+                )
+        return attributes
+
+    def create(self, validated_data):
+        """Create an entry through its whitelisted model configuration."""
+        configuration = self.context['dictionary_configuration']
+        return configuration['model'].objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        """Update only validated fields and refresh the modification time."""
         for field_name, value in validated_data.items():
             setattr(instance, field_name, value)
         instance.save(update_fields=(*validated_data.keys(), 'updated_at'))

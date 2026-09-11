@@ -62,6 +62,10 @@ Django-интерфейсе. Шесть справочников объекто�
 планировки, отделка, виды из окон и типы транспортной доступности — доступны в
 React с общими поиском, фильтрами, сортировкой и пагинацией. Модераторы могут
 создавать и редактировать записи, а удаление используемой записи блокируется.
+Справочники регионов, городов, районов и станций метро также перенесены в
+React. Для вложенных локаций используются каскадные селекторы региона, города
+и линии метро; цвет линии отображается в списке станций. Старый каталог
+/locations/ сохранён для проверки паритета.
 React-маршруты доступны по
 адресам /app/, /app/properties, /app/properties/new,
 /app/properties/:id, /app/properties/:id/edit, /app/customers,
@@ -71,14 +75,16 @@ React-маршруты доступны по
 /app/complexes, /app/complexes/new, /app/complexes/:id,
 /app/complexes/:id/edit, /app/dictionaries/:dictionaryKey,
 /app/dictionaries/:dictionaryKey/:id/edit,
+/app/locations/:dictionaryKey, /app/locations/:dictionaryKey/:id/edit,
 /app/mortgage, /app/mortgage/trench, /app/mortgage/calculations,
 /app/mortgage/calculations/:id, /app/mortgage/trench/calculations и
 /app/mortgage/trench/calculations/:id.
 API имеет версию /api/v1/ и использует текущие Django session authentication,
 CSRF-защиту, правила доступа и PostgreSQL. Старые формы, обработчики и шаблоны
 объектов, клиентов, групп компаний, застройщиков, жилых комплексов,
-справочников объектов и ипотеки не удалены: Django-версии остаются резервным
-интерфейсом для проверки функционального паритета до завершения миграции.
+справочников объектов, локаций и ипотеки не удалены: Django-версии остаются
+резервным интерфейсом для проверки функционального паритета до завершения
+миграции.
 
 Установить зависимости и запустить frontend для разработки:
 

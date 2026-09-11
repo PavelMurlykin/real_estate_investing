@@ -45,6 +45,10 @@ const PropertyDictionaryPage = lazy(async () => ({
   default: (await import('@/pages/PropertyDictionaryPage'))
     .PropertyDictionaryPage,
 }))
+const LocationDictionaryPage = lazy(async () => ({
+  default: (await import('@/pages/LocationDictionaryPage'))
+    .LocationDictionaryPage,
+}))
 const CustomerListPage = lazy(async () => ({
   default: (await import('@/pages/CustomerListPage')).CustomerListPage,
 }))
@@ -135,6 +139,14 @@ export function App() {
           <Route
             path="dictionaries/:dictionaryKey/:entryId/edit"
             element={<PropertyDictionaryPage />}
+          />
+          <Route
+            path="locations/:dictionaryKey"
+            element={<LocationDictionaryPage />}
+          />
+          <Route
+            path="locations/:dictionaryKey/:entryId/edit"
+            element={<LocationDictionaryPage />}
           />
           <Route path="customers" element={<CustomerListPage />} />
           <Route path="customers/new" element={<CustomerFormPage />} />

@@ -51,7 +51,12 @@ const realEstateItems: NavigationItem[] = [
 ]
 
 const catalogItems: NavigationItem[] = [
-  { label: 'Локации', href: '/locations/', symbol: 'Л' },
+  {
+    label: 'Локации',
+    href: '/locations/regions',
+    symbol: 'Л',
+    reactRoute: true,
+  },
   { label: 'Банки и программы', href: '/bank/', symbol: 'Б' },
   { label: 'Ключевая ставка', href: '/bank/key-rate/', symbol: '%' },
 ]

@@ -88,6 +88,59 @@ export const propertyDictionaryListResponseSchema = z.object({
   results: z.array(propertyDictionaryEntrySchema),
 })
 
+export const locationDictionaryKeySchema = z.enum([
+  'regions',
+  'cities',
+  'districts',
+  'metro',
+])
+
+const locationReferenceSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+})
+
+const metroLineReferenceSchema = locationReferenceSchema.extend({
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+})
+
+export const locationDictionaryEntrySchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  code: z.string().nullable(),
+  region: locationReferenceSchema.nullable(),
+  city: locationReferenceSchema.nullable(),
+  metroLine: metroLineReferenceSchema.nullable(),
+  usageCount: z.number().int().nonnegative(),
+  isActive: z.boolean(),
+  createdAt: z.iso.datetime({ offset: true }),
+  updatedAt: z.iso.datetime({ offset: true }),
+  legacyEditUrl: z.string(),
+})
+
+export const locationDictionaryListResponseSchema = z.object({
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  totalCount: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  results: z.array(locationDictionaryEntrySchema),
+})
+
+export const locationDictionaryOptionsSchema = z.object({
+  regions: z.array(locationReferenceSchema),
+  cities: z.array(locationReferenceSchema.extend({
+    regionId: z.number().int().positive(),
+  })),
+  metroLines: z.array(metroLineReferenceSchema.extend({
+    cityId: z.number().int().positive(),
+  })),
+  truncated: z.object({
+    regions: z.boolean(),
+    cities: z.boolean(),
+    metroLines: z.boolean(),
+  }),
+})
+
 export const customerListItemSchema = z.object({
   id: z.number().int().positive(),
   fullName: z.string(),
@@ -748,6 +801,18 @@ export type PropertyDictionaryEntry = z.infer<
 export type PropertyDictionaryListResponse = z.infer<
   typeof propertyDictionaryListResponseSchema
 >
+export type LocationDictionaryKey = z.infer<
+  typeof locationDictionaryKeySchema
+>
+export type LocationDictionaryEntry = z.infer<
+  typeof locationDictionaryEntrySchema
+>
+export type LocationDictionaryListResponse = z.infer<
+  typeof locationDictionaryListResponseSchema
+>
+export type LocationDictionaryOptions = z.infer<
+  typeof locationDictionaryOptionsSchema
+>
 export type DeveloperPublic = z.infer<typeof developerPublicSchema>
 export type Developer = z.infer<typeof developerSchema>
 export type DeveloperListResponse = z.infer<
@@ -849,6 +914,15 @@ export type PropertyDictionaryWriteRequest = {
   name: string
   description: string | null
   weight?: string
+  isActive: boolean
+}
+
+export type LocationDictionaryWriteRequest = {
+  name: string
+  code?: string
+  regionId?: number
+  cityId?: number
+  metroLineId?: number
   isActive: boolean
 }
 

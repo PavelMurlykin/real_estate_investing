@@ -1888,6 +1888,44 @@ select:focus-visible {
   width: fit-content;
 }
 
+.location-filter-panel {
+  grid-template-columns:
+    minmax(260px, 1.4fr)
+    repeat(4, minmax(135px, 0.45fr));
+}
+
+.location-line-label {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.location-line-swatch {
+  width: 1.4rem;
+  height: 0.45rem;
+  flex: 0 0 auto;
+  border: 1px solid rgb(0 0 0 / 14%);
+  border-radius: 999px;
+}
+
+.field-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 1350px) {
+  .location-filter-panel {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .location-filter-panel .search-form {
+    grid-column: span 2;
+  }
+}
+
 @media (max-width: 1120px) {
   .dictionary-filter-panel {
     grid-template-columns: minmax(0, 1fr) minmax(150px, 0.45fr);
@@ -1904,6 +1942,14 @@ select:focus-visible {
   .dictionary-form-card {
     position: static;
     order: -1;
+  }
+
+  .location-filter-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .location-filter-panel .search-form {
+    grid-column: 1 / -1;
   }
 }
 
@@ -1923,6 +1969,14 @@ select:focus-visible {
 
   .dictionary-form-card {
     padding: 1rem;
+  }
+
+  .location-filter-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .location-filter-panel .search-form {
+    grid-column: auto;
   }
 }
 
