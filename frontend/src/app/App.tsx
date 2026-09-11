@@ -29,6 +29,18 @@ const DeveloperListPage = lazy(async () => ({
 const DeveloperFormPage = lazy(async () => ({
   default: (await import('@/pages/DeveloperFormPage')).DeveloperFormPage,
 }))
+const RealEstateComplexListPage = lazy(async () => ({
+  default: (await import('@/pages/RealEstateComplexListPage'))
+    .RealEstateComplexListPage,
+}))
+const RealEstateComplexDetailPage = lazy(async () => ({
+  default: (await import('@/pages/RealEstateComplexDetailPage'))
+    .RealEstateComplexDetailPage,
+}))
+const RealEstateComplexFormPage = lazy(async () => ({
+  default: (await import('@/pages/RealEstateComplexFormPage'))
+    .RealEstateComplexFormPage,
+}))
 const CustomerListPage = lazy(async () => ({
   default: (await import('@/pages/CustomerListPage')).CustomerListPage,
 }))
@@ -98,6 +110,19 @@ export function App() {
           <Route
             path="developers/:developerId/edit"
             element={<DeveloperFormPage />}
+          />
+          <Route path="complexes" element={<RealEstateComplexListPage />} />
+          <Route
+            path="complexes/new"
+            element={<RealEstateComplexFormPage />}
+          />
+          <Route
+            path="complexes/:complexId"
+            element={<RealEstateComplexDetailPage />}
+          />
+          <Route
+            path="complexes/:complexId/edit"
+            element={<RealEstateComplexFormPage />}
           />
           <Route path="customers" element={<CustomerListPage />} />
           <Route path="customers/new" element={<CustomerFormPage />} />

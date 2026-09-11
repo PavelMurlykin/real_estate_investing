@@ -17,6 +17,9 @@ from .views import (
     MortgageCalculationAPIView,
     MortgageOptionsAPIView,
     OverviewAPIView,
+    RealEstateComplexDetailAPIView,
+    RealEstateComplexListCreateAPIView,
+    RealEstateComplexOptionsAPIView,
     PropertyDetailAPIView,
     PropertyFormOptionsAPIView,
     PropertyListAPIView,
@@ -61,6 +64,21 @@ urlpatterns = [
         'developers/<int:pk>/',
         DeveloperDetailAPIView.as_view(),
         name='developer_detail',
+    ),
+    path(
+        'complexes/',
+        RealEstateComplexListCreateAPIView.as_view(),
+        name='real_estate_complex_list',
+    ),
+    path(
+        'complexes/options/',
+        RealEstateComplexOptionsAPIView.as_view(),
+        name='real_estate_complex_options',
+    ),
+    path(
+        'complexes/<int:pk>/',
+        RealEstateComplexDetailAPIView.as_view(),
+        name='real_estate_complex_detail',
     ),
     path('customers/', CustomerListAPIView.as_view(), name='customer_list'),
     path(

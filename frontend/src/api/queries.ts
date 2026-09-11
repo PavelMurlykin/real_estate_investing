@@ -19,6 +19,9 @@ import {
   propertyDetailSchema,
   propertyFormOptionsSchema,
   propertyListResponseSchema,
+  realEstateComplexDetailSchema,
+  realEstateComplexListResponseSchema,
+  realEstateComplexOptionsSchema,
   savedMortgageCalculationDetailSchema,
   savedMortgageCalculationListResponseSchema,
   savedTrenchMortgageCalculationCreateResponseSchema,
@@ -197,6 +200,108 @@ export function updateDeveloper(
 export function deleteDeveloper(developerIdentifier: number) {
   return requestWithoutResponse(
     `/api/v1/developers/${developerIdentifier}/`,
+    { method: 'DELETE' },
+  )
+}
+
+export function realEstateComplexListQueryOptions(
+  searchParameters: URLSearchParams,
+) {
+  const normalizedParameters = new URLSearchParams()
+  for (const fieldName of [
+    'search',
+    'developerId',
+    'cityId',
+    'realEstateClassId',
+    'realEstateTypeId',
+    'buildingCount',
+    'status',
+    'ordering',
+    'page',
+    'pageSize',
+  ]) {
+    const value = searchParameters.get(fieldName)
+    if (value) normalizedParameters.set(fieldName, value)
+  }
+  const queryString = normalizedParameters.toString()
+
+  return queryOptions({
+    queryKey: ['real-estate-complexes', queryString],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/complexes/${queryString ? `?${queryString}` : ''}`,
+      realEstateComplexListResponseSchema,
+      { signal },
+    ),
+    placeholderData: (previousData) => previousData,
+    staleTime: 30_000,
+  })
+}
+
+export function realEstateComplexDetailQueryOptions(
+  realEstateComplexIdentifier: number,
+) {
+  return queryOptions({
+    queryKey: ['real-estate-complex', realEstateComplexIdentifier],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/complexes/${realEstateComplexIdentifier}/`,
+      realEstateComplexDetailSchema,
+      { signal },
+    ),
+    staleTime: 60_000,
+  })
+}
+
+export type RealEstateComplexOptionFilters = {
+  regionId: number | null
+  cityId: number | null
+}
+
+export function realEstateComplexOptionsQueryOptions(
+  filters: RealEstateComplexOptionFilters,
+) {
+  const searchParameters = new URLSearchParams()
+  if (filters.regionId) {
+    searchParameters.set('regionId', String(filters.regionId))
+  }
+  if (filters.cityId) {
+    searchParameters.set('cityId', String(filters.cityId))
+  }
+  const queryString = searchParameters.toString()
+  return queryOptions({
+    queryKey: ['real-estate-complex-options', queryString],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/complexes/options/${queryString ? `?${queryString}` : ''}`,
+      realEstateComplexOptionsSchema,
+      { signal },
+    ),
+    staleTime: 5 * 60_000,
+  })
+}
+
+export function createRealEstateComplex(formData: FormData) {
+  return requestJson(
+    '/api/v1/complexes/',
+    realEstateComplexDetailSchema,
+    { method: 'POST', body: formData },
+  )
+}
+
+export function updateRealEstateComplex(
+  realEstateComplexIdentifier: number,
+  formData: FormData,
+) {
+  return requestJson(
+    `/api/v1/complexes/${realEstateComplexIdentifier}/`,
+    realEstateComplexDetailSchema,
+    { method: 'PATCH', body: formData },
+  )
+}
+
+export function deleteRealEstateComplex(
+  realEstateComplexIdentifier: number,
+) {
+  return requestWithoutResponse(
+    `/api/v1/complexes/${realEstateComplexIdentifier}/`,
     { method: 'DELETE' },
   )
 }

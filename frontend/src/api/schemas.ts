@@ -179,6 +179,124 @@ export const developerOptionsSchema = z.object({
   }),
 })
 
+const realEstateComplexDeveloperSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  label: z.string(),
+})
+
+export const realEstateComplexListItemSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  developer: realEstateComplexDeveloperSchema,
+  city: z.string(),
+  realEstateClass: z.string(),
+  realEstateType: z.string(),
+  buildingCount: z.number().int().nonnegative(),
+  isActive: z.boolean(),
+})
+
+export const realEstateComplexListResponseSchema = z.object({
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  totalCount: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  results: z.array(realEstateComplexListItemSchema),
+})
+
+const realEstateComplexBuildingSchema = z.object({
+  id: z.number().int().positive(),
+  number: z.string(),
+  address: z.string().nullable(),
+  commissioningDate: z.iso.date().nullable(),
+  commissioningYear: z.number().int().nullable(),
+  commissioningQuarter: z.number().int().min(1).max(4).nullable(),
+  commissioning: z.string().nullable(),
+  keyHandoverDate: z.iso.date().nullable(),
+  keyHandoverYear: z.number().int().nullable(),
+  keyHandoverQuarter: z.number().int().min(1).max(4).nullable(),
+  keyHandover: z.string().nullable(),
+  propertyCount: z.number().int().nonnegative(),
+  isActive: z.boolean(),
+})
+
+const realEstateComplexMetroAvailabilitySchema = z.object({
+  id: z.number().int().positive(),
+  metroId: z.number().int().positive(),
+  station: z.string(),
+  line: z.string(),
+  lineColor: z.string().regex(/^#[0-9a-f]{6}$/i),
+  transportAccessibilityTypeId: z.number().int().positive(),
+  transportAccessibilityType: z.string(),
+  walkingTimeMinutes: z.number().int().positive(),
+  isActive: z.boolean(),
+})
+
+export const realEstateComplexDetailSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  description: z.string().nullable(),
+  developerId: z.number().int().positive(),
+  developer: realEstateComplexDeveloperSchema,
+  regionId: z.number().int().positive(),
+  region: z.string(),
+  cityId: z.number().int().positive(),
+  city: z.string(),
+  districtId: z.number().int().positive(),
+  district: z.string(),
+  realEstateClassId: z.number().int().positive(),
+  realEstateClass: z.string(),
+  realEstateTypeId: z.number().int().positive(),
+  realEstateType: z.string(),
+  mapUrl: z.string().nullable(),
+  presentationUrl: z.string().nullable(),
+  investmentPotential: z.string().nullable(),
+  photoUrl: z.string().nullable(),
+  buildings: z.array(realEstateComplexBuildingSchema).max(100),
+  metroAvailability: z.array(
+    realEstateComplexMetroAvailabilitySchema,
+  ).max(100),
+  isActive: z.boolean(),
+  createdAt: z.iso.datetime({ offset: true }),
+  updatedAt: z.iso.datetime({ offset: true }),
+  legacyDetailUrl: z.string(),
+  legacyEditUrl: z.string(),
+  legacyDeleteUrl: z.string(),
+})
+
+export const realEstateComplexOptionsSchema = z.object({
+  regions: z.array(namedOptionSchema),
+  cities: z.array(namedOptionSchema),
+  districts: z.array(namedOptionSchema),
+  developers: z.array(z.object({
+    id: z.number().int().positive(),
+    label: z.string(),
+  })),
+  realEstateClasses: z.array(namedOptionSchema),
+  realEstateTypes: z.array(namedOptionSchema),
+  transportAccessibilityTypes: z.array(namedOptionSchema),
+  metroStations: z.array(z.object({
+    id: z.number().int().positive(),
+    station: z.string(),
+    line: z.string(),
+    lineColor: z.string().regex(/^#[0-9a-f]{6}$/i),
+  })),
+  quarters: z.array(z.object({
+    value: z.number().int().min(1).max(4),
+    label: z.string(),
+  })).max(4),
+  truncated: z.object({
+    regions: z.boolean(),
+    cities: z.boolean(),
+    districts: z.boolean(),
+    developers: z.boolean(),
+    realEstateClasses: z.boolean(),
+    realEstateTypes: z.boolean(),
+    transportAccessibilityTypes: z.boolean(),
+    metroStations: z.boolean(),
+  }),
+})
+
 export const customerFormOptionsSchema = z.object({
   cities: z.array(namedOptionSchema),
   districts: z.array(namedOptionSchema),
@@ -598,6 +716,18 @@ export type DeveloperListResponse = z.infer<
   typeof developerListResponseSchema
 >
 export type DeveloperOptions = z.infer<typeof developerOptionsSchema>
+export type RealEstateComplexListItem = z.infer<
+  typeof realEstateComplexListItemSchema
+>
+export type RealEstateComplexListResponse = z.infer<
+  typeof realEstateComplexListResponseSchema
+>
+export type RealEstateComplexDetail = z.infer<
+  typeof realEstateComplexDetailSchema
+>
+export type RealEstateComplexOptions = z.infer<
+  typeof realEstateComplexOptionsSchema
+>
 export type CustomerListItem = z.infer<typeof customerListItemSchema>
 export type CustomerListResponse = z.infer<typeof customerListResponseSchema>
 export type CustomerDetail = z.infer<typeof customerDetailSchema>
@@ -674,5 +804,26 @@ export type DeveloperWriteRequest = {
   taxRegistrationReasonCode: string | null
   primaryStateRegistrationNumber: string | null
   description: string | null
+  isActive: boolean
+}
+
+export type RealEstateComplexBuildingWriteRequest = {
+  id?: number
+  number: string
+  address: string | null
+  commissioningDate: string | null
+  commissioningYear: number | null
+  commissioningQuarter: number | null
+  keyHandoverDate: string | null
+  keyHandoverYear: number | null
+  keyHandoverQuarter: number | null
+  isActive: boolean
+}
+
+export type RealEstateComplexMetroWriteRequest = {
+  id?: number
+  metroId: number
+  transportAccessibilityTypeId: number
+  walkingTimeMinutes: number
   isActive: boolean
 }

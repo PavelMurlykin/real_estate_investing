@@ -5,18 +5,24 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import URLValidator
 from django.db import transaction
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import serializers
 
 from bank.models import MortgageProgram
 from customer.models import Customer
-from location.models import City, District, Region
+from location.models import City, District, Metro, Region
 from property.models import (
     ApartmentDecoration,
     ApartmentLayout,
     CompanyGroup,
     Developer,
     Property,
+    RealEstateClass,
+    RealEstateComplex,
     RealEstateComplexBuilding,
+    RealEstateComplexMetroAvailability,
+    RealEstateType,
+    TransportAccessibilityType,
     WindowView,
 )
 from property.validators import validate_property_image_upload
@@ -947,6 +953,775 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             f"{reverse('mortgage:mortgage_calculator')}"
             f'?customer={customer.pk}'
         )
+
+
+class RealEstateComplexListQuerySerializer(serializers.Serializer):
+    """Validate filters, sorting, and pagination for residential complexes."""
+
+    search = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=100,
+        trim_whitespace=True,
+    )
+    developerId = serializers.IntegerField(required=False, min_value=1)
+    cityId = serializers.IntegerField(required=False, min_value=1)
+    realEstateClassId = serializers.IntegerField(required=False, min_value=1)
+    realEstateTypeId = serializers.IntegerField(required=False, min_value=1)
+    buildingCount = serializers.IntegerField(required=False, min_value=0)
+    status = serializers.ChoiceField(
+        required=False,
+        choices=('all', 'active', 'inactive'),
+        default='all',
+    )
+    ordering = serializers.ChoiceField(
+        required=False,
+        choices=(
+            'name',
+            '-name',
+            'developer',
+            '-developer',
+            'city',
+            '-city',
+            'realEstateClass',
+            '-realEstateClass',
+            'realEstateType',
+            '-realEstateType',
+            'buildingCount',
+            '-buildingCount',
+        ),
+        default='developer',
+    )
+    page = serializers.IntegerField(required=False, min_value=1, default=1)
+    pageSize = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=100,
+        default=20,
+    )
+
+
+class RealEstateComplexOptionsQuerySerializer(serializers.Serializer):
+    """Validate the selected location hierarchy for complex form choices."""
+
+    regionId = serializers.IntegerField(required=False, min_value=1)
+    cityId = serializers.IntegerField(required=False, min_value=1)
+
+
+class RealEstateComplexListItemSerializer(serializers.ModelSerializer):
+    """Serialize one residential-complex directory row."""
+
+    developer = serializers.SerializerMethodField()
+    city = serializers.CharField(source='district.city.name', read_only=True)
+    realEstateClass = serializers.CharField(
+        source='real_estate_class.name',
+        read_only=True,
+    )
+    realEstateType = serializers.CharField(
+        source='real_estate_type.name',
+        read_only=True,
+    )
+    buildingCount = serializers.IntegerField(
+        source='building_count',
+        read_only=True,
+    )
+    isActive = serializers.BooleanField(source='is_active', read_only=True)
+
+    class Meta:
+        """Define the public residential-complex list contract."""
+
+        model = RealEstateComplex
+        fields = (
+            'id',
+            'name',
+            'developer',
+            'city',
+            'realEstateClass',
+            'realEstateType',
+            'buildingCount',
+            'isActive',
+        )
+
+    def get_developer(self, real_estate_complex):
+        """Return the established developer label including company group."""
+        developer = real_estate_complex.developer
+        return {
+            'id': developer.pk,
+            'name': developer.name,
+            'label': developer.get_display_name_with_company_group(),
+        }
+
+
+class RealEstateComplexBuildingSerializer(serializers.ModelSerializer):
+    """Serialize a building included in a residential-complex card."""
+
+    commissioningDate = serializers.DateField(
+        source='commissioning_date', allow_null=True, read_only=True
+    )
+    commissioningYear = serializers.IntegerField(
+        source='commissioning_year', allow_null=True, read_only=True
+    )
+    commissioningQuarter = serializers.IntegerField(
+        source='commissioning_quarter', allow_null=True, read_only=True
+    )
+    commissioning = serializers.SerializerMethodField()
+    keyHandoverDate = serializers.DateField(
+        source='key_handover_date', allow_null=True, read_only=True
+    )
+    keyHandoverYear = serializers.IntegerField(
+        source='key_handover_year', allow_null=True, read_only=True
+    )
+    keyHandoverQuarter = serializers.IntegerField(
+        source='key_handover_quarter', allow_null=True, read_only=True
+    )
+    keyHandover = serializers.SerializerMethodField(
+        method_name='get_key_handover'
+    )
+    propertyCount = serializers.IntegerField(
+        source='property_count', read_only=True, default=0
+    )
+    isActive = serializers.BooleanField(source='is_active', read_only=True)
+
+    class Meta:
+        """Define fields returned for a residential-complex building."""
+
+        model = RealEstateComplexBuilding
+        fields = (
+            'id', 'number', 'address', 'commissioningDate',
+            'commissioningYear', 'commissioningQuarter', 'commissioning',
+            'keyHandoverDate', 'keyHandoverYear', 'keyHandoverQuarter',
+            'keyHandover', 'propertyCount', 'isActive',
+        )
+
+    def get_commissioning(self, building):
+        """Return a stable date or quarter label for commissioning."""
+        return _serialize_building_period(building.get_commissioning_display())
+
+    def get_key_handover(self, building):
+        """Return a stable date or quarter label for key handover."""
+        return _serialize_building_period(building.get_key_handover_display())
+
+
+class RealEstateComplexMetroAvailabilitySerializer(serializers.ModelSerializer):
+    """Serialize one metro-access row for a residential complex."""
+
+    metroId = serializers.IntegerField(source='metro_id', read_only=True)
+    station = serializers.CharField(source='metro.station', read_only=True)
+    line = serializers.CharField(
+        source='metro.metro_line.line', read_only=True
+    )
+    lineColor = serializers.CharField(
+        source='metro.metro_line.line_color', read_only=True
+    )
+    transportAccessibilityTypeId = serializers.IntegerField(
+        source='transport_accessibility_type_id', read_only=True
+    )
+    transportAccessibilityType = serializers.CharField(
+        source='transport_accessibility_type.name', read_only=True
+    )
+    walkingTimeMinutes = serializers.IntegerField(
+        source='walking_time_minutes', read_only=True
+    )
+    isActive = serializers.BooleanField(source='is_active', read_only=True)
+
+    class Meta:
+        """Define fields returned for one metro-access row."""
+
+        model = RealEstateComplexMetroAvailability
+        fields = (
+            'id', 'metroId', 'station', 'line', 'lineColor',
+            'transportAccessibilityTypeId',
+            'transportAccessibilityType', 'walkingTimeMinutes', 'isActive',
+        )
+
+
+class RealEstateComplexDetailSerializer(serializers.ModelSerializer):
+    """Serialize the complete public residential-complex card."""
+
+    developerId = serializers.IntegerField(source='developer_id', read_only=True)
+    developer = serializers.SerializerMethodField()
+    regionId = serializers.IntegerField(
+        source='district.city.region_id', read_only=True
+    )
+    region = serializers.CharField(
+        source='district.city.region.name', read_only=True
+    )
+    cityId = serializers.IntegerField(source='district.city_id', read_only=True)
+    city = serializers.CharField(source='district.city.name', read_only=True)
+    districtId = serializers.IntegerField(source='district_id', read_only=True)
+    district = serializers.CharField(source='district.name', read_only=True)
+    realEstateClassId = serializers.IntegerField(
+        source='real_estate_class_id', read_only=True
+    )
+    realEstateClass = serializers.CharField(
+        source='real_estate_class.name', read_only=True
+    )
+    realEstateTypeId = serializers.IntegerField(
+        source='real_estate_type_id', read_only=True
+    )
+    realEstateType = serializers.CharField(
+        source='real_estate_type.name', read_only=True
+    )
+    mapUrl = serializers.SerializerMethodField(method_name='get_map_url')
+    presentationUrl = serializers.SerializerMethodField(
+        method_name='get_presentation_url'
+    )
+    investmentPotential = serializers.CharField(
+        source='investment_potential', allow_null=True, read_only=True
+    )
+    photoUrl = serializers.SerializerMethodField(method_name='get_photo_url')
+    buildings = serializers.SerializerMethodField()
+    metroAvailability = serializers.SerializerMethodField(
+        method_name='get_metro_availability'
+    )
+    isActive = serializers.BooleanField(source='is_active', read_only=True)
+    createdAt = serializers.DateTimeField(source='created_at', read_only=True)
+    updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
+    legacyDetailUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_detail_url'
+    )
+    legacyEditUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_edit_url'
+    )
+    legacyDeleteUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_delete_url'
+    )
+
+    class Meta:
+        """Define fields used by the React residential-complex screens."""
+
+        model = RealEstateComplex
+        fields = (
+            'id', 'name', 'description', 'developerId', 'developer',
+            'regionId', 'region', 'cityId', 'city', 'districtId', 'district',
+            'realEstateClassId', 'realEstateClass', 'realEstateTypeId',
+            'realEstateType', 'mapUrl', 'presentationUrl',
+            'investmentPotential', 'photoUrl', 'buildings',
+            'metroAvailability', 'isActive', 'createdAt', 'updatedAt',
+            'legacyDetailUrl', 'legacyEditUrl', 'legacyDeleteUrl',
+        )
+
+    def get_developer(self, real_estate_complex):
+        """Return the developer identity and its established display label."""
+        developer = real_estate_complex.developer
+        return {
+            'id': developer.pk,
+            'name': developer.name,
+            'label': developer.get_display_name_with_company_group(),
+        }
+
+    def get_map_url(self, real_estate_complex):
+        """Return a validated external map URL or omit an unsafe value."""
+        return _validate_external_url(real_estate_complex.map_link)
+
+    def get_presentation_url(self, real_estate_complex):
+        """Return a validated external presentation URL when safe."""
+        return _validate_external_url(real_estate_complex.presentation_link)
+
+    def get_photo_url(self, real_estate_complex):
+        """Return the optional complex photo URL."""
+        return real_estate_complex.photo.url if real_estate_complex.photo else None
+
+    def get_buildings(self, real_estate_complex):
+        """Serialize prefetched buildings without per-row database access."""
+        return RealEstateComplexBuildingSerializer(
+            real_estate_complex.api_buildings, many=True
+        ).data
+
+    def get_metro_availability(self, real_estate_complex):
+        """Serialize prefetched metro-access rows without extra queries."""
+        return RealEstateComplexMetroAvailabilitySerializer(
+            real_estate_complex.api_metro_availability, many=True
+        ).data
+
+    def get_legacy_detail_url(self, real_estate_complex):
+        """Return the preserved Django residential-complex card URL."""
+        return reverse(
+            'property:complex_detail', kwargs={'pk': real_estate_complex.pk}
+        )
+
+    def get_legacy_edit_url(self, real_estate_complex):
+        """Return the preserved Django residential-complex form URL."""
+        return reverse(
+            'property:complex_update', kwargs={'pk': real_estate_complex.pk}
+        )
+
+    def get_legacy_delete_url(self, real_estate_complex):
+        """Return the preserved Django residential-complex delete URL."""
+        return reverse(
+            'property:complex_delete', kwargs={'pk': real_estate_complex.pk}
+        )
+
+
+class RealEstateComplexBuildingWriteSerializer(serializers.Serializer):
+    """Validate one building submitted with a residential complex."""
+
+    id = serializers.IntegerField(required=False, min_value=1)
+    number = serializers.CharField(max_length=100, trim_whitespace=True)
+    address = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True,
+        max_length=255, default=None,
+    )
+    commissioningDate = serializers.DateField(
+        source='commissioning_date', required=False,
+        allow_null=True, default=None,
+    )
+    commissioningYear = serializers.IntegerField(
+        source='commissioning_year', required=False, allow_null=True,
+        min_value=2000, max_value=2100, default=None,
+    )
+    commissioningQuarter = serializers.ChoiceField(
+        source='commissioning_quarter', required=False, allow_null=True,
+        choices=RealEstateComplexBuilding.Quarter.choices, default=None,
+    )
+    keyHandoverDate = serializers.DateField(
+        source='key_handover_date', required=False,
+        allow_null=True, default=None,
+    )
+    keyHandoverYear = serializers.IntegerField(
+        source='key_handover_year', required=False, allow_null=True,
+        min_value=2000, max_value=2100, default=None,
+    )
+    keyHandoverQuarter = serializers.ChoiceField(
+        source='key_handover_quarter', required=False, allow_null=True,
+        choices=RealEstateComplexBuilding.Quarter.choices, default=None,
+    )
+    isActive = serializers.BooleanField(
+        source='is_active', required=False, default=True
+    )
+
+    def validate(self, attributes):
+        """Require either an exact date or a complete year-and-quarter pair."""
+        self._validate_period(attributes, 'commissioning')
+        self._validate_period(attributes, 'key_handover')
+        return attributes
+
+    def _validate_period(self, attributes, field_prefix):
+        """Validate one building milestone represented in two possible ways."""
+        exact_date = attributes.get(f'{field_prefix}_date')
+        year = attributes.get(f'{field_prefix}_year')
+        quarter = attributes.get(f'{field_prefix}_quarter')
+        public_prefix = (
+            'commissioning' if field_prefix == 'commissioning'
+            else 'keyHandover'
+        )
+        if exact_date and (year or quarter):
+            message = 'Укажите либо точную дату, либо год и квартал.'
+            raise serializers.ValidationError(
+                {
+                    f'{public_prefix}Date': message,
+                    f'{public_prefix}Year': message,
+                    f'{public_prefix}Quarter': message,
+                }
+            )
+        if bool(year) != bool(quarter):
+            message = 'Для квартального срока укажите год и квартал.'
+            raise serializers.ValidationError(
+                {
+                    f'{public_prefix}Year': message,
+                    f'{public_prefix}Quarter': message,
+                }
+            )
+
+
+class RealEstateComplexMetroAvailabilityWriteSerializer(
+    serializers.Serializer
+):
+    """Validate one metro-access row submitted with a complex."""
+
+    id = serializers.IntegerField(required=False, min_value=1)
+    metroId = serializers.PrimaryKeyRelatedField(
+        source='metro',
+        queryset=Metro.objects.select_related('metro_line__city'),
+    )
+    transportAccessibilityTypeId = serializers.PrimaryKeyRelatedField(
+        source='transport_accessibility_type',
+        queryset=TransportAccessibilityType.objects.all(),
+    )
+    walkingTimeMinutes = serializers.IntegerField(
+        source='walking_time_minutes', min_value=1, max_value=1440
+    )
+    isActive = serializers.BooleanField(
+        source='is_active', required=False, default=True
+    )
+
+
+class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
+    """Validate and atomically persist a residential complex and its rows."""
+
+    developerId = serializers.PrimaryKeyRelatedField(
+        source='developer', queryset=Developer.objects.all()
+    )
+    districtId = serializers.PrimaryKeyRelatedField(
+        source='district',
+        queryset=District.objects.select_related('city__region'),
+    )
+    realEstateClassId = serializers.PrimaryKeyRelatedField(
+        source='real_estate_class', queryset=RealEstateClass.objects.all()
+    )
+    realEstateTypeId = serializers.PrimaryKeyRelatedField(
+        source='real_estate_type', queryset=RealEstateType.objects.all()
+    )
+    mapLink = serializers.CharField(
+        source='map_link', required=False, allow_blank=True, allow_null=True
+    )
+    presentationLink = serializers.CharField(
+        source='presentation_link', required=False,
+        allow_blank=True, allow_null=True,
+    )
+    investmentPotential = serializers.CharField(
+        source='investment_potential', required=False,
+        allow_blank=True, allow_null=True,
+    )
+    photo = serializers.ImageField(
+        required=False, allow_null=True,
+        validators=(validate_property_image_upload,),
+    )
+    clearPhoto = serializers.BooleanField(
+        write_only=True, required=False, default=False
+    )
+    buildings = serializers.JSONField(required=False, write_only=True)
+    metroAvailability = serializers.JSONField(required=False, write_only=True)
+    isActive = serializers.BooleanField(source='is_active', required=False)
+
+    class Meta:
+        """Define fields accepted by residential-complex mutations."""
+
+        model = RealEstateComplex
+        fields = (
+            'name', 'description', 'developerId', 'districtId',
+            'realEstateClassId', 'realEstateTypeId', 'mapLink',
+            'presentationLink', 'investmentPotential', 'photo', 'clearPhoto',
+            'buildings', 'metroAvailability', 'isActive',
+        )
+        extra_kwargs = {
+            'description': {
+                'required': False, 'allow_blank': True, 'allow_null': True,
+            },
+        }
+        validators = ()
+
+    def validate_name(self, value):
+        """Normalize whitespace while keeping the user-provided spelling."""
+        return ' '.join(value.split())
+
+    def validate_mapLink(self, value):
+        """Accept only optional HTTP(S) map links."""
+        return self._validate_external_link(value)
+
+    def validate_presentationLink(self, value):
+        """Accept only optional HTTP(S) presentation links."""
+        return self._validate_external_link(value)
+
+    @staticmethod
+    def _validate_external_link(value):
+        """Normalize an optional link and reject unsafe URL schemes."""
+        normalized_value = value.strip() if value else None
+        if not normalized_value:
+            return None
+        if _validate_external_url(normalized_value) is None:
+            raise serializers.ValidationError(
+                'Укажите корректную ссылку с протоколом http или https.'
+            )
+        return normalized_value
+
+    def validate_buildings(self, value):
+        """Validate and normalize the bounded replacement building list."""
+        if not isinstance(value, list):
+            raise serializers.ValidationError('Ожидался список корпусов.')
+        if len(value) > 100:
+            raise serializers.ValidationError(
+                'За один раз можно сохранить не более 100 корпусов.'
+            )
+        serializer = RealEstateComplexBuildingWriteSerializer(
+            data=value, many=True
+        )
+        serializer.is_valid(raise_exception=True)
+        normalized_buildings = serializer.validated_data
+        normalized_numbers = [
+            building['number'].casefold()
+            for building in normalized_buildings
+        ]
+        if len(normalized_numbers) != len(set(normalized_numbers)):
+            raise serializers.ValidationError(
+                'Номера корпусов внутри одного ЖК не должны повторяться.'
+            )
+        return normalized_buildings
+
+    def validate_metroAvailability(self, value):
+        """Validate and normalize the bounded replacement metro-access list."""
+        if not isinstance(value, list):
+            raise serializers.ValidationError(
+                'Ожидался список вариантов доступности метро.'
+            )
+        if len(value) > 100:
+            raise serializers.ValidationError(
+                'За один раз можно сохранить не более 100 станций метро.'
+            )
+        serializer = RealEstateComplexMetroAvailabilityWriteSerializer(
+            data=value, many=True
+        )
+        serializer.is_valid(raise_exception=True)
+        normalized_rows = serializer.validated_data
+        metro_identifiers = [row['metro'].pk for row in normalized_rows]
+        if len(metro_identifiers) != len(set(metro_identifiers)):
+            raise serializers.ValidationError(
+                'Одна станция метро не может быть добавлена дважды.'
+            )
+        return normalized_rows
+
+    def validate(self, attributes):
+        """Validate uniqueness, location consistency, and child ownership."""
+        real_estate_complex = self.instance
+        name = attributes.get(
+            'name', real_estate_complex.name if real_estate_complex else ''
+        )
+        developer = attributes.get(
+            'developer',
+            real_estate_complex.developer if real_estate_complex else None,
+        )
+        duplicate_queryset = RealEstateComplex.objects.filter(
+            name__iexact=name, developer=developer
+        )
+        if real_estate_complex:
+            duplicate_queryset = duplicate_queryset.exclude(
+                pk=real_estate_complex.pk
+            )
+        if duplicate_queryset.exists():
+            raise serializers.ValidationError(
+                {'name': 'ЖК с таким названием у застройщика уже существует.'}
+            )
+
+        district = attributes.get(
+            'district',
+            real_estate_complex.district if real_estate_complex else None,
+        )
+        if 'metroAvailability' in attributes and district:
+            for row in attributes['metroAvailability']:
+                if row['metro'].metro_line.city_id != district.city_id:
+                    raise serializers.ValidationError(
+                        {
+                            'metroAvailability': (
+                                'Все станции метро должны относиться к '
+                                'выбранному городу.'
+                            )
+                        }
+                    )
+        self._validate_related_identifiers(attributes)
+        return attributes
+
+    def _validate_related_identifiers(self, attributes):
+        """Reject child identifiers outside the edited complex."""
+        real_estate_complex = self.instance
+        relation_configuration = (
+            (
+                'buildings', RealEstateComplexBuilding,
+                'Корпус не относится к редактируемому ЖК.',
+            ),
+            (
+                'metroAvailability', RealEstateComplexMetroAvailability,
+                'Станция не относится к редактируемому ЖК.',
+            ),
+        )
+        for field_name, model, ownership_message in relation_configuration:
+            if field_name not in attributes:
+                continue
+            submitted_identifiers = {
+                row['id'] for row in attributes[field_name] if row.get('id')
+            }
+            if not real_estate_complex:
+                if submitted_identifiers:
+                    raise serializers.ValidationError(
+                        {field_name: ownership_message}
+                    )
+                continue
+            existing_identifiers = set(
+                model.objects.filter(
+                    real_estate_complex=real_estate_complex
+                ).values_list('pk', flat=True)
+            )
+            if not submitted_identifiers.issubset(existing_identifiers):
+                raise serializers.ValidationError(
+                    {field_name: ownership_message}
+                )
+            if field_name == 'buildings':
+                removed_identifiers = (
+                    existing_identifiers - submitted_identifiers
+                )
+                if Property.objects.filter(
+                    building_id__in=removed_identifiers
+                ).exists():
+                    raise serializers.ValidationError(
+                        {
+                            field_name: (
+                                'Нельзя удалить корпус, к которому привязаны '
+                                'объекты недвижимости.'
+                            )
+                        }
+                    )
+
+    def create(self, validated_data):
+        """Create a complex and all submitted child rows atomically."""
+        buildings = validated_data.pop('buildings', [])
+        metro_availability = validated_data.pop('metroAvailability', [])
+        validated_data.pop('clearPhoto', None)
+        with transaction.atomic():
+            real_estate_complex = super().create(validated_data)
+            self._sync_buildings(real_estate_complex, buildings)
+            self._sync_metro_availability(
+                real_estate_complex, metro_availability
+            )
+        return real_estate_complex
+
+    def update(self, instance, validated_data):
+        """Update a complex and optional replacement child lists atomically."""
+        missing_related_rows = object()
+        buildings = validated_data.pop('buildings', missing_related_rows)
+        metro_availability = validated_data.pop(
+            'metroAvailability', missing_related_rows
+        )
+        clear_photo = validated_data.pop('clearPhoto', False)
+        previous_photo = instance.photo if instance.photo else None
+        if clear_photo and 'photo' not in validated_data:
+            validated_data['photo'] = None
+
+        with transaction.atomic():
+            real_estate_complex = super().update(instance, validated_data)
+            if buildings is not missing_related_rows:
+                self._sync_buildings(real_estate_complex, buildings)
+            if metro_availability is not missing_related_rows:
+                self._sync_metro_availability(
+                    real_estate_complex, metro_availability
+                )
+            if previous_photo and (
+                not real_estate_complex.photo
+                or real_estate_complex.photo.name != previous_photo.name
+            ):
+                transaction.on_commit(
+                    lambda: self._delete_replaced_photo(
+                        real_estate_complex,
+                        previous_photo.name,
+                        previous_photo.storage,
+                    )
+                )
+        return real_estate_complex
+
+    def _sync_buildings(self, real_estate_complex, submitted_buildings):
+        """Replace building rows with bounded bulk database operations."""
+        existing_buildings = {
+            building.pk: building
+            for building in RealEstateComplexBuilding.objects.filter(
+                real_estate_complex=real_estate_complex
+            )
+        }
+        submitted_identifiers = {
+            building['id']
+            for building in submitted_buildings
+            if building.get('id')
+        }
+        RealEstateComplexBuilding.objects.filter(
+            real_estate_complex=real_estate_complex
+        ).exclude(pk__in=submitted_identifiers).delete()
+
+        updated_buildings = []
+        created_buildings = []
+        timestamp = timezone.now()
+        mutable_fields = (
+            'number', 'address', 'commissioning_date',
+            'commissioning_year', 'commissioning_quarter',
+            'key_handover_date', 'key_handover_year',
+            'key_handover_quarter', 'is_active',
+        )
+        for submitted_building in submitted_buildings:
+            building_data = dict(submitted_building)
+            building_identifier = building_data.pop('id', None)
+            if building_identifier:
+                building = existing_buildings[building_identifier]
+                for field_name in mutable_fields:
+                    setattr(building, field_name, building_data[field_name])
+                building.updated_at = timestamp
+                updated_buildings.append(building)
+            else:
+                created_buildings.append(
+                    RealEstateComplexBuilding(
+                        real_estate_complex=real_estate_complex,
+                        **building_data,
+                    )
+                )
+        if updated_buildings:
+            RealEstateComplexBuilding.objects.bulk_update(
+                updated_buildings, (*mutable_fields, 'updated_at')
+            )
+        if created_buildings:
+            RealEstateComplexBuilding.objects.bulk_create(created_buildings)
+
+    def _sync_metro_availability(
+        self,
+        real_estate_complex,
+        submitted_metro_availability,
+    ):
+        """Replace metro-access rows with bounded bulk database operations."""
+        existing_rows = {
+            row.pk: row
+            for row in RealEstateComplexMetroAvailability.objects.filter(
+                real_estate_complex=real_estate_complex
+            )
+        }
+        submitted_identifiers = {
+            row['id']
+            for row in submitted_metro_availability
+            if row.get('id')
+        }
+        RealEstateComplexMetroAvailability.objects.filter(
+            real_estate_complex=real_estate_complex
+        ).exclude(pk__in=submitted_identifiers).delete()
+
+        updated_rows = []
+        created_rows = []
+        timestamp = timezone.now()
+        mutable_fields = (
+            'metro', 'transport_accessibility_type',
+            'walking_time_minutes', 'is_active',
+        )
+        for submitted_row in submitted_metro_availability:
+            row_data = dict(submitted_row)
+            row_identifier = row_data.pop('id', None)
+            if row_identifier:
+                availability = existing_rows[row_identifier]
+                for field_name in mutable_fields:
+                    setattr(availability, field_name, row_data[field_name])
+                availability.updated_at = timestamp
+                updated_rows.append(availability)
+            else:
+                created_rows.append(
+                    RealEstateComplexMetroAvailability(
+                        real_estate_complex=real_estate_complex,
+                        **row_data,
+                    )
+                )
+        if updated_rows:
+            RealEstateComplexMetroAvailability.objects.bulk_update(
+                updated_rows, (*mutable_fields, 'updated_at')
+            )
+        if created_rows:
+            RealEstateComplexMetroAvailability.objects.bulk_create(
+                created_rows
+            )
+
+    def _delete_replaced_photo(
+        self,
+        real_estate_complex,
+        photo_name,
+        storage,
+    ):
+        """Delete an old photo after the database transaction commits."""
+        if (
+            real_estate_complex.photo
+            and real_estate_complex.photo.name == photo_name
+        ):
+            return
+        if storage.exists(photo_name):
+            storage.delete(photo_name)
 
 
 class PropertyListQuerySerializer(serializers.Serializer):

@@ -41,7 +41,7 @@ from customer.views import (
     _export_single_customer_word_calculation,
     _get_selected_customer_calculation_links,
 )
-from location.models import City, District, Region
+from location.models import City, District, Metro, Region
 from mortgage.excel import export_saved_mortgage_calculation_excel
 from mortgage.models import MortgageCalculation
 from mortgage.word import (
@@ -55,8 +55,12 @@ from property.models import (
     CompanyGroup,
     Developer,
     Property,
+    RealEstateClass,
     RealEstateComplex,
     RealEstateComplexBuilding,
+    RealEstateComplexMetroAvailability,
+    RealEstateType,
+    TransportAccessibilityType,
     WindowView,
 )
 from trench_mortgage.models import TrenchMortgageCalculation
@@ -97,6 +101,11 @@ from .serializers import (
     CustomerWriteSerializer,
     LoginRequestSerializer,
     MortgageCalculationRequestSerializer,
+    RealEstateComplexDetailSerializer,
+    RealEstateComplexListItemSerializer,
+    RealEstateComplexListQuerySerializer,
+    RealEstateComplexOptionsQuerySerializer,
+    RealEstateComplexWriteSerializer,
     PropertyDetailSerializer,
     PropertyFormOptionsQuerySerializer,
     PropertyListItemSerializer,
@@ -1006,6 +1015,297 @@ class DeveloperOptionsAPIView(APIView):
                 'truncated': {
                     'companyGroups': company_groups_truncated,
                     'regions': regions_truncated,
+                },
+            }
+        )
+
+
+def _real_estate_complex_list_queryset():
+    """Return complexes with list labels and building counts preloaded."""
+    return RealEstateComplex.objects.select_related(
+        'developer__company_group',
+        'district__city',
+        'real_estate_class',
+        'real_estate_type',
+    ).annotate(
+        building_count=Count('realestatecomplexbuilding', distinct=True)
+    )
+
+
+def _real_estate_complex_detail_queryset():
+    """Return the query-efficient residential-complex detail queryset."""
+    buildings = RealEstateComplexBuilding.objects.annotate(
+        property_count=Count('property', distinct=True)
+    ).order_by('number', 'pk')
+    metro_availability = (
+        RealEstateComplexMetroAvailability.objects.select_related(
+            'metro__metro_line__city',
+            'transport_accessibility_type',
+        ).order_by('walking_time_minutes', 'metro__station', 'pk')
+    )
+    return RealEstateComplex.objects.select_related(
+        'developer__company_group',
+        'district__city__region',
+        'real_estate_class',
+        'real_estate_type',
+    ).prefetch_related(
+        Prefetch(
+            'realestatecomplexbuilding_set',
+            queryset=buildings,
+            to_attr='api_buildings',
+        ),
+        Prefetch(
+            'metro_availability',
+            queryset=metro_availability,
+            to_attr='api_metro_availability',
+        ),
+    )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class RealEstateComplexListCreateAPIView(ListCreateAPIView):
+    """List public complexes and let catalog managers create them."""
+
+    pagination_class = ApplicationPageNumberPagination
+    ordering_fields = {
+        'name': 'name',
+        'developer': 'developer__name',
+        'city': 'district__city__name',
+        'realEstateClass': 'real_estate_class__name',
+        'realEstateType': 'real_estate_type__name',
+        'buildingCount': 'building_count',
+    }
+
+    def get_permissions(self):
+        """Keep directory reads public and protect complex creation."""
+        if self.request.method == 'GET':
+            return (AllowAny(),)
+        return (IsAuthenticated(), CanManageCatalogs())
+
+    def get_serializer_class(self):
+        """Use distinct public read and catalog-manager write contracts."""
+        if self.request.method == 'GET':
+            return RealEstateComplexListItemSerializer
+        return RealEstateComplexWriteSerializer
+
+    def get_queryset(self):
+        """Apply validated URL filters and deterministic ordering."""
+        query_serializer = RealEstateComplexListQuerySerializer(
+            data=self.request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        filters = query_serializer.validated_data
+        queryset = _real_estate_complex_list_queryset()
+
+        search = filters.get('search', '')
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search)
+                | Q(developer__name__icontains=search)
+                | Q(district__city__name__icontains=search)
+            )
+        filter_fields = {
+            'developerId': 'developer_id',
+            'cityId': 'district__city_id',
+            'realEstateClassId': 'real_estate_class_id',
+            'realEstateTypeId': 'real_estate_type_id',
+            'buildingCount': 'building_count',
+        }
+        for query_name, model_field in filter_fields.items():
+            value = filters.get(query_name)
+            if value is not None:
+                queryset = queryset.filter(**{model_field: value})
+        if filters['status'] != 'all':
+            queryset = queryset.filter(
+                is_active=filters['status'] == 'active'
+            )
+
+        ordering = filters['ordering']
+        ordering_prefix = '-' if ordering.startswith('-') else ''
+        ordering_field = self.ordering_fields[ordering.removeprefix('-')]
+        return queryset.order_by(
+            f'{ordering_prefix}{ordering_field}', 'name', 'pk'
+        )
+
+    def create(self, request, *args, **kwargs):
+        """Create a complex and return its complete public representation."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        real_estate_complex = serializer.save()
+        real_estate_complex = _real_estate_complex_detail_queryset().get(
+            pk=real_estate_complex.pk
+        )
+        response_serializer = RealEstateComplexDetailSerializer(
+            real_estate_complex,
+            context=self.get_serializer_context(),
+        )
+        return Response(
+            response_serializer.data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class RealEstateComplexDetailAPIView(RetrieveUpdateDestroyAPIView):
+    """Read a complex publicly and protect catalog-manager mutations."""
+
+    queryset = _real_estate_complex_detail_queryset()
+
+    def get_permissions(self):
+        """Keep detail reads public and protect update and delete."""
+        if self.request.method == 'GET':
+            return (AllowAny(),)
+        return (IsAuthenticated(), CanManageCatalogs())
+
+    def get_serializer_class(self):
+        """Use distinct public read and catalog-manager write contracts."""
+        if self.request.method == 'GET':
+            return RealEstateComplexDetailSerializer
+        return RealEstateComplexWriteSerializer
+
+    def update(self, request, *args, **kwargs):
+        """Update a complex and return its refreshed public card."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance, data=request.data, partial=partial
+        )
+        serializer.is_valid(raise_exception=True)
+        real_estate_complex = serializer.save()
+        real_estate_complex = _real_estate_complex_detail_queryset().get(
+            pk=real_estate_complex.pk
+        )
+        response_serializer = RealEstateComplexDetailSerializer(
+            real_estate_complex,
+            context=self.get_serializer_context(),
+        )
+        return Response(response_serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete an unused complex or explain its protected dependency."""
+        instance = self.get_object()
+        try:
+            instance.delete()
+        except ProtectedError:
+            return Response(
+                {
+                    'detail': (
+                        'ЖК нельзя удалить, пока с его корпусами связаны '
+                        'объекты недвижимости.'
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RealEstateComplexOptionsAPIView(APIView):
+    """Return bounded choices for complex filters and manager forms."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request):
+        """Return safe choices restricted by selected location parents."""
+        query_serializer = RealEstateComplexOptionsQuerySerializer(
+            data=request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        filters = query_serializer.validated_data
+        maximum_results = settings.PUBLIC_CATALOG_API_MAX_RESULTS
+
+        regions, regions_truncated = _build_bounded_option_rows(
+            Region.objects.order_by('name', 'pk'), maximum_results
+        )
+        cities_queryset = City.objects.order_by('name', 'pk')
+        if filters.get('regionId'):
+            cities_queryset = cities_queryset.filter(
+                region_id=filters['regionId']
+            )
+        cities, cities_truncated = _build_bounded_option_rows(
+            cities_queryset, maximum_results
+        )
+        districts_queryset = District.objects.none()
+        if filters.get('cityId'):
+            districts_queryset = District.objects.filter(
+                city_id=filters['cityId']
+            ).order_by('name', 'pk')
+        districts, districts_truncated = _build_bounded_option_rows(
+            districts_queryset, maximum_results
+        )
+
+        developer_objects = list(
+            Developer.objects.select_related('company_group').order_by(
+                'name', 'pk'
+            )[:maximum_results + 1]
+        )
+        developers = [
+            {
+                'id': developer.pk,
+                'label': developer.get_display_name_with_company_group(),
+            }
+            for developer in developer_objects[:maximum_results]
+        ]
+        developers_truncated = len(developer_objects) > maximum_results
+        real_estate_classes, classes_truncated = _build_bounded_option_rows(
+            RealEstateClass.objects.order_by('weight', 'name', 'pk'),
+            maximum_results,
+        )
+        real_estate_types, types_truncated = _build_bounded_option_rows(
+            RealEstateType.objects.order_by('name', 'pk'), maximum_results
+        )
+        accessibility_types, accessibility_types_truncated = (
+            _build_bounded_option_rows(
+                TransportAccessibilityType.objects.order_by('id'),
+                maximum_results,
+            )
+        )
+
+        metro_stations = []
+        metro_stations_truncated = False
+        if filters.get('cityId'):
+            metro_objects = list(
+                Metro.objects.select_related('metro_line').filter(
+                    metro_line__city_id=filters['cityId']
+                ).order_by('metro_line__line', 'station', 'pk')
+                [:maximum_results + 1]
+            )
+            metro_stations = [
+                {
+                    'id': metro.pk,
+                    'station': metro.station,
+                    'line': metro.metro_line.line,
+                    'lineColor': metro.metro_line.line_color,
+                }
+                for metro in metro_objects[:maximum_results]
+            ]
+            metro_stations_truncated = len(metro_objects) > maximum_results
+
+        return Response(
+            {
+                'regions': regions,
+                'cities': cities,
+                'districts': districts,
+                'developers': developers,
+                'realEstateClasses': real_estate_classes,
+                'realEstateTypes': real_estate_types,
+                'transportAccessibilityTypes': accessibility_types,
+                'metroStations': metro_stations,
+                'quarters': [
+                    {'value': value, 'label': label}
+                    for value, label
+                    in RealEstateComplexBuilding.Quarter.choices
+                ],
+                'truncated': {
+                    'regions': regions_truncated,
+                    'cities': cities_truncated,
+                    'districts': districts_truncated,
+                    'developers': developers_truncated,
+                    'realEstateClasses': classes_truncated,
+                    'realEstateTypes': types_truncated,
+                    'transportAccessibilityTypes': (
+                        accessibility_types_truncated
+                    ),
+                    'metroStations': metro_stations_truncated,
                 },
             }
         )

@@ -36,7 +36,12 @@ const realEstateItems: NavigationItem[] = [
     symbol: 'З',
     reactRoute: true,
   },
-  { label: 'Жилые комплексы', href: '/property/complexes/', symbol: 'Ж' },
+  {
+    label: 'Жилые комплексы',
+    href: '/complexes',
+    symbol: 'Ж',
+    reactRoute: true,
+  },
   { label: 'Справочники объектов', href: '/property/dictionaries/', symbol: 'О' },
 ]
 
