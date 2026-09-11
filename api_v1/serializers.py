@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework import serializers
 
-from bank.models import MortgageProgram
+from bank.models import Bank, BankProgram, MortgageProgram
 from customer.models import Customer
 from location.models import City, District, Metro, MetroLine, Region
 from property.models import (
@@ -520,6 +520,269 @@ class LocationDictionaryWriteSerializer(serializers.Serializer):
         for field_name, value in validated_data.items():
             setattr(instance, field_name, value)
         instance.save(update_fields=(*validated_data.keys(), 'updated_at'))
+        return instance
+
+
+class BankListQuerySerializer(serializers.Serializer):
+    """Validate URL-driven filters and pagination for banks."""
+
+    q = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=100,
+        trim_whitespace=True,
+    )
+    scope = serializers.ChoiceField(
+        required=False,
+        choices=('all', 'withPrograms', 'withoutPrograms'),
+        default='all',
+    )
+    status = serializers.ChoiceField(
+        required=False,
+        choices=('all', 'active', 'inactive'),
+        default='all',
+    )
+    ordering = serializers.ChoiceField(
+        required=False,
+        choices=(
+            'name',
+            '-name',
+            'minimumInterestRate',
+            '-minimumInterestRate',
+            'updatedAt',
+            '-updatedAt',
+        ),
+        default='name',
+    )
+    page = serializers.IntegerField(required=False, min_value=1, default=1)
+    pageSize = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=100,
+        default=10,
+    )
+
+
+class BankListItemSerializer(serializers.Serializer):
+    """Serialize one bank row with aggregate mortgage-program data."""
+
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    logoUrl = serializers.URLField(source='logo_url', read_only=True)
+    programCount = serializers.IntegerField(
+        source='program_count', read_only=True
+    )
+    minimumInterestRate = serializers.SerializerMethodField(
+        method_name='get_minimum_interest_rate'
+    )
+    isActive = serializers.BooleanField(source='is_active', read_only=True)
+    updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
+    detailUrl = serializers.SerializerMethodField(method_name='get_detail_url')
+    legacyDetailUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_detail_url'
+    )
+
+    def get_minimum_interest_rate(self, bank):
+        """Return a stable decimal minimum rate when programs exist."""
+        minimum_interest_rate = bank.minimum_interest_rate
+        if minimum_interest_rate is None:
+            return None
+        return format(minimum_interest_rate.quantize(Decimal('0.01')), 'f')
+
+    def get_detail_url(self, bank):
+        """Return the React bank detail route."""
+        return f'/banks/{bank.pk}'
+
+    def get_legacy_detail_url(self, bank):
+        """Return the preserved Django bank detail URL."""
+        return reverse('bank:bank_detail', kwargs={'pk': bank.pk})
+
+
+class BankProgramReadSerializer(serializers.Serializer):
+    """Serialize one mortgage program attached to a bank."""
+
+    id = serializers.IntegerField(read_only=True)
+    mortgageProgramId = serializers.IntegerField(
+        source='mortgage_program_id',
+        read_only=True,
+    )
+    mortgageProgramName = serializers.CharField(
+        source='mortgage_program.name',
+        read_only=True,
+    )
+    interestRate = serializers.DecimalField(
+        source='interest_rate',
+        max_digits=5,
+        decimal_places=2,
+        read_only=True,
+    )
+    minimumInitialPaymentPercent = serializers.DecimalField(
+        source='minimum_initial_payment_percent',
+        max_digits=5,
+        decimal_places=2,
+        read_only=True,
+    )
+    maximumLoanTermYears = serializers.IntegerField(
+        source='maximum_loan_term_years',
+        allow_null=True,
+        read_only=True,
+    )
+
+
+class BankDetailSerializer(serializers.ModelSerializer):
+    """Serialize a bank and its complete mortgage-program table."""
+
+    logoUrl = serializers.URLField(source='logo_url', read_only=True)
+    isActive = serializers.BooleanField(source='is_active', read_only=True)
+    createdAt = serializers.DateTimeField(source='created_at', read_only=True)
+    updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
+    programs = serializers.SerializerMethodField(method_name='get_programs')
+    legacyDetailUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_detail_url'
+    )
+    legacyEditUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_edit_url'
+    )
+    legacyCatalogUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_catalog_url'
+    )
+
+    class Meta:
+        """Define the stable public bank detail contract."""
+
+        model = Bank
+        fields = (
+            'id',
+            'name',
+            'logoUrl',
+            'isActive',
+            'createdAt',
+            'updatedAt',
+            'programs',
+            'legacyDetailUrl',
+            'legacyEditUrl',
+            'legacyCatalogUrl',
+        )
+
+    def get_programs(self, bank):
+        """Return programs from the detail queryset prefetch."""
+        return BankProgramReadSerializer(
+            bank.api_programs,
+            many=True,
+        ).data
+
+    def get_legacy_edit_url(self, bank):
+        """Return the preserved Django bank edit URL."""
+        return reverse('bank:bank_update', kwargs={'pk': bank.pk})
+
+    def get_legacy_detail_url(self, bank):
+        """Return the preserved Django bank detail URL."""
+        return reverse('bank:bank_detail', kwargs={'pk': bank.pk})
+
+    def get_legacy_catalog_url(self, bank):
+        """Return the preserved Django bank catalog URL."""
+        return f"{reverse('bank:catalog')}?model=bank"
+
+
+class BankProgramWriteSerializer(serializers.Serializer):
+    """Validate one editable mortgage program attached to a bank."""
+
+    mortgageProgramId = serializers.PrimaryKeyRelatedField(
+        source='mortgage_program',
+        queryset=MortgageProgram.objects.all(),
+    )
+    interestRate = serializers.DecimalField(
+        source='interest_rate',
+        max_digits=5,
+        decimal_places=2,
+        min_value=Decimal('0'),
+    )
+    minimumInitialPaymentPercent = serializers.DecimalField(
+        source='minimum_initial_payment_percent',
+        max_digits=5,
+        decimal_places=2,
+        min_value=Decimal('0'),
+    )
+    maximumLoanTermYears = serializers.IntegerField(
+        source='maximum_loan_term_years',
+        required=False,
+        allow_null=True,
+        min_value=1,
+        max_value=32767,
+    )
+
+
+class BankWriteSerializer(serializers.Serializer):
+    """Validate and atomically persist a bank with its program rows."""
+
+    name = serializers.CharField(max_length=255, trim_whitespace=True)
+    logoUrl = serializers.URLField(
+        source='logo_url',
+        required=False,
+        allow_blank=True,
+        default='',
+        max_length=1000,
+    )
+    isActive = serializers.BooleanField(
+        source='is_active',
+        required=False,
+        default=True,
+    )
+    programs = BankProgramWriteSerializer(many=True, required=False)
+
+    def validate_name(self, value):
+        """Collapse repeated whitespace and reject case-insensitive duplicates."""
+        normalized_name = ' '.join(value.split())
+        duplicate_banks = Bank.objects.filter(name__iexact=normalized_name)
+        if self.instance is not None:
+            duplicate_banks = duplicate_banks.exclude(pk=self.instance.pk)
+        if duplicate_banks.exists():
+            raise serializers.ValidationError(
+                'Банк с таким названием уже существует.'
+            )
+        return normalized_name
+
+    def validate_programs(self, programs):
+        """Require each canonical mortgage program at most once."""
+        mortgage_program_identifiers = [
+            program['mortgage_program'].pk
+            for program in programs
+        ]
+        if len(mortgage_program_identifiers) != len(
+            set(mortgage_program_identifiers)
+        ):
+            raise serializers.ValidationError(
+                'Одна ипотечная программа указана несколько раз.'
+            )
+        return programs
+
+    def replace_programs(self, bank, programs):
+        """Replace program rows in one set-based operation."""
+        BankProgram.objects.filter(bank=bank).delete()
+        BankProgram.objects.bulk_create(
+            [
+                BankProgram(bank=bank, **program)
+                for program in programs
+            ]
+        )
+
+    @transaction.atomic
+    def create(self, validated_data):
+        """Create a bank and all submitted mortgage program rows."""
+        programs = validated_data.pop('programs', [])
+        bank = Bank.objects.create(**validated_data)
+        self.replace_programs(bank, programs)
+        return bank
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        """Update a bank and replace programs only when they were submitted."""
+        programs = validated_data.pop('programs', None)
+        for field_name, value in validated_data.items():
+            setattr(instance, field_name, value)
+        instance.save(update_fields=(*validated_data.keys(), 'updated_at'))
+        if programs is not None:
+            self.replace_programs(instance, programs)
         return instance
 
 

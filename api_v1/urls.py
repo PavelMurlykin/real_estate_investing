@@ -1,6 +1,9 @@
 from django.urls import path
 
 from .views import (
+    BankDetailAPIView,
+    BankListCreateAPIView,
+    BankOptionsAPIView,
     CompanyGroupDetailAPIView,
     CompanyGroupListCreateAPIView,
     DeveloperDetailAPIView,
@@ -45,6 +48,21 @@ urlpatterns = [
     path('auth/login/', LoginAPIView.as_view(), name='login'),
     path('auth/logout/', LogoutAPIView.as_view(), name='logout'),
     path('overview/', OverviewAPIView.as_view(), name='overview'),
+    path(
+        'banks/',
+        BankListCreateAPIView.as_view(),
+        name='bank_list',
+    ),
+    path(
+        'banks/options/',
+        BankOptionsAPIView.as_view(),
+        name='bank_options',
+    ),
+    path(
+        'banks/<int:pk>/',
+        BankDetailAPIView.as_view(),
+        name='bank_detail',
+    ),
     path(
         'location-dictionaries/options/',
         LocationDictionaryOptionsAPIView.as_view(),

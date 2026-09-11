@@ -49,6 +49,15 @@ const LocationDictionaryPage = lazy(async () => ({
   default: (await import('@/pages/LocationDictionaryPage'))
     .LocationDictionaryPage,
 }))
+const BankListPage = lazy(async () => ({
+  default: (await import('@/pages/BankListPage')).BankListPage,
+}))
+const BankDetailPage = lazy(async () => ({
+  default: (await import('@/pages/BankDetailPage')).BankDetailPage,
+}))
+const BankFormPage = lazy(async () => ({
+  default: (await import('@/pages/BankFormPage')).BankFormPage,
+}))
 const CustomerListPage = lazy(async () => ({
   default: (await import('@/pages/CustomerListPage')).CustomerListPage,
 }))
@@ -148,6 +157,10 @@ export function App() {
             path="locations/:dictionaryKey/:entryId/edit"
             element={<LocationDictionaryPage />}
           />
+          <Route path="banks" element={<BankListPage />} />
+          <Route path="banks/new" element={<BankFormPage />} />
+          <Route path="banks/:bankId" element={<BankDetailPage />} />
+          <Route path="banks/:bankId/edit" element={<BankFormPage />} />
           <Route path="customers" element={<CustomerListPage />} />
           <Route path="customers/new" element={<CustomerFormPage />} />
           <Route

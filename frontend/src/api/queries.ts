@@ -2,6 +2,9 @@ import { queryOptions } from '@tanstack/react-query'
 
 import { requestFile, requestJson, requestWithoutResponse } from './client'
 import {
+  bankDetailSchema,
+  bankListResponseSchema,
+  bankOptionsSchema,
   companyGroupListResponseSchema,
   companyGroupSchema,
   customerCalculationLinkResponseSchema,
@@ -36,6 +39,7 @@ import {
   trenchMortgageCalculationResponseSchema,
 } from './schemas'
 import type {
+  BankWriteRequest,
   CustomerCalculationLinkCreateRequest,
   CustomerCalculationSelection,
   CustomerCalculationProgramType,
@@ -64,6 +68,78 @@ export const overviewQueryOptions = queryOptions({
     requestJson('/api/v1/overview/', overviewSchema, { signal }),
   staleTime: 60_000,
 })
+
+export function bankListQueryOptions(searchParameters: URLSearchParams) {
+  const normalizedParameters = new URLSearchParams()
+  for (const fieldName of [
+    'q',
+    'scope',
+    'status',
+    'ordering',
+    'page',
+    'pageSize',
+  ]) {
+    const value = searchParameters.get(fieldName)
+    if (value) normalizedParameters.set(fieldName, value)
+  }
+  const queryString = normalizedParameters.toString()
+
+  return queryOptions({
+    queryKey: ['banks', queryString],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/banks/${queryString ? `?${queryString}` : ''}`,
+      bankListResponseSchema,
+      { signal },
+    ),
+    placeholderData: (previousData) => previousData,
+    staleTime: 30_000,
+  })
+}
+
+export function bankDetailQueryOptions(bankIdentifier: number) {
+  return queryOptions({
+    queryKey: ['bank', bankIdentifier],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/banks/${bankIdentifier}/`,
+      bankDetailSchema,
+      { signal },
+    ),
+    staleTime: 60_000,
+  })
+}
+
+export const bankOptionsQueryOptions = queryOptions({
+  queryKey: ['bank-options'],
+  queryFn: ({ signal }) => requestJson(
+    '/api/v1/banks/options/',
+    bankOptionsSchema,
+    { signal },
+  ),
+  staleTime: 5 * 60_000,
+})
+
+export function createBank(payload: BankWriteRequest) {
+  return requestJson('/api/v1/banks/', bankDetailSchema, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function updateBank(
+  bankIdentifier: number,
+  payload: BankWriteRequest,
+) {
+  return requestJson(`/api/v1/banks/${bankIdentifier}/`, bankDetailSchema, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function deleteBank(bankIdentifier: number) {
+  return requestWithoutResponse(`/api/v1/banks/${bankIdentifier}/`, {
+    method: 'DELETE',
+  })
+}
 
 export function companyGroupListQueryOptions(
   searchParameters: URLSearchParams,

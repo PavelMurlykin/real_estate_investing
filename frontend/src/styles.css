@@ -3655,3 +3655,209 @@ select:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+
+.bank-filter-panel {
+  grid-template-columns: minmax(260px, 1.5fr) repeat(3, minmax(160px, 0.6fr));
+  align-items: end;
+}
+
+.bank-table {
+  min-width: 760px;
+}
+
+.bank-identity {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.bank-logo {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: var(--brand);
+  background: var(--brand-soft);
+  border: 1px solid color-mix(in srgb, var(--brand) 18%, var(--border));
+  border-radius: 11px;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.bank-logo img,
+.bank-summary-card__logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.bank-summary-card {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: center;
+  gap: 28px;
+  padding: clamp(24px, 4vw, 38px);
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 30%), transparent 58%),
+    var(--brand-soft);
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--border));
+  border-radius: 22px;
+  box-shadow: var(--shadow-sm);
+}
+
+.bank-summary-card__logo {
+  width: 112px;
+  height: 112px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: var(--brand);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 900;
+}
+
+.bank-summary-card h2 {
+  margin: 12px 0 6px;
+  font-family: var(--font-display);
+  font-size: clamp(25px, 4vw, 36px);
+}
+
+.bank-summary-card p,
+.bank-program-empty p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.bank-program-table {
+  min-width: 680px;
+}
+
+.bank-form {
+  max-width: 1180px;
+}
+
+.bank-add-program {
+  margin-top: 18px;
+}
+
+.bank-program-editors {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.bank-program-empty {
+  display: grid;
+  gap: 6px;
+  padding: 24px;
+  background: var(--surface-muted);
+  border: 1px dashed var(--border-strong);
+  border-radius: 16px;
+}
+
+.bank-program-editor {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  margin: 0;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.bank-program-editor legend {
+  padding: 3px 8px;
+  color: var(--brand);
+  background: var(--brand-soft);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.bank-program-editor__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.bank-program-editor__heading > strong {
+  font-size: 13px;
+}
+
+.bank-program-fields {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 1180px) {
+  .bank-filter-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bank-filter-panel .search-form {
+    grid-column: 1 / -1;
+  }
+
+  .bank-programs-section {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bank-programs-section .customer-form-section__heading {
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 720px) {
+  .bank-filter-panel,
+  .bank-program-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bank-filter-panel .search-form,
+  .bank-program-fields .form-field--wide {
+    grid-column: auto;
+  }
+
+  .bank-summary-card {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .bank-summary-card__logo {
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    font-size: 28px;
+  }
+
+  .bank-program-editor {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 500px) {
+  .bank-summary-card {
+    grid-template-columns: 1fr;
+  }
+
+  .bank-add-program,
+  .bank-program-editor__heading .text-button {
+    width: 100%;
+  }
+
+  .bank-programs-section .customer-form-section__heading,
+  .bank-program-editor__heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

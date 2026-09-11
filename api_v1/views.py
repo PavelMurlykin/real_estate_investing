@@ -1,8 +1,8 @@
 from django.conf import settings
 from django.contrib.auth import login, logout
 from django.db import transaction
+from django.db.models import Count, Min, Prefetch, Q
 from django.db.models.deletion import ProtectedError
-from django.db.models import Count, Prefetch, Q
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -86,6 +86,10 @@ from .mortgage_service import (
 )
 from .pagination import ApplicationPageNumberPagination
 from .serializers import (
+    BankDetailSerializer,
+    BankListItemSerializer,
+    BankListQuerySerializer,
+    BankWriteSerializer,
     CompanyGroupListQuerySerializer,
     CompanyGroupSerializer,
     DeveloperListQuerySerializer,
@@ -1398,6 +1402,169 @@ class LocationDictionaryOptionsAPIView(APIView):
                     'cities': cities_truncated,
                     'metroLines': metro_lines_truncated,
                 },
+            }
+        )
+
+
+def _bank_list_queryset():
+    """Return banks with aggregate program data for the public list."""
+    return Bank.objects.annotate(
+        program_count=Count('bankprogram', distinct=True),
+        minimum_interest_rate=Min('bankprogram__interest_rate'),
+    )
+
+
+def _bank_detail_queryset():
+    """Return banks with all program rows prefetched in display order."""
+    programs = BankProgram.objects.select_related(
+        'mortgage_program'
+    ).order_by('mortgage_program__name', 'pk')
+    return Bank.objects.prefetch_related(
+        Prefetch(
+            'bankprogram_set',
+            queryset=programs,
+            to_attr='api_programs',
+        )
+    )
+
+
+class BankAPIViewMixin:
+    """Share bank permissions and normalized mutation responses."""
+
+    def get_permissions(self):
+        """Keep bank reads public and protect shared catalog mutations."""
+        if self.request.method == 'GET':
+            return (AllowAny(),)
+        return (IsAuthenticated(), CanManageCatalogs())
+
+    def get_response_serializer(self, bank):
+        """Serialize a refreshed bank after a successful mutation."""
+        refreshed_bank = _bank_detail_queryset().get(pk=bank.pk)
+        return BankDetailSerializer(
+            refreshed_bank,
+            context=self.get_serializer_context(),
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class BankListCreateAPIView(BankAPIViewMixin, ListCreateAPIView):
+    """List public banks and allow moderators to create complete cards."""
+
+    pagination_class = ApplicationPageNumberPagination
+
+    def get_serializer_class(self):
+        """Use compact list rows for reads and authoritative writes."""
+        if self.request.method == 'GET':
+            return BankListItemSerializer
+        return BankWriteSerializer
+
+    def get_queryset(self):
+        """Apply bounded search, scope, status, and aggregate ordering."""
+        query_serializer = BankListQuerySerializer(
+            data=self.request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        filters = query_serializer.validated_data
+        queryset = _bank_list_queryset()
+
+        search = filters.get('q', '')
+        if search:
+            queryset = queryset.filter(name__icontains=search)
+        if filters['scope'] == 'withPrograms':
+            queryset = queryset.filter(program_count__gt=0)
+        elif filters['scope'] == 'withoutPrograms':
+            queryset = queryset.filter(program_count=0)
+        if filters['status'] != 'all':
+            queryset = queryset.filter(
+                is_active=filters['status'] == 'active'
+            )
+
+        ordering = filters['ordering']
+        ordering_prefix = '-' if ordering.startswith('-') else ''
+        ordering_name = ordering.removeprefix('-')
+        ordering_field = {
+            'name': 'name',
+            'minimumInterestRate': 'minimum_interest_rate',
+            'updatedAt': 'updated_at',
+        }[ordering_name]
+        return queryset.order_by(
+            f'{ordering_prefix}{ordering_field}',
+            'name',
+            'pk',
+        )
+
+    def create(self, request, *args, **kwargs):
+        """Create a bank with programs and return the complete card."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        bank = serializer.save()
+        return Response(
+            self.get_response_serializer(bank).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class BankDetailAPIView(BankAPIViewMixin, RetrieveUpdateDestroyAPIView):
+    """Retrieve a public bank card and protect all mutations."""
+
+    def get_serializer_class(self):
+        """Use the detail contract for reads and write contract otherwise."""
+        if self.request.method == 'GET':
+            return BankDetailSerializer
+        return BankWriteSerializer
+
+    def get_queryset(self):
+        """Return the relation-efficient bank detail queryset."""
+        return _bank_detail_queryset()
+
+    def update(self, request, *args, **kwargs):
+        """Update a bank and return its complete normalized card."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=partial,
+        )
+        serializer.is_valid(raise_exception=True)
+        bank = serializer.save()
+        return Response(self.get_response_serializer(bank).data)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete a bank or report protected developer-program links."""
+        instance = self.get_object()
+        try:
+            instance.delete()
+        except ProtectedError:
+            return Response(
+                {
+                    'detail': (
+                        'Банк нельзя удалить, пока он используется '
+                        'в программах застройщиков.'
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class BankOptionsAPIView(APIView):
+    """Return bounded canonical mortgage programs for bank forms."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request):
+        """Return mortgage programs with explicit truncation metadata."""
+        maximum_results = settings.PUBLIC_CATALOG_API_MAX_RESULTS
+        mortgage_programs, programs_truncated = _build_bounded_option_rows(
+            MortgageProgram.objects.order_by('name', 'pk'),
+            maximum_results,
+        )
+        return Response(
+            {
+                'mortgagePrograms': mortgage_programs,
+                'truncated': programs_truncated,
             }
         )
 

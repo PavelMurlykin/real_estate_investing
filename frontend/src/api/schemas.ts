@@ -222,6 +222,53 @@ const namedOptionSchema = z.object({
   name: z.string(),
 })
 
+export const bankListItemSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  logoUrl: z.string(),
+  programCount: z.number().int().nonnegative(),
+  minimumInterestRate: z.string().nullable(),
+  isActive: z.boolean(),
+  updatedAt: z.iso.datetime({ offset: true }),
+  detailUrl: z.string(),
+  legacyDetailUrl: z.string(),
+})
+
+export const bankProgramSchema = z.object({
+  id: z.number().int().positive(),
+  mortgageProgramId: z.number().int().positive(),
+  mortgageProgramName: z.string(),
+  interestRate: z.string(),
+  minimumInitialPaymentPercent: z.string(),
+  maximumLoanTermYears: z.number().int().positive().nullable(),
+})
+
+export const bankDetailSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  logoUrl: z.string(),
+  isActive: z.boolean(),
+  createdAt: z.iso.datetime({ offset: true }),
+  updatedAt: z.iso.datetime({ offset: true }),
+  programs: z.array(bankProgramSchema),
+  legacyDetailUrl: z.string(),
+  legacyEditUrl: z.string(),
+  legacyCatalogUrl: z.string(),
+})
+
+export const bankListResponseSchema = z.object({
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  totalCount: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  results: z.array(bankListItemSchema),
+})
+
+export const bankOptionsSchema = z.object({
+  mortgagePrograms: z.array(namedOptionSchema),
+  truncated: z.boolean(),
+})
+
 export const developerPublicSchema = z.object({
   id: z.number().int().positive(),
   name: z.string(),
@@ -792,6 +839,10 @@ export type CompanyGroup = z.infer<typeof companyGroupSchema>
 export type CompanyGroupListResponse = z.infer<
   typeof companyGroupListResponseSchema
 >
+export type BankListItem = z.infer<typeof bankListItemSchema>
+export type BankListResponse = z.infer<typeof bankListResponseSchema>
+export type BankDetail = z.infer<typeof bankDetailSchema>
+export type BankOptions = z.infer<typeof bankOptionsSchema>
 export type PropertyDictionaryKey = z.infer<
   typeof propertyDictionaryKeySchema
 >
@@ -908,6 +959,20 @@ export type DeveloperWriteRequest = {
   primaryStateRegistrationNumber: string | null
   description: string | null
   isActive: boolean
+}
+
+export type BankProgramWriteRequest = {
+  mortgageProgramId: number
+  interestRate: string
+  minimumInitialPaymentPercent: string
+  maximumLoanTermYears: number | null
+}
+
+export type BankWriteRequest = {
+  name: string
+  logoUrl: string
+  isActive: boolean
+  programs: BankProgramWriteRequest[]
 }
 
 export type PropertyDictionaryWriteRequest = {
