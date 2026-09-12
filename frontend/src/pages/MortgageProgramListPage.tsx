@@ -145,7 +145,7 @@ export function MortgageProgramListPage() {
         <Link to="/mortgage-programs" aria-current="page">
           Ипотечные программы
         </Link>
-        <a href="/bank/developer-programs/">Программы застройщиков</a>
+        <Link to="/developer-programs">Программы застройщиков</Link>
       </nav>
 
       <section

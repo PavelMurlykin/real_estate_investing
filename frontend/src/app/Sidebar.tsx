@@ -69,6 +69,12 @@ const catalogItems: NavigationItem[] = [
     symbol: 'И',
     reactRoute: true,
   },
+  {
+    label: 'Программы застройщиков',
+    href: '/developer-programs',
+    symbol: 'П',
+    reactRoute: true,
+  },
   { label: 'Ключевая ставка', href: '/bank/key-rate/', symbol: '%' },
 ]
 

@@ -12,6 +12,7 @@ from rest_framework import serializers
 from bank.models import (
     Bank,
     BankProgram,
+    DeveloperMortgageProgram,
     MortgageProgram,
     MortgageProgramAlias,
     MortgageProgramRegionalCreditLimit,
@@ -1196,6 +1197,326 @@ class MortgageProgramWriteSerializer(serializers.Serializer):
         instance.save(update_fields=(*validated_data.keys(), 'updated_at'))
         self.replace_related_rows(instance, regional_limits, aliases)
         return instance
+
+
+class DeveloperMortgageProgramListQuerySerializer(serializers.Serializer):
+    """Validate filters and pagination for developer mortgage programs."""
+
+    q = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=100,
+        trim_whitespace=True,
+    )
+    companyGroupId = serializers.IntegerField(required=False, min_value=1)
+    realEstateComplexId = serializers.IntegerField(
+        required=False,
+        min_value=1,
+    )
+    bankId = serializers.IntegerField(required=False, min_value=1)
+    mortgageProgramId = serializers.IntegerField(required=False, min_value=1)
+    status = serializers.ChoiceField(
+        required=False,
+        choices=('all', 'active', 'inactive'),
+        default='all',
+    )
+    ordering = serializers.ChoiceField(
+        required=False,
+        choices=(
+            'companyGroup',
+            '-companyGroup',
+            'realEstateComplex',
+            '-realEstateComplex',
+            'bank',
+            '-bank',
+            'mortgageProgram',
+            '-mortgageProgram',
+            'interestRate',
+            '-interestRate',
+            'updatedAt',
+            '-updatedAt',
+        ),
+        default='companyGroup',
+    )
+    page = serializers.IntegerField(required=False, min_value=1, default=1)
+    pageSize = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=100,
+        default=20,
+    )
+
+
+class DeveloperMortgageProgramSerializer(serializers.Serializer):
+    """Serialize public developer-program conditions without source metadata."""
+
+    id = serializers.IntegerField(read_only=True)
+    companyGroupId = serializers.IntegerField(
+        source='company_group_id',
+        read_only=True,
+    )
+    companyGroupName = serializers.CharField(
+        source='company_group.name',
+        read_only=True,
+    )
+    realEstateComplexId = serializers.IntegerField(
+        source='real_estate_complex_id',
+        allow_null=True,
+        read_only=True,
+    )
+    realEstateComplexName = serializers.CharField(
+        source='real_estate_complex.name',
+        allow_null=True,
+        read_only=True,
+    )
+    complexDeveloperName = serializers.CharField(
+        source='real_estate_complex.developer.name',
+        allow_null=True,
+        read_only=True,
+    )
+    bankId = serializers.IntegerField(source='bank_id', read_only=True)
+    bankName = serializers.CharField(source='bank.name', read_only=True)
+    mortgageProgramId = serializers.IntegerField(
+        source='mortgage_program_id',
+        read_only=True,
+    )
+    mortgageProgramName = serializers.CharField(
+        source='mortgage_program.name',
+        read_only=True,
+    )
+    priceIncreasePercent = serializers.DecimalField(
+        source='price_increase_percent',
+        max_digits=6,
+        decimal_places=2,
+        allow_null=True,
+        read_only=True,
+    )
+    gracePeriodMonths = serializers.IntegerField(
+        source='grace_period_months',
+        allow_null=True,
+        read_only=True,
+    )
+    gracePeriodInterestRate = serializers.DecimalField(
+        source='grace_period_interest_rate',
+        max_digits=5,
+        decimal_places=2,
+        allow_null=True,
+        read_only=True,
+    )
+    minimumInitialPaymentPercent = serializers.DecimalField(
+        source='minimum_initial_payment_percent',
+        max_digits=5,
+        decimal_places=2,
+        allow_null=True,
+        read_only=True,
+    )
+    interestRate = serializers.DecimalField(
+        source='interest_rate',
+        max_digits=5,
+        decimal_places=2,
+        allow_null=True,
+        read_only=True,
+    )
+    maximumLoanTermYears = serializers.IntegerField(
+        source='maximum_loan_term_years',
+        allow_null=True,
+        read_only=True,
+    )
+    maximumLoanAmount = serializers.DecimalField(
+        source='maximum_loan_amount',
+        max_digits=15,
+        decimal_places=2,
+        allow_null=True,
+        read_only=True,
+    )
+    rateDiscountPercent = serializers.DecimalField(
+        source='rate_discount_percent',
+        max_digits=5,
+        decimal_places=2,
+        allow_null=True,
+        read_only=True,
+    )
+    isActive = serializers.BooleanField(source='is_active', read_only=True)
+    createdAt = serializers.DateTimeField(source='created_at', read_only=True)
+    updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
+    detailUrl = serializers.SerializerMethodField(method_name='get_detail_url')
+    legacyEditUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_edit_url'
+    )
+    legacyCatalogUrl = serializers.SerializerMethodField(
+        method_name='get_legacy_catalog_url'
+    )
+
+    def get_detail_url(self, developer_program):
+        """Return the React developer-program detail route."""
+        return f'/developer-programs/{developer_program.pk}'
+
+    def get_legacy_edit_url(self, developer_program):
+        """Return the preserved Django edit form URL."""
+        return reverse(
+            'bank:developer_mortgage_program_update',
+            kwargs={'pk': developer_program.pk},
+        )
+
+    def get_legacy_catalog_url(self, developer_program):
+        """Return the preserved Django developer-program directory URL."""
+        return reverse('bank:developer_mortgage_program_list')
+
+
+class DeveloperMortgageProgramWriteSerializer(serializers.ModelSerializer):
+    """Validate the editable conditions of one developer program."""
+
+    companyGroupId = serializers.PrimaryKeyRelatedField(
+        source='company_group',
+        queryset=CompanyGroup.objects.all(),
+    )
+    realEstateComplexId = serializers.PrimaryKeyRelatedField(
+        source='real_estate_complex',
+        queryset=RealEstateComplex.objects.select_related(
+            'developer__company_group'
+        ),
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    bankId = serializers.PrimaryKeyRelatedField(
+        source='bank',
+        queryset=Bank.objects.all(),
+    )
+    mortgageProgramId = serializers.PrimaryKeyRelatedField(
+        source='mortgage_program',
+        queryset=MortgageProgram.objects.all(),
+    )
+    priceIncreasePercent = serializers.DecimalField(
+        source='price_increase_percent',
+        max_digits=6,
+        decimal_places=2,
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    gracePeriodMonths = serializers.IntegerField(
+        source='grace_period_months',
+        min_value=1,
+        max_value=32767,
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    gracePeriodInterestRate = serializers.DecimalField(
+        source='grace_period_interest_rate',
+        max_digits=5,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        max_value=Decimal('100'),
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    minimumInitialPaymentPercent = serializers.DecimalField(
+        source='minimum_initial_payment_percent',
+        max_digits=5,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        max_value=Decimal('100'),
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    interestRate = serializers.DecimalField(
+        source='interest_rate',
+        max_digits=5,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        max_value=Decimal('100'),
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    maximumLoanTermYears = serializers.IntegerField(
+        source='maximum_loan_term_years',
+        min_value=1,
+        max_value=32767,
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    maximumLoanAmount = serializers.DecimalField(
+        source='maximum_loan_amount',
+        max_digits=15,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    rateDiscountPercent = serializers.DecimalField(
+        source='rate_discount_percent',
+        max_digits=5,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        max_value=Decimal('100'),
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    isActive = serializers.BooleanField(
+        source='is_active',
+        required=False,
+        default=True,
+    )
+
+    class Meta:
+        """Declare the manager-editable developer-program fields."""
+
+        model = DeveloperMortgageProgram
+        fields = (
+            'companyGroupId',
+            'realEstateComplexId',
+            'bankId',
+            'mortgageProgramId',
+            'priceIncreasePercent',
+            'gracePeriodMonths',
+            'gracePeriodInterestRate',
+            'minimumInitialPaymentPercent',
+            'interestRate',
+            'maximumLoanTermYears',
+            'maximumLoanAmount',
+            'rateDiscountPercent',
+            'isActive',
+        )
+
+    def validate(self, attributes):
+        """Require a selected complex to belong to the company group."""
+        company_group = attributes.get(
+            'company_group',
+            getattr(self.instance, 'company_group', None),
+        )
+        real_estate_complex = attributes.get(
+            'real_estate_complex',
+            getattr(self.instance, 'real_estate_complex', None),
+        )
+        if (
+            company_group is not None
+            and real_estate_complex is not None
+            and real_estate_complex.developer.company_group_id
+            != company_group.pk
+        ):
+            raise serializers.ValidationError(
+                {
+                    'realEstateComplexId': (
+                        'Выбранный ЖК не относится к указанной группе '
+                        'компаний.'
+                    )
+                }
+            )
+        return attributes
+
+
+class DeveloperMortgageProgramOptionsQuerySerializer(serializers.Serializer):
+    """Validate the selected company group for cascade complex choices."""
+
+    companyGroupId = serializers.IntegerField(required=False, min_value=1)
 
 
 class DeveloperListQuerySerializer(serializers.Serializer):

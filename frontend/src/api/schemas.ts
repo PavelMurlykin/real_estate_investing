@@ -331,6 +331,54 @@ export const mortgageProgramOptionsSchema = z.object({
   truncated: z.boolean(),
 })
 
+export const developerMortgageProgramSchema = z.object({
+  id: z.number().int().positive(),
+  companyGroupId: z.number().int().positive(),
+  companyGroupName: z.string(),
+  realEstateComplexId: z.number().int().positive().nullable(),
+  realEstateComplexName: z.string().nullable(),
+  complexDeveloperName: z.string().nullable(),
+  bankId: z.number().int().positive(),
+  bankName: z.string(),
+  mortgageProgramId: z.number().int().positive(),
+  mortgageProgramName: z.string(),
+  priceIncreasePercent: z.string().nullable(),
+  gracePeriodMonths: z.number().int().positive().nullable(),
+  gracePeriodInterestRate: z.string().nullable(),
+  minimumInitialPaymentPercent: z.string().nullable(),
+  interestRate: z.string().nullable(),
+  maximumLoanTermYears: z.number().int().positive().nullable(),
+  maximumLoanAmount: z.string().nullable(),
+  rateDiscountPercent: z.string().nullable(),
+  isActive: z.boolean(),
+  createdAt: z.iso.datetime({ offset: true }),
+  updatedAt: z.iso.datetime({ offset: true }),
+  detailUrl: z.string(),
+  legacyEditUrl: z.string(),
+  legacyCatalogUrl: z.string(),
+})
+
+export const developerMortgageProgramListResponseSchema = z.object({
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  totalCount: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  results: z.array(developerMortgageProgramSchema),
+})
+
+export const developerMortgageProgramOptionsSchema = z.object({
+  companyGroups: z.array(namedOptionSchema),
+  realEstateComplexes: z.array(namedOptionSchema),
+  banks: z.array(namedOptionSchema),
+  mortgagePrograms: z.array(namedOptionSchema),
+  truncated: z.object({
+    companyGroups: z.boolean(),
+    realEstateComplexes: z.boolean(),
+    banks: z.boolean(),
+    mortgagePrograms: z.boolean(),
+  }),
+})
+
 export const developerPublicSchema = z.object({
   id: z.number().int().positive(),
   name: z.string(),
@@ -917,6 +965,15 @@ export type MortgageProgramDetail = z.infer<
 export type MortgageProgramOptions = z.infer<
   typeof mortgageProgramOptionsSchema
 >
+export type DeveloperMortgageProgram = z.infer<
+  typeof developerMortgageProgramSchema
+>
+export type DeveloperMortgageProgramListResponse = z.infer<
+  typeof developerMortgageProgramListResponseSchema
+>
+export type DeveloperMortgageProgramOptions = z.infer<
+  typeof developerMortgageProgramOptionsSchema
+>
 export type PropertyDictionaryKey = z.infer<
   typeof propertyDictionaryKeySchema
 >
@@ -1069,6 +1126,22 @@ export type MortgageProgramWriteRequest = {
   isActive: boolean
   regionalCreditLimits: MortgageProgramRegionalLimitWriteRequest[]
   aliases: MortgageProgramAliasWriteRequest[]
+}
+
+export type DeveloperMortgageProgramWriteRequest = {
+  companyGroupId: number
+  realEstateComplexId: number | null
+  bankId: number
+  mortgageProgramId: number
+  priceIncreasePercent: string | null
+  gracePeriodMonths: number | null
+  gracePeriodInterestRate: string | null
+  minimumInitialPaymentPercent: string | null
+  interestRate: string | null
+  maximumLoanTermYears: number | null
+  maximumLoanAmount: string | null
+  rateDiscountPercent: string | null
+  isActive: boolean
 }
 
 export type PropertyDictionaryWriteRequest = {

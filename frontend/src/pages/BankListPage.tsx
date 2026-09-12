@@ -142,9 +142,9 @@ export function BankListPage() {
       <nav className="dictionary-tabs" aria-label="Разделы банков">
         <Link to="/banks" aria-current="page">Банки</Link>
         <Link to="/mortgage-programs">Ипотечные программы</Link>
-        <a href="/bank/?model=developer_mortgage_program">
+        <Link to="/developer-programs">
           Программы застройщиков
-        </a>
+        </Link>
       </nav>
 
       <section

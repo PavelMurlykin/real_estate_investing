@@ -70,6 +70,18 @@ const MortgageProgramFormPage = lazy(async () => ({
   default: (await import('@/pages/MortgageProgramFormPage'))
     .MortgageProgramFormPage,
 }))
+const DeveloperMortgageProgramListPage = lazy(async () => ({
+  default: (await import('@/pages/DeveloperMortgageProgramListPage'))
+    .DeveloperMortgageProgramListPage,
+}))
+const DeveloperMortgageProgramDetailPage = lazy(async () => ({
+  default: (await import('@/pages/DeveloperMortgageProgramDetailPage'))
+    .DeveloperMortgageProgramDetailPage,
+}))
+const DeveloperMortgageProgramFormPage = lazy(async () => ({
+  default: (await import('@/pages/DeveloperMortgageProgramFormPage'))
+    .DeveloperMortgageProgramFormPage,
+}))
 const CustomerListPage = lazy(async () => ({
   default: (await import('@/pages/CustomerListPage')).CustomerListPage,
 }))
@@ -188,6 +200,22 @@ export function App() {
           <Route
             path="mortgage-programs/:mortgageProgramId/edit"
             element={<MortgageProgramFormPage />}
+          />
+          <Route
+            path="developer-programs"
+            element={<DeveloperMortgageProgramListPage />}
+          />
+          <Route
+            path="developer-programs/new"
+            element={<DeveloperMortgageProgramFormPage />}
+          />
+          <Route
+            path="developer-programs/:developerProgramId"
+            element={<DeveloperMortgageProgramDetailPage />}
+          />
+          <Route
+            path="developer-programs/:developerProgramId/edit"
+            element={<DeveloperMortgageProgramFormPage />}
           />
           <Route path="customers" element={<CustomerListPage />} />
           <Route path="customers/new" element={<CustomerFormPage />} />

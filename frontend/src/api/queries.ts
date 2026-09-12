@@ -14,6 +14,9 @@ import {
   customerListResponseSchema,
   customerMutationResponseSchema,
   developerListResponseSchema,
+  developerMortgageProgramListResponseSchema,
+  developerMortgageProgramOptionsSchema,
+  developerMortgageProgramSchema,
   developerOptionsSchema,
   developerSchema,
   locationDictionaryEntrySchema,
@@ -47,6 +50,7 @@ import type {
   CustomerCalculationSelection,
   CustomerCalculationProgramType,
   CustomerWriteRequest,
+  DeveloperMortgageProgramWriteRequest,
   DeveloperWriteRequest,
   LocationDictionaryKey,
   LocationDictionaryWriteRequest,
@@ -220,6 +224,98 @@ export function updateMortgageProgram(
 export function deleteMortgageProgram(mortgageProgramIdentifier: number) {
   return requestWithoutResponse(
     `/api/v1/mortgage-programs/${mortgageProgramIdentifier}/`,
+    { method: 'DELETE' },
+  )
+}
+
+export function developerMortgageProgramListQueryOptions(
+  searchParameters: URLSearchParams,
+) {
+  const normalizedParameters = new URLSearchParams()
+  for (const fieldName of [
+    'q',
+    'companyGroupId',
+    'realEstateComplexId',
+    'bankId',
+    'mortgageProgramId',
+    'status',
+    'ordering',
+    'page',
+    'pageSize',
+  ]) {
+    const value = searchParameters.get(fieldName)
+    if (value) normalizedParameters.set(fieldName, value)
+  }
+  const queryString = normalizedParameters.toString()
+  return queryOptions({
+    queryKey: ['developer-mortgage-programs', queryString],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/developer-mortgage-programs/${queryString ? `?${queryString}` : ''}`,
+      developerMortgageProgramListResponseSchema,
+      { signal },
+    ),
+    placeholderData: (previousData) => previousData,
+    staleTime: 30_000,
+  })
+}
+
+export function developerMortgageProgramDetailQueryOptions(
+  developerProgramIdentifier: number,
+) {
+  return queryOptions({
+    queryKey: ['developer-mortgage-program', developerProgramIdentifier],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/developer-mortgage-programs/${developerProgramIdentifier}/`,
+      developerMortgageProgramSchema,
+      { signal },
+    ),
+    staleTime: 60_000,
+  })
+}
+
+export function developerMortgageProgramOptionsQueryOptions(
+  companyGroupIdentifier: number | null,
+) {
+  const queryString = companyGroupIdentifier
+    ? `?companyGroupId=${companyGroupIdentifier}`
+    : ''
+  return queryOptions({
+    queryKey: ['developer-mortgage-program-options', companyGroupIdentifier],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/developer-mortgage-programs/options/${queryString}`,
+      developerMortgageProgramOptionsSchema,
+      { signal },
+    ),
+    staleTime: 5 * 60_000,
+  })
+}
+
+export function createDeveloperMortgageProgram(
+  payload: DeveloperMortgageProgramWriteRequest,
+) {
+  return requestJson(
+    '/api/v1/developer-mortgage-programs/',
+    developerMortgageProgramSchema,
+    { method: 'POST', body: JSON.stringify(payload) },
+  )
+}
+
+export function updateDeveloperMortgageProgram(
+  developerProgramIdentifier: number,
+  payload: DeveloperMortgageProgramWriteRequest,
+) {
+  return requestJson(
+    `/api/v1/developer-mortgage-programs/${developerProgramIdentifier}/`,
+    developerMortgageProgramSchema,
+    { method: 'PATCH', body: JSON.stringify(payload) },
+  )
+}
+
+export function deleteDeveloperMortgageProgram(
+  developerProgramIdentifier: number,
+) {
+  return requestWithoutResponse(
+    `/api/v1/developer-mortgage-programs/${developerProgramIdentifier}/`,
     { method: 'DELETE' },
   )
 }

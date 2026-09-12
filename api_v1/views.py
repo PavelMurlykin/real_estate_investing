@@ -27,6 +27,7 @@ from rest_framework.views import APIView
 from bank.models import (
     Bank,
     BankProgram,
+    DeveloperMortgageProgram,
     KeyRate,
     MortgageProgram,
     MortgageProgramAlias,
@@ -96,6 +97,10 @@ from .serializers import (
     DeveloperListQuerySerializer,
     DeveloperPublicSerializer,
     DeveloperSerializer,
+    DeveloperMortgageProgramListQuerySerializer,
+    DeveloperMortgageProgramOptionsQuerySerializer,
+    DeveloperMortgageProgramSerializer,
+    DeveloperMortgageProgramWriteSerializer,
     CustomerDetailSerializer,
     CustomerCalculationExportRequestSerializer,
     CustomerCalculationLinkCreateSerializer,
@@ -1756,6 +1761,208 @@ class MortgageProgramOptionsAPIView(APIView):
             {
                 'regions': regions,
                 'truncated': regions_truncated,
+            }
+        )
+
+
+def _developer_mortgage_program_queryset():
+    """Return developer programs with all public references preloaded."""
+    return DeveloperMortgageProgram.objects.select_related(
+        'company_group',
+        'real_estate_complex__developer',
+        'bank',
+        'mortgage_program',
+    )
+
+
+class DeveloperMortgageProgramAPIViewMixin:
+    """Share public read and catalog-manager mutation behavior."""
+
+    def get_permissions(self):
+        """Allow public reads and require catalog permissions for writes."""
+        if self.request.method == 'GET':
+            return (AllowAny(),)
+        return (IsAuthenticated(), CanManageCatalogs())
+
+    def serialize_response(self, developer_program):
+        """Return a refreshed, relation-complete program representation."""
+        refreshed_program = _developer_mortgage_program_queryset().get(
+            pk=developer_program.pk
+        )
+        return DeveloperMortgageProgramSerializer(
+            refreshed_program,
+            context=self.get_serializer_context(),
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class DeveloperMortgageProgramListCreateAPIView(
+    DeveloperMortgageProgramAPIViewMixin,
+    ListCreateAPIView,
+):
+    """List public developer programs and allow manager creation."""
+
+    pagination_class = ApplicationPageNumberPagination
+
+    def get_serializer_class(self):
+        """Use the public contract for reads and validated fields for writes."""
+        if self.request.method == 'GET':
+            return DeveloperMortgageProgramSerializer
+        return DeveloperMortgageProgramWriteSerializer
+
+    def get_queryset(self):
+        """Apply validated search, reference, status, and ordering filters."""
+        query_serializer = DeveloperMortgageProgramListQuerySerializer(
+            data=self.request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        filters = query_serializer.validated_data
+        queryset = _developer_mortgage_program_queryset()
+
+        search = filters.get('q', '')
+        if search:
+            queryset = queryset.filter(
+                Q(company_group__name__icontains=search)
+                | Q(real_estate_complex__name__icontains=search)
+                | Q(real_estate_complex__developer__name__icontains=search)
+                | Q(bank__name__icontains=search)
+                | Q(mortgage_program__name__icontains=search)
+            )
+        reference_filters = {
+            'companyGroupId': 'company_group_id',
+            'realEstateComplexId': 'real_estate_complex_id',
+            'bankId': 'bank_id',
+            'mortgageProgramId': 'mortgage_program_id',
+        }
+        for query_name, model_field in reference_filters.items():
+            if filters.get(query_name):
+                queryset = queryset.filter(
+                    **{model_field: filters[query_name]}
+                )
+        if filters['status'] != 'all':
+            queryset = queryset.filter(
+                is_active=filters['status'] == 'active'
+            )
+
+        ordering = filters['ordering']
+        ordering_prefix = '-' if ordering.startswith('-') else ''
+        ordering_name = ordering.removeprefix('-')
+        ordering_field = {
+            'companyGroup': 'company_group__name',
+            'realEstateComplex': 'real_estate_complex__name',
+            'bank': 'bank__name',
+            'mortgageProgram': 'mortgage_program__name',
+            'interestRate': 'interest_rate',
+            'updatedAt': 'updated_at',
+        }[ordering_name]
+        return queryset.order_by(
+            f'{ordering_prefix}{ordering_field}',
+            'company_group__name',
+            'pk',
+        )
+
+    def create(self, request, *args, **kwargs):
+        """Create one developer program and return its public card."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        developer_program = serializer.save()
+        return Response(
+            self.serialize_response(developer_program).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class DeveloperMortgageProgramDetailAPIView(
+    DeveloperMortgageProgramAPIViewMixin,
+    RetrieveUpdateDestroyAPIView,
+):
+    """Retrieve public conditions and protect program mutations."""
+
+    queryset = _developer_mortgage_program_queryset()
+
+    def get_serializer_class(self):
+        """Use separate read and write contracts."""
+        if self.request.method == 'GET':
+            return DeveloperMortgageProgramSerializer
+        return DeveloperMortgageProgramWriteSerializer
+
+    def update(self, request, *args, **kwargs):
+        """Update editable conditions and return the refreshed card."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=partial,
+        )
+        serializer.is_valid(raise_exception=True)
+        developer_program = serializer.save()
+        return Response(self.serialize_response(developer_program).data)
+
+
+class DeveloperMortgageProgramOptionsAPIView(APIView):
+    """Return bounded public choices for filters and manager forms."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request):
+        """Return primary choices and group-scoped residential complexes."""
+        query_serializer = DeveloperMortgageProgramOptionsQuerySerializer(
+            data=request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        company_group_id = query_serializer.validated_data.get(
+            'companyGroupId'
+        )
+        maximum_results = settings.PUBLIC_CATALOG_API_MAX_RESULTS
+        company_groups, company_groups_truncated = _build_bounded_option_rows(
+            CompanyGroup.objects.order_by('name', 'pk'),
+            maximum_results,
+        )
+        banks, banks_truncated = _build_bounded_option_rows(
+            Bank.objects.order_by('name', 'pk'),
+            maximum_results,
+        )
+        mortgage_programs, mortgage_programs_truncated = (
+            _build_bounded_option_rows(
+                MortgageProgram.objects.order_by('name', 'pk'),
+                maximum_results,
+            )
+        )
+
+        complex_objects = []
+        if company_group_id:
+            complex_objects = list(
+                RealEstateComplex.objects.select_related('developer')
+                .filter(developer__company_group_id=company_group_id)
+                .order_by('name', 'developer__name', 'pk')
+                [:maximum_results + 1]
+            )
+        real_estate_complexes = [
+            {
+                'id': real_estate_complex.pk,
+                'name': (
+                    f'{real_estate_complex.name} '
+                    f'({real_estate_complex.developer.name})'
+                ),
+            }
+            for real_estate_complex in complex_objects[:maximum_results]
+        ]
+        complexes_truncated = len(complex_objects) > maximum_results
+
+        return Response(
+            {
+                'companyGroups': company_groups,
+                'realEstateComplexes': real_estate_complexes,
+                'banks': banks,
+                'mortgagePrograms': mortgage_programs,
+                'truncated': {
+                    'companyGroups': company_groups_truncated,
+                    'realEstateComplexes': complexes_truncated,
+                    'banks': banks_truncated,
+                    'mortgagePrograms': mortgage_programs_truncated,
+                },
             }
         )
 
