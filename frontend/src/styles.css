@@ -2015,6 +2015,188 @@ select:focus-visible {
   }
 }
 
+.mortgage-program-filter-panel {
+  grid-template-columns: minmax(240px, 1.5fr) repeat(3, minmax(150px, 1fr));
+}
+
+.mortgage-program-filter-panel .search-form {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.mortgage-program-table {
+  min-width: 1050px;
+}
+
+.mortgage-program-name-cell {
+  min-width: 210px;
+}
+
+.mortgage-program-name-cell small,
+.mortgage-program-mobile-condition {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.mortgage-program-summary-card {
+  display: grid;
+  gap: 24px;
+  padding: clamp(24px, 4vw, 38px);
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 32%), transparent 58%),
+    var(--brand-soft);
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--border));
+  border-radius: 22px;
+  box-shadow: var(--shadow-sm);
+}
+
+.mortgage-program-summary-card__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.mortgage-program-summary-card h2 {
+  margin: 10px 0 8px;
+  font-family: var(--font-display);
+  font-size: clamp(25px, 4vw, 36px);
+}
+
+.mortgage-program-summary-card p {
+  max-width: 780px;
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.mortgage-program-type-badge {
+  flex: none;
+  padding: 8px 12px;
+  color: var(--brand);
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, var(--border));
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mortgage-program-facts {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.mortgage-program-related-table {
+  min-width: 620px;
+}
+
+.mortgage-program-related-table code {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.mortgage-program-form {
+  max-width: 1180px;
+}
+
+.nested-editor-add-button {
+  margin-top: 18px;
+}
+
+.nested-editor-list {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.nested-editor-card {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  margin: 0;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.nested-editor-card legend {
+  padding: 3px 8px;
+  color: var(--brand);
+  background: var(--brand-soft);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.nested-editor-card__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.nested-editor-fields {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.nested-editor-status {
+  align-self: end;
+}
+
+@media (max-width: 1180px) {
+  .mortgage-program-filter-panel,
+  .mortgage-program-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mortgage-program-filter-panel .search-form {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .mortgage-program-filter-panel,
+  .mortgage-program-facts,
+  .nested-editor-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mortgage-program-filter-panel .search-form {
+    grid-column: auto;
+  }
+
+  .mortgage-program-summary-card__heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .mortgage-program-type-badge {
+    align-self: flex-start;
+  }
+
+  .nested-editor-card {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 500px) {
+  .nested-editor-add-button,
+  .nested-editor-card__heading .text-button {
+    width: 100%;
+  }
+
+  .nested-editor-card__heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 @media (max-width: 1180px) {
   .statistics-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

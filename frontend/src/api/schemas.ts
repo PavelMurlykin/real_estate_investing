@@ -269,6 +269,68 @@ export const bankOptionsSchema = z.object({
   truncated: z.boolean(),
 })
 
+export const mortgageProgramListItemSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  condition: z.string(),
+  isPreferential: z.boolean(),
+  creditLimit: z.string().nullable(),
+  bankCount: z.number().int().nonnegative(),
+  developerProgramCount: z.number().int().nonnegative(),
+  regionalLimitCount: z.number().int().nonnegative(),
+  aliasCount: z.number().int().nonnegative(),
+  isActive: z.boolean(),
+  updatedAt: z.iso.datetime({ offset: true }),
+  detailUrl: z.string(),
+  legacyEditUrl: z.string(),
+})
+
+const mortgageProgramRegionalLimitSchema = z.object({
+  id: z.number().int().positive(),
+  regionId: z.number().int().positive(),
+  regionName: z.string(),
+  creditLimit: z.string(),
+  isActive: z.boolean(),
+})
+
+const mortgageProgramAliasSchema = z.object({
+  id: z.number().int().positive(),
+  sourceName: z.string(),
+  normalizedName: z.string(),
+  source: z.string(),
+  isActive: z.boolean(),
+})
+
+export const mortgageProgramDetailSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  condition: z.string(),
+  isPreferential: z.boolean(),
+  creditLimit: z.string().nullable(),
+  bankCount: z.number().int().nonnegative(),
+  developerProgramCount: z.number().int().nonnegative(),
+  isActive: z.boolean(),
+  createdAt: z.iso.datetime({ offset: true }),
+  updatedAt: z.iso.datetime({ offset: true }),
+  regionalCreditLimits: z.array(mortgageProgramRegionalLimitSchema).max(100),
+  aliases: z.array(mortgageProgramAliasSchema).max(100),
+  legacyEditUrl: z.string(),
+  legacyCatalogUrl: z.string(),
+})
+
+export const mortgageProgramListResponseSchema = z.object({
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  totalCount: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  results: z.array(mortgageProgramListItemSchema),
+})
+
+export const mortgageProgramOptionsSchema = z.object({
+  regions: z.array(namedOptionSchema),
+  truncated: z.boolean(),
+})
+
 export const developerPublicSchema = z.object({
   id: z.number().int().positive(),
   name: z.string(),
@@ -843,6 +905,18 @@ export type BankListItem = z.infer<typeof bankListItemSchema>
 export type BankListResponse = z.infer<typeof bankListResponseSchema>
 export type BankDetail = z.infer<typeof bankDetailSchema>
 export type BankOptions = z.infer<typeof bankOptionsSchema>
+export type MortgageProgramListItem = z.infer<
+  typeof mortgageProgramListItemSchema
+>
+export type MortgageProgramListResponse = z.infer<
+  typeof mortgageProgramListResponseSchema
+>
+export type MortgageProgramDetail = z.infer<
+  typeof mortgageProgramDetailSchema
+>
+export type MortgageProgramOptions = z.infer<
+  typeof mortgageProgramOptionsSchema
+>
 export type PropertyDictionaryKey = z.infer<
   typeof propertyDictionaryKeySchema
 >
@@ -973,6 +1047,28 @@ export type BankWriteRequest = {
   logoUrl: string
   isActive: boolean
   programs: BankProgramWriteRequest[]
+}
+
+export type MortgageProgramRegionalLimitWriteRequest = {
+  regionId: number
+  creditLimit: string
+  isActive: boolean
+}
+
+export type MortgageProgramAliasWriteRequest = {
+  sourceName: string
+  source: string
+  isActive: boolean
+}
+
+export type MortgageProgramWriteRequest = {
+  name: string
+  condition: string
+  isPreferential: boolean
+  creditLimit: string | null
+  isActive: boolean
+  regionalCreditLimits: MortgageProgramRegionalLimitWriteRequest[]
+  aliases: MortgageProgramAliasWriteRequest[]
 }
 
 export type PropertyDictionaryWriteRequest = {

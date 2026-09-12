@@ -22,6 +22,9 @@ from .views import (
     LogoutAPIView,
     MortgageCalculationAPIView,
     MortgageOptionsAPIView,
+    MortgageProgramDetailAPIView,
+    MortgageProgramListCreateAPIView,
+    MortgageProgramOptionsAPIView,
     OverviewAPIView,
     PropertyDictionaryDetailAPIView,
     PropertyDictionaryListCreateAPIView,
@@ -62,6 +65,21 @@ urlpatterns = [
         'banks/<int:pk>/',
         BankDetailAPIView.as_view(),
         name='bank_detail',
+    ),
+    path(
+        'mortgage-programs/',
+        MortgageProgramListCreateAPIView.as_view(),
+        name='mortgage_program_list',
+    ),
+    path(
+        'mortgage-programs/options/',
+        MortgageProgramOptionsAPIView.as_view(),
+        name='mortgage_program_options',
+    ),
+    path(
+        'mortgage-programs/<int:pk>/',
+        MortgageProgramDetailAPIView.as_view(),
+        name='mortgage_program_detail',
     ),
     path(
         'location-dictionaries/options/',

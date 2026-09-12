@@ -5,73 +5,68 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import { ApiError } from '@/api/client'
 import {
-  bankListQueryOptions,
-  deleteBank,
+  deleteMortgageProgram,
+  mortgageProgramListQueryOptions,
   sessionQueryOptions,
 } from '@/api/queries'
-import type { BankListItem } from '@/api/schemas'
-import { formatInteger, formatPercent } from '@/shared/lib/formatters'
+import type { MortgageProgramListItem } from '@/api/schemas'
+import { formatCurrency, formatInteger } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 
 const orderingOptions = [
   { value: 'name', label: 'По названию: А–Я' },
   { value: '-name', label: 'По названию: Я–А' },
-  { value: 'minimumInterestRate', label: 'Сначала с низкой ставкой' },
-  { value: '-minimumInterestRate', label: 'Сначала с высокой ставкой' },
+  { value: 'creditLimit', label: 'Сначала с меньшим лимитом' },
+  { value: '-creditLimit', label: 'Сначала с большим лимитом' },
   { value: '-updatedAt', label: 'Недавно изменённые' },
 ]
 
-function BankIdentity({ bank }: { bank: BankListItem }) {
-  return (
-    <div className="bank-identity">
-      <span className="bank-logo" aria-hidden="true">
-        {bank.logoUrl ? (
-          <img
-            src={bank.logoUrl}
-            alt=""
-            loading="lazy"
-            referrerPolicy="no-referrer"
-          />
-        ) : bank.name.slice(0, 1).toUpperCase()}
-      </span>
-      <Link className="text-link" to={`/banks/${bank.id}`}>
-        {bank.name}
-      </Link>
-    </div>
+function usageLabel(mortgageProgram: MortgageProgramListItem) {
+  const usageCount = (
+    mortgageProgram.bankCount + mortgageProgram.developerProgramCount
   )
+  return usageCount
+    ? `${formatInteger(usageCount)} связей`
+    : 'Не используется'
 }
 
-export function BankListPage() {
-  useDocumentTitle('Банки и программы')
+export function MortgageProgramListPage() {
+  useDocumentTitle('Ипотечные программы')
   const [searchParameters, setSearchParameters] = useSearchParams()
-  const bankQuery = useQuery(bankListQueryOptions(searchParameters))
+  const programQuery = useQuery(
+    mortgageProgramListQueryOptions(searchParameters),
+  )
   const sessionQuery = useQuery(sessionQueryOptions)
   const queryClient = useQueryClient()
-  const [selectedBank, setSelectedBank] = useState<BankListItem | null>(null)
+  const [selectedProgram, setSelectedProgram] = (
+    useState<MortgageProgramListItem | null>(null)
+  )
   const deleteTriggerRef = useRef<HTMLButtonElement | null>(null)
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
   const deleteMutation = useMutation({
-    mutationFn: (bankIdentifier: number) => deleteBank(bankIdentifier),
+    mutationFn: (mortgageProgramIdentifier: number) => (
+      deleteMortgageProgram(mortgageProgramIdentifier)
+    ),
     onSuccess: async () => {
-      setSelectedBank(null)
-      await queryClient.invalidateQueries({ queryKey: ['banks'] })
+      setSelectedProgram(null)
+      await queryClient.invalidateQueries({ queryKey: ['mortgage-programs'] })
       window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
     },
   })
 
   useEffect(() => {
-    if (!selectedBank) return
+    if (!selectedProgram) return
     cancelButtonRef.current?.focus()
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !deleteMutation.isPending) {
-        setSelectedBank(null)
+        setSelectedProgram(null)
         window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [deleteMutation.isPending, selectedBank])
+  }, [deleteMutation.isPending, selectedProgram])
 
   const updateParameters = (updates: Record<string, string | null>) => {
     const nextParameters = new URLSearchParams(searchParameters)
@@ -92,76 +87,82 @@ export function BankListPage() {
   }
 
   const openDeleteDialog = (
-    bank: BankListItem,
+    mortgageProgram: MortgageProgramListItem,
     trigger: HTMLButtonElement,
   ) => {
     deleteMutation.reset()
     deleteTriggerRef.current = trigger
-    setSelectedBank(bank)
+    setSelectedProgram(mortgageProgram)
   }
 
   const closeDeleteDialog = () => {
     if (deleteMutation.isPending) return
-    setSelectedBank(null)
+    setSelectedProgram(null)
     window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
   }
 
-  if (bankQuery.isLoading) return <PageLoadingState />
-  if (bankQuery.isError || !bankQuery.data) {
-    return <ErrorState onRetry={() => void bankQuery.refetch()} />
+  if (programQuery.isLoading) return <PageLoadingState />
+  if (programQuery.isError || !programQuery.data) {
+    return <ErrorState onRetry={() => void programQuery.refetch()} />
   }
 
   const canManageCatalogs = (
     sessionQuery.data?.capabilities.manageCatalogs === true
   )
-  const { results, page, totalCount, totalPages } = bankQuery.data
+  const { results, page, totalCount, totalPages } = programQuery.data
 
   return (
-    <div className="page-stack bank-list-page">
+    <div className="page-stack mortgage-program-list-page">
       <header className="page-header">
         <div>
           <span className="eyebrow">Финансовые справочники</span>
-          <h1>Банки и программы</h1>
+          <h1>Ипотечные программы</h1>
           <p>
-            Банки, доступные ипотечные программы, ставки, первый взнос и
-            предельный срок кредита.
+            Единые названия программ, федеральные и региональные лимиты,
+            а также алиасы для сопоставления импортируемых данных.
           </p>
         </div>
         <div className="page-header__actions">
-          <a className="button button--secondary" href="/bank/">
+          <a
+            className="button button--secondary"
+            href="/bank/?model=mortgage_program"
+          >
             Прежняя версия
           </a>
           {canManageCatalogs ? (
-            <Link className="button button--primary" to="/banks/new">
-              Добавить банк
+            <Link
+              className="button button--primary"
+              to="/mortgage-programs/new"
+            >
+              Добавить программу
             </Link>
           ) : null}
         </div>
       </header>
 
       <nav className="dictionary-tabs" aria-label="Разделы банков">
-        <Link to="/banks" aria-current="page">Банки</Link>
-        <Link to="/mortgage-programs">Ипотечные программы</Link>
-        <a href="/bank/?model=developer_mortgage_program">
-          Программы застройщиков
-        </a>
+        <Link to="/banks">Банки</Link>
+        <Link to="/mortgage-programs" aria-current="page">
+          Ипотечные программы
+        </Link>
+        <a href="/bank/developer-programs/">Программы застройщиков</a>
       </nav>
 
       <section
-        className="filter-panel bank-filter-panel"
-        aria-label="Фильтры банков"
+        className="filter-panel mortgage-program-filter-panel"
+        aria-label="Фильтры ипотечных программ"
       >
         <form className="search-form" role="search" onSubmit={handleSearch}>
-          <label htmlFor="bank-search">Поиск</label>
+          <label htmlFor="mortgage-program-search">Поиск</label>
           <div className="search-control">
             <span aria-hidden="true">⌕</span>
             <input
-              id="bank-search"
+              id="mortgage-program-search"
               name="q"
               type="search"
               key={searchParameters.get('q') ?? ''}
               defaultValue={searchParameters.get('q') ?? ''}
-              placeholder="Название банка"
+              placeholder="Название, условие или алиас"
             />
             <button className="button button--dark" type="submit">
               Найти
@@ -169,24 +170,24 @@ export function BankListPage() {
           </div>
         </form>
         <div className="sort-control">
-          <label htmlFor="bank-program-scope">Программы</label>
+          <label htmlFor="mortgage-program-type">Тип программы</label>
           <select
-            id="bank-program-scope"
-            value={searchParameters.get('scope') ?? 'all'}
+            id="mortgage-program-type"
+            value={searchParameters.get('programType') ?? 'all'}
             onChange={(event) => updateParameters({
-              scope: event.target.value,
+              programType: event.target.value,
               page: null,
             })}
           >
-            <option value="all">Все банки</option>
-            <option value="withPrograms">С программами</option>
-            <option value="withoutPrograms">Без программ</option>
+            <option value="all">Все программы</option>
+            <option value="preferential">Льготные</option>
+            <option value="market">Рыночные</option>
           </select>
         </div>
         <div className="sort-control">
-          <label htmlFor="bank-status">Статус</label>
+          <label htmlFor="mortgage-program-status">Статус</label>
           <select
-            id="bank-status"
+            id="mortgage-program-status"
             value={searchParameters.get('status') ?? 'all'}
             onChange={(event) => updateParameters({
               status: event.target.value,
@@ -199,9 +200,9 @@ export function BankListPage() {
           </select>
         </div>
         <div className="sort-control">
-          <label htmlFor="bank-ordering">Сортировка</label>
+          <label htmlFor="mortgage-program-ordering">Сортировка</label>
           <select
-            id="bank-ordering"
+            id="mortgage-program-ordering"
             value={searchParameters.get('ordering') ?? 'name'}
             onChange={(event) => updateParameters({
               ordering: event.target.value,
@@ -218,30 +219,37 @@ export function BankListPage() {
       </section>
 
       <div className="results-heading" aria-live="polite">
-        <p>Банков: <strong>{formatInteger(totalCount)}</strong></p>
-        {bankQuery.isFetching ? <span>Обновляем…</span> : null}
+        <p>Программ: <strong>{formatInteger(totalCount)}</strong></p>
+        {programQuery.isFetching ? <span>Обновляем…</span> : null}
       </div>
 
       {results.length === 0 ? (
         <EmptyState
-          title="Банки не найдены"
-          description="Измените параметры поиска или добавьте новую запись."
+          title="Ипотечные программы не найдены"
+          description="Измените фильтры или добавьте новую программу."
           action={canManageCatalogs ? (
-            <Link className="button button--primary" to="/banks/new">
-              Добавить банк
+            <Link
+              className="button button--primary"
+              to="/mortgage-programs/new"
+            >
+              Добавить программу
             </Link>
           ) : undefined}
         />
       ) : (
         <>
           <div className="table-card property-table-wrapper">
-            <table className="property-table catalog-table bank-table">
-              <caption className="visually-hidden">Список банков</caption>
+            <table className="property-table catalog-table mortgage-program-table">
+              <caption className="visually-hidden">
+                Список ипотечных программ
+              </caption>
               <thead>
                 <tr>
-                  <th scope="col">Банк</th>
-                  <th scope="col">Программ</th>
-                  <th scope="col">Мин. ставка</th>
+                  <th scope="col">Программа</th>
+                  <th scope="col">Тип</th>
+                  <th scope="col">Кредитный лимит</th>
+                  <th scope="col">Использование</th>
+                  <th scope="col">Лимиты / алиасы</th>
                   <th scope="col">Статус</th>
                   {canManageCatalogs ? (
                     <th scope="col"><span className="visually-hidden">Действия</span></th>
@@ -249,20 +257,35 @@ export function BankListPage() {
                 </tr>
               </thead>
               <tbody>
-                {results.map((bank) => (
-                  <tr key={bank.id}>
-                    <td><BankIdentity bank={bank} /></td>
-                    <td>{formatInteger(bank.programCount)}</td>
-                    <td>
-                      {bank.minimumInterestRate
-                        ? `от ${formatPercent(bank.minimumInterestRate)}`
-                        : '—'}
+                {results.map((mortgageProgram) => (
+                  <tr key={mortgageProgram.id}>
+                    <td className="mortgage-program-name-cell">
+                      <Link
+                        className="text-link"
+                        to={`/mortgage-programs/${mortgageProgram.id}`}
+                      >
+                        {mortgageProgram.name}
+                      </Link>
+                      <small>{mortgageProgram.condition}</small>
                     </td>
                     <td>
-                      <span className={bank.isActive
+                      {mortgageProgram.isPreferential ? 'Льготная' : 'Рыночная'}
+                    </td>
+                    <td>
+                      {mortgageProgram.creditLimit
+                        ? formatCurrency(mortgageProgram.creditLimit)
+                        : '—'}
+                    </td>
+                    <td>{usageLabel(mortgageProgram)}</td>
+                    <td>
+                      {formatInteger(mortgageProgram.regionalLimitCount)} /{' '}
+                      {formatInteger(mortgageProgram.aliasCount)}
+                    </td>
+                    <td>
+                      <span className={mortgageProgram.isActive
                         ? 'catalog-status'
                         : 'catalog-status catalog-status--inactive'}>
-                        {bank.isActive ? 'Активен' : 'Неактивен'}
+                        {mortgageProgram.isActive ? 'Активна' : 'Неактивна'}
                       </span>
                     </td>
                     {canManageCatalogs ? (
@@ -270,17 +293,17 @@ export function BankListPage() {
                         <div className="row-actions">
                           <Link
                             className="row-action"
-                            to={`/banks/${bank.id}/edit`}
-                            aria-label={`Редактировать: ${bank.name}`}
+                            to={`/mortgage-programs/${mortgageProgram.id}/edit`}
+                            aria-label={`Редактировать: ${mortgageProgram.name}`}
                           >
                             ✎
                           </Link>
                           <button
                             className="row-action row-action--danger"
                             type="button"
-                            aria-label={`Удалить: ${bank.name}`}
+                            aria-label={`Удалить: ${mortgageProgram.name}`}
                             onClick={(event) => openDeleteDialog(
-                              bank,
+                              mortgageProgram,
                               event.currentTarget,
                             )}
                           >
@@ -295,45 +318,65 @@ export function BankListPage() {
             </table>
           </div>
           <div className="property-mobile-list">
-            {results.map((bank) => (
-              <article
-                className="property-mobile-card catalog-mobile-card"
-                key={bank.id}
-              >
+            {results.map((mortgageProgram) => (
+              <article className="property-mobile-card" key={mortgageProgram.id}>
                 <div className="property-mobile-card__heading">
                   <div>
-                    <span>Банк</span>
-                    <h2><Link className="text-link" to={`/banks/${bank.id}`}>{bank.name}</Link></h2>
+                    <span>
+                      {mortgageProgram.isPreferential ? 'Льготная' : 'Рыночная'}
+                    </span>
+                    <h2>
+                      <Link
+                        className="text-link"
+                        to={`/mortgage-programs/${mortgageProgram.id}`}
+                      >
+                        {mortgageProgram.name}
+                      </Link>
+                    </h2>
                   </div>
-                  <span className={bank.isActive
+                  <span className={mortgageProgram.isActive
                     ? 'catalog-status'
                     : 'catalog-status catalog-status--inactive'}>
-                    {bank.isActive ? 'Активен' : 'Неактивен'}
+                    {mortgageProgram.isActive ? 'Активна' : 'Неактивна'}
                   </span>
                 </div>
+                <p className="mortgage-program-mobile-condition">
+                  {mortgageProgram.condition}
+                </p>
                 <dl>
-                  <div><dt>Программ</dt><dd>{formatInteger(bank.programCount)}</dd></div>
                   <div>
-                    <dt>Мин. ставка</dt>
-                    <dd>{bank.minimumInterestRate
-                      ? formatPercent(bank.minimumInterestRate)
+                    <dt>Кредитный лимит</dt>
+                    <dd>{mortgageProgram.creditLimit
+                      ? formatCurrency(mortgageProgram.creditLimit)
                       : '—'}</dd>
                   </div>
+                  <div><dt>Использование</dt><dd>{usageLabel(mortgageProgram)}</dd></div>
+                  <div>
+                    <dt>Региональных лимитов</dt>
+                    <dd>{formatInteger(mortgageProgram.regionalLimitCount)}</dd>
+                  </div>
+                  <div><dt>Алиасов</dt><dd>{formatInteger(mortgageProgram.aliasCount)}</dd></div>
                 </dl>
                 <div className="property-mobile-card__actions">
-                  <Link className="text-link" to={`/banks/${bank.id}`}>
+                  <Link
+                    className="text-link"
+                    to={`/mortgage-programs/${mortgageProgram.id}`}
+                  >
                     Открыть
                   </Link>
                   {canManageCatalogs ? (
                     <>
-                      <Link className="text-link" to={`/banks/${bank.id}/edit`}>
+                      <Link
+                        className="text-link"
+                        to={`/mortgage-programs/${mortgageProgram.id}/edit`}
+                      >
                         Редактировать
                       </Link>
                       <button
                         className="text-button text-button--danger"
                         type="button"
                         onClick={(event) => openDeleteDialog(
-                          bank,
+                          mortgageProgram,
                           event.currentTarget,
                         )}
                       >
@@ -349,7 +392,7 @@ export function BankListPage() {
       )}
 
       {totalPages > 1 ? (
-        <nav className="pagination" aria-label="Страницы банков">
+        <nav className="pagination" aria-label="Страницы ипотечных программ">
           <button
             type="button"
             disabled={page <= 1}
@@ -368,7 +411,7 @@ export function BankListPage() {
         </nav>
       ) : null}
 
-      {selectedBank ? (
+      {selectedProgram ? (
         <div
           className="confirmation-dialog-backdrop"
           role="presentation"
@@ -380,20 +423,20 @@ export function BankListPage() {
             className="confirmation-dialog"
             role="alertdialog"
             aria-modal="true"
-            aria-labelledby="bank-delete-title"
-            aria-describedby="bank-delete-description"
+            aria-labelledby="mortgage-program-delete-title"
+            aria-describedby="mortgage-program-delete-description"
           >
             <span className="eyebrow">Подтверждение</span>
-            <h2 id="bank-delete-title">Удалить банк?</h2>
-            <p id="bank-delete-description">
-              «{selectedBank.name}» и его банковские условия будут удалены.
+            <h2 id="mortgage-program-delete-title">Удалить программу?</h2>
+            <p id="mortgage-program-delete-description">
+              «{selectedProgram.name}», её лимиты и алиасы будут удалены.
             </p>
             {deleteMutation.isError ? (
               <p className="form-error" role="alert">
                 {deleteMutation.error instanceof ApiError
                   && deleteMutation.error.status === 409
-                  ? 'Банк используется в программах застройщиков. Сначала переназначьте эти связи.'
-                  : 'Не удалось удалить банк. Повторите попытку.'}
+                  ? 'Программа используется банком или программой застройщика. Сначала переназначьте эти связи.'
+                  : 'Не удалось удалить программу. Повторите попытку.'}
               </p>
             ) : null}
             <div className="confirmation-dialog__actions">
@@ -410,7 +453,7 @@ export function BankListPage() {
                 className="button button--danger"
                 type="button"
                 disabled={deleteMutation.isPending}
-                onClick={() => deleteMutation.mutate(selectedBank.id)}
+                onClick={() => deleteMutation.mutate(selectedProgram.id)}
               >
                 {deleteMutation.isPending ? 'Удаляем…' : 'Удалить'}
               </button>

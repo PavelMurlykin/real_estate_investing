@@ -29,6 +29,7 @@ from bank.models import (
     BankProgram,
     KeyRate,
     MortgageProgram,
+    MortgageProgramAlias,
     MortgageProgramRegionalCreditLimit,
 )
 from customer.models import (
@@ -109,6 +110,10 @@ from .serializers import (
     LocationDictionaryOptionsQuerySerializer,
     LocationDictionaryWriteSerializer,
     MortgageCalculationRequestSerializer,
+    MortgageProgramDetailSerializer,
+    MortgageProgramListItemSerializer,
+    MortgageProgramListQuerySerializer,
+    MortgageProgramWriteSerializer,
     PropertyDictionaryEntrySerializer,
     PropertyDictionaryListQuerySerializer,
     PropertyDictionaryWriteSerializer,
@@ -1565,6 +1570,192 @@ class BankOptionsAPIView(APIView):
             {
                 'mortgagePrograms': mortgage_programs,
                 'truncated': programs_truncated,
+            }
+        )
+
+
+def _mortgage_program_list_queryset():
+    """Return canonical programs with aggregate relation usage counts."""
+    return MortgageProgram.objects.annotate(
+        bank_count=Count('banks', distinct=True),
+        developer_program_count=Count(
+            'developer_mortgage_programs',
+            distinct=True,
+        ),
+        regional_limit_count=Count('regional_credit_limits', distinct=True),
+        alias_count=Count('aliases', distinct=True),
+    )
+
+
+def _mortgage_program_detail_queryset():
+    """Return canonical programs with bounded nested data prefetched."""
+    regional_limits = MortgageProgramRegionalCreditLimit.objects.select_related(
+        'region'
+    ).order_by('region__name', 'pk')
+    aliases = MortgageProgramAlias.objects.order_by('source_name', 'pk')
+    return _mortgage_program_list_queryset().prefetch_related(
+        Prefetch(
+            'regional_credit_limits',
+            queryset=regional_limits,
+            to_attr='api_regional_credit_limits',
+        ),
+        Prefetch(
+            'aliases',
+            queryset=aliases,
+            to_attr='api_aliases',
+        ),
+    )
+
+
+class MortgageProgramAPIViewMixin:
+    """Share canonical mortgage-program permissions and responses."""
+
+    def get_permissions(self):
+        """Keep reference reads public and protect shared catalog writes."""
+        if self.request.method == 'GET':
+            return (AllowAny(),)
+        return (IsAuthenticated(), CanManageCatalogs())
+
+    def get_response_serializer(self, mortgage_program):
+        """Serialize a refreshed program after a successful mutation."""
+        refreshed_program = _mortgage_program_detail_queryset().get(
+            pk=mortgage_program.pk
+        )
+        return MortgageProgramDetailSerializer(
+            refreshed_program,
+            context=self.get_serializer_context(),
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class MortgageProgramListCreateAPIView(
+    MortgageProgramAPIViewMixin,
+    ListCreateAPIView,
+):
+    """List public canonical programs and allow moderator creation."""
+
+    pagination_class = ApplicationPageNumberPagination
+
+    def get_serializer_class(self):
+        """Use compact rows for reads and the nested write contract."""
+        if self.request.method == 'GET':
+            return MortgageProgramListItemSerializer
+        return MortgageProgramWriteSerializer
+
+    def get_queryset(self):
+        """Apply validated search, type, status, and ordering filters."""
+        query_serializer = MortgageProgramListQuerySerializer(
+            data=self.request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        filters = query_serializer.validated_data
+        queryset = _mortgage_program_list_queryset()
+
+        search = filters.get('q', '')
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search)
+                | Q(condition__icontains=search)
+                | Q(aliases__source_name__icontains=search)
+            ).distinct()
+        if filters['programType'] != 'all':
+            queryset = queryset.filter(
+                is_preferential=filters['programType'] == 'preferential'
+            )
+        if filters['status'] != 'all':
+            queryset = queryset.filter(
+                is_active=filters['status'] == 'active'
+            )
+
+        ordering = filters['ordering']
+        ordering_prefix = '-' if ordering.startswith('-') else ''
+        ordering_name = ordering.removeprefix('-')
+        ordering_field = {
+            'name': 'name',
+            'creditLimit': 'credit_limit',
+            'updatedAt': 'updated_at',
+        }[ordering_name]
+        return queryset.order_by(
+            f'{ordering_prefix}{ordering_field}',
+            'name',
+            'pk',
+        )
+
+    def create(self, request, *args, **kwargs):
+        """Create a complete program and return its normalized card."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        mortgage_program = serializer.save()
+        return Response(
+            self.get_response_serializer(mortgage_program).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class MortgageProgramDetailAPIView(
+    MortgageProgramAPIViewMixin,
+    RetrieveUpdateDestroyAPIView,
+):
+    """Retrieve a canonical program and protect all mutations."""
+
+    def get_serializer_class(self):
+        """Use detail serialization for reads and validation for writes."""
+        if self.request.method == 'GET':
+            return MortgageProgramDetailSerializer
+        return MortgageProgramWriteSerializer
+
+    def get_queryset(self):
+        """Return the relation-efficient canonical program queryset."""
+        return _mortgage_program_detail_queryset()
+
+    def update(self, request, *args, **kwargs):
+        """Update a complete program and return its normalized card."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=partial,
+        )
+        serializer.is_valid(raise_exception=True)
+        mortgage_program = serializer.save()
+        return Response(self.get_response_serializer(mortgage_program).data)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete unused programs or report protected financial links."""
+        instance = self.get_object()
+        try:
+            instance.delete()
+        except ProtectedError:
+            return Response(
+                {
+                    'detail': (
+                        'Ипотечную программу нельзя удалить, пока она '
+                        'используется банком или программой застройщика.'
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class MortgageProgramOptionsAPIView(APIView):
+    """Return bounded region choices for canonical program forms."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request):
+        """Return public region options with truncation metadata."""
+        maximum_results = settings.PUBLIC_CATALOG_API_MAX_RESULTS
+        regions, regions_truncated = _build_bounded_option_rows(
+            Region.objects.order_by('name', 'pk'),
+            maximum_results,
+        )
+        return Response(
+            {
+                'regions': regions,
+                'truncated': regions_truncated,
             }
         )
 

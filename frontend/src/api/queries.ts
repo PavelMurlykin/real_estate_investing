@@ -21,6 +21,9 @@ import {
   locationDictionaryOptionsSchema,
   mortgageCalculationResponseSchema,
   mortgageOptionsSchema,
+  mortgageProgramDetailSchema,
+  mortgageProgramListResponseSchema,
+  mortgageProgramOptionsSchema,
   overviewSchema,
   propertyDetailSchema,
   propertyDictionaryEntrySchema,
@@ -48,6 +51,7 @@ import type {
   LocationDictionaryKey,
   LocationDictionaryWriteRequest,
   MortgageCalculationRequest,
+  MortgageProgramWriteRequest,
   PropertyDictionaryKey,
   PropertyDictionaryWriteRequest,
   SavedMortgageCalculationCreateRequest,
@@ -139,6 +143,85 @@ export function deleteBank(bankIdentifier: number) {
   return requestWithoutResponse(`/api/v1/banks/${bankIdentifier}/`, {
     method: 'DELETE',
   })
+}
+
+export function mortgageProgramListQueryOptions(
+  searchParameters: URLSearchParams,
+) {
+  const normalizedParameters = new URLSearchParams()
+  for (const fieldName of [
+    'q',
+    'programType',
+    'status',
+    'ordering',
+    'page',
+    'pageSize',
+  ]) {
+    const value = searchParameters.get(fieldName)
+    if (value) normalizedParameters.set(fieldName, value)
+  }
+  const queryString = normalizedParameters.toString()
+
+  return queryOptions({
+    queryKey: ['mortgage-programs', queryString],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/mortgage-programs/${queryString ? `?${queryString}` : ''}`,
+      mortgageProgramListResponseSchema,
+      { signal },
+    ),
+    placeholderData: (previousData) => previousData,
+    staleTime: 30_000,
+  })
+}
+
+export function mortgageProgramDetailQueryOptions(
+  mortgageProgramIdentifier: number,
+) {
+  return queryOptions({
+    queryKey: ['mortgage-program', mortgageProgramIdentifier],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/mortgage-programs/${mortgageProgramIdentifier}/`,
+      mortgageProgramDetailSchema,
+      { signal },
+    ),
+    staleTime: 60_000,
+  })
+}
+
+export const mortgageProgramOptionsQueryOptions = queryOptions({
+  queryKey: ['mortgage-program-options'],
+  queryFn: ({ signal }) => requestJson(
+    '/api/v1/mortgage-programs/options/',
+    mortgageProgramOptionsSchema,
+    { signal },
+  ),
+  staleTime: 5 * 60_000,
+})
+
+export function createMortgageProgram(payload: MortgageProgramWriteRequest) {
+  return requestJson(
+    '/api/v1/mortgage-programs/',
+    mortgageProgramDetailSchema,
+    { method: 'POST', body: JSON.stringify(payload) },
+  )
+}
+
+export function updateMortgageProgram(
+  mortgageProgramIdentifier: number,
+  payload: MortgageProgramWriteRequest,
+) {
+  return requestJson(
+    `/api/v1/mortgage-programs/${mortgageProgramIdentifier}/`,
+    mortgageProgramDetailSchema,
+    { method: 'PATCH', body: JSON.stringify(payload) },
+  )
+}
+
+export function deleteMortgageProgram(mortgageProgramIdentifier: number) {
+  return requestWithoutResponse(
+    `/api/v1/mortgage-programs/${mortgageProgramIdentifier}/`,
+    { method: 'DELETE' },
+  )
 }
 
 export function companyGroupListQueryOptions(

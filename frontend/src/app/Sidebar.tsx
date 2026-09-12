@@ -58,9 +58,15 @@ const catalogItems: NavigationItem[] = [
     reactRoute: true,
   },
   {
-    label: 'Банки и программы',
+    label: 'Банки',
     href: '/banks',
     symbol: 'Б',
+    reactRoute: true,
+  },
+  {
+    label: 'Ипотечные программы',
+    href: '/mortgage-programs',
+    symbol: 'И',
     reactRoute: true,
   },
   { label: 'Ключевая ставка', href: '/bank/key-rate/', symbol: '%' },
