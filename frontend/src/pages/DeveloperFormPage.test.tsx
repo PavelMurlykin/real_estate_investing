@@ -93,7 +93,7 @@ describe('DeveloperFormPage', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Войти' })).toHaveAttribute(
       'href',
-      '/users/login/?next=%2Fapp%2Fdevelopers%2Fnew',
+      '/app/login?next=%2Fapp%2Fdevelopers%2Fnew',
     )
     expect(fetchMock).not.toHaveBeenCalled()
   })

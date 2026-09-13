@@ -210,7 +210,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </>
           ) : (
             <div className="account-actions account-actions--anonymous">
-              <a href="/users/login/">Войти</a>
+              <Link to="/login" onClick={onClose}>Войти</Link>
               <a className="account-actions__primary" href="/users/register/">Регистрация</a>
             </div>
           )}

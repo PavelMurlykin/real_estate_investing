@@ -97,7 +97,7 @@ export function CustomerListPage() {
           action={(
             <a
               className="button button--primary"
-              href={`/users/login/?next=${encodeURIComponent('/app/customers')}`}
+              href={`/app/login?next=${encodeURIComponent('/app/customers')}`}
             >
               Войти
             </a>

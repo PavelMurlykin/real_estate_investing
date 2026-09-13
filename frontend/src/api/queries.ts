@@ -56,6 +56,7 @@ import type {
   CustomerWriteRequest,
   DeveloperMortgageProgramWriteRequest,
   DeveloperWriteRequest,
+  LoginRequest,
   LocationDictionaryKey,
   LocationDictionaryWriteRequest,
   MortgageCalculationRequest,
@@ -73,6 +74,13 @@ export const sessionQueryOptions = queryOptions({
     requestJson('/api/v1/auth/session/', sessionSchema, { signal }),
   staleTime: 60_000,
 })
+
+export function loginUser(payload: LoginRequest) {
+  return requestJson('/api/v1/auth/login/', sessionSchema, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
 
 export const overviewQueryOptions = queryOptions({
   queryKey: ['overview'],

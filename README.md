@@ -83,8 +83,12 @@ React. Для вложенных локаций используются кас�
 в React: он использует прежний идемпотентный сервис импорта, проверяет файл на
 сервере и показывает полную сводку обработки. Django-интерфейс импорта сохранён
 для проверки паритета и отката до завершения приёмочного тестирования.
+Вход по email или телефону также перенесён на маршрут React с сохранением
+CSRF-защиты, Django session authentication и безопасного возврата на исходную
+React-страницу. Регистрация, профиль, смена и восстановление пароля пока
+остаются в сохранённом Django-интерфейсе.
 React-маршруты доступны по
-адресам /app/, /app/properties, /app/properties/new,
+адресам /app/, /app/login, /app/properties, /app/properties/new,
 /app/properties/:id, /app/properties/:id/edit, /app/customers,
 /app/customers/new, /app/customers/:id, /app/customers/:id/edit,
 /app/company-groups, /app/company-groups/new, /app/company-groups/:id/edit,

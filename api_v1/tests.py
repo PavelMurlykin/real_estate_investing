@@ -189,6 +189,33 @@ def test_login_and_logout_api_use_existing_django_session():
 
 
 @pytest.mark.django_db
+def test_login_api_rejects_invalid_credentials_without_creating_session():
+    """Return a stable form error and keep invalid users anonymous."""
+    get_user_model().objects.create_user(
+        email='invalid-login@example.com',
+        password='safe-test-password',
+        phone_number='+79990000012',
+    )
+    csrf_client = Client(enforce_csrf_checks=True)
+    session_response = csrf_client.get(reverse('api_v1:session'))
+    csrf_token = session_response.cookies['csrftoken'].value
+
+    response = csrf_client.post(
+        reverse('api_v1:login'),
+        data={
+            'identifier': 'invalid-login@example.com',
+            'password': 'wrong-password',
+        },
+        content_type='application/json',
+        HTTP_X_CSRFTOKEN=csrf_token,
+    )
+
+    assert response.status_code == 400
+    assert response.json()['errors']['nonFieldErrors']
+    assert '_auth_user_id' not in csrf_client.session
+
+
+@pytest.mark.django_db
 def test_property_list_api_returns_paginated_normalized_rows(
     client,
     property_catalog,

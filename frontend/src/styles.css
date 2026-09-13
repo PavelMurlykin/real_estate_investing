@@ -3066,9 +3066,76 @@ select:focus-visible {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .catalog-import-form .button {
+.catalog-import-form .button {
     width: 100%;
   }
+}
+
+.auth-page {
+  display: grid;
+  min-height: calc(100vh - 150px);
+  place-items: center;
+  padding: clamp(12px, 4vw, 48px) 0;
+}
+
+.auth-card {
+  width: min(100%, 500px);
+  padding: clamp(24px, 5vw, 42px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  box-shadow: var(--shadow-md);
+}
+
+.auth-card__header {
+  margin-bottom: 28px;
+}
+
+.auth-card__header h1 {
+  margin: 6px 0 10px;
+  font-family: var(--font-display);
+  font-size: clamp(30px, 5vw, 42px);
+}
+
+.auth-card__header p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.auth-form {
+  display: grid;
+  gap: 18px;
+}
+
+.auth-form .form-field {
+  margin: 0;
+}
+
+.auth-form__submit {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.auth-card__links {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.auth-card__links p {
+  margin: 0;
+}
+
+.auth-card__links a {
+  color: var(--brand-strong);
+  font-weight: 750;
 }
 
 .customer-form {

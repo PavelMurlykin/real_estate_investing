@@ -140,7 +140,7 @@ describe('CustomerFormPage', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Войти' })).toHaveAttribute(
       'href',
-      '/users/login/?next=%2Fapp%2Fcustomers%2Fnew',
+      '/app/login?next=%2Fapp%2Fcustomers%2Fnew',
     )
   })
 

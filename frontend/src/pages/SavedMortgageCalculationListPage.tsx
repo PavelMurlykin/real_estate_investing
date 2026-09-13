@@ -168,7 +168,7 @@ export function SavedMortgageCalculationListPage() {
           action={(
             <a
               className="button button--primary"
-              href={`/users/login/?next=${encodeURIComponent('/app/mortgage/calculations')}`}
+              href={`/app/login?next=${encodeURIComponent('/app/mortgage/calculations')}`}
             >
               Войти
             </a>

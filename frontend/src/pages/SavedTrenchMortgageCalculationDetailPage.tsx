@@ -93,7 +93,7 @@ export function SavedTrenchMortgageCalculationDetailPage() {
           action={(
             <a
               className="button button--primary"
-              href={`/users/login/?next=${encodeURIComponent(
+              href={`/app/login?next=${encodeURIComponent(
                 `/app/mortgage/trench/calculations/${calculationId}`,
               )}`}
             >

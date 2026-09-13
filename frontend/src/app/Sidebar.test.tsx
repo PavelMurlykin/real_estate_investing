@@ -61,7 +61,7 @@ describe('Sidebar', () => {
     expect(within(sidebar).queryByText('Клиенты')).not.toBeInTheDocument()
     expect(within(sidebar).getByRole('link', { name: 'Войти' })).toHaveAttribute(
       'href',
-      '/users/login/',
+      '/login',
     )
   })
 

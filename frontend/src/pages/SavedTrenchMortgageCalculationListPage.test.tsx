@@ -68,7 +68,7 @@ describe('SavedTrenchMortgageCalculationListPage', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Войти' })).toHaveAttribute(
       'href',
-      '/users/login/?next=%2Fapp%2Fmortgage%2Ftrench%2Fcalculations',
+      '/app/login?next=%2Fapp%2Fmortgage%2Ftrench%2Fcalculations',
     )
   })
 

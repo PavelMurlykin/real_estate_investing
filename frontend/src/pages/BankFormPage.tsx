@@ -312,7 +312,7 @@ export function BankFormPage() {
         action={(
           <a
             className="button button--primary"
-            href={`/users/login/?next=${encodeURIComponent(nextPath)}`}
+            href={`/app/login?next=${encodeURIComponent(nextPath)}`}
           >
             Войти
           </a>

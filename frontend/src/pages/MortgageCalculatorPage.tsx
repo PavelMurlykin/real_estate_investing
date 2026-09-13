@@ -403,7 +403,7 @@ export function MortgageCalculatorPage() {
                   {!sessionQuery.data?.isAuthenticated ? (
                     <a
                       className="button button--primary"
-                      href={`/users/login/?next=${encodeURIComponent(loginReturnPath)}`}
+                      href={`/app/login?next=${encodeURIComponent(loginReturnPath)}`}
                     >
                       Войти
                     </a>

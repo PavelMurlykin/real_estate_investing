@@ -20,6 +20,11 @@ export const sessionSchema = z.object({
   capabilities: capabilitiesSchema,
 })
 
+export type LoginRequest = {
+  identifier: string
+  password: string
+}
+
 export const propertyListItemSchema = z.object({
   id: z.number().int().positive(),
   city: z.string(),
