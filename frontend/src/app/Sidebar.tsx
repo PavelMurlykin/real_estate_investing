@@ -75,7 +75,12 @@ const catalogItems: NavigationItem[] = [
     symbol: 'П',
     reactRoute: true,
   },
-  { label: 'Ключевая ставка', href: '/bank/key-rate/', symbol: '%' },
+  {
+    label: 'Ключевая ставка',
+    href: '/key-rate',
+    symbol: '%',
+    reactRoute: true,
+  },
 ]
 
 const privateItems: NavigationItem[] = [

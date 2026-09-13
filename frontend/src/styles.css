@@ -2802,6 +2802,118 @@ select:focus-visible {
   }
 }
 
+.key-rate-summary {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.55fr) minmax(0, 1fr);
+  gap: 24px;
+  padding: clamp(24px, 4vw, 38px);
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 30%), transparent 58%),
+    var(--brand-soft);
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--border));
+  border-radius: 22px;
+  box-shadow: var(--shadow-sm);
+}
+
+.key-rate-summary__value {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+}
+
+.key-rate-summary__value > span,
+.key-rate-summary__meta dt {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.key-rate-summary__value strong {
+  font-family: var(--font-display);
+  font-size: clamp(42px, 7vw, 72px);
+  line-height: 1;
+}
+
+.key-rate-summary__value small {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.key-rate-summary__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.key-rate-summary__meta div {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  min-height: 112px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.key-rate-summary__meta dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(18px, 2.4vw, 26px);
+}
+
+.key-rate-table {
+  min-width: 720px;
+}
+
+.key-rate-table th:not(:first-child),
+.key-rate-table td:not(:first-child) {
+  text-align: right;
+}
+
+.key-rate-change {
+  font-weight: 800;
+}
+
+.key-rate-change--up {
+  color: var(--danger);
+}
+
+.key-rate-change--down {
+  color: var(--brand);
+}
+
+.operation-message {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.operation-message--success {
+  background: var(--brand-soft);
+  border-color: color-mix(in srgb, var(--brand) 30%, var(--border));
+}
+
+@media (max-width: 760px) {
+  .key-rate-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .key-rate-summary__meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .key-rate-summary__meta div {
+    min-height: auto;
+  }
+}
+
 .customer-form {
   display: grid;
   gap: 18px;

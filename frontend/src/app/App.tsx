@@ -82,6 +82,9 @@ const DeveloperMortgageProgramFormPage = lazy(async () => ({
   default: (await import('@/pages/DeveloperMortgageProgramFormPage'))
     .DeveloperMortgageProgramFormPage,
 }))
+const KeyRatePage = lazy(async () => ({
+  default: (await import('@/pages/KeyRatePage')).KeyRatePage,
+}))
 const CustomerListPage = lazy(async () => ({
   default: (await import('@/pages/CustomerListPage')).CustomerListPage,
 }))
@@ -217,6 +220,7 @@ export function App() {
             path="developer-programs/:developerProgramId/edit"
             element={<DeveloperMortgageProgramFormPage />}
           />
+          <Route path="key-rate" element={<KeyRatePage />} />
           <Route path="customers" element={<CustomerListPage />} />
           <Route path="customers/new" element={<CustomerFormPage />} />
           <Route

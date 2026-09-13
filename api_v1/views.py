@@ -1,8 +1,18 @@
 from django.conf import settings
 from django.contrib.auth import login, logout
 from django.db import transaction
-from django.db.models import Count, Min, Prefetch, Q
+from django.db.models import (
+    Count,
+    DecimalField,
+    ExpressionWrapper,
+    F,
+    Min,
+    Prefetch,
+    Q,
+    Window,
+)
 from django.db.models.deletion import ProtectedError
+from django.db.models.functions import Lead
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -24,6 +34,7 @@ from rest_framework.permissions import (
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from bank.key_rate_sync import KeyRateSyncError, sync_key_rates
 from bank.models import (
     Bank,
     BankProgram,
@@ -114,6 +125,8 @@ from .serializers import (
     LocationDictionaryListQuerySerializer,
     LocationDictionaryOptionsQuerySerializer,
     LocationDictionaryWriteSerializer,
+    KeyRateListQuerySerializer,
+    KeyRateSerializer,
     MortgageCalculationRequestSerializer,
     MortgageProgramDetailSerializer,
     MortgageProgramListItemSerializer,
@@ -154,6 +167,14 @@ class CanManageCatalogs(BasePermission):
     def has_permission(self, request, view):
         """Return whether the current user may manage shared catalogs."""
         return can_manage_catalogs(request.user)
+
+
+class CanSyncExternalData(BasePermission):
+    """Allow external synchronization only to application administrators."""
+
+    def has_permission(self, request, view):
+        """Return whether the current user may synchronize external data."""
+        return can_sync_external_data(request.user)
 
 
 def build_session_payload(user):
@@ -1963,6 +1984,104 @@ class DeveloperMortgageProgramOptionsAPIView(APIView):
                     'banks': banks_truncated,
                     'mortgagePrograms': mortgage_programs_truncated,
                 },
+            }
+        )
+
+
+def _build_current_key_rate_payload():
+    """Return the latest active key rate used by financial calculations."""
+    current_key_rate = (
+        KeyRate.objects.filter(is_active=True)
+        .order_by('-meeting_date', '-pk')
+        .first()
+    )
+    if current_key_rate is None:
+        return None
+    return {
+        'meetingDate': current_key_rate.meeting_date,
+        'keyRate': str(current_key_rate.key_rate),
+    }
+
+
+class KeyRateListAPIView(ListAPIView):
+    """Return the public, paginated Central Bank key-rate history."""
+
+    serializer_class = KeyRateSerializer
+    pagination_class = ApplicationPageNumberPagination
+    permission_classes = (AllowAny,)
+
+    def get_queryset(self):
+        """Validate pagination and annotate chronological rate changes."""
+        query_serializer = KeyRateListQuerySerializer(
+            data=self.request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        return (
+            KeyRate.objects.annotate(
+                previous_rate=Window(
+                    expression=Lead('key_rate'),
+                    order_by=F('meeting_date').desc(),
+                ),
+            )
+            .annotate(
+                rate_change=ExpressionWrapper(
+                    F('key_rate') - F('previous_rate'),
+                    output_field=DecimalField(
+                        max_digits=5,
+                        decimal_places=2,
+                    ),
+                ),
+            )
+            .order_by('-meeting_date', '-pk')
+        )
+
+    def list(self, request, *args, **kwargs):
+        """Add current-rate and source freshness metadata to the page."""
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(page, many=True)
+        response = self.get_paginated_response(serializer.data)
+        response.data.update(
+            {
+                'currentRate': _build_current_key_rate_payload(),
+                'lastSyncedAt': (
+                    KeyRate.objects.order_by('-updated_at')
+                    .values_list('updated_at', flat=True)
+                    .first()
+                ),
+                'legacyUrl': '/bank/key-rate/',
+            }
+        )
+        return response
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class KeyRateSyncAPIView(APIView):
+    """Synchronize key-rate history with the Central Bank source."""
+
+    permission_classes = (IsAuthenticated, CanSyncExternalData)
+
+    def post(self, request):
+        """Run synchronization and return a compact operation summary."""
+        try:
+            result = sync_key_rates()
+        except KeyRateSyncError as error:
+            return Response(
+                {
+                    'detail': (
+                        'Не удалось обновить данные ключевой ставки: '
+                        f'{error}'
+                    )
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        return Response(
+            {
+                'created': result['created'],
+                'updated': result['updated'],
+                'processed': result['processed'],
+                'currentRate': _build_current_key_rate_payload(),
+                'synchronizedAt': timezone.now(),
             }
         )
 

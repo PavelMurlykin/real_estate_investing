@@ -145,6 +145,7 @@ export function BankListPage() {
         <Link to="/developer-programs">
           Программы застройщиков
         </Link>
+        <Link to="/key-rate">Ключевая ставка</Link>
       </nav>
 
       <section

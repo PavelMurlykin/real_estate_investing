@@ -379,6 +379,39 @@ export const developerMortgageProgramOptionsSchema = z.object({
   }),
 })
 
+export const currentKeyRateSchema = z.object({
+  meetingDate: z.iso.date(),
+  keyRate: z.string(),
+})
+
+export const keyRateHistoryItemSchema = z.object({
+  id: z.number().int().positive(),
+  meetingDate: z.iso.date(),
+  keyRate: z.string(),
+  rateChange: z.string().nullable(),
+  isActive: z.boolean(),
+  updatedAt: z.iso.datetime({ offset: true }),
+})
+
+export const keyRateListResponseSchema = z.object({
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  totalCount: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  currentRate: currentKeyRateSchema.nullable(),
+  lastSyncedAt: z.iso.datetime({ offset: true }).nullable(),
+  legacyUrl: z.string(),
+  results: z.array(keyRateHistoryItemSchema),
+})
+
+export const keyRateSyncResultSchema = z.object({
+  created: z.number().int().nonnegative(),
+  updated: z.number().int().nonnegative(),
+  processed: z.number().int().nonnegative(),
+  currentRate: currentKeyRateSchema.nullable(),
+  synchronizedAt: z.iso.datetime({ offset: true }),
+})
+
 export const developerPublicSchema = z.object({
   id: z.number().int().positive(),
   name: z.string(),
@@ -974,6 +1007,9 @@ export type DeveloperMortgageProgramListResponse = z.infer<
 export type DeveloperMortgageProgramOptions = z.infer<
   typeof developerMortgageProgramOptionsSchema
 >
+export type KeyRateHistoryItem = z.infer<typeof keyRateHistoryItemSchema>
+export type KeyRateListResponse = z.infer<typeof keyRateListResponseSchema>
+export type KeyRateSyncResult = z.infer<typeof keyRateSyncResultSchema>
 export type PropertyDictionaryKey = z.infer<
   typeof propertyDictionaryKeySchema
 >

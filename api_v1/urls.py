@@ -23,6 +23,8 @@ from .views import (
     LocationDictionaryListCreateAPIView,
     LocationDictionaryOptionsAPIView,
     LogoutAPIView,
+    KeyRateListAPIView,
+    KeyRateSyncAPIView,
     MortgageCalculationAPIView,
     MortgageOptionsAPIView,
     MortgageProgramDetailAPIView,
@@ -54,6 +56,12 @@ urlpatterns = [
     path('auth/login/', LoginAPIView.as_view(), name='login'),
     path('auth/logout/', LogoutAPIView.as_view(), name='logout'),
     path('overview/', OverviewAPIView.as_view(), name='overview'),
+    path('key-rates/', KeyRateListAPIView.as_view(), name='key_rate_list'),
+    path(
+        'key-rates/sync/',
+        KeyRateSyncAPIView.as_view(),
+        name='key_rate_sync',
+    ),
     path(
         'banks/',
         BankListCreateAPIView.as_view(),

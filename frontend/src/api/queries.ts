@@ -19,6 +19,8 @@ import {
   developerMortgageProgramSchema,
   developerOptionsSchema,
   developerSchema,
+  keyRateListResponseSchema,
+  keyRateSyncResultSchema,
   locationDictionaryEntrySchema,
   locationDictionaryListResponseSchema,
   locationDictionaryOptionsSchema,
@@ -317,6 +319,33 @@ export function deleteDeveloperMortgageProgram(
   return requestWithoutResponse(
     `/api/v1/developer-mortgage-programs/${developerProgramIdentifier}/`,
     { method: 'DELETE' },
+  )
+}
+
+export function keyRateListQueryOptions(searchParameters: URLSearchParams) {
+  const normalizedParameters = new URLSearchParams()
+  for (const fieldName of ['page', 'pageSize']) {
+    const value = searchParameters.get(fieldName)
+    if (value) normalizedParameters.set(fieldName, value)
+  }
+  const queryString = normalizedParameters.toString()
+  return queryOptions({
+    queryKey: ['key-rates', queryString],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/key-rates/${queryString ? `?${queryString}` : ''}`,
+      keyRateListResponseSchema,
+      { signal },
+    ),
+    placeholderData: (previousData) => previousData,
+    staleTime: 60_000,
+  })
+}
+
+export function synchronizeKeyRates() {
+  return requestJson(
+    '/api/v1/key-rates/sync/',
+    keyRateSyncResultSchema,
+    { method: 'POST' },
   )
 }
 

@@ -146,6 +146,7 @@ export function MortgageProgramListPage() {
           Ипотечные программы
         </Link>
         <Link to="/developer-programs">Программы застройщиков</Link>
+        <Link to="/key-rate">Ключевая ставка</Link>
       </nav>
 
       <section

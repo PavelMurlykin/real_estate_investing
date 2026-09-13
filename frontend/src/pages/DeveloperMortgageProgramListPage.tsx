@@ -138,6 +138,7 @@ export function DeveloperMortgageProgramListPage() {
         <Link to="/developer-programs" aria-current="page">
           Программы застройщиков
         </Link>
+        <Link to="/key-rate">Ключевая ставка</Link>
       </nav>
 
       <section

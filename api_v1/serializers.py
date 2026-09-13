@@ -13,6 +13,7 @@ from bank.models import (
     Bank,
     BankProgram,
     DeveloperMortgageProgram,
+    KeyRate,
     MortgageProgram,
     MortgageProgramAlias,
     MortgageProgramRegionalCreditLimit,
@@ -1245,6 +1246,52 @@ class DeveloperMortgageProgramListQuerySerializer(serializers.Serializer):
         max_value=100,
         default=20,
     )
+
+
+class KeyRateListQuerySerializer(serializers.Serializer):
+    """Validate pagination parameters for the key-rate history."""
+
+    page = serializers.IntegerField(required=False, min_value=1, default=1)
+    pageSize = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=100,
+        default=20,
+    )
+
+
+class KeyRateSerializer(serializers.ModelSerializer):
+    """Serialize one Central Bank key-rate history row."""
+
+    meetingDate = serializers.DateField(source='meeting_date', read_only=True)
+    keyRate = serializers.DecimalField(
+        source='key_rate',
+        max_digits=5,
+        decimal_places=2,
+        read_only=True,
+    )
+    rateChange = serializers.DecimalField(
+        source='rate_change',
+        max_digits=5,
+        decimal_places=2,
+        allow_null=True,
+        read_only=True,
+    )
+    isActive = serializers.BooleanField(source='is_active', read_only=True)
+    updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
+
+    class Meta:
+        """Declare the public key-rate response fields."""
+
+        model = KeyRate
+        fields = (
+            'id',
+            'meetingDate',
+            'keyRate',
+            'rateChange',
+            'isActive',
+            'updatedAt',
+        )
 
 
 class DeveloperMortgageProgramSerializer(serializers.Serializer):

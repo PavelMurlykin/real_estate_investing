@@ -55,6 +55,9 @@ describe('Sidebar', () => {
     expect(
       within(sidebar).getByRole('link', { name: 'Программы застройщиков' }),
     ).toHaveAttribute('href', '/developer-programs')
+    expect(
+      within(sidebar).getByRole('link', { name: 'Ключевая ставка' }),
+    ).toHaveAttribute('href', '/key-rate')
     expect(within(sidebar).queryByText('Клиенты')).not.toBeInTheDocument()
     expect(within(sidebar).getByRole('link', { name: 'Войти' })).toHaveAttribute(
       'href',
