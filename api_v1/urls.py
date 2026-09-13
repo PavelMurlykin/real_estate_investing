@@ -8,6 +8,7 @@ from .views import (
     CompanyGroupListCreateAPIView,
     DeveloperDetailAPIView,
     DeveloperMortgageProgramDetailAPIView,
+    DeveloperMortgageProgramImportAPIView,
     DeveloperMortgageProgramListCreateAPIView,
     DeveloperMortgageProgramOptionsAPIView,
     DeveloperListCreateAPIView,
@@ -101,6 +102,11 @@ urlpatterns = [
         'developer-mortgage-programs/options/',
         DeveloperMortgageProgramOptionsAPIView.as_view(),
         name='developer_mortgage_program_options',
+    ),
+    path(
+        'developer-mortgage-programs/import/',
+        DeveloperMortgageProgramImportAPIView.as_view(),
+        name='developer_mortgage_program_import',
     ),
     path(
         'developer-mortgage-programs/<int:pk>/',

@@ -14,6 +14,7 @@ import {
   customerListResponseSchema,
   customerMutationResponseSchema,
   developerListResponseSchema,
+  developerMortgageProgramImportResultSchema,
   developerMortgageProgramListResponseSchema,
   developerMortgageProgramOptionsSchema,
   developerMortgageProgramSchema,
@@ -319,6 +320,16 @@ export function deleteDeveloperMortgageProgram(
   return requestWithoutResponse(
     `/api/v1/developer-mortgage-programs/${developerProgramIdentifier}/`,
     { method: 'DELETE' },
+  )
+}
+
+export function importDeveloperMortgagePrograms(workbookFile: File) {
+  const formData = new FormData()
+  formData.append('workbook_file', workbookFile)
+  return requestJson(
+    '/api/v1/developer-mortgage-programs/import/',
+    developerMortgageProgramImportResultSchema,
+    { method: 'POST', body: formData },
   )
 }
 

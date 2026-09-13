@@ -31,9 +31,15 @@ from rest_framework.permissions import (
     BasePermission,
     IsAuthenticated,
 )
+from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from bank.developer_mortgage_program_importer import (
+    DeveloperMortgageProgramImportError,
+    import_developer_mortgage_programs,
+)
+from bank.forms import DeveloperMortgageProgramImportForm
 from bank.key_rate_sync import KeyRateSyncError, sync_key_rates
 from bank.models import (
     Bank,
@@ -1985,6 +1991,63 @@ class DeveloperMortgageProgramOptionsAPIView(APIView):
                     'mortgagePrograms': mortgage_programs_truncated,
                 },
             }
+        )
+
+
+def _serialize_developer_program_import_result(import_result):
+    """Return a stable camel-case summary for one completed import."""
+    return {
+        'totalRows': import_result.total_rows,
+        'parsedRows': import_result.parsed_rows,
+        'created': import_result.created,
+        'updated': import_result.updated,
+        'unchanged': import_result.unchanged,
+        'skipped': import_result.skipped,
+        'duplicateRows': import_result.duplicate_rows,
+        'sourceWarningRows': import_result.source_warning_rows,
+        'inactiveRows': import_result.inactive_rows,
+        'issueMessages': list(import_result.issue_messages),
+    }
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class DeveloperMortgageProgramImportAPIView(APIView):
+    """Import normalized developer programs from an uploaded XLSX file."""
+
+    permission_classes = (IsAuthenticated, CanManageCatalogs)
+    parser_classes = (MultiPartParser,)
+
+    def post(self, request):
+        """Validate the upload and return the transactional import summary."""
+        import_form = DeveloperMortgageProgramImportForm(
+            data=request.data,
+            files=request.FILES,
+        )
+        if not import_form.is_valid():
+            return Response(
+                {
+                    'workbookFile': [
+                        str(error)
+                        for error in import_form.errors.get(
+                            'workbook_file',
+                            (),
+                        )
+                    ]
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            import_result = import_developer_mortgage_programs(
+                import_form.cleaned_data['workbook_file']
+            )
+        except DeveloperMortgageProgramImportError as error:
+            return Response(
+                {'detail': str(error)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            _serialize_developer_program_import_result(import_result)
         )
 
 

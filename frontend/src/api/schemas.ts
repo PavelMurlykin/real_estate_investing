@@ -379,6 +379,19 @@ export const developerMortgageProgramOptionsSchema = z.object({
   }),
 })
 
+export const developerMortgageProgramImportResultSchema = z.object({
+  totalRows: z.number().int().nonnegative(),
+  parsedRows: z.number().int().nonnegative(),
+  created: z.number().int().nonnegative(),
+  updated: z.number().int().nonnegative(),
+  unchanged: z.number().int().nonnegative(),
+  skipped: z.number().int().nonnegative(),
+  duplicateRows: z.number().int().nonnegative(),
+  sourceWarningRows: z.number().int().nonnegative(),
+  inactiveRows: z.number().int().nonnegative(),
+  issueMessages: z.array(z.string()),
+})
+
 export const currentKeyRateSchema = z.object({
   meetingDate: z.iso.date(),
   keyRate: z.string(),
@@ -1006,6 +1019,9 @@ export type DeveloperMortgageProgramListResponse = z.infer<
 >
 export type DeveloperMortgageProgramOptions = z.infer<
   typeof developerMortgageProgramOptionsSchema
+>
+export type DeveloperMortgageProgramImportResult = z.infer<
+  typeof developerMortgageProgramImportResultSchema
 >
 export type KeyRateHistoryItem = z.infer<typeof keyRateHistoryItemSchema>
 export type KeyRateListResponse = z.infer<typeof keyRateListResponseSchema>

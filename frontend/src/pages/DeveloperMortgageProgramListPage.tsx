@@ -14,6 +14,8 @@ import { formatCurrency, formatInteger, formatPercent } from '@/shared/lib/forma
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 
+import { DeveloperMortgageProgramImportPanel } from './DeveloperMortgageProgramImportPanel'
+
 const orderingOptions = [
   { value: 'companyGroup', label: 'По группе компаний' },
   { value: 'realEstateComplex', label: 'По ЖК' },
@@ -122,7 +124,7 @@ export function DeveloperMortgageProgramListPage() {
         </div>
         <div className="page-header__actions">
           <a className="button button--secondary" href="/bank/developer-programs/">
-            Django и импорт
+            Прежняя версия
           </a>
           {canManage ? (
             <Link className="button button--primary" to="/developer-programs/new">
@@ -140,6 +142,8 @@ export function DeveloperMortgageProgramListPage() {
         </Link>
         <Link to="/key-rate">Ключевая ставка</Link>
       </nav>
+
+      {canManage ? <DeveloperMortgageProgramImportPanel /> : null}
 
       <section
         className="filter-panel developer-program-filter-panel"

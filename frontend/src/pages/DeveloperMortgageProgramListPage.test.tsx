@@ -91,6 +91,8 @@ describe('DeveloperMortgageProgramListPage', () => {
     expect(screen.getAllByText('4,3%').length).toBeGreaterThan(0)
     expect(screen.queryByRole('link', { name: 'Добавить программу' }))
       .not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Импорт из XLSX' }))
+      .not.toBeInTheDocument()
   })
 
   it('stores filters in the URL and requests filtered rows', async () => {
@@ -122,6 +124,8 @@ describe('DeveloperMortgageProgramListPage', () => {
 
     expect(screen.getByRole('link', { name: 'Добавить программу' }))
       .toHaveAttribute('href', '/developer-programs/new')
+    expect(screen.getByRole('heading', { name: 'Импорт из XLSX' }))
+      .toBeInTheDocument()
     await user.click(screen.getByRole('button', {
       name: 'Удалить: Группа Север, Семейная ипотека',
     }))
