@@ -224,3 +224,125 @@ def test_profile_api_requires_csrf_token():
     )
 
     assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_password_change_api_updates_password_and_retains_session(client):
+    """A valid password change should keep the current session authenticated."""
+    user = get_user_model().objects.create_user(
+        email='password-change@example.com',
+        password='old-safe-password',
+        phone_number='+79990000016',
+    )
+    client.force_login(user)
+
+    response = client.post(
+        reverse('api_v1:password_change'),
+        data={
+            'oldPassword': 'old-safe-password',
+            'newPassword1': 'N3w!orbits-redwood-2026',
+            'newPassword2': 'N3w!orbits-redwood-2026',
+        },
+        content_type='application/json',
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {'changed': True}
+    user.refresh_from_db()
+    assert user.check_password('N3w!orbits-redwood-2026')
+    session_response = client.get(reverse('api_v1:session'))
+    assert session_response.json()['isAuthenticated'] is True
+
+
+@pytest.mark.django_db
+def test_password_change_api_rejects_invalid_current_password(client):
+    """An invalid current password must not update stored credentials."""
+    user = get_user_model().objects.create_user(
+        email='invalid-password-change@example.com',
+        password='old-safe-password',
+        phone_number='+79990000017',
+    )
+    client.force_login(user)
+
+    response = client.post(
+        reverse('api_v1:password_change'),
+        data={
+            'oldPassword': 'wrong-password',
+            'newPassword1': 'N3w!orbits-redwood-2026',
+            'newPassword2': 'N3w!orbits-redwood-2026',
+        },
+        content_type='application/json',
+    )
+
+    assert response.status_code == 400
+    assert 'oldPassword' in response.json()['errors']
+    user.refresh_from_db()
+    assert user.check_password('old-safe-password')
+
+
+@pytest.mark.django_db
+def test_password_change_api_rejects_mismatched_new_passwords(client):
+    """Django validation errors should map to the React confirmation field."""
+    user = get_user_model().objects.create_user(
+        email='mismatch-password-change@example.com',
+        password='old-safe-password',
+        phone_number='+79990000018',
+    )
+    client.force_login(user)
+
+    response = client.post(
+        reverse('api_v1:password_change'),
+        data={
+            'oldPassword': 'old-safe-password',
+            'newPassword1': 'N3w!orbits-redwood-2026',
+            'newPassword2': 'different-new-password',
+        },
+        content_type='application/json',
+    )
+
+    assert response.status_code == 400
+    assert 'newPassword2' in response.json()['errors']
+    user.refresh_from_db()
+    assert user.check_password('old-safe-password')
+
+
+@pytest.mark.django_db
+def test_password_change_api_requires_authentication(client):
+    """Anonymous visitors must not submit password changes."""
+    response = client.post(
+        reverse('api_v1:password_change'),
+        data={
+            'oldPassword': 'old-safe-password',
+            'newPassword1': 'N3w!orbits-redwood-2026',
+            'newPassword2': 'N3w!orbits-redwood-2026',
+        },
+        content_type='application/json',
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_password_change_api_requires_csrf_token():
+    """Session-authenticated password changes must enforce CSRF protection."""
+    csrf_client = Client(enforce_csrf_checks=True)
+    user = get_user_model().objects.create_user(
+        email='csrf-password-change@example.com',
+        password='old-safe-password',
+        phone_number='+79990000019',
+    )
+    csrf_client.force_login(user)
+
+    response = csrf_client.post(
+        reverse('api_v1:password_change'),
+        data={
+            'oldPassword': 'old-safe-password',
+            'newPassword1': 'N3w!orbits-redwood-2026',
+            'newPassword2': 'N3w!orbits-redwood-2026',
+        },
+        content_type='application/json',
+    )
+
+    assert response.status_code == 403
+    user.refresh_from_db()
+    assert user.check_password('old-safe-password')

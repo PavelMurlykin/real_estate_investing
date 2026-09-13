@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 
 import {
   sessionQueryOptions,
@@ -226,9 +226,9 @@ function ProfileForm({ profile }: { profile: UserProfile }) {
         >
           {profileMutation.isPending ? 'Сохраняем…' : 'Сохранить профиль'}
         </button>
-        <a className="button button--secondary" href="/users/password/change/">
+        <Link className="button button--secondary" to="/password/change">
           Сменить пароль
-        </a>
+        </Link>
       </div>
     </form>
   )

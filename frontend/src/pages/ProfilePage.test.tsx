@@ -63,7 +63,7 @@ describe('ProfilePage', () => {
     expect(screen.getByLabelText('Я агент недвижимости')).toBeChecked()
     expect(screen.getByLabelText('Название агентства')).toHaveValue('Север')
     expect(screen.getByRole('link', { name: 'Сменить пароль' }))
-      .toHaveAttribute('href', '/users/password/change/')
+      .toHaveAttribute('href', '/password/change')
     expect(screen.getByRole('link', { name: 'Прежняя версия профиля' }))
       .toHaveAttribute('href', '/users/profile/edit/')
   })

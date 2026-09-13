@@ -32,6 +32,7 @@ import {
   mortgageProgramListResponseSchema,
   mortgageProgramOptionsSchema,
   overviewSchema,
+  passwordChangeResultSchema,
   propertyDetailSchema,
   propertyDictionaryEntrySchema,
   propertyDictionaryListResponseSchema,
@@ -63,6 +64,7 @@ import type {
   LocationDictionaryWriteRequest,
   MortgageCalculationRequest,
   MortgageProgramWriteRequest,
+  PasswordChangeRequest,
   PropertyDictionaryKey,
   PropertyDictionaryWriteRequest,
   RegistrationRequest,
@@ -105,6 +107,17 @@ export function updateUserProfile(payload: UserProfileWriteRequest) {
     method: 'PATCH',
     body: JSON.stringify(payload),
   })
+}
+
+export function changePassword(payload: PasswordChangeRequest) {
+  return requestJson(
+    '/api/v1/auth/password/change/',
+    passwordChangeResultSchema,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  )
 }
 
 export const overviewQueryOptions = queryOptions({

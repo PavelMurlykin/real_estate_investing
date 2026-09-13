@@ -17,6 +17,9 @@ const RegistrationPage = lazy(async () => ({
 const ProfilePage = lazy(async () => ({
   default: (await import('@/pages/ProfilePage')).ProfilePage,
 }))
+const PasswordChangePage = lazy(async () => ({
+  default: (await import('@/pages/PasswordChangePage')).PasswordChangePage,
+}))
 const PropertyListPage = lazy(async () => ({
   default: (await import('@/pages/PropertyListPage')).PropertyListPage,
 }))
@@ -142,6 +145,7 @@ export function App() {
           <Route path="login" element={<LoginPage />} />
           <Route path="register" element={<RegistrationPage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="password/change" element={<PasswordChangePage />} />
           <Route path="properties" element={<PropertyListPage />} />
           <Route path="properties/new" element={<PropertyFormPage />} />
           <Route

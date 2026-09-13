@@ -54,6 +54,16 @@ export type RegistrationRequest = UserProfileWriteRequest & {
   password2: string
 }
 
+export const passwordChangeResultSchema = z.object({
+  changed: z.literal(true),
+})
+
+export type PasswordChangeRequest = {
+  oldPassword: string
+  newPassword1: string
+  newPassword2: string
+}
+
 export const propertyListItemSchema = z.object({
   id: z.number().int().positive(),
   city: z.string(),

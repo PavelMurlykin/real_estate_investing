@@ -1,5 +1,6 @@
 from django.conf import settings
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
 from django.db import transaction
 from django.db.models import (
     Count,
@@ -224,6 +225,9 @@ ACCOUNT_FORM_FIELD_NAMES = {
     'agency_name': 'agencyName',
     'password1': 'password1',
     'password2': 'password2',
+    'old_password': 'oldPassword',
+    'new_password1': 'newPassword1',
+    'new_password2': 'newPassword2',
 }
 
 
@@ -388,6 +392,37 @@ class ProfileAPIView(APIView):
 
         updated_user = profile_form.save()
         return Response(build_profile_payload(updated_user))
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class PasswordChangeAPIView(APIView):
+    """Change the current user's password through Django validation."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        """Update the password while retaining the authenticated session."""
+        password_change_form = PasswordChangeForm(
+            user=request.user,
+            data={
+                'old_password': request.data.get('oldPassword', ''),
+                'new_password1': request.data.get('newPassword1', ''),
+                'new_password2': request.data.get('newPassword2', ''),
+            },
+        )
+        if not password_change_form.is_valid():
+            return Response(
+                {
+                    'errors': serialize_account_form_errors(
+                        password_change_form
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        updated_user = password_change_form.save()
+        update_session_auth_hash(request._request, updated_user)
+        return Response({'changed': True})
 
 
 class OverviewAPIView(APIView):

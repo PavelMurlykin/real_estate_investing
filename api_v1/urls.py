@@ -33,6 +33,7 @@ from .views import (
     MortgageProgramListCreateAPIView,
     MortgageProgramOptionsAPIView,
     OverviewAPIView,
+    PasswordChangeAPIView,
     PropertyDictionaryDetailAPIView,
     PropertyDictionaryListCreateAPIView,
     RealEstateComplexDetailAPIView,
@@ -61,6 +62,11 @@ urlpatterns = [
     path('auth/logout/', LogoutAPIView.as_view(), name='logout'),
     path('auth/register/', RegistrationAPIView.as_view(), name='register'),
     path('auth/profile/', ProfileAPIView.as_view(), name='profile'),
+    path(
+        'auth/password/change/',
+        PasswordChangeAPIView.as_view(),
+        name='password_change',
+    ),
     path('overview/', OverviewAPIView.as_view(), name='overview'),
     path('key-rates/', KeyRateListAPIView.as_view(), name='key_rate_list'),
     path(
