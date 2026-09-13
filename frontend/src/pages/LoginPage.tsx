@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import {
+  Link,
+  Navigate,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom'
 
 import { ApiError } from '@/api/client'
 import { loginUser, sessionQueryOptions } from '@/api/queries'
@@ -135,6 +140,12 @@ export function LoginPage() {
           </p>
         </header>
 
+        {searchParameters.get('registered') === '1' ? (
+          <p className="account-form-status" role="status">
+            Аккаунт создан. Теперь войдите.
+          </p>
+        ) : null}
+
         <form className="auth-form" noValidate onSubmit={submitLogin}>
           <div className="form-field">
             <label htmlFor="login-identifier">Email или телефон</label>
@@ -185,7 +196,7 @@ export function LoginPage() {
 
         <div className="auth-card__links">
           <p>
-            Нет аккаунта? <a href="/users/register/">Зарегистрироваться</a>
+            Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
           </p>
           <a href="/users/password/reset/">Забыли пароль?</a>
           <a href={legacyLoginUrl}>Прежняя версия входа</a>

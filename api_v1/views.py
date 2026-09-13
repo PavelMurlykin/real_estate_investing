@@ -91,7 +91,7 @@ from property.services.developer_registry_upload import (
 )
 from trench_mortgage.models import TrenchMortgageCalculation
 from trench_mortgage.views import _export_trench_excel
-from users.forms import UserLoginForm
+from users.forms import UserLoginForm, UserProfileForm, UserRegistrationForm
 from users.roles import (
     can_manage_catalogs,
     can_sync_external_data,
@@ -214,6 +214,64 @@ def build_session_payload(user):
     }
 
 
+ACCOUNT_FORM_FIELD_NAMES = {
+    '__all__': 'nonFieldErrors',
+    'first_name': 'firstName',
+    'last_name': 'lastName',
+    'email': 'email',
+    'phone_number': 'phoneNumber',
+    'is_real_estate_agent': 'isRealEstateAgent',
+    'agency_name': 'agencyName',
+    'password1': 'password1',
+    'password2': 'password2',
+}
+
+
+def serialize_account_form_errors(account_form):
+    """Return Django account form errors using the React field names."""
+    return {
+        ACCOUNT_FORM_FIELD_NAMES.get(field_name, field_name): [
+            str(message) for message in messages
+        ]
+        for field_name, messages in account_form.errors.items()
+    }
+
+
+def build_account_form_data(request_data, include_passwords=False):
+    """Whitelist and translate account fields from the JSON API payload."""
+    form_data = {
+        'first_name': request_data.get('firstName', ''),
+        'last_name': request_data.get('lastName', ''),
+        'email': request_data.get('email', ''),
+        'phone_number': request_data.get('phoneNumber', ''),
+        'is_real_estate_agent': request_data.get(
+            'isRealEstateAgent',
+            False,
+        ),
+        'agency_name': request_data.get('agencyName', ''),
+    }
+    if include_passwords:
+        form_data.update(
+            {
+                'password1': request_data.get('password1', ''),
+                'password2': request_data.get('password2', ''),
+            }
+        )
+    return form_data
+
+
+def build_profile_payload(user):
+    """Return the editable profile fields for the current user."""
+    return {
+        'firstName': user.first_name,
+        'lastName': user.last_name,
+        'email': user.email,
+        'phoneNumber': user.phone_number,
+        'isRealEstateAgent': user.is_real_estate_agent,
+        'agencyName': user.agency_name,
+    }
+
+
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class SessionAPIView(APIView):
     """Expose the current session and set a CSRF cookie for the SPA."""
@@ -271,6 +329,65 @@ class LogoutAPIView(APIView):
         """Clear the current session and return an empty success response."""
         logout(request._request)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class RegistrationAPIView(APIView):
+    """Create users through the established Django registration form."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request):
+        """Validate and create an account without starting a session."""
+        if request.user.is_authenticated:
+            return Response(
+                {'detail': 'Вы уже вошли в приложение.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        registration_form = UserRegistrationForm(
+            data=build_account_form_data(
+                request.data,
+                include_passwords=True,
+            )
+        )
+        if not registration_form.is_valid():
+            return Response(
+                {'errors': serialize_account_form_errors(registration_form)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        registration_form.save()
+        return Response(
+            {'registered': True},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class ProfileAPIView(APIView):
+    """Read and update only the authenticated user's profile."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        """Return editable fields for the current user."""
+        return Response(build_profile_payload(request.user))
+
+    def patch(self, request):
+        """Validate and save the current user's complete profile payload."""
+        profile_form = UserProfileForm(
+            data=build_account_form_data(request.data),
+            instance=request.user,
+        )
+        if not profile_form.is_valid():
+            return Response(
+                {'errors': serialize_account_form_errors(profile_form)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        updated_user = profile_form.save()
+        return Response(build_profile_payload(updated_user))
 
 
 class OverviewAPIView(APIView):

@@ -25,6 +25,35 @@ export type LoginRequest = {
   password: string
 }
 
+export const registrationResultSchema = z.object({
+  registered: z.literal(true),
+})
+
+export const userProfileSchema = z.object({
+  firstName: z.string(),
+  lastName: z.string(),
+  email: z.string(),
+  phoneNumber: z.string(),
+  isRealEstateAgent: z.boolean(),
+  agencyName: z.string(),
+})
+
+export type UserProfile = z.infer<typeof userProfileSchema>
+
+export type UserProfileWriteRequest = {
+  firstName: string
+  lastName: string
+  email: string
+  phoneNumber: string
+  isRealEstateAgent: boolean
+  agencyName: string
+}
+
+export type RegistrationRequest = UserProfileWriteRequest & {
+  password1: string
+  password2: string
+}
+
 export const propertyListItemSchema = z.object({
   id: z.number().int().positive(),
   city: z.string(),

@@ -40,6 +40,7 @@ import {
   realEstateComplexDetailSchema,
   realEstateComplexListResponseSchema,
   realEstateComplexOptionsSchema,
+  registrationResultSchema,
   savedMortgageCalculationDetailSchema,
   savedMortgageCalculationListResponseSchema,
   savedTrenchMortgageCalculationCreateResponseSchema,
@@ -47,6 +48,7 @@ import {
   savedTrenchMortgageCalculationListResponseSchema,
   sessionSchema,
   trenchMortgageCalculationResponseSchema,
+  userProfileSchema,
 } from './schemas'
 import type {
   BankWriteRequest,
@@ -63,9 +65,11 @@ import type {
   MortgageProgramWriteRequest,
   PropertyDictionaryKey,
   PropertyDictionaryWriteRequest,
+  RegistrationRequest,
   SavedMortgageCalculationCreateRequest,
   SavedTrenchMortgageCalculationCreateRequest,
   TrenchMortgageCalculationRequest,
+  UserProfileWriteRequest,
 } from './schemas'
 
 export const sessionQueryOptions = queryOptions({
@@ -78,6 +82,27 @@ export const sessionQueryOptions = queryOptions({
 export function loginUser(payload: LoginRequest) {
   return requestJson('/api/v1/auth/login/', sessionSchema, {
     method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function registerUser(payload: RegistrationRequest) {
+  return requestJson('/api/v1/auth/register/', registrationResultSchema, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export const userProfileQueryOptions = queryOptions({
+  queryKey: ['user-profile'],
+  queryFn: ({ signal }) =>
+    requestJson('/api/v1/auth/profile/', userProfileSchema, { signal }),
+  staleTime: 60_000,
+})
+
+export function updateUserProfile(payload: UserProfileWriteRequest) {
+  return requestJson('/api/v1/auth/profile/', userProfileSchema, {
+    method: 'PATCH',
     body: JSON.stringify(payload),
   })
 }

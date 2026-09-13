@@ -3087,6 +3087,10 @@ select:focus-visible {
   box-shadow: var(--shadow-md);
 }
 
+.auth-card--wide {
+  width: min(100%, 760px);
+}
+
 .auth-card__header {
   margin-bottom: 28px;
 }
@@ -3110,6 +3114,67 @@ select:focus-visible {
 
 .auth-form .form-field {
   margin: 0;
+}
+
+.auth-form .form-error {
+  margin: 0;
+}
+
+.account-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.account-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  color: var(--text);
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.account-checkbox input {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+  accent-color: var(--brand);
+}
+
+.account-checkbox span {
+  display: grid;
+  gap: 4px;
+}
+
+.account-checkbox small {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.account-form-status {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  color: var(--brand-strong);
+  background: var(--brand-soft);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.account-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.account-form-actions .button {
+  flex: 1 1 210px;
 }
 
 .auth-form__submit {
@@ -3136,6 +3201,16 @@ select:focus-visible {
 .auth-card__links a {
   color: var(--brand-strong);
   font-weight: 750;
+}
+
+@media (max-width: 620px) {
+  .account-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .account-form-grid .form-field--wide {
+    grid-column: auto;
+  }
 }
 
 .customer-form {

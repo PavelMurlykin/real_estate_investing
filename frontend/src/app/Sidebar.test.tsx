@@ -63,6 +63,9 @@ describe('Sidebar', () => {
       'href',
       '/login',
     )
+    expect(
+      within(sidebar).getByRole('link', { name: 'Регистрация' }),
+    ).toHaveAttribute('href', '/register')
   })
 
   it('shows private workflows and account actions for authenticated users', () => {
@@ -83,6 +86,10 @@ describe('Sidebar', () => {
       screen.getByRole('link', { name: 'Траншевая ипотека' }),
     ).toHaveAttribute('href', '/mortgage/trench')
     expect(screen.getByText('Анна Иванова')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Профиль' })).toHaveAttribute(
+      'href',
+      '/profile',
+    )
     expect(screen.getByRole('button', { name: 'Выйти' })).toBeEnabled()
   })
 })

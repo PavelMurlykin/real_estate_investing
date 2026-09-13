@@ -48,11 +48,21 @@ describe('LoginPage', () => {
       'current-password',
     )
     expect(screen.getByRole('link', { name: 'Зарегистрироваться' }))
-      .toHaveAttribute('href', '/users/register/')
+      .toHaveAttribute('href', '/register')
     expect(screen.getByRole('link', { name: 'Забыли пароль?' }))
       .toHaveAttribute('href', '/users/password/reset/')
     expect(screen.getByRole('link', { name: 'Прежняя версия входа' }))
       .toHaveAttribute('href', '/users/login/?next=%2Fapp%2F')
+  })
+
+  it('announces successful registration before login', () => {
+    renderWithProviders(loginRoutes(), {
+      initialRoute: '/login?registered=1',
+    })
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Аккаунт создан. Теперь войдите.',
+    )
   })
 
   it('shows a local error instead of submitting empty credentials', async () => {

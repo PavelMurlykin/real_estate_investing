@@ -195,7 +195,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 </div>
               </div>
               <div className="account-actions">
-                <a href="/users/profile/edit/">Профиль</a>
+                <Link to="/profile" onClick={onClose}>Профиль</Link>
                 <button
                   type="button"
                   disabled={logoutMutation.isPending}
@@ -211,7 +211,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           ) : (
             <div className="account-actions account-actions--anonymous">
               <Link to="/login" onClick={onClose}>Войти</Link>
-              <a className="account-actions__primary" href="/users/register/">Регистрация</a>
+              <Link
+                className="account-actions__primary"
+                to="/register"
+                onClick={onClose}
+              >
+                Регистрация
+              </Link>
             </div>
           )}
         </div>

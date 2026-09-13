@@ -11,6 +11,12 @@ const HomePage = lazy(async () => ({
 const LoginPage = lazy(async () => ({
   default: (await import('@/pages/LoginPage')).LoginPage,
 }))
+const RegistrationPage = lazy(async () => ({
+  default: (await import('@/pages/RegistrationPage')).RegistrationPage,
+}))
+const ProfilePage = lazy(async () => ({
+  default: (await import('@/pages/ProfilePage')).ProfilePage,
+}))
 const PropertyListPage = lazy(async () => ({
   default: (await import('@/pages/PropertyListPage')).PropertyListPage,
 }))
@@ -134,6 +140,8 @@ export function App() {
         <Route element={<AppShell />}>
           <Route index element={<HomePage />} />
           <Route path="login" element={<LoginPage />} />
+          <Route path="register" element={<RegistrationPage />} />
+          <Route path="profile" element={<ProfilePage />} />
           <Route path="properties" element={<PropertyListPage />} />
           <Route path="properties/new" element={<PropertyFormPage />} />
           <Route
