@@ -64,6 +64,29 @@ export type PasswordChangeRequest = {
   newPassword2: string
 }
 
+export const passwordResetRequestResultSchema = z.object({
+  requested: z.literal(true),
+})
+
+export const passwordResetTokenResultSchema = z.object({
+  valid: z.literal(true),
+})
+
+export const passwordResetConfirmResultSchema = z.object({
+  changed: z.literal(true),
+  session: sessionSchema,
+})
+
+export type PasswordResetTokenRequest = {
+  userIdentifier: string
+  token: string
+}
+
+export type PasswordResetConfirmRequest = {
+  newPassword1: string
+  newPassword2: string
+}
+
 export const propertyListItemSchema = z.object({
   id: z.number().int().positive(),
   city: z.string(),

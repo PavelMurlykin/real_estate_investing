@@ -1,6 +1,16 @@
 from django.conf import settings
-from django.contrib.auth import login, logout, update_session_auth_hash
-from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth import (
+    get_user_model,
+    login,
+    logout,
+    update_session_auth_hash,
+)
+from django.contrib.auth.forms import (
+    PasswordChangeForm,
+    PasswordResetForm,
+    SetPasswordForm,
+)
+from django.contrib.auth.tokens import default_token_generator
 from django.db import transaction
 from django.db.models import (
     Count,
@@ -18,6 +28,8 @@ from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.decorators import method_decorator
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from rest_framework import status
 from rest_framework.exceptions import NotFound, ValidationError
@@ -34,6 +46,7 @@ from rest_framework.permissions import (
 )
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
+from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 
 from bank.developer_mortgage_program_importer import (
@@ -228,7 +241,11 @@ ACCOUNT_FORM_FIELD_NAMES = {
     'old_password': 'oldPassword',
     'new_password1': 'newPassword1',
     'new_password2': 'newPassword2',
+    'token': 'token',
 }
+
+PASSWORD_RESET_USER_SESSION_KEY = '_react_password_reset_user_identifier'
+PASSWORD_RESET_TOKEN_SESSION_KEY = '_react_password_reset_token'
 
 
 def serialize_account_form_errors(account_form):
@@ -274,6 +291,62 @@ def build_profile_payload(user):
         'isRealEstateAgent': user.is_real_estate_agent,
         'agencyName': user.agency_name,
     }
+
+
+def clear_password_reset_session(request):
+    """Remove pending React password-reset authorization from the session."""
+    request.session.pop(PASSWORD_RESET_USER_SESSION_KEY, None)
+    request.session.pop(PASSWORD_RESET_TOKEN_SESSION_KEY, None)
+
+
+def resolve_password_reset_user(encoded_user_identifier, token):
+    """Return the token owner without revealing why validation failed."""
+    user_model = get_user_model()
+    try:
+        user_identifier = force_str(
+            urlsafe_base64_decode(encoded_user_identifier)
+        )
+        user = user_model._default_manager.get(pk=user_identifier)
+    except (
+        TypeError,
+        ValueError,
+        OverflowError,
+        UnicodeDecodeError,
+        user_model.DoesNotExist,
+    ):
+        return None
+
+    if not default_token_generator.check_token(user, token):
+        return None
+    return user
+
+
+def password_reset_token_error_response():
+    """Return the stable error used for absent, expired, or invalid links."""
+    return Response(
+        {
+            'errors': {
+                'token': [
+                    'Ссылка для восстановления недействительна или устарела.'
+                ]
+            }
+        },
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+
+
+class PasswordResetRequestRateThrottle(SimpleRateThrottle):
+    """Bound password-reset email requests by client network identity."""
+
+    scope = 'password-reset-request'
+    rate = '5/hour'
+
+    def get_cache_key(self, request, view):
+        """Return a rate-limit key for both anonymous and signed-in clients."""
+        return self.cache_format % {
+            'scope': self.scope,
+            'ident': self.get_ident(request),
+        }
 
 
 @method_decorator(ensure_csrf_cookie, name='dispatch')
@@ -423,6 +496,99 @@ class PasswordChangeAPIView(APIView):
         updated_user = password_change_form.save()
         update_session_auth_hash(request._request, updated_user)
         return Response({'changed': True})
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class PasswordResetRequestAPIView(APIView):
+    """Send a generic React password-reset email when an account is eligible."""
+
+    permission_classes = (AllowAny,)
+    throttle_classes = (PasswordResetRequestRateThrottle,)
+
+    def post(self, request):
+        """Validate the email and send a non-enumerating reset response."""
+        clear_password_reset_session(request._request)
+        password_reset_form = PasswordResetForm(
+            data={'email': request.data.get('email', '')}
+        )
+        if not password_reset_form.is_valid():
+            return Response(
+                {'errors': serialize_account_form_errors(password_reset_form)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        password_reset_form.save(
+            request=request._request,
+            use_https=request.is_secure(),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            subject_template_name='users/password_reset_subject.txt',
+            email_template_name='users/password_reset_react_email.html',
+        )
+        return Response({'requested': True})
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class PasswordResetTokenAPIView(APIView):
+    """Exchange a valid URL token for session-bound reset authorization."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request):
+        """Validate the token and remove it from subsequent browser URLs."""
+        clear_password_reset_session(request._request)
+        encoded_user_identifier = request.data.get('userIdentifier', '')
+        token = request.data.get('token', '')
+        user = resolve_password_reset_user(encoded_user_identifier, token)
+        if user is None:
+            return password_reset_token_error_response()
+
+        request.session.cycle_key()
+        request.session[PASSWORD_RESET_USER_SESSION_KEY] = (
+            encoded_user_identifier
+        )
+        request.session[PASSWORD_RESET_TOKEN_SESSION_KEY] = token
+        return Response({'valid': True})
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class PasswordResetConfirmAPIView(APIView):
+    """Set a password using session-bound reset authorization."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request):
+        """Revalidate the reset token and apply Django password validation."""
+        user_identifier = request.session.get(
+            PASSWORD_RESET_USER_SESSION_KEY
+        )
+        token = request.session.get(PASSWORD_RESET_TOKEN_SESSION_KEY, '')
+        user = resolve_password_reset_user(str(user_identifier or ''), token)
+        if user is None:
+            clear_password_reset_session(request._request)
+            return password_reset_token_error_response()
+
+        set_password_form = SetPasswordForm(
+            user=user,
+            data={
+                'new_password1': request.data.get('newPassword1', ''),
+                'new_password2': request.data.get('newPassword2', ''),
+            },
+        )
+        if not set_password_form.is_valid():
+            return Response(
+                {'errors': serialize_account_form_errors(set_password_form)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        set_password_form.save()
+        clear_password_reset_session(request._request)
+        logout(request._request)
+        return Response(
+            {
+                'changed': True,
+                'session': build_session_payload(request._request.user),
+            }
+        )
 
 
 class OverviewAPIView(APIView):

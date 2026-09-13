@@ -1,7 +1,12 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
+from django.core import mail
+from django.core.cache import cache
 from django.test import Client
 from django.urls import reverse
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 
 
 def registration_payload(**overrides):
@@ -32,6 +37,14 @@ def profile_payload(**overrides):
     }
     payload.update(overrides)
     return payload
+
+
+def password_reset_token_payload(user):
+    """Build a valid encoded user identifier and one-time reset token."""
+    return {
+        'userIdentifier': urlsafe_base64_encode(force_bytes(user.pk)),
+        'token': default_token_generator.make_token(user),
+    }
 
 
 @pytest.mark.django_db
@@ -346,3 +359,248 @@ def test_password_change_api_requires_csrf_token():
     assert response.status_code == 403
     user.refresh_from_db()
     assert user.check_password('old-safe-password')
+
+
+@pytest.mark.django_db
+def test_password_reset_request_sends_react_link_without_enumerating_users(
+    client,
+):
+    """Known and unknown email addresses should receive the same API response."""
+    get_user_model().objects.create_user(
+        email='reset@example.com',
+        password='old-safe-password',
+        phone_number='+79990000020',
+    )
+
+    known_response = client.post(
+        reverse('api_v1:password_reset'),
+        data={'email': 'reset@example.com'},
+        content_type='application/json',
+        REMOTE_ADDR='192.0.2.20',
+    )
+    unknown_response = client.post(
+        reverse('api_v1:password_reset'),
+        data={'email': 'unknown@example.com'},
+        content_type='application/json',
+        REMOTE_ADDR='192.0.2.21',
+    )
+
+    assert known_response.status_code == 200
+    assert unknown_response.status_code == 200
+    assert known_response.json() == unknown_response.json() == {
+        'requested': True
+    }
+    assert len(mail.outbox) == 1
+    assert '/app/password/reset/' in mail.outbox[0].body
+    assert '/users/password/reset/' not in mail.outbox[0].body
+
+
+@pytest.mark.django_db
+def test_password_reset_request_rejects_invalid_email(client):
+    """Malformed addresses should return a field error without sending mail."""
+    response = client.post(
+        reverse('api_v1:password_reset'),
+        data={'email': 'not-an-email'},
+        content_type='application/json',
+        REMOTE_ADDR='192.0.2.22',
+    )
+
+    assert response.status_code == 400
+    assert 'email' in response.json()['errors']
+    assert len(mail.outbox) == 0
+
+
+@pytest.mark.django_db
+def test_password_reset_request_is_rate_limited(client):
+    """Repeated email requests from one network identity should be bounded."""
+    cache.clear()
+    request_url = reverse('api_v1:password_reset')
+    for request_number in range(5):
+        response = client.post(
+            request_url,
+            data={'email': f'unknown-{request_number}@example.com'},
+            content_type='application/json',
+            REMOTE_ADDR='192.0.2.23',
+        )
+        assert response.status_code == 200
+
+    blocked_response = client.post(
+        request_url,
+        data={'email': 'unknown-final@example.com'},
+        content_type='application/json',
+        REMOTE_ADDR='192.0.2.23',
+    )
+
+    assert blocked_response.status_code == 429
+
+
+@pytest.mark.django_db
+def test_password_reset_request_requires_csrf_token():
+    """Anonymous reset email requests must enforce CSRF protection."""
+    csrf_client = Client(enforce_csrf_checks=True)
+
+    response = csrf_client.post(
+        reverse('api_v1:password_reset'),
+        data={'email': 'reset@example.com'},
+        content_type='application/json',
+        REMOTE_ADDR='192.0.2.24',
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_password_reset_token_exchange_and_confirmation_change_password(client):
+    """A valid link should become session-bound before setting a password."""
+    user = get_user_model().objects.create_user(
+        email='confirm-reset@example.com',
+        password='old-safe-password',
+        phone_number='+79990000025',
+    )
+
+    token_response = client.post(
+        reverse('api_v1:password_reset_token'),
+        data=password_reset_token_payload(user),
+        content_type='application/json',
+    )
+    confirm_response = client.post(
+        reverse('api_v1:password_reset_confirm'),
+        data={
+            'newPassword1': 'R3set!orbits-redwood-2026',
+            'newPassword2': 'R3set!orbits-redwood-2026',
+        },
+        content_type='application/json',
+    )
+
+    assert token_response.status_code == 200
+    assert token_response.json() == {'valid': True}
+    assert confirm_response.status_code == 200
+    assert confirm_response.json()['changed'] is True
+    assert confirm_response.json()['session']['isAuthenticated'] is False
+    user.refresh_from_db()
+    assert user.check_password('R3set!orbits-redwood-2026')
+    assert '_react_password_reset_user_identifier' not in client.session
+    assert '_react_password_reset_token' not in client.session
+
+
+@pytest.mark.django_db
+def test_invalid_password_reset_token_clears_previous_authorization(client):
+    """An invalid replacement link must clear any earlier reset session."""
+    user = get_user_model().objects.create_user(
+        email='invalid-reset@example.com',
+        password='old-safe-password',
+        phone_number='+79990000026',
+    )
+    client.post(
+        reverse('api_v1:password_reset_token'),
+        data=password_reset_token_payload(user),
+        content_type='application/json',
+    )
+
+    response = client.post(
+        reverse('api_v1:password_reset_token'),
+        data={
+            'userIdentifier': 'invalid',
+            'token': 'invalid-token',
+        },
+        content_type='application/json',
+    )
+
+    assert response.status_code == 400
+    assert 'token' in response.json()['errors']
+    assert '_react_password_reset_user_identifier' not in client.session
+    assert '_react_password_reset_token' not in client.session
+
+
+@pytest.mark.django_db
+def test_password_reset_validation_error_preserves_one_time_authorization(
+    client,
+):
+    """Users should be able to correct new-password validation errors."""
+    user = get_user_model().objects.create_user(
+        email='retry-reset@example.com',
+        password='old-safe-password',
+        phone_number='+79990000027',
+    )
+    client.post(
+        reverse('api_v1:password_reset_token'),
+        data=password_reset_token_payload(user),
+        content_type='application/json',
+    )
+
+    invalid_response = client.post(
+        reverse('api_v1:password_reset_confirm'),
+        data={
+            'newPassword1': 'R3set!orbits-redwood-2026',
+            'newPassword2': 'different-password',
+        },
+        content_type='application/json',
+    )
+    valid_response = client.post(
+        reverse('api_v1:password_reset_confirm'),
+        data={
+            'newPassword1': 'R3set!orbits-redwood-2026',
+            'newPassword2': 'R3set!orbits-redwood-2026',
+        },
+        content_type='application/json',
+    )
+
+    assert invalid_response.status_code == 400
+    assert 'newPassword2' in invalid_response.json()['errors']
+    assert valid_response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_password_reset_confirmation_requires_valid_session_authorization(
+    client,
+):
+    """A direct confirmation request without token exchange must fail safely."""
+    response = client.post(
+        reverse('api_v1:password_reset_confirm'),
+        data={
+            'newPassword1': 'R3set!orbits-redwood-2026',
+            'newPassword2': 'R3set!orbits-redwood-2026',
+        },
+        content_type='application/json',
+    )
+
+    assert response.status_code == 400
+    assert 'token' in response.json()['errors']
+
+
+@pytest.mark.django_db
+def test_password_reset_token_and_confirmation_require_csrf():
+    """Both unsafe reset steps should require a valid CSRF token."""
+    user = get_user_model().objects.create_user(
+        email='csrf-reset@example.com',
+        password='old-safe-password',
+        phone_number='+79990000028',
+    )
+    csrf_client = Client(enforce_csrf_checks=True)
+    token_payload = password_reset_token_payload(user)
+
+    rejected_token_response = csrf_client.post(
+        reverse('api_v1:password_reset_token'),
+        data=token_payload,
+        content_type='application/json',
+    )
+    session_response = csrf_client.get(reverse('api_v1:session'))
+    csrf_token = session_response.cookies['csrftoken'].value
+    accepted_token_response = csrf_client.post(
+        reverse('api_v1:password_reset_token'),
+        data=token_payload,
+        content_type='application/json',
+        HTTP_X_CSRFTOKEN=csrf_token,
+    )
+    rejected_confirmation_response = csrf_client.post(
+        reverse('api_v1:password_reset_confirm'),
+        data={
+            'newPassword1': 'R3set!orbits-redwood-2026',
+            'newPassword2': 'R3set!orbits-redwood-2026',
+        },
+        content_type='application/json',
+    )
+
+    assert rejected_token_response.status_code == 403
+    assert accepted_token_response.status_code == 200
+    assert rejected_confirmation_response.status_code == 403

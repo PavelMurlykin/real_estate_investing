@@ -33,6 +33,9 @@ import {
   mortgageProgramOptionsSchema,
   overviewSchema,
   passwordChangeResultSchema,
+  passwordResetConfirmResultSchema,
+  passwordResetRequestResultSchema,
+  passwordResetTokenResultSchema,
   propertyDetailSchema,
   propertyDictionaryEntrySchema,
   propertyDictionaryListResponseSchema,
@@ -65,6 +68,8 @@ import type {
   MortgageCalculationRequest,
   MortgageProgramWriteRequest,
   PasswordChangeRequest,
+  PasswordResetConfirmRequest,
+  PasswordResetTokenRequest,
   PropertyDictionaryKey,
   PropertyDictionaryWriteRequest,
   RegistrationRequest,
@@ -113,6 +118,43 @@ export function changePassword(payload: PasswordChangeRequest) {
   return requestJson(
     '/api/v1/auth/password/change/',
     passwordChangeResultSchema,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  )
+}
+
+export function requestPasswordReset(payload: { email: string }) {
+  return requestJson(
+    '/api/v1/auth/password/reset/',
+    passwordResetRequestResultSchema,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  )
+}
+
+export function validatePasswordResetToken(
+  payload: PasswordResetTokenRequest,
+) {
+  return requestJson(
+    '/api/v1/auth/password/reset/token/',
+    passwordResetTokenResultSchema,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  )
+}
+
+export function confirmPasswordReset(
+  payload: PasswordResetConfirmRequest,
+) {
+  return requestJson(
+    '/api/v1/auth/password/reset/confirm/',
+    passwordResetConfirmResultSchema,
     {
       method: 'POST',
       body: JSON.stringify(payload),

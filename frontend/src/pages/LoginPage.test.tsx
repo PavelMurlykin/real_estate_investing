@@ -50,7 +50,7 @@ describe('LoginPage', () => {
     expect(screen.getByRole('link', { name: 'Зарегистрироваться' }))
       .toHaveAttribute('href', '/register')
     expect(screen.getByRole('link', { name: 'Забыли пароль?' }))
-      .toHaveAttribute('href', '/users/password/reset/')
+      .toHaveAttribute('href', '/password/reset')
     expect(screen.getByRole('link', { name: 'Прежняя версия входа' }))
       .toHaveAttribute('href', '/users/login/?next=%2Fapp%2F')
   })
@@ -62,6 +62,16 @@ describe('LoginPage', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent(
       'Аккаунт создан. Теперь войдите.',
+    )
+  })
+
+  it('announces a completed password reset before login', () => {
+    renderWithProviders(loginRoutes(), {
+      initialRoute: '/login?reset=1',
+    })
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Пароль обновлён. Теперь войдите.',
     )
   })
 

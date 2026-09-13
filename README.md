@@ -88,12 +88,17 @@ React. Для вложенных локаций используются кас�
 серверной валидации существующими Django-формами и безопасного возврата на
 исходную React-страницу. Смена пароля также перенесена в React: она использует
 встроенную Django-проверку текущего и нового пароля и сохраняет активную
-сессию. Восстановление пароля по email пока остаётся в сохранённом
-Django-интерфейсе. Старые страницы регистрации, профиля и смены пароля
-доступны как резервные до завершения приёмочного тестирования.
+сессию. Восстановление пароля по email перенесено полностью: запрос не
+раскрывает существование аккаунта, отправка ограничена по частоте, одноразовый
+токен после проверки заменяется session-bound разрешением и удаляется из URL,
+а завершение сбрасывает текущую сессию. Старые страницы регистрации, профиля,
+смены и восстановления пароля доступны как резервные до завершения
+приёмочного тестирования.
 React-маршруты доступны по
 адресам /app/, /app/login, /app/register, /app/profile,
-/app/password/change, /app/properties, /app/properties/new,
+/app/password/change, /app/password/reset,
+/app/password/reset/:userIdentifier/:token, /app/password/reset/confirm,
+/app/properties, /app/properties/new,
 /app/properties/:id, /app/properties/:id/edit, /app/customers,
 /app/customers/new, /app/customers/:id, /app/customers/:id/edit,
 /app/company-groups, /app/company-groups/new, /app/company-groups/:id/edit,

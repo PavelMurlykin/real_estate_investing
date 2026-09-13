@@ -12,6 +12,7 @@ export type AccountFieldName =
   | 'oldPassword'
   | 'newPassword1'
   | 'newPassword2'
+  | 'token'
   | 'form'
 
 export type AccountFormErrors = Partial<Record<AccountFieldName, string>>
@@ -28,6 +29,7 @@ const accountFieldNames: AccountFieldName[] = [
   'oldPassword',
   'newPassword1',
   'newPassword2',
+  'token',
 ]
 
 function firstMessage(value: unknown): string | null {

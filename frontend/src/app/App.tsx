@@ -20,6 +20,21 @@ const ProfilePage = lazy(async () => ({
 const PasswordChangePage = lazy(async () => ({
   default: (await import('@/pages/PasswordChangePage')).PasswordChangePage,
 }))
+const PasswordResetRequestPage = lazy(async () => ({
+  default: (
+    await import('@/pages/PasswordResetRequestPage')
+  ).PasswordResetRequestPage,
+}))
+const PasswordResetTokenPage = lazy(async () => ({
+  default: (
+    await import('@/pages/PasswordResetTokenPage')
+  ).PasswordResetTokenPage,
+}))
+const PasswordResetConfirmPage = lazy(async () => ({
+  default: (
+    await import('@/pages/PasswordResetConfirmPage')
+  ).PasswordResetConfirmPage,
+}))
 const PropertyListPage = lazy(async () => ({
   default: (await import('@/pages/PropertyListPage')).PropertyListPage,
 }))
@@ -146,6 +161,18 @@ export function App() {
           <Route path="register" element={<RegistrationPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="password/change" element={<PasswordChangePage />} />
+          <Route
+            path="password/reset"
+            element={<PasswordResetRequestPage />}
+          />
+          <Route
+            path="password/reset/:userIdentifier/:token"
+            element={<PasswordResetTokenPage />}
+          />
+          <Route
+            path="password/reset/confirm"
+            element={<PasswordResetConfirmPage />}
+          />
           <Route path="properties" element={<PropertyListPage />} />
           <Route path="properties/new" element={<PropertyFormPage />} />
           <Route

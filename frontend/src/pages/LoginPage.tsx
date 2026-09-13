@@ -145,6 +145,11 @@ export function LoginPage() {
             Аккаунт создан. Теперь войдите.
           </p>
         ) : null}
+        {searchParameters.get('reset') === '1' ? (
+          <p className="account-form-status" role="status">
+            Пароль обновлён. Теперь войдите.
+          </p>
+        ) : null}
 
         <form className="auth-form" noValidate onSubmit={submitLogin}>
           <div className="form-field">
@@ -198,7 +203,7 @@ export function LoginPage() {
           <p>
             Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
           </p>
-          <a href="/users/password/reset/">Забыли пароль?</a>
+          <Link to="/password/reset">Забыли пароль?</Link>
           <a href={legacyLoginUrl}>Прежняя версия входа</a>
         </div>
       </section>
