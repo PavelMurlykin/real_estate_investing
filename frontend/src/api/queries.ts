@@ -14,6 +14,7 @@ import {
   customerListResponseSchema,
   customerMutationResponseSchema,
   developerListResponseSchema,
+  developerRegistryImportSummarySchema,
   developerMortgageProgramImportResultSchema,
   developerMortgageProgramListResponseSchema,
   developerMortgageProgramOptionsSchema,
@@ -684,6 +685,16 @@ export function deleteDeveloper(developerIdentifier: number) {
   return requestWithoutResponse(
     `/api/v1/developers/${developerIdentifier}/`,
     { method: 'DELETE' },
+  )
+}
+
+export function importDeveloperRegistry(sourceFile: File) {
+  const formData = new FormData()
+  formData.append('source_file', sourceFile)
+  return requestJson(
+    '/api/v1/developers/import-registry/',
+    developerRegistryImportSummarySchema,
+    { method: 'POST', body: formData },
   )
 }
 

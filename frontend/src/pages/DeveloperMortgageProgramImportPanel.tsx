@@ -78,10 +78,10 @@ export function DeveloperMortgageProgramImportPanel() {
 
   return (
     <section
-      className="developer-program-import-card"
+      className="catalog-import-card"
       aria-labelledby="developer-program-import-title"
     >
-      <div className="developer-program-import-card__heading">
+      <div className="catalog-import-card__heading">
         <div>
           <span className="eyebrow">Пакетное обновление</span>
           <h2 id="developer-program-import-title">Импорт из XLSX</h2>
@@ -90,13 +90,13 @@ export function DeveloperMortgageProgramImportPanel() {
             Справочники должны быть заполнены заранее.
           </p>
         </div>
-        <span className="developer-program-import-card__limit">
+        <span className="catalog-import-card__limit">
           До 15 МБ · до 20&nbsp;000 строк
         </span>
       </div>
 
-      <form className="developer-program-import-form" onSubmit={submitImport}>
-        <div className="form-field developer-program-import-form__file">
+      <form className="catalog-import-form" onSubmit={submitImport}>
+        <div className="form-field catalog-import-form__file">
           <label htmlFor="developer-program-workbook">Файл XLSX</label>
           <input
             id="developer-program-workbook"
@@ -140,18 +140,18 @@ export function DeveloperMortgageProgramImportPanel() {
       {importResult ? (
         <div
           className={importResult.skipped
-            ? 'developer-program-import-result developer-program-import-result--warning'
-            : 'developer-program-import-result'}
+            ? 'catalog-import-result catalog-import-result--warning'
+            : 'catalog-import-result'}
           role="status"
         >
-          <div className="developer-program-import-result__heading">
+          <div className="catalog-import-result__heading">
             <div>
               <span className="eyebrow">Результат импорта</span>
               <h3>Файл обработан</h3>
             </div>
             <strong>{formatInteger(importResult.totalRows)} строк</strong>
           </div>
-          <dl className="developer-program-import-metrics">
+          <dl className="catalog-import-metrics">
             <div><dt>Корректных</dt><dd>{formatInteger(importResult.parsedRows)}</dd></div>
             <div><dt>Создано</dt><dd>{formatInteger(importResult.created)}</dd></div>
             <div><dt>Обновлено</dt><dd>{formatInteger(importResult.updated)}</dd></div>
@@ -165,7 +165,7 @@ export function DeveloperMortgageProgramImportPanel() {
             </div>
           </dl>
           {importResult.issueMessages.length ? (
-            <details className="developer-program-import-issues">
+            <details className="catalog-import-issues">
               <summary>Причины пропуска</summary>
               <ul>
                 {importResult.issueMessages.map((message) => (

@@ -17,6 +17,10 @@ from .models import (
     TransportAccessibilityType,
     WindowView,
 )
+from .services.developer_registry_importer import DeveloperRegistryImportError
+from .services.developer_registry_upload import (
+    validate_developer_registry_uploaded_file,
+)
 
 
 class PropertyFilterForm(forms.Form):
@@ -239,6 +243,24 @@ class DeveloperForm(forms.ModelForm):
         self.fields['company_group'].empty_label = 'Без группы компаний'
         self.fields['regions'].queryset = Region.objects.order_by('name')
         self.fields['regions'].required = False
+
+
+class DeveloperRegistryImportForm(forms.Form):
+    """Validate a developer registry source uploaded through the web UI."""
+
+    source_file = forms.FileField(label='Файл ЕРЗ')
+
+    def clean_source_file(self):
+        """Return a registry file with safe extension and bounded size."""
+        uploaded_file = self.cleaned_data['source_file']
+        try:
+            validate_developer_registry_uploaded_file(uploaded_file)
+        except DeveloperRegistryImportError as exception:
+            raise forms.ValidationError(
+                str(exception),
+                code='invalid_registry_file',
+            ) from exception
+        return uploaded_file
 
 
 class CompanyGroupForm(forms.ModelForm):

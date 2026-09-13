@@ -1,8 +1,5 @@
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from pathlib import Path
-from tempfile import NamedTemporaryFile
-
 from django import forms
 from django.contrib import messages
 from django.core.cache import cache
@@ -58,13 +55,14 @@ from .models import (
     TransportAccessibilityType,
     WindowView,
 )
-from .services.developer_registry_file_client import (
-    FileDeveloperRegistryClient,
-    SUPPORTED_SOURCE_FILE_EXTENSIONS,
-)
 from .services.developer_registry_importer import (
     DeveloperRegistryImportError,
     import_dom_rf_developers,
+)
+from .services.developer_registry_upload import (
+    import_developer_registry_uploaded_file,
+    save_developer_registry_uploaded_file,
+    validate_developer_registry_uploaded_file,
 )
 
 
@@ -72,7 +70,6 @@ FORM_DATA_CACHE_TIMEOUT = 600
 COMPLEX_FORM_LOCATION_CACHE_KEY = 'property:complex_form_location:v1'
 PROPERTY_FORM_LOCATION_CACHE_KEY = 'property:property_form_location:v1'
 DEVELOPER_REGISTRY_UPLOAD_FIELD_NAME = 'source_file'
-MAX_DEVELOPER_REGISTRY_UPLOAD_SIZE = 20 * 1024 * 1024
 
 
 def build_complex_form_location_payload():
@@ -1156,46 +1153,15 @@ class DeveloperRegistryImportView(ExternalDataSyncRequiredMixin, View):
 
     def import_uploaded_file(self, uploaded_file):
         """Import developers from a user-uploaded registry source file."""
-        self.validate_uploaded_file(uploaded_file)
-        source_file_path = self.save_uploaded_file_to_temporary_path(
-            uploaded_file
-        )
-        try:
-            return import_dom_rf_developers(
-                client=FileDeveloperRegistryClient(source_file_path)
-            )
-        finally:
-            Path(source_file_path).unlink(missing_ok=True)
+        return import_developer_registry_uploaded_file(uploaded_file)
 
     def validate_uploaded_file(self, uploaded_file):
         """Validate developer registry upload metadata before parsing."""
-        uploaded_file_name = getattr(uploaded_file, 'name', '')
-        extension = Path(uploaded_file_name).suffix.casefold()
-        if extension not in SUPPORTED_SOURCE_FILE_EXTENSIONS:
-            supported_extensions = ', '.join(
-                SUPPORTED_SOURCE_FILE_EXTENSIONS
-            )
-            raise DeveloperRegistryImportError(
-                (
-                    'Файл импорта должен быть в формате '
-                    f'{supported_extensions}.'
-                )
-            )
-
-        uploaded_file_size = getattr(uploaded_file, 'size', 0)
-        if uploaded_file_size > MAX_DEVELOPER_REGISTRY_UPLOAD_SIZE:
-            raise DeveloperRegistryImportError(
-                'Файл импорта не должен превышать 20 МБ.'
-            )
+        return validate_developer_registry_uploaded_file(uploaded_file)
 
     def save_uploaded_file_to_temporary_path(self, uploaded_file):
         """Persist an uploaded file to a temporary parser-readable path."""
-        uploaded_file_name = getattr(uploaded_file, 'name', '')
-        extension = Path(uploaded_file_name).suffix.casefold()
-        with NamedTemporaryFile(delete=False, suffix=extension) as source_file:
-            for chunk in uploaded_file.chunks():
-                source_file.write(chunk)
-            return source_file.name
+        return save_developer_registry_uploaded_file(uploaded_file)
 
 
 class RealEstateComplexListView(ListView):

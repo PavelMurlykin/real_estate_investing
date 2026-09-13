@@ -2914,7 +2914,7 @@ select:focus-visible {
   }
 }
 
-.developer-program-import-card {
+.catalog-import-card {
   padding: clamp(20px, 3vw, 30px);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -2922,43 +2922,43 @@ select:focus-visible {
   box-shadow: var(--shadow-sm);
 }
 
-.developer-program-import-card__heading,
-.developer-program-import-result__heading {
+.catalog-import-card__heading,
+.catalog-import-result__heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
 }
 
-.developer-program-import-card__heading h2,
-.developer-program-import-result__heading h3 {
+.catalog-import-card__heading h2,
+.catalog-import-result__heading h3 {
   margin: 6px 0 8px;
   font-family: var(--font-display);
 }
 
-.developer-program-import-card__heading h2 {
+.catalog-import-card__heading h2 {
   font-size: clamp(22px, 3vw, 29px);
 }
 
-.developer-program-import-card__heading p,
-.developer-program-import-result__heading h3 {
+.catalog-import-card__heading p,
+.catalog-import-result__heading h3 {
   margin-bottom: 0;
 }
 
-.developer-program-import-card__heading p {
+.catalog-import-card__heading p {
   max-width: 720px;
   color: var(--text-muted);
   line-height: 1.55;
 }
 
-.developer-program-import-card__heading code {
+.catalog-import-card__heading code {
   padding: 2px 6px;
   color: var(--text);
   background: var(--surface-muted);
   border-radius: 6px;
 }
 
-.developer-program-import-card__limit {
+.catalog-import-card__limit {
   flex: 0 0 auto;
   padding: 8px 11px;
   color: var(--text-muted);
@@ -2968,7 +2968,7 @@ select:focus-visible {
   font-weight: 800;
 }
 
-.developer-program-import-form {
+.catalog-import-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
@@ -2976,11 +2976,11 @@ select:focus-visible {
   margin-top: 24px;
 }
 
-.developer-program-import-form__file {
+.catalog-import-form__file {
   margin: 0;
 }
 
-.developer-program-import-result {
+.catalog-import-result {
   margin-top: 24px;
   padding: 20px;
   background: var(--brand-soft);
@@ -2988,24 +2988,24 @@ select:focus-visible {
   border-radius: 16px;
 }
 
-.developer-program-import-result--warning {
+.catalog-import-result--warning {
   background: color-mix(in srgb, var(--accent) 22%, var(--surface));
   border-color: color-mix(in srgb, var(--accent-strong) 60%, var(--border));
 }
 
-.developer-program-import-result__heading > strong {
+.catalog-import-result__heading > strong {
   font-family: var(--font-display);
   font-size: 22px;
 }
 
-.developer-program-import-metrics {
+.catalog-import-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin: 18px 0 0;
 }
 
-.developer-program-import-metrics div {
+.catalog-import-metrics div {
   display: grid;
   gap: 5px;
   padding: 14px;
@@ -3014,59 +3014,59 @@ select:focus-visible {
   border-radius: 12px;
 }
 
-.developer-program-import-metrics dt {
+.catalog-import-metrics dt {
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
 }
 
-.developer-program-import-metrics dd {
+.catalog-import-metrics dd {
   margin: 0;
   font-family: var(--font-display);
   font-size: 23px;
 }
 
-.developer-program-import-issues {
+.catalog-import-issues {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--border);
 }
 
-.developer-program-import-issues summary {
+.catalog-import-issues summary {
   cursor: pointer;
   font-weight: 800;
 }
 
-.developer-program-import-issues ul {
+.catalog-import-issues ul {
   margin: 12px 0 0;
   padding-left: 22px;
   color: var(--text-muted);
 }
 
 @media (max-width: 900px) {
-  .developer-program-import-metrics {
+  .catalog-import-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 600px) {
-  .developer-program-import-card__heading,
-  .developer-program-import-result__heading {
+  .catalog-import-card__heading,
+  .catalog-import-result__heading {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .developer-program-import-card__limit {
+  .catalog-import-card__limit {
     align-self: flex-start;
   }
 
-  .developer-program-import-form,
-  .developer-program-import-metrics {
+  .catalog-import-form,
+  .catalog-import-metrics {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .developer-program-import-form .button {
+  .catalog-import-form .button {
     width: 100%;
   }
 }

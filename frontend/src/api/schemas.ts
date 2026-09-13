@@ -464,6 +464,19 @@ export const developerOptionsSchema = z.object({
   }),
 })
 
+export const developerRegistryImportSummarySchema = z.object({
+  sourceRecords: z.number().int().nonnegative(),
+  normalizedRecords: z.number().int().nonnegative(),
+  createdDevelopers: z.number().int().nonnegative(),
+  updatedDevelopers: z.number().int().nonnegative(),
+  unchangedDevelopers: z.number().int().nonnegative(),
+  createdCompanyGroups: z.number().int().nonnegative(),
+  createdDeveloperRegionLinks: z.number().int().nonnegative(),
+  skippedRecords: z.number().int().nonnegative(),
+  errors: z.array(z.string()),
+  dryRun: z.boolean(),
+})
+
 const realEstateComplexDeveloperSchema = z.object({
   id: z.number().int().positive(),
   name: z.string(),
@@ -1053,6 +1066,9 @@ export type DeveloperListResponse = z.infer<
   typeof developerListResponseSchema
 >
 export type DeveloperOptions = z.infer<typeof developerOptionsSchema>
+export type DeveloperRegistryImportSummary = z.infer<
+  typeof developerRegistryImportSummarySchema
+>
 export type RealEstateComplexListItem = z.infer<
   typeof realEstateComplexListItemSchema
 >

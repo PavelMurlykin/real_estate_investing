@@ -13,6 +13,7 @@ from .views import (
     DeveloperMortgageProgramOptionsAPIView,
     DeveloperListCreateAPIView,
     DeveloperOptionsAPIView,
+    DeveloperRegistryImportAPIView,
     CustomerDetailAPIView,
     CustomerCalculationLinkDetailAPIView,
     CustomerCalculationListCreateAPIView,
@@ -157,6 +158,11 @@ urlpatterns = [
         'developers/options/',
         DeveloperOptionsAPIView.as_view(),
         name='developer_options',
+    ),
+    path(
+        'developers/import-registry/',
+        DeveloperRegistryImportAPIView.as_view(),
+        name='developer_registry_import',
     ),
     path(
         'developers/<int:pk>/',

@@ -15,6 +15,8 @@ import { formatInteger } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 
+import { DeveloperRegistryImportPanel } from './DeveloperRegistryImportPanel'
+
 const orderingOptions = [
   { value: 'name', label: 'По названию: А–Я' },
   { value: '-name', label: 'По названию: Я–А' },
@@ -121,14 +123,6 @@ export function DeveloperListPage() {
           <a className="button button--secondary" href="/property/developers/">
             Прежняя версия
           </a>
-          {canSyncExternalData ? (
-            <a
-              className="button button--secondary"
-              href="/property/developers/"
-            >
-              Импорт ЕРЗ
-            </a>
-          ) : null}
           {canManageCatalogs ? (
             <Link className="button button--primary" to="/developers/new">
               Добавить застройщика
@@ -136,6 +130,8 @@ export function DeveloperListPage() {
           ) : null}
         </div>
       </header>
+
+      {canSyncExternalData ? <DeveloperRegistryImportPanel /> : null}
 
       <section
         className="filter-panel developer-filter-panel"

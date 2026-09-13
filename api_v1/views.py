@@ -68,6 +68,7 @@ from mortgage.word import (
     export_saved_mortgage_calculation_word,
     export_trench_mortgage_word,
 )
+from property.forms import DeveloperRegistryImportForm
 from property.models import (
     ApartmentDecoration,
     ApartmentLayout,
@@ -81,6 +82,12 @@ from property.models import (
     RealEstateType,
     TransportAccessibilityType,
     WindowView,
+)
+from property.services.developer_registry_importer import (
+    DeveloperRegistryImportError,
+)
+from property.services.developer_registry_upload import (
+    import_developer_registry_uploaded_file,
 )
 from trench_mortgage.models import TrenchMortgageCalculation
 from trench_mortgage.views import _export_trench_excel
@@ -2158,6 +2165,62 @@ def _developer_queryset():
             complex_count=Count('realestatecomplex', distinct=True)
         )
     )
+
+
+def _serialize_developer_registry_import_summary(import_summary):
+    """Return a stable camel-case summary for a developer registry import."""
+    return {
+        'sourceRecords': import_summary.source_records,
+        'normalizedRecords': import_summary.normalized_records,
+        'createdDevelopers': import_summary.created_developers,
+        'updatedDevelopers': import_summary.updated_developers,
+        'unchangedDevelopers': import_summary.unchanged_developers,
+        'createdCompanyGroups': import_summary.created_company_groups,
+        'createdDeveloperRegionLinks': (
+            import_summary.created_developer_region_links
+        ),
+        'skippedRecords': import_summary.skipped_records,
+        'errors': list(import_summary.errors),
+        'dryRun': import_summary.dry_run,
+    }
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class DeveloperRegistryImportAPIView(APIView):
+    """Import developers from an uploaded ERZ registry source file."""
+
+    permission_classes = (IsAuthenticated, CanSyncExternalData)
+    parser_classes = (MultiPartParser,)
+
+    def post(self, request):
+        """Validate a registry upload and return its import summary."""
+        import_form = DeveloperRegistryImportForm(
+            data=request.data,
+            files=request.FILES,
+        )
+        if not import_form.is_valid():
+            return Response(
+                {
+                    'sourceFile': [
+                        str(error)
+                        for error in import_form.errors.get('source_file', ())
+                    ]
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            import_summary = import_developer_registry_uploaded_file(
+                import_form.cleaned_data['source_file']
+            )
+        except DeveloperRegistryImportError as exception:
+            return Response(
+                {'detail': str(exception)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            _serialize_developer_registry_import_summary(import_summary)
+        )
 
 
 @method_decorator(csrf_protect, name='dispatch')

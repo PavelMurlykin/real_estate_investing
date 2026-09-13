@@ -27,6 +27,21 @@ const managerSession: Session = {
   },
 }
 
+const administratorSession: Session = {
+  ...managerSession,
+  user: {
+    id: 2,
+    displayName: 'Администратор',
+    email: 'administrator@example.com',
+    agencyName: '',
+  },
+  capabilities: {
+    ...managerSession.capabilities,
+    syncExternalData: true,
+    viewAllPrivateRecords: true,
+  },
+}
+
 const directory: DeveloperListResponse = {
   page: 1,
   pageSize: 20,
@@ -78,6 +93,8 @@ describe('DeveloperListPage', () => {
     expect(screen.queryByText('ИНН')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Добавить застройщика' }))
       .not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Импорт реестра ЕРЗ' }))
+      .not.toBeInTheDocument()
   })
 
   it('filters through URL state and requests the selected company group', async () => {
@@ -116,8 +133,18 @@ describe('DeveloperListPage', () => {
         name: 'Редактировать: Северный девелопер',
       }),
     ).toHaveAttribute('href', '/developers/7/edit')
-    expect(screen.queryByRole('link', { name: 'Импорт ЕРЗ' }))
+    expect(screen.queryByRole('heading', { name: 'Импорт реестра ЕРЗ' }))
       .not.toBeInTheDocument()
+  })
+
+  it('shows the React registry import only to application administrators', () => {
+    renderWithProviders(<DeveloperListPage />, {
+      queryClient: createDirectoryQueryClient(administratorSession),
+    })
+
+    expect(screen.getByRole('heading', { name: 'Импорт реестра ЕРЗ' }))
+      .toBeInTheDocument()
+    expect(screen.getByLabelText('Файл ЕРЗ')).toBeInTheDocument()
   })
 
   it('deletes an unused developer after explicit confirmation', async () => {
