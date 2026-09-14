@@ -2,12 +2,14 @@ import { NavLink } from 'react-router-dom'
 
 type TopNavigationProps = {
   onOpenSidebar: () => void
+  isSidebarOpen?: boolean
   theme: 'light' | 'dark'
   onToggleTheme: () => void
 }
 
 export function TopNavigation({
   onOpenSidebar,
+  isSidebarOpen = false,
   theme,
   onToggleTheme,
 }: TopNavigationProps) {
@@ -18,6 +20,8 @@ export function TopNavigation({
         type="button"
         aria-label="Открыть меню разделов"
         aria-controls="application-sidebar"
+        aria-expanded={isSidebarOpen}
+        aria-haspopup="dialog"
         onClick={onOpenSidebar}
       >
         <span aria-hidden="true">☰</span>

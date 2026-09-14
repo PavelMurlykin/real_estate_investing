@@ -23,6 +23,26 @@ const authenticatedSession: Session = {
 }
 
 describe('Sidebar', () => {
+  it.each([
+    ['/banks/7/edit', 'Банки'],
+    ['/locations/metro', 'Локации'],
+    ['/dictionaries/window-views/3/edit', 'Справочники объектов'],
+    ['/mortgage/calculations/12', 'Расчёты ипотеки'],
+    ['/mortgage/trench', 'Траншевая ипотека'],
+    ['/mortgage/trench/calculations/17', 'История траншей'],
+  ])('marks only the current section for %s', (initialRoute, sectionName) => {
+    const queryClient = createTestQueryClient()
+    queryClient.setQueryData(['session'], authenticatedSession)
+    renderWithProviders(<Sidebar isOpen onClose={vi.fn()} />, {
+      initialRoute,
+      queryClient,
+    })
+    const navigation = screen.getByRole('navigation', { name: 'Разделы приложения' })
+    const currentLinks = within(navigation).getAllByRole('link', { current: 'page' })
+    expect(currentLinks).toHaveLength(1)
+    expect(currentLinks[0]).toHaveAccessibleName(sectionName)
+  })
+
   it('keeps private navigation hidden for anonymous visitors', () => {
     renderWithProviders(<Sidebar isOpen onClose={vi.fn()} />)
 

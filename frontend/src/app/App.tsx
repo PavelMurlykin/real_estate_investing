@@ -1,7 +1,5 @@
-import { lazy, Suspense } from 'react'
+import { lazy } from 'react'
 import { Route, Routes } from 'react-router-dom'
-
-import { PageLoadingState } from '@/shared/ui/AsyncState'
 
 import { AppShell } from './AppShell'
 
@@ -153,151 +151,149 @@ const NotFoundPage = lazy(async () => ({
 
 export function App() {
   return (
-    <Suspense fallback={<PageLoadingState />}>
-      <Routes>
-        <Route element={<AppShell />}>
-          <Route index element={<HomePage />} />
-          <Route path="login" element={<LoginPage />} />
-          <Route path="register" element={<RegistrationPage />} />
-          <Route path="profile" element={<ProfilePage />} />
-          <Route path="password/change" element={<PasswordChangePage />} />
-          <Route
-            path="password/reset"
-            element={<PasswordResetRequestPage />}
-          />
-          <Route
-            path="password/reset/:userIdentifier/:token"
-            element={<PasswordResetTokenPage />}
-          />
-          <Route
-            path="password/reset/confirm"
-            element={<PasswordResetConfirmPage />}
-          />
-          <Route path="properties" element={<PropertyListPage />} />
-          <Route path="properties/new" element={<PropertyFormPage />} />
-          <Route
-            path="properties/:propertyId"
-            element={<PropertyDetailPage />}
-          />
-          <Route
-            path="properties/:propertyId/edit"
-            element={<PropertyFormPage />}
-          />
-          <Route path="company-groups" element={<CompanyGroupListPage />} />
-          <Route
-            path="company-groups/new"
-            element={<CompanyGroupFormPage />}
-          />
-          <Route
-            path="company-groups/:companyGroupId/edit"
-            element={<CompanyGroupFormPage />}
-          />
-          <Route path="developers" element={<DeveloperListPage />} />
-          <Route path="developers/new" element={<DeveloperFormPage />} />
-          <Route
-            path="developers/:developerId/edit"
-            element={<DeveloperFormPage />}
-          />
-          <Route path="complexes" element={<RealEstateComplexListPage />} />
-          <Route
-            path="complexes/new"
-            element={<RealEstateComplexFormPage />}
-          />
-          <Route
-            path="complexes/:complexId"
-            element={<RealEstateComplexDetailPage />}
-          />
-          <Route
-            path="complexes/:complexId/edit"
-            element={<RealEstateComplexFormPage />}
-          />
-          <Route
-            path="dictionaries/:dictionaryKey"
-            element={<PropertyDictionaryPage />}
-          />
-          <Route
-            path="dictionaries/:dictionaryKey/:entryId/edit"
-            element={<PropertyDictionaryPage />}
-          />
-          <Route
-            path="locations/:dictionaryKey"
-            element={<LocationDictionaryPage />}
-          />
-          <Route
-            path="locations/:dictionaryKey/:entryId/edit"
-            element={<LocationDictionaryPage />}
-          />
-          <Route path="banks" element={<BankListPage />} />
-          <Route path="banks/new" element={<BankFormPage />} />
-          <Route path="banks/:bankId" element={<BankDetailPage />} />
-          <Route path="banks/:bankId/edit" element={<BankFormPage />} />
-          <Route
-            path="mortgage-programs"
-            element={<MortgageProgramListPage />}
-          />
-          <Route
-            path="mortgage-programs/new"
-            element={<MortgageProgramFormPage />}
-          />
-          <Route
-            path="mortgage-programs/:mortgageProgramId"
-            element={<MortgageProgramDetailPage />}
-          />
-          <Route
-            path="mortgage-programs/:mortgageProgramId/edit"
-            element={<MortgageProgramFormPage />}
-          />
-          <Route
-            path="developer-programs"
-            element={<DeveloperMortgageProgramListPage />}
-          />
-          <Route
-            path="developer-programs/new"
-            element={<DeveloperMortgageProgramFormPage />}
-          />
-          <Route
-            path="developer-programs/:developerProgramId"
-            element={<DeveloperMortgageProgramDetailPage />}
-          />
-          <Route
-            path="developer-programs/:developerProgramId/edit"
-            element={<DeveloperMortgageProgramFormPage />}
-          />
-          <Route path="key-rate" element={<KeyRatePage />} />
-          <Route path="customers" element={<CustomerListPage />} />
-          <Route path="customers/new" element={<CustomerFormPage />} />
-          <Route
-            path="customers/:customerId"
-            element={<CustomerDetailPage />}
-          />
-          <Route
-            path="customers/:customerId/edit"
-            element={<CustomerFormPage />}
-          />
-          <Route path="mortgage" element={<MortgageCalculatorPage />} />
-          <Route
-            path="mortgage/trench"
-            element={<TrenchMortgageCalculatorPage />}
-          />
-          <Route
-            path="mortgage/calculations"
-            element={<SavedMortgageCalculationListPage />}
-          />
-          <Route
-            path="mortgage/calculations/:calculationId"
-            element={<SavedMortgageCalculationDetailPage />}
-          />
-          <Route
-            path="mortgage/trench/calculations"
-            element={<SavedTrenchMortgageCalculationListPage />}
-          />
-          <Route
-            path="mortgage/trench/calculations/:calculationId"
-            element={<SavedTrenchMortgageCalculationDetailPage />}
-          />
-          <Route path="*" element={<NotFoundPage />} />
-        </Route>
-      </Routes>
-    </Suspense>
+    <Routes>
+      <Route element={<AppShell />}>
+        <Route index element={<HomePage />} />
+        <Route path="login" element={<LoginPage />} />
+        <Route path="register" element={<RegistrationPage />} />
+        <Route path="profile" element={<ProfilePage />} />
+        <Route path="password/change" element={<PasswordChangePage />} />
+        <Route
+          path="password/reset"
+          element={<PasswordResetRequestPage />}
+        />
+        <Route
+          path="password/reset/:userIdentifier/:token"
+          element={<PasswordResetTokenPage />}
+        />
+        <Route
+          path="password/reset/confirm"
+          element={<PasswordResetConfirmPage />}
+        />
+        <Route path="properties" element={<PropertyListPage />} />
+        <Route path="properties/new" element={<PropertyFormPage />} />
+        <Route
+          path="properties/:propertyId"
+          element={<PropertyDetailPage />}
+        />
+        <Route
+          path="properties/:propertyId/edit"
+          element={<PropertyFormPage />}
+        />
+        <Route path="company-groups" element={<CompanyGroupListPage />} />
+        <Route
+          path="company-groups/new"
+          element={<CompanyGroupFormPage />}
+        />
+        <Route
+          path="company-groups/:companyGroupId/edit"
+          element={<CompanyGroupFormPage />}
+        />
+        <Route path="developers" element={<DeveloperListPage />} />
+        <Route path="developers/new" element={<DeveloperFormPage />} />
+        <Route
+          path="developers/:developerId/edit"
+          element={<DeveloperFormPage />}
+        />
+        <Route path="complexes" element={<RealEstateComplexListPage />} />
+        <Route
+          path="complexes/new"
+          element={<RealEstateComplexFormPage />}
+        />
+        <Route
+          path="complexes/:complexId"
+          element={<RealEstateComplexDetailPage />}
+        />
+        <Route
+          path="complexes/:complexId/edit"
+          element={<RealEstateComplexFormPage />}
+        />
+        <Route
+          path="dictionaries/:dictionaryKey"
+          element={<PropertyDictionaryPage />}
+        />
+        <Route
+          path="dictionaries/:dictionaryKey/:entryId/edit"
+          element={<PropertyDictionaryPage />}
+        />
+        <Route
+          path="locations/:dictionaryKey"
+          element={<LocationDictionaryPage />}
+        />
+        <Route
+          path="locations/:dictionaryKey/:entryId/edit"
+          element={<LocationDictionaryPage />}
+        />
+        <Route path="banks" element={<BankListPage />} />
+        <Route path="banks/new" element={<BankFormPage />} />
+        <Route path="banks/:bankId" element={<BankDetailPage />} />
+        <Route path="banks/:bankId/edit" element={<BankFormPage />} />
+        <Route
+          path="mortgage-programs"
+          element={<MortgageProgramListPage />}
+        />
+        <Route
+          path="mortgage-programs/new"
+          element={<MortgageProgramFormPage />}
+        />
+        <Route
+          path="mortgage-programs/:mortgageProgramId"
+          element={<MortgageProgramDetailPage />}
+        />
+        <Route
+          path="mortgage-programs/:mortgageProgramId/edit"
+          element={<MortgageProgramFormPage />}
+        />
+        <Route
+          path="developer-programs"
+          element={<DeveloperMortgageProgramListPage />}
+        />
+        <Route
+          path="developer-programs/new"
+          element={<DeveloperMortgageProgramFormPage />}
+        />
+        <Route
+          path="developer-programs/:developerProgramId"
+          element={<DeveloperMortgageProgramDetailPage />}
+        />
+        <Route
+          path="developer-programs/:developerProgramId/edit"
+          element={<DeveloperMortgageProgramFormPage />}
+        />
+        <Route path="key-rate" element={<KeyRatePage />} />
+        <Route path="customers" element={<CustomerListPage />} />
+        <Route path="customers/new" element={<CustomerFormPage />} />
+        <Route
+          path="customers/:customerId"
+          element={<CustomerDetailPage />}
+        />
+        <Route
+          path="customers/:customerId/edit"
+          element={<CustomerFormPage />}
+        />
+        <Route path="mortgage" element={<MortgageCalculatorPage />} />
+        <Route
+          path="mortgage/trench"
+          element={<TrenchMortgageCalculatorPage />}
+        />
+        <Route
+          path="mortgage/calculations"
+          element={<SavedMortgageCalculationListPage />}
+        />
+        <Route
+          path="mortgage/calculations/:calculationId"
+          element={<SavedMortgageCalculationDetailPage />}
+        />
+        <Route
+          path="mortgage/trench/calculations"
+          element={<SavedTrenchMortgageCalculationListPage />}
+        />
+        <Route
+          path="mortgage/trench/calculations/:calculationId"
+          element={<SavedTrenchMortgageCalculationDetailPage />}
+        />
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
+    </Routes>
   )
 }
