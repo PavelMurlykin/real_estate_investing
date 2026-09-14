@@ -904,6 +904,8 @@ select:focus-visible {
 }
 
 .property-table-wrapper {
+  /* Keep absolutely positioned accessible labels inside the scroll container. */
+  position: relative;
   overflow-x: auto;
 }
 

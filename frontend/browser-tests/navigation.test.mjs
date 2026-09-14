@@ -1,51 +1,7 @@
 import assert from 'node:assert/strict'
-import { lookup } from 'node:dns/promises'
-import { mkdir } from 'node:fs/promises'
-import path from 'node:path'
-import { after, before, test } from 'node:test'
-import { chromium } from 'playwright-core'
+import { test } from 'node:test'
 
-const baseUrl = process.env.BROWSER_TEST_BASE_URL ?? 'http://127.0.0.1:18080'
-const screenshotDirectory = process.env.BROWSER_TEST_SCREENSHOTS
-let browser
-
-before(async () => {
-  const argumentsList = []
-  if (process.env.BROWSER_TEST_CONNECT_HOST) {
-    const { address } = await lookup(process.env.BROWSER_TEST_CONNECT_HOST)
-    argumentsList.push(
-      `--host-resolver-rules=MAP ${new URL(baseUrl).hostname} ${address}`,
-    )
-  }
-  browser = await chromium.launch({
-    executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || undefined,
-    headless: true,
-    args: argumentsList,
-  })
-  if (screenshotDirectory) await mkdir(screenshotDirectory, { recursive: true })
-})
-
-after(async () => {
-  await browser?.close()
-})
-
-async function openPage(testContext, viewport, route = '/app/') {
-  const context = await browser.newContext({
-    viewport,
-  })
-  testContext.after(() => context.close())
-  const page = await context.newPage()
-  page.setDefaultTimeout(10000)
-  await page.goto(new URL(route, baseUrl).href)
-  await page.getByRole('main').getByRole('heading', { level: 1 }).waitFor()
-  return page
-}
-
-async function screenshot(page, name) {
-  if (screenshotDirectory) {
-    await page.screenshot({ path: path.join(screenshotDirectory, name) })
-  }
-}
+import { openPage, screenshot } from './helpers.mjs'
 
 test('desktop navigation highlights the section across dictionary tabs', async (context) => {
   const page = await openPage(context, { width: 1440, height: 1000 }, '/app/locations/regions/')
@@ -100,6 +56,7 @@ for (const width of [360, 780]) {
     await dialog.getByRole('link', { name: 'Банки', exact: true }).click()
     await page.waitForURL('**/app/banks')
     await dialog.waitFor({ state: 'hidden' })
+    await page.waitForFunction(() => document.activeElement?.id === 'main-content')
     assert.equal(await page.getByRole('main').evaluate((element) => element === document.activeElement), true)
 
     await opener.click()
@@ -148,7 +105,9 @@ test('failed page downloads show recovery controls and preserve navigation', asy
   await screenshot(page, 'navigation-error.png')
   await page.getByRole('link', { name: 'На главную', exact: true }).click()
   await page.waitForURL((url) => /^\/app\/?$/.test(url.pathname))
-  await page.getByRole('main').getByRole('heading', { level: 1 }).waitFor()
+  await page.getByRole('heading', {
+    name: 'Инвестиции в недвижимость — в единой системе',
+  }).waitFor()
   assert.equal(await page.getByRole('alert').count(), 0)
 
   await page.getByRole('link', { name: 'Банки', exact: true }).click()
