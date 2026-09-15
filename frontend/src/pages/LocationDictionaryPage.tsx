@@ -894,12 +894,25 @@ export function LocationDictionaryPage() {
                       </div>
                     </dl>
                     {canManageCatalogs ? (
-                      <Link
-                        className="text-link"
-                        to={`/locations/${dictionaryKey}/${entry.id}/edit`}
-                      >
-                        Редактировать
-                      </Link>
+                      <div className="row-actions">
+                        <Link
+                          className="text-link"
+                          to={`/locations/${dictionaryKey}/${entry.id}/edit`}
+                        >
+                          Редактировать
+                        </Link>
+                        <button
+                          className="text-button text-button--danger"
+                          type="button"
+                          aria-label={`Удалить: ${entry.name}`}
+                          onClick={(event) => openDeleteDialog(
+                            entry,
+                            event.currentTarget,
+                          )}
+                        >
+                          Удалить
+                        </button>
+                      </div>
                     ) : null}
                   </article>
                 ))}

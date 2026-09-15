@@ -9,6 +9,8 @@ const allowedWritePathPatterns = [
   /^\/api\/v1\/company-groups\/(?:\d+\/)?$/,
   /^\/api\/v1\/customers\/(?:\d+\/)?$/,
   /^\/api\/v1\/(?:properties|developers|complexes|banks)\/(?:\d+\/)?$/,
+  /^\/api\/v1\/(?:mortgage-programs|developer-mortgage-programs)\/(?:\d+\/)?$/,
+  /^\/api\/v1\/location-dictionaries\/(?:regions|cities|districts|metro)\/(?:\d+\/)?$/,
   /^\/api\/v1\/mortgage\/calculate\/$/,
   /^\/api\/v1\/mortgage\/calculations\/(?:\d+\/)?$/,
 ]
@@ -36,6 +38,9 @@ function validateIsolationConfiguration() {
   assert.equal(manifest.databaseName, expectedDatabaseName)
   assert.ok(Number.isInteger(manifest.propertyId))
   assert.ok(Number.isInteger(manifest.otherCustomerId))
+  for (const key of ['mortgageProgramId', 'companyGroupId', 'bankId', 'complexId', 'metroLineId']) {
+    assert.ok(Number.isInteger(manifest[key]) && manifest[key] > 0, `Missing fixture: ${key}`)
+  }
   for (const role of ['moderator', 'owner', 'other']) {
     assert.match(manifest.accounts?.[role]?.email ?? '', /@react-browser\.invalid$/)
   }
@@ -124,7 +129,7 @@ export async function createAuthenticatedPage(testContext, role, viewport) {
     trackCleanup(path) {
       assert.match(
         path,
-        /^\/api\/v1\/(?:company-groups|customers|properties|developers|complexes|banks|mortgage\/calculations)\/[1-9]\d*\/$/,
+        /^\/api\/v1\/(?:company-groups|customers|properties|developers|complexes|banks|mortgage-programs|developer-mortgage-programs|mortgage\/calculations|location-dictionaries\/(?:regions|cities|districts|metro))\/[1-9]\d*\/$/,
         'Cleanup must target an individual synthetic record on the isolated API',
       )
       cleanupRequests.push(path)

@@ -81,9 +81,12 @@ def seed_acceptance_fixtures():
     if len(password) < 24:
         raise RuntimeError('Generate an acceptance account password of 24+ characters')
 
-    from customer.models import Customer
     from django.contrib.auth.models import Group
-    from bank.models import MortgageProgram
+
+    from bank.models import Bank, MortgageProgram
+    from customer.models import Customer
+    from location.models import MetroLine
+    from property.models import CompanyGroup, Developer
     from users.roles import MODERATOR_GROUP_NAME
 
     with transaction.atomic():
@@ -117,6 +120,17 @@ def seed_acceptance_fixtures():
             name='E2E ипотечная программа',
             defaults={'condition': 'Synthetic browser acceptance conditions'},
         )
+        company_group, _ = CompanyGroup.objects.get_or_create(name='E2E группа')
+        real_estate_complex = property_object.building.real_estate_complex
+        Developer.objects.filter(pk=real_estate_complex.developer_id).update(
+            company_group=company_group,
+        )
+        bank, _ = Bank.objects.get_or_create(name='E2E банк')
+        metro_line, _ = MetroLine.objects.get_or_create(
+            line='E2E линия',
+            city=real_estate_complex.district.city,
+            defaults={'line_color': '#336699'},
+        )
         return {
             'databaseName': DATABASE_NAME,
             'isolated': True,
@@ -124,6 +138,10 @@ def seed_acceptance_fixtures():
             'otherCustomerId': other_customer.pk,
             'propertyId': property_object.pk,
             'mortgageProgramId': mortgage_program.pk,
+            'companyGroupId': company_group.pk,
+            'bankId': bank.pk,
+            'complexId': real_estate_complex.pk,
+            'metroLineId': metro_line.pk,
         }
 
 

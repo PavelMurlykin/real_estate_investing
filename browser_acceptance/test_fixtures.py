@@ -5,10 +5,11 @@ from types import SimpleNamespace
 import pytest
 from django.contrib.auth import get_user_model
 
+from bank.models import Bank, MortgageProgram
 from browser_acceptance import fixtures
-from bank.models import MortgageProgram
 from customer.models import Customer
-from property.models import Property
+from location.models import MetroLine
+from property.models import CompanyGroup, Property
 from users.roles import can_manage_catalogs, can_view_all_private_records
 
 
@@ -68,6 +69,19 @@ def test_seed_is_idempotent_and_assigns_least_privilege(monkeypatch):
     assert MortgageProgram.objects.get(
         pk=manifest['mortgageProgramId'],
     ).name == 'E2E ипотечная программа'
+    assert Bank.objects.count() == 1
+    assert Bank.objects.get(pk=manifest['bankId']).name == 'E2E банк'
+    assert CompanyGroup.objects.count() == 1
+    property_object = Property.objects.get(pk=manifest['propertyId'])
+    real_estate_complex = property_object.building.real_estate_complex
+    assert real_estate_complex.pk == manifest['complexId']
+    assert real_estate_complex.developer.company_group_id == (
+        manifest['companyGroupId']
+    )
+    assert MetroLine.objects.count() == 1
+    metro_line = MetroLine.objects.get(pk=manifest['metroLineId'])
+    assert metro_line.city_id == real_estate_complex.district.city_id
+    assert metro_line.line_color == '#336699'
     assert get_user_model().objects.count() == 3
     assert password not in str(manifest)
     for role, account in manifest['accounts'].items():

@@ -35,13 +35,22 @@ for (const width of [360, 1280]) {
     await page.getByText(name, { exact: true }).filter({ visible: true }).waitFor()
 
     const updatedName = `${name} изменена`
-    await page.getByRole('link', { name: /Редактировать/ }).click()
+    await page.goto(new URL(
+      `/app/company-groups/${created.id}/edit`, isolatedBaseUrl,
+    ).href)
     await page.getByLabel(/^Название/).fill(updatedName)
     await page.getByRole('button', { name: 'Сохранить' }).click()
     await page.getByText(updatedName, { exact: true }).filter({
       visible: true,
     }).waitFor()
-    await page.getByRole('button', { name: /Удалить/ }).click()
+    const deleteButton = width < 720
+      ? page.getByRole('article').filter({
+          has: page.getByRole('heading', { name: updatedName, exact: true }),
+        }).getByRole('button', { name: 'Удалить', exact: true })
+      : page.getByRole('button', {
+          name: `Удалить: ${updatedName}`, exact: true,
+        })
+    await deleteButton.click()
     await page.getByRole('alertdialog').getByRole('button', { name: 'Удалить' }).click()
     await page.waitForFunction(
       (deletedName) => !document.body.innerText.includes(deletedName),

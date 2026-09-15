@@ -333,7 +333,11 @@ describe('LocationDictionaryPage', () => {
     )))
     renderLocationPage('regions', regionEntry, managerSession)
 
-    await user.click(screen.getByRole('button', { name: 'Удалить: Москва' }))
+    const deleteButtons = screen.getAllByRole('button', {
+      name: 'Удалить: Москва',
+    })
+    expect(deleteButtons).toHaveLength(2)
+    await user.click(deleteButtons[0])
     const dialog = screen.getByRole('alertdialog')
     expect(dialog).toHaveAccessibleName('Удалить локацию?')
     expect(within(dialog).getByRole('button', { name: 'Отмена' })).toHaveFocus()
