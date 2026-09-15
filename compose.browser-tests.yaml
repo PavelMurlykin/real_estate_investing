@@ -1,0 +1,69 @@
+name: rei-browser-acceptance
+
+# Standalone stack: never merge this file with compose.yaml or use real .env data.
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: react_browser_acceptance
+      POSTGRES_USER: react_browser_acceptance
+      POSTGRES_PASSWORD: ${BROWSER_TEST_DATABASE_PASSWORD:?Generate a test database password}
+    # Test data is deliberately ephemeral; no production database mounts or ports.
+    tmpfs:
+      - /var/lib/postgresql:size=512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U react_browser_acceptance -d react_browser_acceptance"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    environment:
+      DJANGO_SETTINGS_MODULE: real_estate_investing.settings
+      DEBUG: "False"
+      SECRET_KEY: ${BROWSER_TEST_SECRET_KEY:?Generate a test Django secret}
+      ALLOWED_HOSTS: localhost,127.0.0.1,web
+      CSRF_TRUSTED_ORIGINS: http://127.0.0.1:18081,http://localhost:18081
+      DB_NAME: react_browser_acceptance
+      DB_USER: react_browser_acceptance
+      DB_PASSWORD: ${BROWSER_TEST_DATABASE_PASSWORD:?Generate a test database password}
+      DB_HOST: db
+      DB_PORT: "5432"
+      EMAIL_BACKEND: django.core.mail.backends.locmem.EmailBackend
+      BROWSER_ACCEPTANCE_ISOLATED: "1"
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8000"
+    volumes:
+      - acceptance_static:/app/staticfiles
+      - acceptance_media:/app/media
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/', timeout=5).read()"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on:
+      web:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:18081:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - acceptance_static:/app/staticfiles:ro
+      - acceptance_media:/app/media:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/health/ || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  acceptance_static:
+  acceptance_media:
