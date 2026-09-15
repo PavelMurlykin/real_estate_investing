@@ -83,6 +83,7 @@ def seed_acceptance_fixtures():
 
     from customer.models import Customer
     from django.contrib.auth.models import Group
+    from bank.models import MortgageProgram
     from users.roles import MODERATOR_GROUP_NAME
 
     with transaction.atomic():
@@ -112,12 +113,17 @@ def seed_acceptance_fixtures():
             defaults={'comment': 'Synthetic private acceptance record'},
         )
         property_object = create_property_fixture()
+        mortgage_program, _ = MortgageProgram.objects.get_or_create(
+            name='E2E ипотечная программа',
+            defaults={'condition': 'Synthetic browser acceptance conditions'},
+        )
         return {
             'databaseName': DATABASE_NAME,
             'isolated': True,
             'accounts': accounts,
             'otherCustomerId': other_customer.pk,
             'propertyId': property_object.pk,
+            'mortgageProgramId': mortgage_program.pk,
         }
 
 

@@ -8,6 +8,7 @@ const allowedWritePathPatterns = [
   /^\/api\/v1\/auth\/(?:login|logout)\/$/,
   /^\/api\/v1\/company-groups\/(?:\d+\/)?$/,
   /^\/api\/v1\/customers\/(?:\d+\/)?$/,
+  /^\/api\/v1\/(?:properties|developers|complexes|banks)\/(?:\d+\/)?$/,
   /^\/api\/v1\/mortgage\/calculate\/$/,
   /^\/api\/v1\/mortgage\/calculations\/(?:\d+\/)?$/,
 ]
@@ -65,6 +66,7 @@ export async function createAuthenticatedPage(testContext, role, viewport) {
   assert.ok(browser, 'Isolated Chromium was not started')
   const context = await browser.newContext({ viewport, acceptDownloads: true })
   const observedWrites = []
+  const unexpectedWrites = []
   const cleanupRequests = []
   await context.route('**/*', async (route) => {
     const request = route.request()
@@ -76,10 +78,11 @@ export async function createAuthenticatedPage(testContext, role, viewport) {
     if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method())) {
       const write = `${request.method()} ${requestUrl.pathname}`
       observedWrites.push(write)
-      assert.ok(
-        allowedWritePathPatterns.some((pattern) => pattern.test(requestUrl.pathname)),
-        `Unexpected isolated write: ${write}`,
-      )
+      if (!allowedWritePathPatterns.some((pattern) => pattern.test(requestUrl.pathname))) {
+        unexpectedWrites.push(write)
+        await route.abort('blockedbyclient')
+        return
+      }
     }
     await route.continue()
   })
@@ -93,6 +96,7 @@ export async function createAuthenticatedPage(testContext, role, viewport) {
       assert.ok([204, 404].includes(response.status()), `Cleanup failed: ${path}`)
     }
     await context.close()
+    assert.deepEqual(unexpectedWrites, [], 'Unexpected isolated API writes')
     assert.ok(observedWrites.length > 0, 'Authenticated scenario made no writes')
   })
 
@@ -118,6 +122,11 @@ export async function createAuthenticatedPage(testContext, role, viewport) {
   return {
     page,
     trackCleanup(path) {
+      assert.match(
+        path,
+        /^\/api\/v1\/(?:company-groups|customers|properties|developers|complexes|banks|mortgage\/calculations)\/[1-9]\d*\/$/,
+        'Cleanup must target an individual synthetic record on the isolated API',
+      )
       cleanupRequests.push(path)
     },
   }

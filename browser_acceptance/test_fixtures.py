@@ -6,6 +6,7 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from browser_acceptance import fixtures
+from bank.models import MortgageProgram
 from customer.models import Customer
 from property.models import Property
 from users.roles import can_manage_catalogs, can_view_all_private_records
@@ -63,6 +64,10 @@ def test_seed_is_idempotent_and_assigns_least_privilege(monkeypatch):
     assert fixtures.seed_acceptance_fixtures() == manifest
     assert Property.objects.count() == 1
     assert Customer.objects.count() == 1
+    assert MortgageProgram.objects.count() == 1
+    assert MortgageProgram.objects.get(
+        pk=manifest['mortgageProgramId'],
+    ).name == 'E2E ипотечная программа'
     assert get_user_model().objects.count() == 3
     assert password not in str(manifest)
     for role, account in manifest['accounts'].items():
