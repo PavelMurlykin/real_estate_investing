@@ -1,4 +1,5 @@
 import pytest
+from django.test import override_settings
 from django.urls import reverse
 
 
@@ -26,6 +27,7 @@ def test_react_frontend_serves_shell_for_root_and_nested_routes(client):
 
 
 @pytest.mark.django_db
+@override_settings(REACT_FRONTEND_LEGACY_REDIRECTS_ENABLED=False)
 def test_existing_django_home_page_remains_available(client):
     """The legacy server-rendered application must remain operational."""
     response = client.get(reverse('homepage:index'))

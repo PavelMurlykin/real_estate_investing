@@ -60,6 +60,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'react_frontend.middleware.LegacyFrontendRedirectMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -151,9 +152,19 @@ AUTHENTICATION_BACKENDS = [
     'users.backends.EmailOrPhoneBackend',
 ]
 
-LOGIN_URL = 'users:login'
-LOGIN_REDIRECT_URL = 'homepage:index'
-LOGOUT_REDIRECT_URL = 'homepage:index'
+REACT_FRONTEND_LEGACY_REDIRECTS_ENABLED = os.getenv(
+    'REACT_FRONTEND_LEGACY_REDIRECTS_ENABLED',
+    'False',
+).strip().lower() in ('1', 'true', 'yes', 'on')
+
+if REACT_FRONTEND_LEGACY_REDIRECTS_ENABLED:
+    LOGIN_URL = '/app/login/'
+    LOGIN_REDIRECT_URL = '/app/'
+    LOGOUT_REDIRECT_URL = '/app/'
+else:
+    LOGIN_URL = 'users:login'
+    LOGIN_REDIRECT_URL = 'homepage:index'
+    LOGOUT_REDIRECT_URL = 'homepage:index'
 
 EMAIL_BACKEND = os.getenv(
     'EMAIL_BACKEND',
