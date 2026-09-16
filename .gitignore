@@ -206,6 +206,7 @@ python_base_prompt.md
 !**/fixtures/.gitkeep
 !location/fixtures/init_metro_line.json
 !location/fixtures/init_metro.json
+!browser_acceptance/fixtures/developer-programs.xlsx
 
 # Local task notes
 ToDo.txt

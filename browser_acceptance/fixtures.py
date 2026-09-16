@@ -120,6 +120,10 @@ def seed_acceptance_fixtures():
             name='E2E ипотечная программа',
             defaults={'condition': 'Synthetic browser acceptance conditions'},
         )
+        MortgageProgram.objects.get_or_create(
+            name='Рыночная ипотека',
+            defaults={'condition': 'Synthetic market import conditions'},
+        )
         company_group, _ = CompanyGroup.objects.get_or_create(name='E2E группа')
         real_estate_complex = property_object.building.real_estate_complex
         Developer.objects.filter(pk=real_estate_complex.developer_id).update(

@@ -227,7 +227,11 @@ describe('PropertyDictionaryPage', () => {
       managerSession,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Удалить: Бизнес' }))
+    const deleteButtons = screen.getAllByRole('button', {
+      name: 'Удалить: Бизнес',
+    })
+    expect(deleteButtons).toHaveLength(2)
+    await user.click(deleteButtons[0])
     const dialog = screen.getByRole('alertdialog')
     expect(dialog).toHaveAccessibleName('Удалить запись?')
     expect(within(dialog).getByRole('button', { name: 'Отмена' })).toHaveFocus()

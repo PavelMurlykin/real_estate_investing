@@ -65,7 +65,7 @@ def test_seed_is_idempotent_and_assigns_least_privilege(monkeypatch):
     assert fixtures.seed_acceptance_fixtures() == manifest
     assert Property.objects.count() == 1
     assert Customer.objects.count() == 1
-    assert MortgageProgram.objects.count() == 1
+    assert MortgageProgram.objects.count() == 2
     assert MortgageProgram.objects.get(
         pk=manifest['mortgageProgramId'],
     ).name == 'E2E ипотечная программа'

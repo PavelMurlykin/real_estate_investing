@@ -11,8 +11,12 @@ const allowedWritePathPatterns = [
   /^\/api\/v1\/(?:properties|developers|complexes|banks)\/(?:\d+\/)?$/,
   /^\/api\/v1\/(?:mortgage-programs|developer-mortgage-programs)\/(?:\d+\/)?$/,
   /^\/api\/v1\/location-dictionaries\/(?:regions|cities|districts|metro)\/(?:\d+\/)?$/,
+  /^\/api\/v1\/property-dictionaries\/(?:real-estate-types|real-estate-classes|apartment-layouts|apartment-decorations|window-views|transport-accessibility-types)\/(?:\d+\/)?$/,
+  /^\/api\/v1\/developer-mortgage-programs\/import\/$/,
   /^\/api\/v1\/mortgage\/calculate\/$/,
   /^\/api\/v1\/mortgage\/calculations\/(?:\d+\/)?$/,
+  /^\/api\/v1\/mortgage\/trench\/calculate\/$/,
+  /^\/api\/v1\/mortgage\/trench\/calculations\/(?:\d+\/)?$/,
 ]
 
 export const isolatedWritesEnabled = (
@@ -129,7 +133,7 @@ export async function createAuthenticatedPage(testContext, role, viewport) {
     trackCleanup(path) {
       assert.match(
         path,
-        /^\/api\/v1\/(?:company-groups|customers|properties|developers|complexes|banks|mortgage-programs|developer-mortgage-programs|mortgage\/calculations|location-dictionaries\/(?:regions|cities|districts|metro))\/[1-9]\d*\/$/,
+        /^\/api\/v1\/(?:company-groups|customers|properties|developers|complexes|banks|mortgage-programs|developer-mortgage-programs|mortgage\/calculations|mortgage\/trench\/calculations|location-dictionaries\/(?:regions|cities|districts|metro)|property-dictionaries\/(?:real-estate-types|real-estate-classes|apartment-layouts|apartment-decorations|window-views|transport-accessibility-types))\/[1-9]\d*\/$/,
         'Cleanup must target an individual synthetic record on the isolated API',
       )
       cleanupRequests.push(path)
