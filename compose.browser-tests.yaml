@@ -32,6 +32,7 @@ services:
       DB_PORT: "5432"
       EMAIL_BACKEND: django.core.mail.backends.locmem.EmailBackend
       BROWSER_ACCEPTANCE_ISOLATED: "1"
+      REACT_FRONTEND_LEGACY_REDIRECTS_ENABLED: "True"
     depends_on:
       db:
         condition: service_healthy

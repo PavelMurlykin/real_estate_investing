@@ -71,6 +71,40 @@ after(async () => {
   await browser?.close()
 })
 
+export async function createIsolatedPage(
+  testContext,
+  viewport,
+  { allowedUnsafeRequests = [] } = {},
+) {
+  assert.ok(browser, 'Isolated Chromium was not started')
+  const context = await browser.newContext({ viewport })
+  const unexpectedWrites = []
+  await context.route('**/*', async (route) => {
+    const request = route.request()
+    const requestUrl = new URL(request.url())
+    if (requestUrl.origin !== new URL(isolatedBaseUrl).origin) {
+      await route.abort('blockedbyclient')
+      return
+    }
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method())) {
+      const write = `${request.method()} ${requestUrl.pathname}`
+      if (!allowedUnsafeRequests.includes(write)) {
+        unexpectedWrites.push(write)
+        await route.abort('blockedbyclient')
+        return
+      }
+    }
+    await route.continue()
+  })
+  testContext.after(async () => {
+    await context.close()
+    assert.deepEqual(unexpectedWrites, [], 'Unexpected isolated writes')
+  })
+  const page = await context.newPage()
+  page.setDefaultTimeout(12000)
+  return page
+}
+
 export async function createAuthenticatedPage(testContext, role, viewport) {
   assert.ok(browser, 'Isolated Chromium was not started')
   const context = await browser.newContext({ viewport, acceptDownloads: true })

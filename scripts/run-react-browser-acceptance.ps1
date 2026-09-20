@@ -19,6 +19,11 @@ $env:BROWSER_TEST_SECRET_KEY = New-RandomSecret
 $env:BROWSER_TEST_ACCOUNT_PASSWORD = New-RandomSecret
 
 docker compose -f $composeFile up -d --build --wait
+docker compose -f $composeFile exec -T web python manage.py shell -c `
+    "from django.conf import settings; assert settings.REACT_FRONTEND_LEGACY_REDIRECTS_ENABLED is True"
+if ($LASTEXITCODE -ne 0) {
+    throw 'The isolated acceptance stack did not enable React cutover.'
+}
 $env:BROWSER_TEST_FIXTURES = docker compose -f $composeFile exec -T `
     -e BROWSER_TEST_ACCOUNT_PASSWORD=$env:BROWSER_TEST_ACCOUNT_PASSWORD `
     web python -m browser_acceptance.fixtures
