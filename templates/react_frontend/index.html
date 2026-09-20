@@ -8,13 +8,21 @@
     <title>RealtyFlow — инвестиции в недвижимость</title>
     <script>
       (function () {
-        var storedTheme = localStorage.getItem('theme-preference');
+        var storedTheme = null;
+        try {
+          storedTheme = localStorage.getItem('theme-preference');
+        } catch (error) {
+          // Keep the system preference when browser storage is unavailable.
+        }
+        var themePreference = storedTheme === 'dark'
+          || storedTheme === 'light'
+          || storedTheme === 'system'
+          ? storedTheme
+          : 'system';
         var systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
           ? 'dark'
           : 'light';
-        var theme = storedTheme === 'dark' || storedTheme === 'light'
-          ? storedTheme
-          : systemTheme;
+        var theme = themePreference === 'system' ? systemTheme : themePreference;
         document.documentElement.dataset.theme = theme;
         document.documentElement.style.colorScheme = theme;
       })();

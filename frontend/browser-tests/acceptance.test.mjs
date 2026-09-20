@@ -37,7 +37,7 @@ for (const width of [360, 1280]) {
       const primary = page.getByRole('navigation', { name: 'Основная навигация' })
       assert.deepEqual(await primary.getByRole('link').evaluateAll((links) =>
         links.map((link) => new URL(link.href).pathname)), [
-        '/app', '/app/properties', '/app/mortgage',
+        '/app/properties', '/app/mortgage',
       ])
       assert.equal(await page.evaluate(() =>
         document.documentElement.scrollWidth <= window.innerWidth), true)

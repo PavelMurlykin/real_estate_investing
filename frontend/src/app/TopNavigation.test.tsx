@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { renderWithProviders } from '@/test/render'
@@ -6,12 +6,12 @@ import { renderWithProviders } from '@/test/render'
 import { TopNavigation } from './TopNavigation'
 
 describe('TopNavigation', () => {
-  it('keeps exactly the three primary product links in the top panel', () => {
+  it('keeps only catalog and calculator links in the top panel', () => {
     renderWithProviders(
       <TopNavigation
         onOpenSidebar={vi.fn()}
-        theme="light"
-        onToggleTheme={vi.fn()}
+        theme="system"
+        onCycleTheme={vi.fn()}
       />,
     )
 
@@ -20,8 +20,11 @@ describe('TopNavigation', () => {
     })
     const links = navigation.querySelectorAll('a')
 
-    expect(links).toHaveLength(3)
-    expect(screen.getByRole('link', { name: 'Главная' })).toHaveAttribute(
+    expect(links).toHaveLength(2)
+    expect(screen.queryByRole('link', { name: 'Главная' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', {
+      name: 'RealtyFlow — на главную',
+    })).toHaveAttribute(
       'href',
       '/',
     )
@@ -31,5 +34,23 @@ describe('TopNavigation', () => {
     expect(
       screen.getByRole('link', { name: 'Ипотечный калькулятор' }),
     ).toHaveAttribute('href', '/mortgage')
+  })
+
+  it('shows the current theme preference as an icon button', () => {
+    const onCycleTheme = vi.fn()
+    renderWithProviders(
+      <TopNavigation
+        onOpenSidebar={vi.fn()}
+        theme="system"
+        onCycleTheme={onCycleTheme}
+      />,
+    )
+
+    const themeControl = screen.getByRole('button', {
+      name: 'Тема: системная. Включить светлую тему',
+    })
+    expect(themeControl.querySelector('svg')).toBeInTheDocument()
+    fireEvent.click(themeControl)
+    expect(onCycleTheme).toHaveBeenCalledOnce()
   })
 })

@@ -44,7 +44,7 @@ export function AppShell() {
   }, [])
   const mainReference = useRef<HTMLElement>(null)
   const previousPathname = useRef(location.pathname)
-  const { theme, toggleTheme } = useTheme()
+  const { theme, cycleTheme } = useTheme()
 
   useEffect(() => {
     if (previousPathname.current !== location.pathname) {
@@ -70,7 +70,7 @@ export function AppShell() {
         onOpenSidebar={() => setSidebarState({ locationKey: location.key, isOpen: true })}
         isSidebarOpen={isSidebarOpen}
         theme={theme}
-        onToggleTheme={toggleTheme}
+        onCycleTheme={cycleTheme}
       />
       <Sidebar isOpen={isSidebarOpen} isMobile={isMobile} onClose={closeSidebar} />
       <main ref={mainReference} id="main-content" className="main-content" tabIndex={-1}>

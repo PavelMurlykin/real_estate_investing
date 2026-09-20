@@ -19,6 +19,7 @@ type NavigationItem = {
   symbol: string
   reactRoute?: boolean
   activePath?: string
+  excludedPaths?: string[]
 }
 
 type NavigationGroupProps = {
@@ -27,7 +28,23 @@ type NavigationGroupProps = {
   onNavigate: MouseEventHandler<HTMLAnchorElement>
 }
 
+const primaryItems: NavigationItem[] = [
+  {
+    label: 'Главная',
+    href: '/',
+    activePath: '/',
+    symbol: 'Г',
+    reactRoute: true,
+  },
+]
+
 const realEstateItems: NavigationItem[] = [
+  {
+    label: 'Объекты недвижимости',
+    href: '/properties',
+    symbol: 'Н',
+    reactRoute: true,
+  },
   {
     label: 'Группы компаний',
     href: '/company-groups',
@@ -89,16 +106,11 @@ const catalogItems: NavigationItem[] = [
   },
 ]
 
-const privateItems: NavigationItem[] = [
+const calculationItems: NavigationItem[] = [
   {
-    label: 'Клиенты',
-    href: '/customers',
-    symbol: 'К',
-    reactRoute: true,
-  },
-  {
-    label: 'Расчёты ипотеки',
-    href: '/mortgage/calculations',
+    label: 'Ипотечный калькулятор',
+    href: '/mortgage',
+    activePath: '/mortgage',
     symbol: 'И',
     reactRoute: true,
   },
@@ -107,6 +119,29 @@ const privateItems: NavigationItem[] = [
     href: '/mortgage/trench',
     activePath: '/mortgage/trench',
     symbol: 'Т',
+    reactRoute: true,
+  },
+]
+
+const privateItems: NavigationItem[] = [
+  {
+    label: 'Добавить клиента',
+    href: '/customers/new',
+    activePath: '/customers/new',
+    symbol: '+',
+    reactRoute: true,
+  },
+  {
+    label: 'Клиенты',
+    href: '/customers',
+    excludedPaths: ['/customers/new'],
+    symbol: 'К',
+    reactRoute: true,
+  },
+  {
+    label: 'Расчёты ипотеки',
+    href: '/mortgage/calculations',
+    symbol: 'И',
     reactRoute: true,
   },
   {
@@ -130,7 +165,8 @@ function NavigationGroup({ title, items, onNavigate }: NavigationGroupProps) {
                 to={item.href}
                 onClick={onNavigate}
                 aria-current={
-                  matchPath(item.activePath ?? `${item.href}/*`, pathname)
+                  !item.excludedPaths?.some((path) => matchPath(path, pathname))
+                  && matchPath(item.activePath ?? `${item.href}/*`, pathname)
                     ? 'page'
                     : undefined
                 }
@@ -179,8 +215,10 @@ export function Sidebar({ isOpen, isMobile = false, onClose }: SidebarProps) {
       ) : null}
 
       <nav className="sidebar__content" aria-label="Разделы приложения">
+        <NavigationGroup title="Основное" items={primaryItems} onNavigate={onClose} />
         <NavigationGroup title="Недвижимость" items={realEstateItems} onNavigate={onClose} />
         <NavigationGroup title="Справочники" items={catalogItems} onNavigate={onClose} />
+        <NavigationGroup title="Расчёты" items={calculationItems} onNavigate={onClose} />
         {sessionQuery.data?.capabilities.viewPrivateRecords ? (
           <NavigationGroup title="Работа с клиентами" items={privateItems} onNavigate={onClose} />
         ) : null}

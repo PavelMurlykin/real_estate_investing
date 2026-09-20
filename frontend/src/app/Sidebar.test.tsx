@@ -30,6 +30,7 @@ describe('Sidebar', () => {
     ['/mortgage/calculations/12', 'Расчёты ипотеки'],
     ['/mortgage/trench', 'Траншевая ипотека'],
     ['/mortgage/trench/calculations/17', 'История траншей'],
+    ['/customers/new', 'Добавить клиента'],
   ])('marks only the current section for %s', (initialRoute, sectionName) => {
     const queryClient = createTestQueryClient()
     queryClient.setQueryData(['session'], authenticatedSession)
@@ -49,8 +50,17 @@ describe('Sidebar', () => {
     const sidebar = screen.getByRole('complementary', {
       name: 'Навигация по разделам',
     })
+    expect(within(sidebar).getByText('Основное')).toBeInTheDocument()
     expect(within(sidebar).getByText('Недвижимость')).toBeInTheDocument()
     expect(within(sidebar).getByText('Справочники')).toBeInTheDocument()
+    expect(within(sidebar).getByText('Расчёты')).toBeInTheDocument()
+    expect(within(sidebar).getByRole('link', { name: 'Главная' })).toHaveAttribute(
+      'href',
+      '/',
+    )
+    expect(
+      within(sidebar).getByRole('link', { name: 'Объекты недвижимости' }),
+    ).toHaveAttribute('href', '/properties')
     expect(
       within(sidebar).getByRole('link', { name: 'Группы компаний' }),
     ).toHaveAttribute('href', '/company-groups')
@@ -78,7 +88,18 @@ describe('Sidebar', () => {
     expect(
       within(sidebar).getByRole('link', { name: 'Ключевая ставка' }),
     ).toHaveAttribute('href', '/key-rate')
+    expect(
+      within(sidebar).getByRole('link', { name: 'Ипотечный калькулятор' }),
+    ).toHaveAttribute('href', '/mortgage')
+    expect(
+      within(sidebar).getByRole('link', { name: 'Траншевая ипотека' }),
+    ).toHaveAttribute('href', '/mortgage/trench')
+    const navigation = within(sidebar).getByRole('navigation', {
+      name: 'Разделы приложения',
+    })
+    expect(within(navigation).getAllByRole('link')).toHaveLength(13)
     expect(within(sidebar).queryByText('Клиенты')).not.toBeInTheDocument()
+    expect(within(sidebar).queryByText('Добавить клиента')).not.toBeInTheDocument()
     expect(within(sidebar).getByRole('link', { name: 'Войти' })).toHaveAttribute(
       'href',
       '/login',
@@ -95,6 +116,10 @@ describe('Sidebar', () => {
     renderWithProviders(<Sidebar isOpen onClose={vi.fn()} />, { queryClient })
 
     expect(screen.getByText('Работа с клиентами')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Добавить клиента' })).toHaveAttribute(
+      'href',
+      '/customers/new',
+    )
     expect(screen.getByRole('link', { name: 'Клиенты' })).toHaveAttribute(
       'href',
       '/customers',

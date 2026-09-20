@@ -125,6 +125,7 @@ select:focus-visible {
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr) 56px;
   align-items: center;
+  overflow: hidden;
   padding: 0 22px;
   background: color-mix(in srgb, var(--surface) 92%, transparent);
   border-bottom: 1px solid var(--border);
@@ -136,8 +137,10 @@ select:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 11px;
+  color: inherit;
   font-weight: 800;
   letter-spacing: -0.03em;
+  text-decoration: none;
 }
 
 .brand__mark {
@@ -161,11 +164,16 @@ select:focus-visible {
 }
 
 .top-navigation {
+  min-width: 0;
   height: 100%;
   display: flex;
   justify-content: center;
   align-items: stretch;
   gap: clamp(14px, 3vw, 42px);
+}
+
+.top-navigation::-webkit-scrollbar {
+  display: none;
 }
 
 .top-navigation a {
@@ -214,7 +222,16 @@ select:focus-visible {
 
 .theme-toggle {
   justify-self: end;
-  font-size: 22px;
+}
+
+.theme-toggle__icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .topbar__menu-button {
@@ -2243,6 +2260,9 @@ select:focus-visible {
     justify-content: flex-start;
     gap: 18px;
     overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
   }
 
   .sidebar--mobile {
@@ -2320,13 +2340,13 @@ select:focus-visible {
     font-size: 11px;
   }
 
-  .top-navigation a:nth-child(2) {
+  .top-navigation a:nth-child(1) {
     max-width: 92px;
     white-space: normal;
     text-align: center;
   }
 
-  .top-navigation a:nth-child(3) {
+  .top-navigation a:nth-child(2) {
     max-width: 82px;
     white-space: normal;
     text-align: center;
@@ -3542,7 +3562,7 @@ select:focus-visible {
 
 @media (max-width: 360px) {
   .topbar {
-    grid-template-columns: 40px 34px minmax(0, 1fr);
+    grid-template-columns: 40px 34px minmax(0, 1fr) 40px;
     gap: 4px;
     padding: 0 4px;
   }
@@ -3569,7 +3589,8 @@ select:focus-visible {
   }
 
   .theme-toggle {
-    display: none;
+    width: 36px;
+    height: 36px;
   }
 }
 

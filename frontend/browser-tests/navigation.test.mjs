@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { openPage, screenshot } from './helpers.mjs'
+import { baseUrl, createPage, openPage, screenshot } from './helpers.mjs'
 
 test('desktop navigation highlights the section across dictionary tabs', async (context) => {
   const page = await openPage(context, { width: 1440, height: 1000 }, '/app/locations/regions/')
   const primary = page.getByRole('navigation', { name: 'Основная навигация' })
-  assert.equal(await primary.getByRole('link').count(), 3)
+  assert.equal(await primary.getByRole('link').count(), 2)
   const sections = page.getByRole('navigation', { name: 'Разделы приложения' })
   assert.equal(await sections.getByRole('link', { name: 'Локации' }).getAttribute('aria-current'), 'page')
   await page.getByRole('navigation', { name: 'Справочники локаций' })
@@ -15,11 +15,19 @@ test('desktop navigation highlights the section across dictionary tabs', async (
   assert.equal(await sections.locator('[aria-current="page"]').count(), 1)
   assert.equal(await sections.getByRole('link', { name: 'Локации' }).getAttribute('aria-current'), 'page')
   await screenshot(page, 'navigation-desktop.png')
+  await page.getByRole('link', { name: 'RealtyFlow — на главную' }).click()
+  await page.waitForURL((url) => /^\/app\/?$/.test(url.pathname))
+  await page.getByRole('heading', {
+    name: 'Инвестиции в недвижимость — в единой системе',
+  }).waitFor()
 })
 
 for (const width of [360, 780]) {
   test(`mobile dialog at ${width}px keeps focus, closes and follows browser history`, async (context) => {
     const page = await openPage(context, { width, height: 900 })
+    const topbar = page.locator('.topbar')
+    assert.equal(await topbar.evaluate((element) =>
+      element.scrollHeight <= element.clientHeight), true)
     const opener = page.getByRole('button', { name: 'Открыть меню разделов' })
     const dialog = page.getByRole('dialog', { name: 'Навигация по разделам' })
     const closeButton = dialog.getByRole('button', { name: 'Закрыть меню', exact: true })
@@ -76,6 +84,38 @@ for (const width of [360, 780]) {
     assert.equal(await dialog.count(), 0)
   })
 }
+
+test('theme control cycles through system, light and dark modes', async (context) => {
+  const page = await createPage(context, { width: 360, height: 900 })
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await page.addInitScript(() => window.localStorage.removeItem('theme-preference'))
+  await page.goto(new URL('/app/', baseUrl).href)
+  await page.getByRole('main').getByRole('heading', { level: 1 }).waitFor()
+
+  let themeControl = page.getByRole('button', {
+    name: 'Тема: системная. Включить светлую тему',
+  })
+  assert.equal(await themeControl.isVisible(), true)
+  assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark')
+
+  await themeControl.click()
+  themeControl = page.getByRole('button', {
+    name: 'Тема: светлая. Включить тёмную тему',
+  })
+  assert.equal(await page.locator('html').getAttribute('data-theme'), 'light')
+
+  await themeControl.click()
+  themeControl = page.getByRole('button', {
+    name: 'Тема: тёмная. Включить системную тему',
+  })
+  assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark')
+
+  await themeControl.click()
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.waitForFunction(() => document.documentElement.dataset.theme === 'light')
+  assert.equal(await page.evaluate(() =>
+    window.localStorage.getItem('theme-preference')), 'system')
+})
 
 test('navigation remains usable while a page module is loading', async (context) => {
   const page = await openPage(context, { width: 1280, height: 900 })
