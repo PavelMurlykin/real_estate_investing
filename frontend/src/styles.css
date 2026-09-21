@@ -1232,16 +1232,17 @@ select:focus-visible {
 }
 
 .calculator-card {
-  overflow: hidden;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 22px;
-  box-shadow: var(--shadow-sm);
+  min-width: 0;
+  display: grid;
+  gap: 24px;
 }
 
 .calculator-section {
   padding: 30px;
-  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: var(--shadow-sm);
 }
 
 .calculator-section__heading {
@@ -1273,6 +1274,46 @@ select:focus-visible {
   margin: 3px 0 0;
   color: var(--text-muted);
   font-size: 12px;
+}
+
+.calculator-section__heading--actions > div {
+  min-width: 0;
+}
+
+.calculator-section__clear {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.property-data-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.calculated-value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  color: var(--text-muted);
+  background: var(--brand-soft);
+  border: 1px solid color-mix(in srgb, var(--brand) 26%, var(--border));
+  border-radius: 13px;
+  font-size: 12px;
+}
+
+.calculated-value strong {
+  color: var(--text);
+  font-size: 18px;
+}
+
+.calculation-type-field {
+  margin-bottom: 24px;
+}
+
+.calculation-variant-fields {
+  display: grid;
+  gap: 22px;
 }
 
 .field-grid {
@@ -1314,6 +1355,11 @@ select:focus-visible {
 .form-field input[aria-invalid='true'],
 .form-field select[aria-invalid='true'] {
   border-color: var(--danger);
+}
+
+.form-field input[readonly] {
+  color: var(--text-muted);
+  background: var(--surface-muted);
 }
 
 .form-field small {
@@ -1414,9 +1460,13 @@ select:focus-visible {
 }
 
 .calculator-submit {
-  width: calc(100% - 60px);
+  width: 100%;
   min-height: 52px;
-  margin: 26px 30px 30px;
+  margin: 0;
+}
+
+.calculator-card > .form-error {
+  margin: 0;
 }
 
 .calculator-submit:disabled {
@@ -1746,6 +1796,10 @@ select:focus-visible {
   .saved-property-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .property-data-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 720px) {
@@ -1755,6 +1809,21 @@ select:focus-visible {
 
   .field-grid {
     grid-template-columns: 1fr;
+  }
+
+  .property-data-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .calculator-section__heading--actions {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .calculator-section__clear {
+    width: auto;
+    margin-left: 51px;
+    text-align: left;
   }
 
   .form-field--wide {
@@ -1770,8 +1839,8 @@ select:focus-visible {
   }
 
   .calculator-submit {
-    width: calc(100% - 48px);
-    margin: 24px;
+    width: 100%;
+    margin: 0;
   }
 
   .form-error {

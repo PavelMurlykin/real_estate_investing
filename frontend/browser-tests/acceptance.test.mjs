@@ -17,7 +17,7 @@ const publicPages = [
   ['/app/dictionaries/real-estate-types', 'Справочники объектов'],
   ['/app/locations/regions', 'Локации'],
   ['/app/mortgage', 'Ипотечный калькулятор'],
-  ['/app/mortgage/trench', 'Траншевая ипотека'],
+  ['/app/mortgage/trench', 'Ипотечный калькулятор'],
   ['/app/login', 'Вход'],
   ['/app/register', 'Регистрация'],
   ['/app/password/reset', 'Восстановление пароля'],
@@ -39,8 +39,20 @@ for (const width of [360, 1280]) {
         links.map((link) => new URL(link.href).pathname)), [
         '/app/properties', '/app/mortgage',
       ])
-      assert.equal(await page.evaluate(() =>
-        document.documentElement.scrollWidth <= window.innerWidth), true)
+      const overflow = await page.evaluate(() => ({
+        present: document.documentElement.scrollWidth > window.innerWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        viewportWidth: window.innerWidth,
+        elements: [...document.querySelectorAll('body *')]
+          .filter((element) => element.getBoundingClientRect().right > window.innerWidth + 1)
+          .slice(0, 8)
+          .map((element) => ({
+            className: element.className,
+            right: Math.round(element.getBoundingClientRect().right),
+            tagName: element.tagName,
+          })),
+      }))
+      assert.equal(overflow.present, false, JSON.stringify(overflow))
       if (route === '/app/properties') await screenshot(page, `catalog-${width}.png`)
     })
   }

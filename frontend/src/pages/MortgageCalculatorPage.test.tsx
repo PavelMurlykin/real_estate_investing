@@ -32,6 +32,27 @@ const mortgageOptions: MortgageOptions = {
   ],
 }
 
+const propertyList = {
+  page: 1,
+  pageSize: 100,
+  totalCount: 1,
+  totalPages: 1,
+  results: [{
+    id: 3,
+    city: 'Казань',
+    developer: 'Надёжный застройщик',
+    realEstateComplex: 'Зелёный квартал',
+    building: '2',
+    apartmentNumber: '42',
+    layout: 'Евродвушка',
+    decoration: 'Чистовая',
+    area: '52.40',
+    floor: 8,
+    propertyCost: '5000000.00',
+    detailUrl: '/property/3/',
+  }],
+}
+
 const mortgageResult: MortgageCalculationResponse = {
   assumptions: {
     basePropertyCost: '5000000.00',
@@ -137,6 +158,10 @@ function renderCalculator({
 } = {}) {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['mortgage-options'], mortgageOptions)
+  queryClient.setQueryData(
+    ['properties', 'pageSize=100&ordering=realEstateComplex'],
+    propertyList,
+  )
   if (session) queryClient.setQueryData(['session'], session)
   if (savedSample) {
     queryClient.setQueryData(
@@ -167,7 +192,7 @@ describe('MortgageCalculatorPage', () => {
     renderCalculator()
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Дата первого взноса')).toHaveValue(
+      expect(screen.getByLabelText('Дата первоначального взноса')).toHaveValue(
         '2026-01-15',
       )
     })
@@ -196,11 +221,48 @@ describe('MortgageCalculatorPage', () => {
     renderCalculator()
 
     await user.selectOptions(screen.getByLabelText('Банк'), '1')
-    await user.selectOptions(screen.getByLabelText('Программа'), '10')
+    await user.selectOptions(screen.getByLabelText('Ипотечная программа'), '10')
 
     expect(screen.getByLabelText('Годовая ставка, %')).toHaveValue(6)
-    expect(screen.getByLabelText('Первоначальный взнос')).toHaveValue(25)
+    expect(screen.getByLabelText('Первоначальный взнос, %')).toHaveValue(25)
     expect(screen.getByLabelText('Срок ипотеки, месяцев')).toHaveValue(240)
+  })
+
+  it('keeps shared object data and synchronized values visible in both modes', async () => {
+    const user = userEvent.setup()
+    renderCalculator()
+
+    expect(screen.getByRole('heading', { name: 'Данные объекта' })).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('Объект недвижимости'), '3')
+
+    expect(screen.getByLabelText('Город')).toHaveValue('Казань')
+    expect(screen.getByLabelText('Базовая стоимость, ₽')).toHaveValue(5000000)
+
+    const adjustmentPercent = screen.getByLabelText('Скидка, %')
+    await user.clear(adjustmentPercent)
+    await user.type(adjustmentPercent, '10')
+    expect(screen.getByLabelText('Скидка, ₽')).toHaveValue(500000)
+    expect(screen.getByLabelText('Первоначальный взнос, ₽')).toHaveValue(900000)
+
+    const adjustmentRubles = screen.getByLabelText('Скидка, ₽')
+    await user.clear(adjustmentRubles)
+    await user.type(adjustmentRubles, '250000')
+    expect(adjustmentPercent).toHaveValue(5)
+
+    const mortgageTermYears = screen.getByLabelText('Срок ипотеки, лет')
+    await user.clear(mortgageTermYears)
+    await user.type(mortgageTermYears, '20')
+    expect(screen.getByLabelText('Срок ипотеки, месяцев')).toHaveValue(240)
+
+    const mortgageTermMonths = screen.getByLabelText('Срок ипотеки, месяцев')
+    await user.clear(mortgageTermMonths)
+    await user.type(mortgageTermMonths, '180')
+    expect(mortgageTermYears).toHaveValue(15)
+
+    await user.click(screen.getByLabelText('Траншевая ипотека'))
+    expect(screen.getByLabelText('Количество траншей')).toBeInTheDocument()
+    expect(screen.getByLabelText('Базовая стоимость, ₽')).toHaveValue(5000000)
+    expect(screen.getByLabelText('Город')).toHaveValue('Казань')
   })
 
   it('loads a private saved scenario as a new React calculation sample', async () => {
@@ -214,18 +276,18 @@ describe('MortgageCalculatorPage', () => {
       expect(screen.getByLabelText('Базовая стоимость, ₽')).toHaveValue(6300000)
     })
     expect(screen.getByLabelText('Удорожание')).toBeChecked()
-    expect(screen.getByLabelText('Размер корректировки')).toHaveValue(7.5)
-    expect(screen.getByLabelText('Первоначальный взнос')).toHaveValue(35)
-    expect(screen.getByLabelText('Дата первого взноса')).toHaveValue(
+    expect(screen.getByLabelText('Удорожание, %')).toHaveValue(7.5)
+    expect(screen.getByLabelText('Первоначальный взнос, %')).toHaveValue(35)
+    expect(screen.getByLabelText('Дата первоначального взноса')).toHaveValue(
       '2026-10-20',
     )
     expect(screen.getByLabelText('Срок ипотеки, месяцев')).toHaveValue(180)
     expect(screen.getByLabelText('Годовая ставка, %')).toHaveValue(8.25)
     expect(screen.getByLabelText('Использовать льготный период')).toBeChecked()
     expect(
-      screen.getByLabelText('Срок льготного периода, месяцев'),
+      screen.getByLabelText('Льготный период, месяцев'),
     ).toHaveValue(24)
-    expect(screen.getByLabelText('Ставка, %')).toHaveValue(5.25)
+    expect(screen.getByLabelText('Ставка льготного периода, %')).toHaveValue(5.25)
   })
 
   it('shows authoritative server validation next to the affected field', async () => {
@@ -249,11 +311,11 @@ describe('MortgageCalculatorPage', () => {
     renderCalculator()
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Дата первого взноса')).toHaveValue(
+      expect(screen.getByLabelText('Дата первоначального взноса')).toHaveValue(
         '2026-01-15',
       )
     })
-    const initialPaymentInput = screen.getByLabelText('Первоначальный взнос')
+    const initialPaymentInput = screen.getByLabelText('Первоначальный взнос, %')
     await user.clear(initialPaymentInput)
     await user.type(initialPaymentInput, '101')
     await user.click(screen.getByRole('button', { name: 'Рассчитать ипотеку' }))

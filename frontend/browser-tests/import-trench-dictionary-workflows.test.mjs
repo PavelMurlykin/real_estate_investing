@@ -101,13 +101,13 @@ for (const width of [360, 1280]) {
     await openRoute(page, `mortgage/trench?propertyId=${fixtureManifest.propertyId}`)
     await page.getByLabel('Дата первоначального взноса').fill('2026-10-01')
     await page.getByLabel('Срок ипотеки, месяцев').fill('24')
-    await page.getByLabel('Базовая годовая ставка, %').fill('7.5')
+    await page.getByLabel('Годовая ставка, %').first().fill('7.5')
     await page.getByLabel('Количество траншей').selectOption('2')
     await page.getByLabel('Дата транша').nth(0).fill('2026-10-01')
     await page.getByLabel('Дата транша').nth(1).fill('2027-01-15')
-    await page.getByLabel('Размер транша').fill('40')
-    await page.getByLabel('Годовая ставка, %').nth(0).fill('2')
-    await page.getByLabel('Годовая ставка, %').nth(1).fill('7.5')
+    await page.getByLabel('Сумма транша, %').first().fill('40')
+    await page.getByLabel('Годовая ставка, %').nth(1).fill('2')
+    await page.getByLabel('Годовая ставка, %').nth(2).fill('7.5')
     await assertNoPageOverflow(page)
     const calculationResponsePromise = page.waitForResponse((response) => (
       response.request().method() === 'POST'

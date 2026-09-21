@@ -93,7 +93,7 @@ writeTest('owner saves a calculation and downloads both exports', async (context
     `/app/mortgage?propertyId=${fixtureManifest.propertyId}`,
     isolatedBaseUrl,
   ).href)
-  await page.getByLabel('Дата первого взноса').fill('2026-10-01')
+  await page.getByLabel('Дата первоначального взноса').fill('2026-10-01')
   await page.getByLabel('Срок ипотеки, месяцев').fill('12')
   await page.getByRole('button', { name: 'Рассчитать ипотеку' }).click()
   await page.getByRole('heading', { name: 'Сохранить этот сценарий' }).waitFor()

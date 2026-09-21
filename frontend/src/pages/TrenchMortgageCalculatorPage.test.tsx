@@ -19,6 +19,27 @@ const mortgageOptions: MortgageOptions = {
   programs: [],
 }
 
+const propertyList = {
+  page: 1,
+  pageSize: 100,
+  totalCount: 1,
+  totalPages: 1,
+  results: [{
+    id: 42,
+    city: 'Казань',
+    developer: 'Надёжный застройщик',
+    realEstateComplex: 'Зелёный квартал',
+    building: '2',
+    apartmentNumber: '42',
+    layout: 'Евродвушка',
+    decoration: 'Чистовая',
+    area: '52.40',
+    floor: 8,
+    propertyCost: '5000000.00',
+    detailUrl: '/property/42/',
+  }],
+}
+
 const authenticatedSession: Session = {
   isAuthenticated: true,
   user: {
@@ -131,6 +152,10 @@ function renderPage({
 } = {}) {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['mortgage-options'], mortgageOptions)
+  queryClient.setQueryData(
+    ['properties', 'pageSize=100&ordering=realEstateComplex'],
+    propertyList,
+  )
   if (authenticated) {
     queryClient.setQueryData(['session'], authenticatedSession)
   }
@@ -163,7 +188,9 @@ describe('TrenchMortgageCalculatorPage', () => {
     renderPage()
 
     expect(screen.getAllByLabelText('Дата транша')).toHaveLength(2)
-    expect(screen.getByText('Остаток кредита')).toBeInTheDocument()
+    expect(screen.getAllByRole('spinbutton', { name: 'Сумма транша, %' })[1]).toHaveAttribute(
+      'readonly',
+    )
 
     await user.selectOptions(
       screen.getByLabelText('Количество траншей'),
@@ -171,8 +198,10 @@ describe('TrenchMortgageCalculatorPage', () => {
     )
 
     expect(screen.getAllByLabelText('Дата транша')).toHaveLength(3)
-    expect(screen.getAllByText('Размер транша')).toHaveLength(2)
-    expect(screen.getByText('Остаток кредита')).toBeInTheDocument()
+    expect(screen.getAllByRole('spinbutton', { name: 'Сумма транша, %' })).toHaveLength(3)
+    expect(screen.getAllByRole('spinbutton', { name: 'Сумма транша, %' })[2]).toHaveAttribute(
+      'readonly',
+    )
   })
 
   it('submits normalized rows and renders the server result', async () => {
@@ -235,9 +264,10 @@ describe('TrenchMortgageCalculatorPage', () => {
     expect(await screen.findByText(
       'Сумма транша превышает остаток кредита.',
     )).toBeInTheDocument()
-    expect(screen.getByRole('spinbutton', {
-      name: /Размер транша/,
-    })).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getAllByRole('spinbutton', { name: 'Сумма транша, ₽' })[0]).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
   })
 
   it('saves and links an authenticated result without duplicate writes', async () => {
@@ -292,19 +322,19 @@ describe('TrenchMortgageCalculatorPage', () => {
     })
   })
 
-  it('loads a saved owner scenario into the form as a new sample', () => {
+  it('loads a saved owner scenario into the form as a new sample', async () => {
     renderPage({
       authenticated: true,
       route: '/mortgage/trench?sample=17',
     })
 
-    expect(screen.getByLabelText('Первоначальный взнос')).toHaveValue(20)
+    expect(await screen.findByLabelText('Первоначальный взнос, %')).toHaveValue(20)
     expect(screen.getAllByLabelText('Дата транша')[0]).toHaveValue(
       '2026-01-15',
     )
     expect(screen.getAllByLabelText('Дата транша')[1]).toHaveValue(
       '2026-07-15',
     )
-    expect(screen.getAllByLabelText('Годовая ставка, %')[1]).toHaveValue(10)
+    expect(screen.getAllByLabelText('Годовая ставка, %')[2]).toHaveValue(10)
   })
 })
