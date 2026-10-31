@@ -8,6 +8,7 @@ import {
   calculateMortgage,
   calculateTrenchMortgage,
   mortgageOptionsQueryOptions,
+  mortgageDeveloperOptionsQueryOptions,
   propertyDetailQueryOptions,
   propertyListQueryOptions,
   saveMortgageCalculation,
@@ -27,7 +28,8 @@ import type {
 } from '@/api/schemas'
 import { MortgageResult } from '@/features/mortgage/MortgageResult'
 import { TrenchMortgageResult } from '@/features/mortgage/TrenchMortgageResult'
-import { formatPercent } from '@/shared/lib/formatters'
+import { getProgramConditions, getProgramCreditLimit, matchDeveloperProgram } from '@/features/mortgage/programs'
+import { formatCurrency, formatPercent } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 
 type CalculationType = 'market' | 'trench'
@@ -281,7 +283,7 @@ function FieldError({ fieldName, errors }: { fieldName: string; errors: FieldErr
 function propertyDataFromListItem(property: PropertyListItem): PropertyDataState {
   return {
     city: property.city,
-    district: '',
+    district: property.district ?? '',
     developer: property.developer,
     realEstateComplex: property.realEstateComplex,
     building: property.building,
@@ -477,6 +479,18 @@ export function MortgageCalculatorPage({
   const [propertyData, setPropertyData] = useState<PropertyDataState>(
     EMPTY_PROPERTY_DATA,
   )
+  const selectedProperty = propertyItems.find(
+    (property) => property.id === selectedPropertyIdentifier,
+  ) ?? selectedPropertyQuery.data
+  const developerIdentifier = selectedProperty?.developerId ?? null
+  const complexIdentifier = selectedProperty?.realEstateComplexId ?? null
+  const regionIdentifier = selectedProperty?.regionId ?? null
+  const developerOptionsQuery = useQuery({
+    ...mortgageDeveloperOptionsQueryOptions(developerIdentifier ?? 0),
+    enabled: developerIdentifier !== null,
+  })
+  const developerDefaultsRef = useRef<MortgageFormState | null>(null)
+  const appliedProgramKeyRef = useRef<string | null>(null)
   const [formState, setFormState] = useState<MortgageFormState>(() => (
     initialFormState(searchParameters.get('propertyCost') ?? '5000000')
   ))
@@ -539,12 +553,90 @@ export function MortgageCalculatorPage({
     ) ?? [],
     [formState.bankId, optionsQuery.data],
   )
+  const developerPrograms = useMemo(
+    () => developerOptionsQuery.data?.developerPrograms ?? [],
+    [developerOptionsQuery.data],
+  )
+  const availableBanks = optionsQuery.data?.banks.filter((bank) => (
+    developerPrograms.length === 0
+    || developerPrograms.some((program) => program.bankId === bank.id)
+  )) ?? []
+  const bankIsAvailable = availableBanks.some((bank) => String(bank.id) === formState.bankId)
+  const selectedBankProgram = availablePrograms.find(
+    (program) => String(program.id) === formState.bankProgramId,
+  )
+  const selectedDeveloperProgram = selectedBankProgram
+    ? matchDeveloperProgram(developerPrograms, selectedBankProgram, complexIdentifier)
+    : undefined
   const finalPropertyCost = getFinalPropertyCost(formState)
   const loanAmount = getLoanAmount(formState)
+  const creditLimit = selectedBankProgram
+    ? getProgramCreditLimit(selectedBankProgram, regionIdentifier, selectedDeveloperProgram)
+    : null
+  const exceedsCreditLimit = creditLimit !== null && loanAmount > creditLimit
   const calculationQueryString = searchParameters.toString()
   const loginReturnPath = `${location.pathname}${
     calculationQueryString ? `?${calculationQueryString}` : ''
   }`
+
+  useEffect(() => {
+    if (developerIdentifier !== null && !developerOptionsQuery.data) return
+    const key = JSON.stringify([
+      developerIdentifier, complexIdentifier, formState.bankId, formState.bankProgramId,
+      selectedDeveloperProgram?.id ?? null,
+    ])
+    if (appliedProgramKeyRef.current === key) return
+    appliedProgramKeyRef.current = key
+    setFormState((current) => {
+      const defaults = developerDefaultsRef.current
+      const restored = defaults ? {
+        ...current,
+        priceAdjustmentType: defaults.priceAdjustmentType,
+        priceAdjustmentSource: defaults.priceAdjustmentSource,
+        priceAdjustmentPercent: defaults.priceAdjustmentPercent,
+        priceAdjustmentRubles: defaults.priceAdjustmentRubles,
+        initialPaymentSource: defaults.initialPaymentSource,
+        initialPaymentPercent: defaults.initialPaymentPercent,
+        initialPaymentRubles: defaults.initialPaymentRubles,
+        mortgageTermYears: formatCalculatedValue(Number(defaults.mortgageTermMonths) / 12),
+        mortgageTermMonths: defaults.mortgageTermMonths,
+        annualRate: defaults.annualRate,
+        hasGracePeriod: defaults.hasGracePeriod,
+        gracePeriodTermYears: defaults.gracePeriodTermYears,
+        gracePeriodTermMonths: defaults.gracePeriodTermMonths,
+        gracePeriodRate: defaults.gracePeriodRate,
+        trenches: current.trenches.map((trench) => ({
+          ...trench, annualRate: defaults.annualRate,
+        })),
+      } : current
+      if (current.bankId && !bankIsAvailable) {
+        developerDefaultsRef.current = null
+        return synchronizeMoneyFields({ ...restored, bankId: '', bankProgramId: '' })
+      }
+      if (!selectedBankProgram) {
+        developerDefaultsRef.current = null
+        return defaults ? synchronizeMoneyFields(restored) : current
+      }
+      const base = getProgramConditions(selectedBankProgram, optionsQuery.data?.keyRate ?? '0')
+      developerDefaultsRef.current = { ...restored, ...base }
+      const conditions = getProgramConditions(
+        selectedBankProgram, optionsQuery.data?.keyRate ?? '0', selectedDeveloperProgram,
+      )
+      return synchronizeMoneyFields({
+        ...restored,
+        ...conditions,
+        mortgageTermYears: formatCalculatedValue(Number(conditions.mortgageTermMonths) / 12),
+        initialPaymentSource: 'percent',
+        priceAdjustmentSource: conditions.priceAdjustmentPercent !== undefined
+          ? 'percent' : restored.priceAdjustmentSource,
+        trenches: restored.trenches.map((trench) => ({
+          ...trench, annualRate: conditions.annualRate,
+        })),
+      })
+    })
+  }, [bankIsAvailable, complexIdentifier, developerIdentifier, developerOptionsQuery.data,
+    formState.bankId, formState.bankProgramId, optionsQuery.data,
+    selectedBankProgram, selectedDeveloperProgram])
 
   useEffect(() => {
     if (!selectedPropertyIdentifier) return
@@ -877,38 +969,7 @@ export function MortgageCalculatorPage({
   }
 
   const selectProgram = (programIdentifier: string) => {
-    const program = optionsQuery.data?.programs.find(
-      (item) => String(item.id) === programIdentifier,
-    )
-    if (!program) {
-      updateField('bankProgramId', '')
-      return
-    }
-    setFormState((current) => {
-      const maximumTermMonths = program.maximumLoanTermYears
-        ? Math.min(
-            Number(current.mortgageTermMonths),
-            program.maximumLoanTermYears * 12,
-          )
-        : Number(current.mortgageTermMonths)
-      const minimumInitialPayment = Math.max(
-        Number(current.initialPaymentPercent),
-        Number(program.minimumInitialPaymentPercent),
-      )
-      return synchronizeMoneyFields({
-        ...current,
-        bankProgramId: programIdentifier,
-        annualRate: program.interestRate,
-        mortgageTermMonths: String(maximumTermMonths),
-        mortgageTermYears: formatCalculatedValue(maximumTermMonths / 12),
-        initialPaymentSource: 'percent',
-        initialPaymentPercent: String(minimumInitialPayment),
-        trenches: current.trenches.map((trench) => ({
-          ...trench,
-          annualRate: program.interestRate,
-        })),
-      })
-    })
+    updateField('bankProgramId', programIdentifier)
   }
 
   const changeCalculationType = (value: CalculationType) => {
@@ -1213,6 +1274,24 @@ export function MortgageCalculatorPage({
             </div>
           </section>
 
+          {developerOptionsQuery.isError ? (
+            <div className="form-error" role="alert">
+              Не удалось загрузить условия застройщика. Выбор программы требует повторной загрузки.
+              <button className="text-button" type="button" onClick={() => void developerOptionsQuery.refetch()}>
+                Повторить
+              </button>
+            </div>
+          ) : null}
+          {selectedDeveloperProgram ? (
+            <p className="status-notice" role="status">
+              Применена программа застройщика: {selectedDeveloperProgram.bankName} —{' '}
+              {selectedDeveloperProgram.mortgageProgramName}.{' '}
+              {selectedDeveloperProgram.realEstateComplexName
+                ? `Для ЖК «${selectedDeveloperProgram.realEstateComplexName}».`
+                : 'Для всех ЖК группы компаний.'}
+            </p>
+          ) : null}
+
           <section className="calculator-section" aria-labelledby="loan-parameters-heading">
             <div className="calculator-section__heading">
               <span>03</span>
@@ -1226,7 +1305,7 @@ export function MortgageCalculatorPage({
                 <span>Банк</span>
                 <select
                   value={formState.bankId}
-                  disabled={optionsQuery.isLoading}
+                  disabled={optionsQuery.isLoading || developerOptionsQuery.isFetching}
                   onChange={(event) => setFormState((current) => ({
                     ...current,
                     bankId: event.target.value,
@@ -1234,7 +1313,7 @@ export function MortgageCalculatorPage({
                   }))}
                 >
                   <option value="">Без выбора</option>
-                  {optionsQuery.data?.banks.map((bank) => (
+                  {availableBanks.map((bank) => (
                     <option value={bank.id} key={bank.id}>{bank.name}</option>
                   ))}
                 </select>
@@ -1243,7 +1322,7 @@ export function MortgageCalculatorPage({
                 <span>Ипотечная программа</span>
                 <select
                   value={formState.bankProgramId}
-                  disabled={!formState.bankId}
+                  disabled={!formState.bankId || developerOptionsQuery.isFetching}
                   onChange={(event) => selectProgram(event.target.value)}
                 >
                   <option value="">Ручные параметры</option>
@@ -1341,6 +1420,34 @@ export function MortgageCalculatorPage({
             </div>
           </section>
 
+          {exceedsCreditLimit && creditLimit !== null ? (
+            <section className="filter-panel" aria-labelledby="credit-limit-heading" role="status">
+              <h2 id="credit-limit-heading">Сумма кредита превышает лимит программы</h2>
+              <p>Кредит: {formatCurrency(String(loanAmount))}. Лимит кредита: {formatCurrency(String(creditLimit))}.</p>
+              <div className="field-grid">
+                <div>
+                  <h3>Увеличение первоначального взноса</h3>
+                  <p>Необходимый взнос: {formatCurrency(String(finalPropertyCost - creditLimit))}{' '}
+                    ({formatPercent(formatCalculatedValue((finalPropertyCost - creditLimit) / finalPropertyCost * 100))}).</p>
+                  <p>Дополнительно: {formatCurrency(String(Math.max(0,
+                    finalPropertyCost - creditLimit - Number(formState.initialPaymentRubles))))}.</p>
+                </div>
+                <div>
+                  <h3>Комбинированная ипотека</h3>
+                  <p>{selectedBankProgram?.isPreferential ? 'Льготная часть' : 'Часть по ставке программы'}:{' '}
+                    {formatCurrency(String(creditLimit))} под {formatPercent(formState.annualRate)}.</p>
+                  <p>Рыночная часть: {formatCurrency(String(loanAmount - creditLimit))}{' '}
+                    под {formatPercent(String(Number(optionsQuery.data?.keyRate ?? 0) + 2))}.</p>
+                  <p>Итоговая ставка: {formatPercent(formatCalculatedValue((
+                    creditLimit * Number(formState.annualRate)
+                    + (loanAmount - creditLimit) * (Number(optionsQuery.data?.keyRate ?? 0) + 2)
+                  ) / loanAmount))}.</p>
+                </div>
+              </div>
+              <p>Сравните варианты и измените взнос или ставку в форме перед расчётом.</p>
+            </section>
+          ) : null}
+
           <section className="calculator-section" aria-labelledby="calculation-type-heading">
             <div className="calculator-section__heading">
               <span>04</span>
@@ -1413,7 +1520,7 @@ export function MortgageCalculatorPage({
                       <span>Ставка льготного периода, %</span>
                       <input
                         type="number"
-                        min="0.01"
+                        min="0"
                         max="100"
                         step="0.01"
                         required
@@ -1530,7 +1637,10 @@ export function MortgageCalculatorPage({
           <button
             className="button button--primary calculator-submit"
             type="submit"
-            disabled={activeCalculationMutation.isPending}
+            disabled={activeCalculationMutation.isPending || Boolean(
+              formState.bankProgramId && developerIdentifier !== null
+              && (developerOptionsQuery.isFetching || developerOptionsQuery.isError),
+            )}
           >
             {activeCalculationMutation.isPending
               ? 'Рассчитываем…'

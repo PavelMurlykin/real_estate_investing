@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type {
   MortgageCalculationResponse,
   MortgageOptions,
+  PropertyListResponse,
   SavedMortgageCalculationDetail,
   Session,
 } from '@/api/schemas'
@@ -152,26 +153,35 @@ function renderCalculator({
   savedSample,
   session,
   properties = propertyList,
+  developerOptions,
+  initialCalculationType = 'market',
+  options = mortgageOptions,
 }: {
   initialRoute?: string
   savedSample?: SavedMortgageCalculationDetail
   session?: Session
-  properties?: typeof propertyList
+  properties?: PropertyListResponse
+  developerOptions?: MortgageOptions
+  initialCalculationType?: 'market' | 'trench'
+  options?: MortgageOptions
 } = {}) {
   const queryClient = createTestQueryClient()
-  queryClient.setQueryData(['mortgage-options'], mortgageOptions)
+  queryClient.setQueryData(['mortgage-options'], options)
   queryClient.setQueryData(
     ['properties', 'pageSize=100&ordering=realEstateComplex'],
     properties,
   )
   if (session) queryClient.setQueryData(['session'], session)
+  if (developerOptions) {
+    queryClient.setQueryData(['mortgage-developer-options', 9], developerOptions)
+  }
   if (savedSample) {
     queryClient.setQueryData(
       ['saved-mortgage-calculation', savedSample.id],
       savedSample,
     )
   }
-  return renderWithProviders(<MortgageCalculatorPage />, {
+  return renderWithProviders(<MortgageCalculatorPage initialCalculationType={initialCalculationType} />, {
     initialRoute,
     queryClient,
   })
@@ -182,6 +192,81 @@ afterEach(() => {
 })
 
 describe('MortgageCalculatorPage', () => {
+  it.each(['market', 'trench'] as const)('applies complex conditions and restores group defaults in %s mode', async (mode) => {
+    const user = userEvent.setup()
+    const groupProgram = {
+      id: 500, companyGroupId: 1, companyGroupName: 'Группа',
+      realEstateComplexId: null, realEstateComplexName: null, complexDeveloperName: null,
+      bankId: 1, bankName: 'Надёжный банк', mortgageProgramId: 20,
+      mortgageProgramName: 'Семейная ипотека', priceIncreasePercent: '-2.50',
+      gracePeriodMonths: null, gracePeriodInterestRate: null,
+      minimumInitialPaymentPercent: '21', interestRate: '5',
+      maximumLoanTermYears: 20, maximumLoanAmount: null, rateDiscountPercent: null,
+      isActive: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+      detailUrl: '', legacyEditUrl: '', legacyCatalogUrl: '',
+    }
+    renderCalculator({
+      initialRoute: '/?propertyId=3', initialCalculationType: mode,
+      properties: {
+        ...propertyList, totalCount: 2,
+        results: [
+          { ...propertyList.results[0], developerId: 9, realEstateComplexId: 30, regionId: 2, district: 'Центральный' },
+          { ...propertyList.results[0], id: 4, apartmentNumber: '43', developerId: 9, realEstateComplexId: 31, regionId: 2 },
+        ],
+      },
+      developerOptions: {
+        ...mortgageOptions,
+        developerPrograms: [groupProgram, {
+          ...groupProgram, id: 501, realEstateComplexId: 30, realEstateComplexName: 'Зелёный квартал',
+          priceIncreasePercent: '8', interestRate: '3', minimumInitialPaymentPercent: '25',
+          maximumLoanTermYears: 25, gracePeriodMonths: 24, gracePeriodInterestRate: '1',
+        }],
+      },
+    })
+    await user.selectOptions(screen.getByLabelText('Банк'), '1')
+    await user.selectOptions(screen.getByLabelText('Ипотечная программа'), '10')
+    expect(screen.getAllByLabelText('Годовая ставка, %')[0]).toHaveValue(3)
+    expect(screen.getByLabelText('Удорожание, %')).toHaveValue(8)
+    expect(screen.getByLabelText('Первоначальный взнос, %')).toHaveValue(25)
+    expect(screen.getByLabelText('Срок ипотеки, месяцев')).toHaveValue(300)
+    if (mode === 'market') {
+      expect(screen.getByLabelText('Льготный период, месяцев')).toHaveValue(24)
+      expect(screen.getByLabelText('Ставка льготного периода, %')).toHaveValue(1)
+    } else {
+      expect(screen.getAllByLabelText('Годовая ставка, %').every((input) => (input as HTMLInputElement).value === '3')).toBe(true)
+    }
+    expect(screen.getByLabelText('Район')).toHaveValue('Центральный')
+    await user.selectOptions(screen.getByLabelText('Объект недвижимости'), '4')
+    expect(screen.getAllByLabelText('Годовая ставка, %')[0]).toHaveValue(5)
+    expect(screen.getByLabelText('Скидка, %')).toHaveValue(2.5)
+    expect(screen.getByLabelText('Первоначальный взнос, %')).toHaveValue(21)
+    if (mode === 'market') expect(screen.getByLabelText('Использовать льготный период')).not.toBeChecked()
+    await user.selectOptions(screen.getByLabelText('Ипотечная программа'), '')
+    expect(screen.getByLabelText('Скидка, %')).toHaveValue(0)
+    expect(screen.getAllByLabelText('Годовая ставка, %')[0]).toHaveValue(6)
+    expect(screen.getByLabelText('Первоначальный взнос, %')).toHaveValue(25)
+    expect(screen.getByLabelText('Срок ипотеки, месяцев')).toHaveValue(240)
+  })
+
+  it('uses the regional limit and explains additional down payment and combined rate', async () => {
+    const user = userEvent.setup()
+    renderCalculator({
+      initialRoute: '/?propertyId=3',
+      properties: { ...propertyList, results: [{ ...propertyList.results[0], regionId: 2 }] },
+      options: {
+        ...mortgageOptions,
+        programs: [{ ...mortgageOptions.programs[0], regionalCreditLimits: [{ regionId: 2, creditLimit: '2000000' }] }],
+      },
+    })
+    await user.selectOptions(screen.getByLabelText('Банк'), '1')
+    await user.selectOptions(screen.getByLabelText('Ипотечная программа'), '10')
+    expect(screen.getByRole('heading', { name: 'Сумма кредита превышает лимит программы' })).toBeInTheDocument()
+    expect(screen.getByText(/Лимит кредита:/)).toHaveTextContent(/2\s000\s000/)
+    expect(screen.getByText(/Необходимый взнос:/)).toHaveTextContent(/3\s000\s000/)
+    expect(screen.getByText(/Дополнительно:/)).toHaveTextContent(/1\s750\s000/)
+    expect(screen.getByText(/Итоговая ставка:/)).toHaveTextContent('11,6%')
+  })
+
   it('requires recalculation after changing the property and saves the new snapshot', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn().mockImplementation(async (url: string) => (

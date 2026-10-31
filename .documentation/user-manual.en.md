@@ -18,8 +18,12 @@ Authenticated users can save calculations for a selected property. Changing the 
 
 When legacy URLs redirect to React, property/customer context is translated from `property_id`/`customer` to `propertyId`/`customerId`. Legacy filter and sorting names are translated to the new interface parameters; functionality of filters not yet available is restored in subsequent stages.
 
+## Developer programs and credit limits
+
+Selecting a property and bank program applies active developer conditions: a specific complex takes priority over group-wide conditions. The adjustment, down payment, term, rate and grace period are populated; changing the program restores the base conditions. Zero rates are supported, including during the grace period. Exceeding the regional limit (or the federal fallback) shows the required/additional down payment and combined rate; apply your chosen option by editing the form fields. This is guidance, not an automatic calculation prohibition. A developer program's maximum loan amount is also considered when provided.
+
 ## Current migration limitations
 
-Parity restoration is tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. The calculator does not yet apply developer programs or credit limits; manual property data cannot be saved and unsaved exports are unavailable. Large dictionaries, result fields, money formatting, filters, table sorting and the homepage still have limitations. Use Django with legacy redirects disabled for the previous workflows. Unfinished stages must not be treated as available features.
+Parity restoration is tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. Manual property data cannot yet be saved and unsaved exports are unavailable. Large dictionaries, result fields, money formatting, filters, table sorting and the homepage still have limitations. Use Django with legacy redirects disabled for the previous workflows. Unfinished stages must not be treated as available features.
 
 For roles and operation see `role_model.md`, `application_initial_setup.md` and `manual_deployment.md`.

@@ -90,6 +90,24 @@ def create_catalog_manager(email='moderator@example.com'):
 
 
 @pytest.mark.django_db
+def test_property_list_exposes_calculator_context_without_extra_queries(
+    client, property_catalog, django_assert_num_queries,
+):
+    """Supply location and developer identifiers for program selection."""
+    property_object = property_catalog[0]
+    complex_object = property_object.building.real_estate_complex
+    with django_assert_num_queries(2):
+        response = client.get(reverse('api_v1:property_list'))
+    assert response.status_code == 200
+    row = next(item for item in response.json()['results']
+               if item['id'] == property_object.pk)
+    assert row['developerId'] == complex_object.developer_id
+    assert row['realEstateComplexId'] == complex_object.pk
+    assert row['regionId'] == complex_object.district.city.region_id
+    assert row['district'] == complex_object.district.name
+
+
+@pytest.mark.django_db
 def test_session_api_returns_anonymous_capabilities_and_sets_csrf_cookie(client):
     """Anonymous session responses should be safe and CSRF-ready."""
     response = client.get(reverse('api_v1:session'))
@@ -237,6 +255,10 @@ def test_property_list_api_returns_paginated_normalized_rows(
     assert payload['results'] == [
         {
             'id': first_property.pk,
+            'developerId': first_property.building.real_estate_complex.developer_id,
+            'realEstateComplexId': first_property.building.real_estate_complex_id,
+            'regionId': first_property.building.real_estate_complex.district.city.region_id,
+            'district': 'Петроградский',
             'city': 'Санкт-Петербург',
             'developer': 'Северный девелопер (Группа Север)',
             'realEstateComplex': 'Белые ночи',

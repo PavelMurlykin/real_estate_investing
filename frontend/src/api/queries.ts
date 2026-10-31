@@ -895,6 +895,18 @@ export const mortgageOptionsQueryOptions = queryOptions({
   staleTime: 5 * 60_000,
 })
 
+export function mortgageDeveloperOptionsQueryOptions(developerIdentifier: number) {
+  return queryOptions({
+    queryKey: ['mortgage-developer-options', developerIdentifier],
+    queryFn: ({ signal }) => requestJson(
+      `/api/v1/mortgage/options/?developerId=${developerIdentifier}`,
+      mortgageOptionsSchema,
+      { signal },
+    ),
+    staleTime: 5 * 60_000,
+  })
+}
+
 export function calculateMortgage(payload: MortgageCalculationRequest) {
   return requestJson(
     '/api/v1/mortgage/calculate/',

@@ -155,6 +155,7 @@ from .serializers import (
     KeyRateListQuerySerializer,
     KeyRateSerializer,
     MortgageCalculationRequestSerializer,
+    MortgageOptionsQuerySerializer,
     MortgageProgramDetailSerializer,
     MortgageProgramListItemSerializer,
     MortgageProgramListQuerySerializer,
@@ -655,6 +656,27 @@ class MortgageOptionsAPIView(APIView):
 
     def get(self, request):
         """Return a bounded, query-efficient set of mortgage options."""
+        query_serializer = MortgageOptionsQuerySerializer(
+            data=request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        developer_identifier = query_serializer.validated_data.get(
+            'developerId'
+        )
+        developer_programs = []
+        if developer_identifier:
+            developer_programs = DeveloperMortgageProgramSerializer(
+                DeveloperMortgageProgram.objects.filter(
+                    company_group__developers__pk=developer_identifier,
+                    is_active=True,
+                    bank__is_active=True,
+                    mortgage_program__is_active=True,
+                ).select_related(
+                    'company_group', 'bank', 'mortgage_program',
+                    'real_estate_complex__developer',
+                ).order_by('bank__name', 'mortgage_program__name', 'pk'),
+                many=True,
+            ).data
         latest_key_rate = (
             KeyRate.objects.filter(is_active=True)
             .order_by('-meeting_date')
@@ -733,6 +755,7 @@ class MortgageOptionsAPIView(APIView):
                 'keyRate': str(latest_key_rate or 0),
                 'banks': list(banks_by_identifier.values()),
                 'programs': programs,
+                'developerPrograms': developer_programs,
             }
         )
 

@@ -4,6 +4,14 @@ from math import pow
 from dateutil.relativedelta import relativedelta
 
 
+def _annuity_coefficient(monthly_rate, month_count):
+    """Return the annuity factor, including interest-free subsidized loans."""
+    if monthly_rate == 0:
+        return 1 / month_count
+    factor = pow(1 + monthly_rate, month_count)
+    return monthly_rate * factor / (factor - 1)
+
+
 class MortgageCalculator:
     """Описание класса MortgageCalculator.
 
@@ -74,9 +82,9 @@ class MortgageCalculator:
             monthly_grace_rate = self.grace_period_rate / 100 / 12
 
             # Расчет аннуитетного платежа для льготного периода на полный срок
-            annuity_coefficient_grace = (
-                monthly_grace_rate * pow(1 + monthly_grace_rate, total_months)
-            ) / (pow(1 + monthly_grace_rate, total_months) - 1)
+            annuity_coefficient_grace = _annuity_coefficient(
+                monthly_grace_rate, total_months
+            )
             grace_monthly_payment = (
                 self.loan_amount * annuity_coefficient_grace
             )
@@ -96,9 +104,9 @@ class MortgageCalculator:
             # Расчет аннуитетного платежа для основного периода
             # на оставшийся срок
             if main_months > 0:
-                annuity_coefficient_main = (
-                    monthly_main_rate * pow(1 + monthly_main_rate, main_months)
-                ) / (pow(1 + monthly_main_rate, main_months) - 1)
+                annuity_coefficient_main = _annuity_coefficient(
+                    monthly_main_rate, main_months
+                )
                 main_monthly_payment = (
                     remaining_debt_after_grace * annuity_coefficient_main
                 )
@@ -136,9 +144,9 @@ class MortgageCalculator:
         else:
             # Расчет без льготного периода
             monthly_rate = self.annual_rate / 100 / 12
-            annuity_coefficient = (
-                monthly_rate * pow(1 + monthly_rate, total_months)
-            ) / (pow(1 + monthly_rate, total_months) - 1)
+            annuity_coefficient = _annuity_coefficient(
+                monthly_rate, total_months
+            )
             monthly_payment = self.loan_amount * annuity_coefficient
 
             # Даты
@@ -203,9 +211,9 @@ class MortgageCalculator:
             monthly_grace_rate = self.grace_period_rate / 100 / 12
 
             # Расчет аннуитетного платежа для льготного периода на полный срок
-            annuity_coefficient_grace = (
-                monthly_grace_rate * pow(1 + monthly_grace_rate, total_months)
-            ) / (pow(1 + monthly_grace_rate, total_months) - 1)
+            annuity_coefficient_grace = _annuity_coefficient(
+                monthly_grace_rate, total_months
+            )
             grace_monthly_payment = current_balance * annuity_coefficient_grace
 
             for month in range(1, grace_months + 1):
@@ -234,9 +242,9 @@ class MortgageCalculator:
             if main_months > 0:
                 # Расчет аннуитетного платежа для основного периода
                 # на оставшийся срок
-                annuity_coefficient_main = (
-                    monthly_main_rate * pow(1 + monthly_main_rate, main_months)
-                ) / (pow(1 + monthly_main_rate, main_months) - 1)
+                annuity_coefficient_main = _annuity_coefficient(
+                    monthly_main_rate, main_months
+                )
                 main_monthly_payment = (
                     current_balance * annuity_coefficient_main
                 )
@@ -264,9 +272,9 @@ class MortgageCalculator:
         else:
             # Без льготного периода
             monthly_rate = self.annual_rate / 100 / 12
-            annuity_coefficient = (
-                monthly_rate * pow(1 + monthly_rate, total_months)
-            ) / (pow(1 + monthly_rate, total_months) - 1)
+            annuity_coefficient = _annuity_coefficient(
+                monthly_rate, total_months
+            )
             monthly_payment = current_balance * annuity_coefficient
 
             for month in range(1, total_months + 1):

@@ -5,7 +5,10 @@ import pytest
 from django.test import Client
 from django.urls import reverse
 
-from bank.models import Bank, BankProgram, KeyRate, MortgageProgram
+from bank.models import (
+    Bank, BankProgram, DeveloperMortgageProgram, KeyRate, MortgageProgram,
+)
+from property.models import CompanyGroup, Developer
 
 
 def build_mortgage_payload(**overrides):
@@ -196,3 +199,65 @@ def test_mortgage_calculation_api_requires_csrf_when_checks_are_enabled():
     )
 
     assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_mortgage_options_scope_conditions_to_developer_group(
+    client, django_assert_num_queries,
+):
+    """Return only active group conditions without a query per program."""
+    group = CompanyGroup.objects.create(name='Группа условий')
+    developer = Developer.objects.create(name='Застройщик', company_group=group)
+    other_group = CompanyGroup.objects.create(name='Другая группа')
+    bank = Bank.objects.create(name='Банк')
+    program = MortgageProgram.objects.create(name='Семейная', condition='Условия')
+    BankProgram.objects.create(bank=bank, mortgage_program=program)
+    expected = DeveloperMortgageProgram.objects.create(
+        company_group=group, bank=bank, mortgage_program=program,
+        price_increase_percent=Decimal('8'), interest_rate=Decimal('3'),
+        minimum_initial_payment_percent=Decimal('25'),
+        maximum_loan_term_years=25, grace_period_months=24,
+        grace_period_interest_rate=Decimal('0'),
+    )
+    DeveloperMortgageProgram.objects.create(
+        company_group=other_group, bank=bank, mortgage_program=program,
+    )
+    DeveloperMortgageProgram.objects.create(
+        company_group=group, bank=bank, mortgage_program=program,
+        is_active=False,
+    )
+    with django_assert_num_queries(4):
+        response = client.get(reverse('api_v1:mortgage_options'), {
+            'developerId': developer.pk,
+        })
+    assert response.status_code == 200
+    conditions = response.json()['developerPrograms']
+    assert [item['id'] for item in conditions] == [expected.pk]
+    assert conditions[0]['priceIncreasePercent'] == '8.00'
+    assert conditions[0]['gracePeriodInterestRate'] == '0.00'
+    assert conditions[0]['interestRate'] == '3.00'
+    assert client.get(reverse('api_v1:mortgage_options'), {
+        'developerId': 'invalid',
+    }).status_code == 400
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('has_grace', [False, True])
+def test_interest_free_program_calculates_without_division_by_zero(
+    client, has_grace,
+):
+    """Support explicit zero rates from subsidized developer programs."""
+    response = client.post(
+        reverse('api_v1:mortgage_calculate'),
+        build_mortgage_payload(
+            annualRate='0', hasGracePeriod=has_grace,
+            gracePeriodTermMonths=3, gracePeriodRate='0',
+        ),
+        content_type='application/json',
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['summary']['overpayment'] == '0.00'
+    assert payload['summary']['mainMonthlyPayment'] == '300000.00'
+    assert len(payload['schedule']) == 12
+    assert payload['schedule'][-1]['remainingDebt'] == '0.00'

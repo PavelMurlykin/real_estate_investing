@@ -3222,6 +3222,20 @@ class PropertyFormOptionsQuerySerializer(serializers.Serializer):
 class PropertyListItemSerializer(serializers.ModelSerializer):
     """Serialize one property row without triggering per-row queries."""
 
+    developerId = serializers.IntegerField(
+        source='building.real_estate_complex.developer_id', read_only=True,
+    )
+    realEstateComplexId = serializers.IntegerField(
+        source='building.real_estate_complex_id', read_only=True,
+    )
+    regionId = serializers.IntegerField(
+        source='building.real_estate_complex.district.city.region_id',
+        read_only=True,
+    )
+    district = serializers.CharField(
+        source='building.real_estate_complex.district.name', read_only=True,
+    )
+
     city = serializers.CharField(
         source='building.real_estate_complex.district.city.name',
         read_only=True,
@@ -3260,6 +3274,10 @@ class PropertyListItemSerializer(serializers.ModelSerializer):
         model = Property
         fields = (
             'id',
+            'developerId',
+            'realEstateComplexId',
+            'regionId',
+            'district',
             'city',
             'developer',
             'realEstateComplex',
@@ -3703,6 +3721,12 @@ class PropertyWriteSerializer(serializers.ModelSerializer):
                 storage.delete(image_name)
 
 
+class MortgageOptionsQuerySerializer(serializers.Serializer):
+    """Validate the optional developer context for calculator programs."""
+
+    developerId = serializers.IntegerField(required=False, min_value=1)
+
+
 class MortgageCalculationRequestSerializer(serializers.Serializer):
     """Validate a side-effect-free market mortgage calculation request."""
 
@@ -3742,7 +3766,7 @@ class MortgageCalculationRequestSerializer(serializers.Serializer):
     annualRate = serializers.DecimalField(
         max_digits=5,
         decimal_places=2,
-        min_value=Decimal('0.01'),
+        min_value=Decimal('0'),
         max_value=Decimal('100'),
     )
     hasGracePeriod = serializers.BooleanField(default=False)
@@ -3757,7 +3781,7 @@ class MortgageCalculationRequestSerializer(serializers.Serializer):
         allow_null=True,
         max_digits=5,
         decimal_places=2,
-        min_value=Decimal('0.01'),
+        min_value=Decimal('0'),
         max_value=Decimal('100'),
     )
 

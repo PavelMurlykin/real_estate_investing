@@ -89,6 +89,10 @@ export type PasswordResetConfirmRequest = {
 
 export const propertyListItemSchema = z.object({
   id: z.number().int().positive(),
+  developerId: z.number().int().positive().optional(),
+  realEstateComplexId: z.number().int().positive().optional(),
+  regionId: z.number().int().positive().optional(),
+  district: z.string().optional(),
   city: z.string(),
   developer: z.string(),
   realEstateComplex: z.string(),
@@ -785,6 +789,7 @@ export const overviewSchema = z.object({
 export const mortgageOptionsSchema = z.object({
   defaultInitialPaymentDate: z.iso.date(),
   keyRate: z.string(),
+  developerPrograms: z.array(developerMortgageProgramSchema).optional(),
   banks: z.array(
     z.object({
       id: z.number().int().positive(),
