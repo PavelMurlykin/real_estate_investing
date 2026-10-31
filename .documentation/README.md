@@ -2,6 +2,9 @@
 
 Карта документов для ручной эксплуатации проекта `real_estate_investing`.
 
+- [Руководство пользователя](user-manual.ru.md)
+- [User manual](user-manual.en.md)
+
 ## Разовые процессы
 
 - `server_setup.md` - подготовка чистого сервера: SSH, firewall, Docker,

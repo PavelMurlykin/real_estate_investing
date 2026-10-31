@@ -480,6 +480,7 @@ export function MortgageCalculatorPage({
   const [formState, setFormState] = useState<MortgageFormState>(() => (
     initialFormState(searchParameters.get('propertyCost') ?? '5000000')
   ))
+  const [calculatedScenarioKey, setCalculatedScenarioKey] = useState<string | null>(null)
   const marketCalculationMutation = useMutation({ mutationFn: calculateMortgage })
   const trenchCalculationMutation = useMutation({
     mutationFn: calculateTrenchMortgage,
@@ -523,6 +524,15 @@ export function MortgageCalculatorPage({
   const initialPaymentDate = formState.initialPaymentDate
     || optionsQuery.data?.defaultInitialPaymentDate
     || getLocalDateInputValue()
+  const currentScenarioKey = JSON.stringify({
+    calculationType,
+    propertyId: selectedPropertyIdentifier,
+    propertyData,
+    parameters: calculationType === 'market'
+      ? buildMarketPayload(formState, initialPaymentDate)
+      : buildTrenchPayload(formState, initialPaymentDate),
+  })
+  const isResultCurrent = calculatedScenarioKey === currentScenarioKey
   const availablePrograms = useMemo(
     () => optionsQuery.data?.programs.filter(
       (program) => String(program.bankId) === formState.bankId,
@@ -912,6 +922,7 @@ export function MortgageCalculatorPage({
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     activeSaveMutation.reset()
+    setCalculatedScenarioKey(currentScenarioKey)
     if (calculationType === 'market') {
       marketCalculationMutation.mutate(
         buildMarketPayload(formState, initialPaymentDate),
@@ -936,6 +947,11 @@ export function MortgageCalculatorPage({
       <div>
         <span className="eyebrow">История расчётов</span>
         <h2>Сохранить этот сценарий</h2>
+        {!isResultCurrent ? (
+          <p className="status-notice" role="status">
+            Данные изменены. Повторите расчёт перед сохранением.
+          </p>
+        ) : null}
         {!sessionQuery.data?.isAuthenticated ? (
           <p>Войдите в аккаунт, чтобы сохранить расчёт.</p>
         ) : selectedPropertyIdentifier ? (
@@ -978,8 +994,9 @@ export function MortgageCalculatorPage({
             <button
               className="button button--primary"
               type="button"
-              disabled={activeSaveMutation.isPending}
+              disabled={activeSaveMutation.isPending || !isResultCurrent}
               onClick={() => {
+                if (!isResultCurrent) return
                 if (calculationType === 'market'
                   && marketCalculationMutation.variables) {
                   marketSaveMutation.mutate({
@@ -1026,7 +1043,7 @@ export function MortgageCalculatorPage({
           </p>
         </div>
         <div className="page-header__actions">
-          <a className="button button--secondary" href="/mortgage/">
+          <a className="button button--secondary" href="/mortgage/?legacy=1">
             Django-версия
           </a>
         </div>

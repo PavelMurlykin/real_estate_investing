@@ -253,3 +253,45 @@ def test_redirect_builder_fails_closed_for_missing_arguments():
     """An incomplete route must fall through rather than crash a request."""
     assert build_react_frontend_url('property:detail', {}) is None
     assert build_react_frontend_url('unknown:view', {}) is None
+
+
+@pytest.mark.parametrize(
+    ('legacy_path', 'expected_parameters'),
+    (
+        ('/mortgage/?property_id=3&customer=12',
+         {'propertyId': ['3'], 'customerId': ['12']}),
+        ('/mortgage/?property_id=3&propertyId=4&sample=7',
+         {'propertyId': ['4'], 'sample': ['7']}),
+        ('/property/?filter_city=2&filter_complex=3&filter_area=52.4'
+         '&sort_by=property_cost&sort_dir=desc&customer=12',
+         {'city': ['2'], 'realEstateComplex': ['3'], 'area': ['52.4'],
+          'ordering': ['-propertyCost'], 'customerId': ['12']}),
+        ('/mortgage/calculations/?city=2&cost_from=100&term_to=30'
+         '&sort=monthly_payment&order=desc',
+         {'city': ['2'], 'costFrom': ['100'], 'termTo': ['30'],
+          'ordering': ['-mainMonthlyPayment']}),
+        ('/customers/12/?q=центр&initial_payment_from=100&city=2'
+         '&sort=cost&order=asc',
+         {'calculationQ': ['центр'], 'calculationInitialPaymentFrom': ['100'],
+          'calculationCity': ['2'], 'calculationOrdering': ['finalPropertyCost']}),
+        ('/property/complexes/?filter_name=Центр&filter_city=2'
+         '&sort_by=buildings_count&sort_dir=desc',
+         {'search': ['Центр'], 'cityId': ['2'], 'ordering': ['-buildingCount']}),
+    ),
+)
+@override_settings(REACT_FRONTEND_LEGACY_REDIRECTS_ENABLED=True)
+def test_cutover_preserves_business_meaning(client, legacy_path,
+                                          expected_parameters):
+    """Translate old links without losing object, customer or filter context."""
+    response = client.get(legacy_path)
+    assert response.status_code == 302
+    assert parse_qs(urlsplit(response['Location']).query) == expected_parameters
+
+
+@override_settings(REACT_FRONTEND_LEGACY_REDIRECTS_ENABLED=True)
+def test_explicit_legacy_page_bypasses_cutover():
+    """The fallback must remain reachable while automatic cutover is enabled."""
+    request = RequestFactory().get('/mortgage/?legacy=1')
+    request.resolver_match = resolve('/mortgage/')
+    middleware = LegacyFrontendRedirectMiddleware(empty_response)
+    assert middleware.process_view(request, empty_response, [], {}) is None

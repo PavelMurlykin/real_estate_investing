@@ -104,6 +104,113 @@ EDITABLE_CATALOG_MODELS = {
 }
 
 
+def translate_legacy_query_parameters(view_name, parameters):
+    """Translate legacy business context and table state to React names."""
+    aliases = {'customer': 'customerId'}
+    ordering_fields = {}
+    ordering_parameter = 'ordering'
+    if view_name == 'mortgage:mortgage_calculator':
+        aliases['property_id'] = 'propertyId'
+    elif view_name == 'property:list':
+        aliases.update({
+            'filter_city': 'city', 'filter_developer': 'developer',
+            'filter_complex': 'realEstateComplex',
+            'filter_building': 'building',
+            'filter_apartment_number': 'apartmentNumber',
+            'filter_layout': 'layout', 'filter_area': 'area',
+            'filter_property_cost': 'propertyCost',
+        })
+        ordering_fields = {
+            'city': 'city', 'developer': 'developer',
+            'complex': 'realEstateComplex', 'building': 'building',
+            'apartment_number': 'apartmentNumber', 'layout': 'layout',
+            'area': 'area', 'property_cost': 'propertyCost',
+        }
+    elif view_name in {
+        'mortgage:calculation_list', 'mortgage:trench_calculation_list',
+        'customer:detail',
+    }:
+        for prefix in ('cost', 'initial_payment', 'monthly_payment',
+                       'term', 'rate'):
+            new_prefix = {
+                'initial_payment': 'initialPayment',
+                'monthly_payment': 'monthlyPayment',
+            }.get(prefix, prefix)
+            for boundary in ('from', 'to'):
+                aliases[f'{prefix}_{boundary}'] = (
+                    f'{new_prefix}{boundary.capitalize()}'
+                )
+        ordering_fields = {
+            'city': 'city', 'timestamp': 'createdAt',
+            'object': 'realEstateComplex', 'cost': 'finalPropertyCost',
+            'initial_payment': 'initialPaymentRubles',
+            'monthly_payment': (
+                'mainMonthlyPayment'
+                if view_name == 'mortgage:calculation_list'
+                else 'monthlyPayment'
+            ),
+            'term': 'mortgageTermMonths', 'rate': 'annualRate',
+        }
+        if view_name == 'customer:detail':
+            aliases.update({'city': 'city', 'q': 'q'})
+            aliases = {
+                old: f'calculation{new[0].upper()}{new[1:]}'
+                for old, new in aliases.items()
+                if old != 'customer'
+            }
+            ordering_parameter = 'calculationOrdering'
+    else:
+        aliases['filter_name'] = 'q'
+        ordering_fields = {'name': 'name'}
+        if view_name == 'property:developer_list':
+            aliases.update({
+                'filter_company_group': 'companyGroupId',
+                'filter_region': 'regionId',
+            })
+            ordering_fields['company_group'] = 'companyGroup'
+        elif view_name == 'property:complex_list':
+            aliases.update({
+                'filter_name': 'search', 'filter_developer': 'developerId',
+                'filter_city': 'cityId',
+                'filter_real_estate_class': 'realEstateClassId',
+                'filter_real_estate_type': 'realEstateTypeId',
+                'filter_buildings_count': 'buildingCount',
+            })
+            ordering_fields.update({
+                'developer': 'developer', 'city': 'city',
+                'real_estate_class': 'realEstateClass',
+                'real_estate_type': 'realEstateType',
+                'buildings_count': 'buildingCount',
+            })
+        elif view_name == 'location:location_catalog':
+            aliases.update({
+                'filter_city': 'cityId', 'filter_metro_line': 'metroLineId',
+            })
+            ordering_fields.update({
+                'station': 'name', 'metro_line': 'metroLine',
+                'metro_line__city': 'city',
+            })
+        elif view_name == 'bank:catalog':
+            aliases['filter_bank_scope'] = 'scope'
+    for old_name, new_name in aliases.items():
+        if old_name not in parameters or old_name == new_name:
+            continue
+        if new_name not in parameters:
+            parameters.setlist(new_name, parameters.getlist(old_name))
+        parameters.pop(old_name)
+    if parameters.get('scope') == 'with_programs':
+        parameters['scope'] = 'withPrograms'
+    sort_field = parameters.get('sort_by') or parameters.get('sort')
+    if sort_field in ordering_fields:
+        direction = parameters.get('sort_dir') or parameters.get('order')
+        prefix = '-' if direction == 'desc' else ''
+        parameters.setdefault(
+            ordering_parameter, f'{prefix}{ordering_fields[sort_field]}'
+        )
+        for name in ('sort_by', 'sort_dir', 'sort', 'order'):
+            parameters.pop(name, None)
+
+
 def specialize_catalog_route(
     view_name: str,
     default_route: str,
@@ -149,6 +256,7 @@ def build_react_frontend_url(
         route_pattern,
         remaining_query_parameters,
     )
+    translate_legacy_query_parameters(view_name, remaining_query_parameters)
 
     safe_route_arguments = {
         name: quote(str(value), safe='')
@@ -200,6 +308,8 @@ class LegacyFrontendRedirectMiddleware:
         ):
             return None
         if request.method not in self.allowed_methods:
+            return None
+        if request.GET.get('legacy') == '1':
             return None
         if request.resolver_match is None:
             return None

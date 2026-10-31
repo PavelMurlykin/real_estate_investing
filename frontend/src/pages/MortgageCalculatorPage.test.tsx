@@ -151,16 +151,18 @@ function renderCalculator({
   initialRoute = '/',
   savedSample,
   session,
+  properties = propertyList,
 }: {
   initialRoute?: string
   savedSample?: SavedMortgageCalculationDetail
   session?: Session
+  properties?: typeof propertyList
 } = {}) {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['mortgage-options'], mortgageOptions)
   queryClient.setQueryData(
     ['properties', 'pageSize=100&ordering=realEstateComplex'],
-    propertyList,
+    properties,
   )
   if (session) queryClient.setQueryData(['session'], session)
   if (savedSample) {
@@ -180,6 +182,58 @@ afterEach(() => {
 })
 
 describe('MortgageCalculatorPage', () => {
+  it('requires recalculation after changing the property and saves the new snapshot', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => (
+      new Response(JSON.stringify(url.endsWith('/calculate/')
+        ? mortgageResult : savedCalculation), {
+        status: url.endsWith('/calculate/') ? 200 : 201,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    ))
+    vi.stubGlobal('fetch', fetchMock)
+    renderCalculator({
+      initialRoute: '/?propertyId=3',
+      session: authenticatedSession,
+      properties: {
+        ...propertyList,
+        totalCount: 2,
+        results: [propertyList.results[0], {
+          ...propertyList.results[0], id: 4,
+          apartmentNumber: '43', propertyCost: '5432100.67',
+        }],
+      },
+    })
+    await user.click(screen.getByRole('button', { name: 'Рассчитать ипотеку' }))
+    expect(await screen.findByRole('button', { name: 'Сохранить расчёт' })).toBeEnabled()
+    await user.selectOptions(screen.getByLabelText('Объект недвижимости'), '4')
+    expect(screen.getByRole('button', { name: 'Сохранить расчёт' })).toBeDisabled()
+    expect(screen.getByText('Данные изменены. Повторите расчёт перед сохранением.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Рассчитать ипотеку' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Сохранить расчёт' })).toBeEnabled())
+    await user.click(screen.getByRole('button', { name: 'Сохранить расчёт' }))
+    const saveRequest = fetchMock.mock.calls.find(([url]) => url === '/api/v1/mortgage/calculations/')
+    expect(JSON.parse(saveRequest?.[1].body as string)).toMatchObject({
+      propertyId: 4,
+      parameters: { propertyCost: '5432100.67' },
+    })
+  })
+
+  it('marks the calculated result outdated after editing a financial input', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(mortgageResult), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      }),
+    ))
+    renderCalculator({ initialRoute: '/?propertyId=3', session: authenticatedSession })
+    await user.click(screen.getByRole('button', { name: 'Рассчитать ипотеку' }))
+    expect(await screen.findByRole('button', { name: 'Сохранить расчёт' })).toBeEnabled()
+    await user.clear(screen.getByLabelText('Годовая ставка, %'))
+    await user.type(screen.getByLabelText('Годовая ставка, %'), '10')
+    expect(screen.getByRole('button', { name: 'Сохранить расчёт' })).toBeDisabled()
+  })
+
   it('submits the form and renders summary and payment schedule', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn().mockResolvedValue(
