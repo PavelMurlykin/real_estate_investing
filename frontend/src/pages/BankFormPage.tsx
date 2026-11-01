@@ -1,3 +1,4 @@
+import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -497,9 +498,8 @@ export function BankFormPage() {
           <div className="bank-program-editors">
             {optionsQuery.data.truncated ? (
               <p className="form-error" role="alert">
-                Показана только первая часть программ. Если нужной программы
-                нет, завершите редактирование в сохранённой Django-форме.
-              </p>
+            Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».
+          </p>
             ) : null}
             {formState.programs.length === 0 ? (
               <div className="bank-program-empty">
@@ -532,39 +532,18 @@ export function BankFormPage() {
                     </button>
                   </div>
                   <div className="field-grid bank-program-fields">
-                    <label className="form-field form-field--wide">
-                      Ипотечная программа *
-                      <select
-                        name={`programs.${rowIndex}.mortgageProgramId`}
-                        value={program.mortgageProgramId}
-                        onChange={(event) => updateProgram(
+                    <RemoteSelect
+                      dictionary="mortgage-programs" label={"Ипотечная программа"}
+                      value={program.mortgageProgramId} onChange={(value) => updateProgram(
                           program.clientKey,
                           'mortgageProgramId',
-                          event.target.value,
+                          value,
                         )}
-                        required
-                        aria-invalid={Boolean(errorFor('mortgageProgramId'))}
-                        aria-describedby={`bank-program-${rowIndex}-mortgageProgramId-error`}
-                      >
-                        <option value="">Выберите программу</option>
-                        {mortgagePrograms.map((mortgageProgram) => (
-                          <option
-                            value={mortgageProgram.id}
-                            key={mortgageProgram.id}
-                          >
-                            {mortgageProgram.name}
-                          </option>
-                        ))}
-                      </select>
-                      {errorFor('mortgageProgramId') ? (
-                        <span
-                          className="field-error"
-                          id={`bank-program-${rowIndex}-mortgageProgramId-error`}
-                        >
-                          {errorFor('mortgageProgramId')}
-                        </span>
-                      ) : null}
-                    </label>
+                      initialOptions={(mortgagePrograms ?? []).map((option) => ({ id: option.id, label: option.name }))}
+                      truncated={optionsQuery.data.truncated}
+                      error={errorFor('mortgageProgramId')}
+                      required
+                    />
                     <label className="form-field">
                       Ставка, % *
                       <input

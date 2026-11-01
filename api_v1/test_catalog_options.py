@@ -3,6 +3,7 @@ from django.urls import reverse
 
 from location.models import City, Region
 from property.models import CompanyGroup, Developer
+from bank.models import MortgageProgram
 
 
 @pytest.mark.django_db
@@ -44,3 +45,29 @@ def test_catalog_options_enforce_parent_filters_and_public_projection(client):
     assert client.get(url, {'regionId': other.pk}).json()['results'] == []
     assert client.get(url, {'pageSize': 101}).status_code == 400
     assert client.get(reverse('api_v1:catalog_options', args=['users'])).status_code == 404
+
+
+@pytest.mark.django_db
+def test_multiple_selections_survive_search_and_remain_bounded(
+    client, django_assert_num_queries,
+):
+    """Return every selected public choice even outside the search page."""
+    programs = MortgageProgram.objects.bulk_create([
+        MortgageProgram(name=f'Программа {index}', is_preferential=True)
+        for index in range(3)
+    ])
+    ordinary = MortgageProgram.objects.create(
+        name='Рыночная программа', is_preferential=False,
+    )
+    url = reverse('api_v1:catalog_options', args=['preferential-programs'])
+    with django_assert_num_queries(3):
+        response = client.get(url, {
+            'q': 'нет совпадений',
+            'selectedIds': [programs[0].pk, programs[2].pk, ordinary.pk],
+        })
+    assert response.status_code == 200
+    assert response.json()['results'] == []
+    assert {item['id'] for item in response.json()['selected']} == {
+        programs[0].pk, programs[2].pk,
+    }
+    assert client.get(url, {'selectedIds': [1] * 101}).status_code == 400

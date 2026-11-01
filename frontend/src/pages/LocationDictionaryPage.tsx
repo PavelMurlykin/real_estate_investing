@@ -1,3 +1,4 @@
+import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -310,90 +311,51 @@ function LocationDictionaryEditor({
         ) : null}
 
         {requiresRegion ? (
-          <div className="form-field">
-            <label htmlFor="location-region">Регион *</label>
-            <select
-              id="location-region"
-              value={formState.regionId}
-              disabled={optionsQuery.isLoading}
-              aria-invalid={Boolean(fieldErrors.regionId)}
-              aria-describedby={fieldErrors.regionId
-                ? 'location-region-error'
-                : undefined}
-              onChange={(event) => updateRegion(event.target.value)}
-            >
-              <option value="">Выберите регион</option>
-              {optionsQuery.data?.regions.map((region) => (
-                <option key={region.id} value={region.id}>{region.name}</option>
-              ))}
-            </select>
-            <FieldError
-              id="location-region-error"
-              message={fieldErrors.regionId}
-            />
-          </div>
+          <RemoteSelect
+            dictionary="regions" label={"Регион"}
+            value={formState.regionId} onChange={(value) => updateRegion(value)}
+            initialOptions={(optionsQuery.data?.regions ?? []).map((option) => ({ id: option.id, label: option.name }))}
+            truncated={optionsQuery.data?.truncated.regions}
+            disabled={optionsQuery.isLoading}
+            error={fieldErrors.regionId}
+            required
+          />
         ) : null}
 
         {requiresCity ? (
-          <div className="form-field">
-            <label htmlFor="location-city">Город *</label>
-            <select
-              id="location-city"
-              value={formState.cityId}
-              disabled={!formState.regionId || optionsQuery.isFetching}
-              aria-invalid={Boolean(fieldErrors.cityId)}
-              aria-describedby={fieldErrors.cityId
-                ? 'location-city-error'
-                : undefined}
-              onChange={(event) => updateCity(event.target.value)}
-            >
-              <option value="">Выберите город</option>
-              {optionsQuery.data?.cities.map((city) => (
-                <option key={city.id} value={city.id}>{city.name}</option>
-              ))}
-            </select>
-            <FieldError
-              id="location-city-error"
-              message={fieldErrors.cityId}
-            />
-          </div>
+          <RemoteSelect
+            dictionary="cities" label={"Город"}
+            value={formState.cityId} onChange={(value) => updateCity(value)}
+            initialOptions={(optionsQuery.data?.cities ?? []).map((option) => ({ id: option.id, label: option.name }))}
+            truncated={optionsQuery.data?.truncated.cities}
+            filters={{ regionId: formState.regionId }}
+            disabled={!formState.regionId || optionsQuery.isFetching}
+            error={fieldErrors.cityId}
+            required
+          />
         ) : null}
 
         {dictionaryKey === 'metro' ? (
-          <div className="form-field">
-            <label htmlFor="location-metro-line">Линия метро *</label>
-            <select
-              id="location-metro-line"
-              value={formState.metroLineId}
-              disabled={!formState.cityId || optionsQuery.isFetching}
-              aria-invalid={Boolean(fieldErrors.metroLineId)}
-              aria-describedby={fieldErrors.metroLineId
-                ? 'location-metro-line-error'
-                : undefined}
-              onChange={(event) => updateFormField(
+          <RemoteSelect
+            dictionary="metro-lines" label={"Линия метро"}
+            value={formState.metroLineId} onChange={(value) => updateFormField(
                 'metroLineId',
-                event.target.value,
+                value,
               )}
-            >
-              <option value="">Выберите линию</option>
-              {optionsQuery.data?.metroLines.map((metroLine) => (
-                <option key={metroLine.id} value={metroLine.id}>
-                  {metroLine.name}
-                </option>
-              ))}
-            </select>
-            <FieldError
-              id="location-metro-line-error"
-              message={fieldErrors.metroLineId}
-            />
-          </div>
+            initialOptions={(optionsQuery.data?.metroLines ?? []).map((option) => ({ id: option.id, label: option.name }))}
+            truncated={optionsQuery.data?.truncated.metroLines}
+            filters={{ cityId: formState.cityId }}
+            disabled={!formState.cityId || optionsQuery.isFetching}
+            error={fieldErrors.metroLineId}
+            required
+          />
         ) : null}
 
         {optionsQuery.data && Object.values(optionsQuery.data.truncated).some(
           Boolean,
         ) ? (
           <p className="field-hint">
-            Показана ограниченная часть связанных записей.
+            Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».
           </p>
         ) : null}
 

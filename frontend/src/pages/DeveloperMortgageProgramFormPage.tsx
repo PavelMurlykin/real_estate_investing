@@ -1,3 +1,4 @@
+import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -374,76 +375,44 @@ export function DeveloperMortgageProgramFormPage() {
             </div>
           </div>
           <div className="field-grid customer-form-grid">
-            <label className="form-field">
-              Группа компаний *
-              <select
-                name="companyGroupId"
-                value={formState.companyGroupId}
-                onChange={(event) => setField('companyGroupId', event.target.value)}
-                required
-                autoFocus
-                aria-invalid={Boolean(errorFor('companyGroupId'))}
-              >
-                <option value="">Выберите группу</option>
-                {companyGroups.map((option) => (
-                  <option value={option.id} key={option.id}>{option.name}</option>
-                ))}
-              </select>
-              {errorFor('companyGroupId') ? <span className="field-error">{errorFor('companyGroupId')}</span> : null}
-            </label>
-            <label className="form-field">
-              Жилой комплекс
-              <select
-                name="realEstateComplexId"
-                value={formState.realEstateComplexId}
-                onChange={(event) => setField('realEstateComplexId', event.target.value)}
-                disabled={!formState.companyGroupId}
-                aria-invalid={Boolean(errorFor('realEstateComplexId'))}
-              >
-                <option value="">Все ЖК группы</option>
-                {realEstateComplexes.map((option) => (
-                  <option value={option.id} key={option.id}>{option.name}</option>
-                ))}
-              </select>
-              {errorFor('realEstateComplexId') ? <span className="field-error">{errorFor('realEstateComplexId')}</span> : null}
-            </label>
-            <label className="form-field">
-              Банк *
-              <select
-                name="bankId"
-                value={formState.bankId}
-                onChange={(event) => setField('bankId', event.target.value)}
-                required
-                aria-invalid={Boolean(errorFor('bankId'))}
-              >
-                <option value="">Выберите банк</option>
-                {banks.map((option) => (
-                  <option value={option.id} key={option.id}>{option.name}</option>
-                ))}
-              </select>
-              {errorFor('bankId') ? <span className="field-error">{errorFor('bankId')}</span> : null}
-            </label>
-            <label className="form-field">
-              Ипотечная программа *
-              <select
-                name="mortgageProgramId"
-                value={formState.mortgageProgramId}
-                onChange={(event) => setField('mortgageProgramId', event.target.value)}
-                required
-                aria-invalid={Boolean(errorFor('mortgageProgramId'))}
-              >
-                <option value="">Выберите программу</option>
-                {mortgagePrograms.map((option) => (
-                  <option value={option.id} key={option.id}>{option.name}</option>
-                ))}
-              </select>
-              {errorFor('mortgageProgramId') ? <span className="field-error">{errorFor('mortgageProgramId')}</span> : null}
-            </label>
+            <RemoteSelect
+              dictionary="company-groups" label={"Группа компаний"}
+              value={formState.companyGroupId} onChange={(value) => setField('companyGroupId', value)}
+              initialOptions={(companyGroups ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.companyGroups}
+              error={errorFor('companyGroupId')}
+              required
+            />
+            <RemoteSelect
+              dictionary="complexes" label={"Жилой комплекс"}
+              value={formState.realEstateComplexId} onChange={(value) => setField('realEstateComplexId', value)}
+              initialOptions={(realEstateComplexes ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.realEstateComplexes}
+              filters={{ companyGroupId: formState.companyGroupId }}
+              disabled={!formState.companyGroupId}
+              error={errorFor('realEstateComplexId')}
+            />
+            <RemoteSelect
+              dictionary="banks" label={"Банк"}
+              value={formState.bankId} onChange={(value) => setField('bankId', value)}
+              initialOptions={(banks ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.banks}
+              error={errorFor('bankId')}
+              required
+            />
+            <RemoteSelect
+              dictionary="mortgage-programs" label={"Ипотечная программа"}
+              value={formState.mortgageProgramId} onChange={(value) => setField('mortgageProgramId', value)}
+              initialOptions={(mortgagePrograms ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.mortgagePrograms}
+              error={errorFor('mortgageProgramId')}
+              required
+            />
           </div>
           {Object.values(options.truncated).some(Boolean) ? (
             <p className="form-error" role="status">
-              Показана только часть справочников. Полный набор доступен в Django-форме.
-            </p>
+            Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».
+          </p>
           ) : null}
         </section>
 

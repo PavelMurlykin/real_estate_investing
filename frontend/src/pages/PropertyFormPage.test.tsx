@@ -152,6 +152,31 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('PropertyFormPage', () => {
+  it('finds a layout outside the initial dictionary and submits its identifier', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockImplementation(async (path: string) => {
+      if (path.includes('/catalog-options/layouts/')) {
+        return new Response(JSON.stringify({
+          results: [{ id: 205, label: 'Редкая планировка' }],
+          selected: [], totalCount: 1, page: 1, nextPage: null,
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+      return new Response(JSON.stringify({ ...propertyDetail, id: 99 }), {
+        status: 201, headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderCreateForm()
+    await fillRequiredFields(user)
+    await user.type(screen.getByLabelText('Поиск: Планировка'), 'Редкая')
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Планировка *' }),
+      await screen.findByRole('option', { name: 'Редкая планировка' }))
+    await user.click(screen.getByRole('button', { name: 'Создать объект' }))
+    expect(await screen.findByRole('heading', { name: 'Объект сохранён' })).toBeInTheDocument()
+    const request = fetchMock.mock.calls.find(([path]) => path === '/api/v1/properties/')
+    expect((request?.[1].body as FormData).get('layoutId')).toBe('205')
+  })
+
   it('does not expose the form to users without catalog permissions', () => {
     renderWithProviders(
       <Routes>

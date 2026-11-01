@@ -26,6 +26,10 @@ Selecting a property and bank program applies active developer conditions: a spe
 
 ## Current migration limitations
 
-Parity restoration is tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. Large dictionaries outside the calculator, result fields, money formatting, filters, table sorting and the homepage still have limitations. Use Django with legacy redirects disabled or an explicit `legacy=1` URL parameter for the previous workflows. Unfinished stages must not be treated as available features.
+Parity restoration is tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. Result fields, money formatting, filters, table sorting and the homepage still have limitations. Use Django with legacy redirects disabled or an explicit `legacy=1` URL parameter for the previous workflows. Unfinished stages must not be treated as available features.
+
+## Large form dictionaries
+
+In property, complex, customer, developer, bank/developer program, regional limit and location forms, use “Поиск: …” above a selector. Typing searches the entire relevant dictionary within the selected parent; “Показать ещё варианты” loads additional choices. Selected values load separately and remain available outside the first page. This also covers multiple developer regions, customer layouts and preferential programs, and property window views. Changing a region, city or complex clears dependent fields; review them before saving. If loading fails, use “Повторить загрузку справочника”.
 
 For roles and operation see `role_model.md`, `application_initial_setup.md` and `manual_deployment.md`.

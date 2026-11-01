@@ -1,3 +1,5 @@
+import { RemoteMultiSelect } from '@/shared/ui/RemoteMultiSelect'
+import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -267,13 +269,6 @@ export function PropertyFormPage() {
     }))
   }
 
-  const updateWindowView = (value: string, isChecked: boolean) => {
-    const nextValues = isChecked
-      ? [...formState.windowViewIds, value]
-      : formState.windowViewIds.filter((item) => item !== value)
-    updateField('windowViewIds', nextValues)
-  }
-
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const formData = new FormData()
@@ -380,9 +375,8 @@ export function PropertyFormPage() {
 
       {hasTruncatedOptions ? (
         <p className="status-notice" role="status">
-          Один из справочников показан частично. Полный список доступен в
-          сохранённой Django-форме.
-        </p>
+            Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».
+          </p>
       ) : null}
       {optionsQuery.isFetching ? (
         <p className="customer-form-loading" role="status">
@@ -403,92 +397,57 @@ export function PropertyFormPage() {
             </div>
           </div>
           <div className="field-grid customer-form-grid">
-            <label className="form-field">
-              Регион *
-              <select
-                value={formState.regionId}
-                onChange={(event) => updateRegion(event.target.value)}
-                required
-              >
-                <option value="">Выберите регион</option>
-                {options.regions.map((option) => (
-                  <option value={option.id} key={option.id}>{option.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="form-field">
-              Город *
-              <select
-                value={formState.cityId}
-                onChange={(event) => updateCity(event.target.value)}
-                disabled={!formState.regionId}
-                required
-              >
-                <option value="">Выберите город</option>
-                {options.cities.map((option) => (
-                  <option value={option.id} key={option.id}>{option.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="form-field">
-              Район *
-              <select
-                value={formState.districtId}
-                onChange={(event) => updateDistrict(event.target.value)}
-                disabled={!formState.cityId}
-                required
-              >
-                <option value="">Выберите район</option>
-                {options.districts.map((option) => (
-                  <option value={option.id} key={option.id}>{option.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="form-field">
-              Застройщик *
-              <select
-                value={formState.developerId}
-                onChange={(event) => updateDeveloper(event.target.value)}
-                required
-              >
-                <option value="">Выберите застройщика</option>
-                {options.developers.map((option) => (
-                  <option value={option.id} key={option.id}>{option.label}</option>
-                ))}
-              </select>
-            </label>
-            <label className="form-field">
-              Жилой комплекс *
-              <select
-                value={formState.realEstateComplexId}
-                onChange={(event) => updateComplex(event.target.value)}
-                disabled={!formState.districtId || !formState.developerId}
-                required
-              >
-                <option value="">Выберите ЖК</option>
-                {options.realEstateComplexes.map((option) => (
-                  <option value={option.id} key={option.id}>{option.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="form-field">
-              Корпус *
-              <select
-                name="buildingId"
-                value={formState.buildingId}
-                onChange={(event) => updateField('buildingId', event.target.value)}
-                disabled={!formState.realEstateComplexId}
-                required
-                aria-invalid={Boolean(fieldErrors.buildingId)}
-                aria-describedby={fieldErrors.buildingId ? 'buildingId-error' : undefined}
-              >
-                <option value="">Выберите корпус</option>
-                {options.buildings.map((option) => (
-                  <option value={option.id} key={option.id}>{option.number}</option>
-                ))}
-              </select>
-              <FieldError fieldName="buildingId" errors={fieldErrors} />
-            </label>
+            <RemoteSelect
+              dictionary="regions" label={"Регион"}
+              value={formState.regionId} onChange={(value) => updateRegion(value)}
+              initialOptions={(options.regions ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.regions}
+              required
+            />
+            <RemoteSelect
+              dictionary="cities" label={"Город"}
+              value={formState.cityId} onChange={(value) => updateCity(value)}
+              initialOptions={(options.cities ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.cities}
+              filters={{ regionId: formState.regionId }}
+              disabled={!formState.regionId}
+              required
+            />
+            <RemoteSelect
+              dictionary="districts" label={"Район"}
+              value={formState.districtId} onChange={(value) => updateDistrict(value)}
+              initialOptions={(options.districts ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.districts}
+              filters={{ cityId: formState.cityId }}
+              disabled={!formState.cityId}
+              required
+            />
+            <RemoteSelect
+              dictionary="developers" label={"Застройщик"}
+              value={formState.developerId} onChange={(value) => updateDeveloper(value)}
+              initialOptions={(options.developers ?? []).map((option) => ({ id: option.id, label: option.label }))}
+              truncated={options.truncated.developers}
+              required
+            />
+            <RemoteSelect
+              dictionary="complexes" label={"Жилой комплекс"}
+              value={formState.realEstateComplexId} onChange={(value) => updateComplex(value)}
+              initialOptions={(options.realEstateComplexes ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.realEstateComplexes}
+              filters={{ districtId: formState.districtId, developerId: formState.developerId }}
+              disabled={!formState.districtId || !formState.developerId}
+              required
+            />
+            <RemoteSelect
+              dictionary="buildings" label={"Корпус"}
+              value={formState.buildingId} onChange={(value) => updateField('buildingId', value)}
+              initialOptions={(options.buildings ?? []).map((option) => ({ id: option.id, label: option.number }))}
+              truncated={options.truncated.buildings}
+              filters={{ realEstateComplexId: formState.realEstateComplexId }}
+              disabled={!formState.realEstateComplexId}
+              error={fieldErrors.buildingId}
+              required
+            />
           </div>
         </section>
 
@@ -559,40 +518,22 @@ export function PropertyFormPage() {
               />
               <FieldError fieldName="propertyCost" errors={fieldErrors} />
             </label>
-            <label className="form-field">
-              Планировка *
-              <select
-                name="layoutId"
-                value={formState.layoutId}
-                onChange={(event) => updateField('layoutId', event.target.value)}
-                required
-                aria-invalid={Boolean(fieldErrors.layoutId)}
-                aria-describedby={fieldErrors.layoutId ? 'layoutId-error' : undefined}
-              >
-                <option value="">Выберите планировку</option>
-                {options.layouts.map((option) => (
-                  <option value={option.id} key={option.id}>{option.name}</option>
-                ))}
-              </select>
-              <FieldError fieldName="layoutId" errors={fieldErrors} />
-            </label>
-            <label className="form-field">
-              Отделка *
-              <select
-                name="decorationId"
-                value={formState.decorationId}
-                onChange={(event) => updateField('decorationId', event.target.value)}
-                required
-                aria-invalid={Boolean(fieldErrors.decorationId)}
-                aria-describedby={fieldErrors.decorationId ? 'decorationId-error' : undefined}
-              >
-                <option value="">Выберите отделку</option>
-                {options.decorations.map((option) => (
-                  <option value={option.id} key={option.id}>{option.name}</option>
-                ))}
-              </select>
-              <FieldError fieldName="decorationId" errors={fieldErrors} />
-            </label>
+            <RemoteSelect
+              dictionary="layouts" label={"Планировка"}
+              value={formState.layoutId} onChange={(value) => updateField('layoutId', value)}
+              initialOptions={(options.layouts ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.layouts}
+              error={fieldErrors.layoutId}
+              required
+            />
+            <RemoteSelect
+              dictionary="decorations" label={"Отделка"}
+              value={formState.decorationId} onChange={(value) => updateField('decorationId', value)}
+              initialOptions={(options.decorations ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.decorations}
+              error={fieldErrors.decorationId}
+              required
+            />
           </div>
         </section>
 
@@ -607,25 +548,10 @@ export function PropertyFormPage() {
               <p>Дополнительные характеристики и визуальные материалы.</p>
             </div>
           </div>
-          <fieldset className="customer-choice-field property-window-views">
-            <legend>Вид из окна</legend>
-            <div className="customer-choice-grid customer-choice-grid--compact">
-              {options.windowViews.map((option) => (
-                <label key={option.id}>
-                  <input
-                    type="checkbox"
-                    checked={formState.windowViewIds.includes(String(option.id))}
-                    onChange={(event) => updateWindowView(
-                      String(option.id),
-                      event.target.checked,
-                    )}
-                  />
-                  <span>{option.name}</span>
-                </label>
-              ))}
-            </div>
-            <FieldError fieldName="windowViewIds" errors={fieldErrors} />
-          </fieldset>
+          <RemoteMultiSelect dictionary="window-views" label="Вид из окна"
+              values={formState.windowViewIds} onChange={(values) => updateField('windowViewIds', values)}
+              initialOptions={options.windowViews.map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.windowViews} error={fieldErrors.windowViewIds} />
 
           <div className="property-upload-grid">
             {imageFields.map((imageField) => {

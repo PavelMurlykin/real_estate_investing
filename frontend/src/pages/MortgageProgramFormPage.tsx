@@ -1,3 +1,4 @@
+import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -500,9 +501,8 @@ export function MortgageProgramFormPage() {
           <div className="nested-editor-list">
             {optionsQuery.data.truncated ? (
               <p className="form-error" role="alert">
-                Показана только первая часть регионов. Полный список доступен
-                в сохранённом Django-справочнике.
-              </p>
+            Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».
+          </p>
             ) : null}
             {formState.regionalCreditLimits.length === 0 ? (
               <div className="bank-program-empty">
@@ -527,30 +527,18 @@ export function MortgageProgramFormPage() {
                     </button>
                   </div>
                   <div className="field-grid nested-editor-fields">
-                    <label className="form-field">
-                      Регион *
-                      <select
-                        name={`regionalCreditLimits.${index}.regionId`}
-                        value={limit.regionId}
-                        onChange={(event) => updateLimit(
+                    <RemoteSelect
+                      dictionary="regions" label={"Регион"}
+                      value={limit.regionId} onChange={(value) => updateLimit(
                           limit.key,
                           'regionId',
-                          event.target.value,
+                          value,
                         )}
-                        required
-                        aria-invalid={Boolean(rowErrors.regionId)}
-                      >
-                        <option value="">Выберите регион</option>
-                        {regions.map((region) => (
-                          <option value={region.id} key={region.id}>
-                            {region.name}
-                          </option>
-                        ))}
-                      </select>
-                      {rowErrors.regionId ? (
-                        <span className="field-error">{rowErrors.regionId}</span>
-                      ) : null}
-                    </label>
+                      initialOptions={(regions ?? []).map((option) => ({ id: option.id, label: option.name }))}
+                      truncated={optionsQuery.data.truncated}
+                      error={rowErrors.regionId}
+                      required
+                    />
                     <label className="form-field">
                       Лимит, ₽ *
                       <input

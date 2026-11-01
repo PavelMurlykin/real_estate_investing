@@ -1,3 +1,5 @@
+import { RemoteMultiSelect } from '@/shared/ui/RemoteMultiSelect'
+import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -346,9 +348,8 @@ export function CustomerFormPage() {
 
       {hasTruncatedOptions ? (
         <p className="status-notice" role="status">
-          В одном из справочников слишком много значений, поэтому показана
-          только первая часть. Полный список доступен в Django-форме.
-        </p>
+            Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».
+          </p>
       ) : null}
       {optionsQuery.isFetching ? (
         <p className="customer-form-loading" role="status">
@@ -480,29 +481,16 @@ export function CustomerFormPage() {
               />
               <FieldError fieldName="birthYear" errors={fieldErrors} />
             </label>
-            <label className="form-field">
-              Город проживания
-              <select
-                name="residenceCityId"
-                value={formState.residenceCityId}
-                onChange={(event) => updateField(
+            <RemoteSelect
+              dictionary="cities" label={"Город проживания"}
+              value={formState.residenceCityId} onChange={(value) => updateField(
                   'residenceCityId',
-                  event.target.value,
+                  value,
                 )}
-                aria-invalid={Boolean(fieldErrors.residenceCityId)}
-                aria-describedby={
-                  fieldErrors.residenceCityId
-                    ? 'residenceCityId-error'
-                    : undefined
-                }
-              >
-                <option value="">Не указан</option>
-                {options.cities.map((city) => (
-                  <option value={city.id} key={city.id}>{city.name}</option>
-                ))}
-              </select>
-              <FieldError fieldName="residenceCityId" errors={fieldErrors} />
-            </label>
+              initialOptions={(options.cities ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.cities}
+              error={fieldErrors.residenceCityId}
+            />
           </div>
         </section>
 
@@ -566,34 +554,10 @@ export function CustomerFormPage() {
                 errors={fieldErrors}
               />
             </label>
-            <fieldset className="form-field form-field--wide customer-choice-field">
-              <legend>Доступные льготные программы</legend>
-              <div className="customer-choice-grid">
-                {options.preferentialPrograms.length > 0
-                  ? options.preferentialPrograms.map((program) => (
-                    <label key={program.id}>
-                      <input
-                        type="checkbox"
-                        value={program.id}
-                        checked={formState.preferentialProgramIds.includes(
-                          program.id.toString(),
-                        )}
-                        onChange={(event) => updateMultipleChoice(
-                          'preferentialProgramIds',
-                          event.target.value,
-                          event.target.checked,
-                        )}
-                      />
-                      <span>{program.name}</span>
-                    </label>
-                  ))
-                  : <p>Нет доступных программ</p>}
-              </div>
-              <FieldError
-                fieldName="preferentialProgramIds"
-                errors={fieldErrors}
-              />
-            </fieldset>
+            <RemoteMultiSelect dictionary="preferential-programs" label="Доступные льготные программы"
+              values={formState.preferentialProgramIds} onChange={(values) => updateField('preferentialProgramIds', values)}
+              initialOptions={options.preferentialPrograms.map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.preferentialPrograms} error={fieldErrors.preferentialProgramIds} />
             <fieldset className="form-field form-field--wide customer-choice-field">
               <legend>Наличие недвижимости в собственности</legend>
               <div className="customer-radio-row">
@@ -655,57 +619,32 @@ export function CustomerFormPage() {
               </select>
               <FieldError fieldName="purchaseGoal" errors={fieldErrors} />
             </label>
-            <label className="form-field">
-              Желаемый город покупки
-              <select
-                name="desiredCityId"
-                value={formState.desiredCityId}
-                onChange={(event) => {
+            <RemoteSelect
+              dictionary="cities" label={"Желаемый город покупки"}
+              value={formState.desiredCityId} onChange={(value) => {
                   if (mutation.isError) mutation.reset()
                   setFormState((current) => ({
                     ...current,
-                    desiredCityId: event.target.value,
+                    desiredCityId: value,
                     desiredDistrictId: '',
                   }))
                 }}
-                aria-invalid={Boolean(fieldErrors.desiredCityId)}
-                aria-describedby={
-                  fieldErrors.desiredCityId ? 'desiredCityId-error' : undefined
-                }
-              >
-                <option value="">Не указан</option>
-                {options.cities.map((city) => (
-                  <option value={city.id} key={city.id}>{city.name}</option>
-                ))}
-              </select>
-              <FieldError fieldName="desiredCityId" errors={fieldErrors} />
-            </label>
-            <label className="form-field">
-              Желаемый район
-              <select
-                name="desiredDistrictId"
-                value={formState.desiredDistrictId}
-                disabled={!desiredCityIdentifier || optionsQuery.isFetching}
-                onChange={(event) => updateField(
+              initialOptions={(options.cities ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.cities}
+              error={fieldErrors.desiredCityId}
+            />
+            <RemoteSelect
+              dictionary="districts" label={"Желаемый район"}
+              value={formState.desiredDistrictId} onChange={(value) => updateField(
                   'desiredDistrictId',
-                  event.target.value,
+                  value,
                 )}
-                aria-invalid={Boolean(fieldErrors.desiredDistrictId)}
-                aria-describedby={
-                  fieldErrors.desiredDistrictId
-                    ? 'desiredDistrictId-error'
-                    : undefined
-                }
-              >
-                <option value="">Не указан</option>
-                {options.districts.map((district) => (
-                  <option value={district.id} key={district.id}>
-                    {district.name}
-                  </option>
-                ))}
-              </select>
-              <FieldError fieldName="desiredDistrictId" errors={fieldErrors} />
-            </label>
+              initialOptions={(options.districts ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.districts}
+              filters={{ cityId: formState.desiredCityId }}
+              disabled={!desiredCityIdentifier || optionsQuery.isFetching}
+              error={fieldErrors.desiredDistrictId}
+            />
             <label className="form-field">
               Этаж
               <input
@@ -762,31 +701,10 @@ export function CustomerFormPage() {
               />
               <FieldError fieldName="areaMaximum" errors={fieldErrors} />
             </label>
-            <fieldset className="form-field form-field--wide customer-choice-field">
-              <legend>Планировки</legend>
-              <div className="customer-choice-grid">
-                {options.layouts.length > 0
-                  ? options.layouts.map((layout) => (
-                    <label key={layout.id}>
-                      <input
-                        type="checkbox"
-                        value={layout.id}
-                        checked={formState.desiredLayoutIds.includes(
-                          layout.id.toString(),
-                        )}
-                        onChange={(event) => updateMultipleChoice(
-                          'desiredLayoutIds',
-                          event.target.value,
-                          event.target.checked,
-                        )}
-                      />
-                      <span>{layout.name}</span>
-                    </label>
-                  ))
-                  : <p>Нет доступных планировок</p>}
-              </div>
-              <FieldError fieldName="desiredLayoutIds" errors={fieldErrors} />
-            </fieldset>
+            <RemoteMultiSelect dictionary="layouts" label="Планировки"
+              values={formState.desiredLayoutIds} onChange={(values) => updateField('desiredLayoutIds', values)}
+              initialOptions={options.layouts.map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.layouts} error={fieldErrors.desiredLayoutIds} />
             <fieldset className="form-field form-field--wide customer-choice-field">
               <legend>Стороны света</legend>
               <div className="customer-choice-grid customer-choice-grid--compact">

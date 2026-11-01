@@ -1,3 +1,4 @@
+import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import type { RealEstateComplexOptions } from '@/api/schemas'
 
 import type { MetroAvailabilityFormRow } from './formTypes'
@@ -5,6 +6,7 @@ import type { MetroAvailabilityFormRow } from './formTypes'
 type RealEstateComplexMetroEditorProps = {
   rows: MetroAvailabilityFormRow[]
   options: RealEstateComplexOptions
+  cityId: number | null
   error?: string
   onAdd: () => void
   onChange: (index: number, row: MetroAvailabilityFormRow) => void
@@ -14,6 +16,7 @@ type RealEstateComplexMetroEditorProps = {
 export function RealEstateComplexMetroEditor({
   rows,
   options,
+  cityId,
   error,
   onAdd,
   onChange,
@@ -34,7 +37,7 @@ export function RealEstateComplexMetroEditor({
           <button
             className="button button--secondary"
             type="button"
-            disabled={options.metroStations.length === 0}
+            disabled={!cityId}
             onClick={onAdd}
           >
             Добавить станцию
@@ -66,42 +69,27 @@ export function RealEstateComplexMetroEditor({
                   </button>
                 </div>
                 <div className="field-grid complex-editor-fields">
-                  <label className="form-field" htmlFor={`${fieldPrefix}-station`}>
-                    Станция метро {rowNumber} *
-                    <select
-                      id={`${fieldPrefix}-station`}
-                      value={row.metroId}
-                      required
-                      onChange={(event) => onChange(index, {
+                  <RemoteSelect
+                    dictionary="metro" label={`Станция метро ${rowNumber}`}
+                    value={row.metroId} onChange={(value) => onChange(index, {
                         ...row,
-                        metroId: event.target.value,
+                        metroId: value,
                       })}
-                    >
-                      <option value="">Выберите станцию</option>
-                      {options.metroStations.map((station) => (
-                        <option key={station.id} value={station.id}>
-                          {station.station} · {station.line}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="form-field" htmlFor={`${fieldPrefix}-transport`}>
-                    Способ *
-                    <select
-                      id={`${fieldPrefix}-transport`}
-                      value={row.transportAccessibilityTypeId}
-                      required
-                      onChange={(event) => onChange(index, {
+                    initialOptions={(options.metroStations ?? []).map((option) => ({ id: option.id, label: `${option.station} · ${option.line}` }))}
+                    truncated={options.truncated.metroStations}
+                    filters={{ cityId }}
+                    required
+                  />
+                  <RemoteSelect
+                    dictionary="transport-accessibility-types" label={"Способ"}
+                    value={row.transportAccessibilityTypeId} onChange={(value) => onChange(index, {
                         ...row,
-                        transportAccessibilityTypeId: event.target.value,
+                        transportAccessibilityTypeId: value,
                       })}
-                    >
-                      <option value="">Выберите способ</option>
-                      {options.transportAccessibilityTypes.map((type) => (
-                        <option key={type.id} value={type.id}>{type.name}</option>
-                      ))}
-                    </select>
-                  </label>
+                    initialOptions={(options.transportAccessibilityTypes ?? []).map((option) => ({ id: option.id, label: option.name }))}
+                    truncated={options.truncated.transportAccessibilityTypes}
+                    required
+                  />
                   <label className="form-field" htmlFor={`${fieldPrefix}-time`}>
                     Время, мин. *
                     <input

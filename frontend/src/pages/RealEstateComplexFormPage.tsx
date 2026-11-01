@@ -1,3 +1,4 @@
+import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -346,51 +347,30 @@ export function RealEstateComplexFormPage() {
               />
               <FieldError id="complex-name-error" message={fieldErrors.name} />
             </label>
-            <label className="form-field" htmlFor="complex-developer-field">
-              Застройщик *
-              <select
-                id="complex-developer-field"
-                value={formState.developerId}
-                aria-invalid={Boolean(fieldErrors.developerId)}
-                onChange={(event) => updateField('developerId', event.target.value)}
-              >
-                <option value="">Выберите застройщика</option>
-                {options.developers.map((developer) => (
-                  <option key={developer.id} value={developer.id}>{developer.label}</option>
-                ))}
-              </select>
-              <FieldError id="complex-developer-error" message={fieldErrors.developerId} />
-            </label>
-            <label className="form-field" htmlFor="complex-class-field">
-              Класс ЖК *
-              <select
-                id="complex-class-field"
-                value={formState.realEstateClassId}
-                aria-invalid={Boolean(fieldErrors.realEstateClassId)}
-                onChange={(event) => updateField('realEstateClassId', event.target.value)}
-              >
-                <option value="">Выберите класс</option>
-                {options.realEstateClasses.map((item) => (
-                  <option key={item.id} value={item.id}>{item.name}</option>
-                ))}
-              </select>
-              <FieldError id="complex-class-error" message={fieldErrors.realEstateClassId} />
-            </label>
-            <label className="form-field" htmlFor="complex-type-field">
-              Тип недвижимости *
-              <select
-                id="complex-type-field"
-                value={formState.realEstateTypeId}
-                aria-invalid={Boolean(fieldErrors.realEstateTypeId)}
-                onChange={(event) => updateField('realEstateTypeId', event.target.value)}
-              >
-                <option value="">Выберите тип</option>
-                {options.realEstateTypes.map((item) => (
-                  <option key={item.id} value={item.id}>{item.name}</option>
-                ))}
-              </select>
-              <FieldError id="complex-type-error" message={fieldErrors.realEstateTypeId} />
-            </label>
+            <RemoteSelect
+              dictionary="developers" label={"Застройщик"}
+              value={formState.developerId} onChange={(value) => updateField('developerId', value)}
+              initialOptions={(options.developers ?? []).map((option) => ({ id: option.id, label: option.label }))}
+              truncated={options.truncated.developers}
+              error={fieldErrors.developerId}
+              required
+            />
+            <RemoteSelect
+              dictionary="real-estate-classes" label={"Класс ЖК"}
+              value={formState.realEstateClassId} onChange={(value) => updateField('realEstateClassId', value)}
+              initialOptions={(options.realEstateClasses ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.realEstateClasses}
+              error={fieldErrors.realEstateClassId}
+              required
+            />
+            <RemoteSelect
+              dictionary="real-estate-types" label={"Тип недвижимости"}
+              value={formState.realEstateTypeId} onChange={(value) => updateField('realEstateTypeId', value)}
+              initialOptions={(options.realEstateTypes ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.realEstateTypes}
+              error={fieldErrors.realEstateTypeId}
+              required
+            />
             <label className="form-field form-field--wide" htmlFor="complex-description">
               Описание
               <textarea
@@ -427,16 +407,12 @@ export function RealEstateComplexFormPage() {
             <div><h2>Локация и материалы</h2><p>Адресная и презентационная информация.</p></div>
           </div>
           <div className="field-grid customer-form-grid">
-            <label className="form-field" htmlFor="complex-region-field">
-              Регион *
-              <select
-                id="complex-region-field"
-                value={formState.regionId}
-                aria-invalid={Boolean(fieldErrors.regionId)}
-                onChange={(event) => {
+            <RemoteSelect
+              dictionary="regions" label={"Регион"}
+              value={formState.regionId} onChange={(value) => {
                   setFormState((current) => ({
                     ...current,
-                    regionId: event.target.value,
+                    regionId: value,
                     cityId: '',
                     districtId: '',
                   }))
@@ -449,25 +425,17 @@ export function RealEstateComplexFormPage() {
                     metroAvailability: '',
                   }))
                 }}
-              >
-                <option value="">Выберите регион</option>
-                {options.regions.map((region) => (
-                  <option key={region.id} value={region.id}>{region.name}</option>
-                ))}
-              </select>
-              <FieldError id="complex-region-error" message={fieldErrors.regionId} />
-            </label>
-            <label className="form-field" htmlFor="complex-city-field">
-              Город *
-              <select
-                id="complex-city-field"
-                value={formState.cityId}
-                disabled={!formState.regionId}
-                aria-invalid={Boolean(fieldErrors.cityId)}
-                onChange={(event) => {
+              initialOptions={(options.regions ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.regions}
+              error={fieldErrors.regionId}
+              required
+            />
+            <RemoteSelect
+              dictionary="cities" label={"Город"}
+              value={formState.cityId} onChange={(value) => {
                   setFormState((current) => ({
                     ...current,
-                    cityId: event.target.value,
+                    cityId: value,
                     districtId: '',
                   }))
                   setMetroRows([])
@@ -478,30 +446,23 @@ export function RealEstateComplexFormPage() {
                     metroAvailability: '',
                   }))
                 }}
-              >
-                <option value="">Выберите город</option>
-                {options.cities.map((city) => (
-                  <option key={city.id} value={city.id}>{city.name}</option>
-                ))}
-              </select>
-              <FieldError id="complex-city-error" message={fieldErrors.cityId} />
-            </label>
-            <label className="form-field" htmlFor="complex-district-field">
-              Район *
-              <select
-                id="complex-district-field"
-                value={formState.districtId}
-                disabled={!formState.cityId}
-                aria-invalid={Boolean(fieldErrors.districtId)}
-                onChange={(event) => updateField('districtId', event.target.value)}
-              >
-                <option value="">Выберите район</option>
-                {options.districts.map((district) => (
-                  <option key={district.id} value={district.id}>{district.name}</option>
-                ))}
-              </select>
-              <FieldError id="complex-district-error" message={fieldErrors.districtId} />
-            </label>
+              initialOptions={(options.cities ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.cities}
+              filters={{ regionId: formState.regionId }}
+              disabled={!formState.regionId}
+              error={fieldErrors.cityId}
+              required
+            />
+            <RemoteSelect
+              dictionary="districts" label={"Район"}
+              value={formState.districtId} onChange={(value) => updateField('districtId', value)}
+              initialOptions={(options.districts ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={options.truncated.districts}
+              filters={{ cityId: formState.cityId }}
+              disabled={!formState.cityId}
+              error={fieldErrors.districtId}
+              required
+            />
             <label className="form-field" htmlFor="complex-map-link">
               Ссылка на карте
               <input
@@ -569,6 +530,7 @@ export function RealEstateComplexFormPage() {
           ))}
         />
         <RealEstateComplexMetroEditor
+          cityId={selectedCityIdentifier}
           rows={metroRows}
           options={options}
           error={fieldErrors.metroAvailability}
@@ -586,8 +548,7 @@ export function RealEstateComplexFormPage() {
 
         {optionsTruncated ? (
           <p className="filter-panel__notice" role="status">
-            Часть крупных справочников ограничена. Полный перечень доступен
-            в прежней версии.
+            Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».
           </p>
         ) : null}
         {fieldErrors.form ? (

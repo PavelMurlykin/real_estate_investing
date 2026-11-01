@@ -1,3 +1,5 @@
+import { RemoteMultiSelect } from '@/shared/ui/RemoteMultiSelect'
+import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -312,63 +314,24 @@ export function DeveloperFormPage() {
               />
               <FieldError fieldName="name" errors={fieldErrors} />
             </label>
-            <label className="form-field">
-              Группа компаний
-              <select
-                name="companyGroupId"
-                value={formState.companyGroupId}
-                onChange={(event) => updateField(
+            <RemoteSelect
+              dictionary="company-groups" label={"Группа компаний"}
+              value={formState.companyGroupId} onChange={(value) => updateField(
                   'companyGroupId',
-                  event.target.value,
+                  value,
                 )}
-                aria-invalid={Boolean(fieldErrors.companyGroupId)}
-                aria-describedby={fieldErrors.companyGroupId
-                  ? 'companyGroupId-error'
-                  : undefined}
-              >
-                <option value="">Без группы компаний</option>
-                {optionsQuery.data.companyGroups.map((companyGroup) => (
-                  <option value={companyGroup.id} key={companyGroup.id}>
-                    {companyGroup.name}
-                  </option>
-                ))}
-              </select>
-              <FieldError fieldName="companyGroupId" errors={fieldErrors} />
-            </label>
-            <div className="form-field form-field--wide">
-              <label htmlFor="developer-region-ids">Регионы</label>
-              <select
-                id="developer-region-ids"
-                className="developer-region-select"
-                name="regionIds"
-                multiple
-                value={formState.regionIds}
-                onChange={(event) => updateField(
-                  'regionIds',
-                  Array.from(
-                    event.target.selectedOptions,
-                    (option) => option.value,
-                  ),
-                )}
-                aria-invalid={Boolean(fieldErrors.regionIds)}
-                aria-describedby={fieldErrors.regionIds
-                  ? 'regionIds-error'
-                  : 'developer-regions-hint'}
-              >
-                {optionsQuery.data.regions.map((region) => (
-                  <option value={region.id} key={region.id}>{region.name}</option>
-                ))}
-              </select>
-              <small id="developer-regions-hint">
-                Для выбора нескольких регионов используйте Ctrl или Cmd.
-              </small>
-              <FieldError fieldName="regionIds" errors={fieldErrors} />
-            </div>
+              initialOptions={(optionsQuery.data.companyGroups ?? []).map((option) => ({ id: option.id, label: option.name }))}
+              truncated={optionsQuery.data?.truncated.companyGroups}
+              error={fieldErrors.companyGroupId}
+            />
+            <RemoteMultiSelect dictionary="regions" label="Регионы"
+              values={formState.regionIds} onChange={(values) => updateField('regionIds', values)}
+              initialOptions={optionsQuery.data.regions.map((option) => ({ id: option.id, label: option.name }))}
+              truncated={optionsQuery.data.truncated.regions} error={fieldErrors.regionIds} mode="select" />
             {optionsAreTruncated ? (
               <p className="form-error form-field--wide" role="alert">
-                Справочник слишком велик и показан не полностью. Для выбора
-                отсутствующей записи используйте сохранённую Django-форму.
-              </p>
+            Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».
+          </p>
             ) : null}
           </div>
         </section>

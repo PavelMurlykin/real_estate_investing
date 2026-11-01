@@ -21,6 +21,10 @@ class CatalogOptionQuerySerializer(serializers.Serializer):
     page = serializers.IntegerField(min_value=1, default=1)
     pageSize = serializers.IntegerField(min_value=1, max_value=100, default=50)
     selected = serializers.IntegerField(required=False, min_value=1)
+    selectedIds = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        required=False, max_length=100,
+    )
     regionId = serializers.IntegerField(required=False, min_value=1)
     cityId = serializers.IntegerField(required=False, min_value=1)
     districtId = serializers.IntegerField(required=False, min_value=1)
@@ -40,6 +44,7 @@ CATALOG_OPTIONS = {
     'complexes': (RealEstateComplex, 'name', ('district__city', 'developer'), {
         'cityId': 'district__city_id', 'districtId': 'district_id',
         'developerId': 'developer_id',
+        'companyGroupId': 'developer__company_group_id',
     }),
     'buildings': (RealEstateComplexBuilding, 'number',
                   ('real_estate_complex__district__city',),
@@ -58,6 +63,7 @@ CATALOG_OPTIONS = {
     'metro-lines': (MetroLine, 'line', (), {'cityId': 'city_id'}),
     'banks': (Bank, 'name', (), {}),
     'mortgage-programs': (MortgageProgram, 'name', (), {}),
+    'preferential-programs': (MortgageProgram, 'name', (), {}),
 }
 
 
@@ -66,6 +72,8 @@ def serialize_catalog_option(item, label_field):
     label = getattr(item, label_field)
     if isinstance(item, Developer):
         label = item.get_display_name_with_company_group()
+    elif isinstance(item, Metro):
+        label = f'{item.station} · {item.metro_line.line}'
     option = {'id': item.pk, 'label': str(label)}
     if isinstance(item, City):
         option['regionId'] = item.region_id
@@ -99,6 +107,8 @@ class CatalogOptionsAPIView(APIView):
         parameters = serializer.validated_data
         model, label_field, related, filters = configuration
         base_queryset = model.objects.all()
+        if dictionary_key == 'preferential-programs':
+            base_queryset = base_queryset.filter(is_preferential=True)
         if related:
             base_queryset = base_queryset.select_related(*related)
         queryset = base_queryset
@@ -117,16 +127,21 @@ class CatalogOptionsAPIView(APIView):
         page_size = parameters['pageSize']
         offset = (page - 1) * page_size
         items = list(queryset[offset:offset + page_size])
-        selected_identifier = parameters.get('selected')
-        selected = next((item for item in items
-                         if item.pk == selected_identifier), None)
-        if selected_identifier and selected is None:
-            selected = base_queryset.filter(pk=selected_identifier).first()
+        selected_identifiers = set(parameters.get('selectedIds', []))
+        if parameters.get('selected'):
+            selected_identifiers.add(parameters['selected'])
+        selected = {item.pk: item for item in items
+                    if item.pk in selected_identifiers}
+        missing = selected_identifiers - selected.keys()
+        if missing:
+            selected.update({item.pk: item for item in base_queryset.filter(
+                pk__in=missing,
+            ).order_by(label_field, 'pk')})
         return Response({
             'results': [serialize_catalog_option(item, label_field)
                         for item in items],
-            'selected': ([serialize_catalog_option(selected, label_field)]
-                         if selected else []),
+            'selected': [serialize_catalog_option(item, label_field)
+                         for item in selected.values()],
             'totalCount': count, 'page': page,
             'nextPage': page + 1 if offset + page_size < count else None,
         })
