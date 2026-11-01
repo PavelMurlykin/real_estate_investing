@@ -166,7 +166,7 @@ describe('DeveloperMortgageProgramFormPage', () => {
     expect(await screen.findByLabelText('Жилой комплекс')).toHaveValue('7')
     expect(screen.getByLabelText('Годовая ставка, %')).toHaveValue(4.3)
     expect(screen.getByRole('link', { name: 'Django-форма' }))
-      .toHaveAttribute('href', '/bank/developer-programs/9/edit/')
+      .toHaveAttribute('href', "/bank/developer-programs/9/edit/?legacy=1")
     await user.clear(screen.getByLabelText('Годовая ставка, %'))
     await user.type(screen.getByLabelText('Годовая ставка, %'), '4.1')
     await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }))

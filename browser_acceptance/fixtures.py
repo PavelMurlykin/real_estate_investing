@@ -83,7 +83,7 @@ def seed_acceptance_fixtures():
 
     from django.contrib.auth.models import Group
 
-    from bank.models import Bank, MortgageProgram
+    from bank.models import Bank, BankProgram, MortgageProgram
     from customer.models import Customer
     from location.models import MetroLine
     from property.models import CompanyGroup, Developer
@@ -130,6 +130,14 @@ def seed_acceptance_fixtures():
             company_group=company_group,
         )
         bank, _ = Bank.objects.get_or_create(name='E2E банк')
+        BankProgram.objects.get_or_create(
+            bank=bank, mortgage_program=mortgage_program,
+            defaults={
+                'interest_rate': Decimal('12.00'),
+                'minimum_initial_payment_percent': Decimal('20.10'),
+                'maximum_loan_term_years': 30,
+            },
+        )
         metro_line, _ = MetroLine.objects.get_or_create(
             line='E2E линия',
             city=real_estate_complex.district.city,

@@ -1,4 +1,7 @@
-import { calculationOrderingOptions } from '@/features/mortgage/calculationOrdering'
+import { LegacyLink } from '@/shared/ui/LegacyLink'
+import { TableOrdering } from '@/shared/ui/TableOrdering'
+import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
+import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
@@ -21,14 +24,6 @@ import {
 } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
-
-const orderingOptions = [
-  ...calculationOrderingOptions('monthlyPayment'),
-  { value: 'maximumMonthlyPayment', label: 'Макс. платёж: по возрастанию' },
-  { value: '-maximumMonthlyPayment', label: 'Макс. платёж: по убыванию' },
-  { value: 'trenchCount', label: 'Транши: по возрастанию' },
-  { value: '-trenchCount', label: 'Транши: по убыванию' },
-]
 
 function TrenchCalculationMobileCard({
   calculation,
@@ -203,7 +198,7 @@ export function SavedTrenchMortgageCalculationListPage() {
   }
 
   const { results, page, totalCount, totalPages } = calculationQuery.data
-  const ordering = searchParameters.get('ordering') ?? '-createdAt'
+
 
   return (
     <div className="page-stack">
@@ -223,12 +218,12 @@ export function SavedTrenchMortgageCalculationListPage() {
               К клиенту
             </Link>
           ) : (
-            <a
+            <LegacyLink
               className="button button--secondary"
               href="/mortgage/trench-calculations/"
             >
               Прежняя версия
-            </a>
+            </LegacyLink>
           )}
           <Link className="button button--primary" to="/mortgage/trench">
             Новый расчёт
@@ -239,39 +234,13 @@ export function SavedTrenchMortgageCalculationListPage() {
       <section className="filter-panel" aria-label="Фильтры траншевой истории">
         <CalculationFilters />
         <form className="search-form" role="search" onSubmit={handleSearch}>
-          <label htmlFor="trench-calculation-search">Поиск по объекту</label>
-          <div className="search-control">
-            <span aria-hidden="true">⌕</span>
-            <input
-              id="trench-calculation-search"
-              name="q"
-              type="search"
-              key={searchParameters.get('q') ?? ''}
-              defaultValue={searchParameters.get('q') ?? ''}
-              placeholder="Город, ЖК, корпус или квартира"
-            />
-            <button className="button button--dark" type="submit">
-              Найти
-            </button>
+          <div className="live-search-control">
+            <LiveFilterInput label="Поиск по объекту" id="trench-calculation-search" parameter="q" placeholder="Город, ЖК, корпус или квартира" />
+            <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
-        <div className="sort-control">
-          <label htmlFor="trench-calculation-ordering">Сортировка</label>
-          <select
-            id="trench-calculation-ordering"
-            value={ordering}
-            onChange={(event) => updateParameters({
-              ordering: event.target.value,
-              page: null,
-            })}
-          >
-            {orderingOptions.map((option) => (
-              <option value={option.value} key={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <TableOrdering id="trench-calculation-ordering" defaultOrdering="-createdAt" parameter="ordering" pageParameter="page"
+          fields={[{ field: 'createdAt', label: "Дата" }, { field: 'city', label: "Город" }, { field: 'realEstateComplex', label: "Объект" }, { field: 'finalPropertyCost', label: "Стоимость" }, { field: 'initialPaymentRubles', label: "Первый взнос" }, { field: 'maximumMonthlyPayment', label: "Макс. платёж" }, { field: 'monthlyPayment', label: "Последний платёж" }, { field: 'mortgageTermMonths', label: "Срок" }, { field: 'annualRate', label: "Ставка / транши" }]} />
       </section>
 
       <div className="results-heading" aria-live="polite">
@@ -330,15 +299,15 @@ export function SavedTrenchMortgageCalculationListPage() {
               <thead>
                 <tr>
                   {customerIdentifier ? <th scope="col"><span className="visually-hidden">Выбор</span></th> : null}
-                  <th scope="col">Дата</th>
-                  <th scope="col">Город</th>
-                  <th scope="col">Объект</th>
-                  <th scope="col">Стоимость</th>
-                  <th scope="col">Первый взнос</th>
-                  <th scope="col">Макс. платёж</th>
-                  <th scope="col">Последний платёж</th>
-                  <th scope="col">Срок</th>
-                  <th scope="col">Ставка / транши</th>
+                  <SortableHeader field="createdAt" defaultOrdering="-createdAt">Дата</SortableHeader>
+                  <SortableHeader field="city" defaultOrdering="-createdAt">Город</SortableHeader>
+                  <SortableHeader field="realEstateComplex" defaultOrdering="-createdAt">Объект</SortableHeader>
+                  <SortableHeader field="finalPropertyCost" defaultOrdering="-createdAt">Стоимость</SortableHeader>
+                  <SortableHeader field="initialPaymentRubles" defaultOrdering="-createdAt">Первый взнос</SortableHeader>
+                  <SortableHeader field="maximumMonthlyPayment" defaultOrdering="-createdAt">Макс. платёж</SortableHeader>
+                  <SortableHeader field="monthlyPayment" defaultOrdering="-createdAt">Последний платёж</SortableHeader>
+                  <SortableHeader field="mortgageTermMonths" defaultOrdering="-createdAt">Срок</SortableHeader>
+                  <SortableHeader field="annualRate" defaultOrdering="-createdAt">Ставка / транши</SortableHeader>
                   <th scope="col">
                     <span className="visually-hidden">Действия</span>
                   </th>

@@ -1,3 +1,5 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
+import { InteractiveTable } from '@/shared/ui/InteractiveTable'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -170,46 +172,14 @@ export function MortgageProgramDetailPage() {
         {mortgageProgram.regionalCreditLimits.length ? (
           <>
             <div className="property-table-wrapper">
-              <table className="property-table mortgage-program-related-table">
-                <caption className="visually-hidden">
-                  Региональные лимиты программы {mortgageProgram.name}
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Регион</th>
-                    <th scope="col">Кредитный лимит</th>
-                    <th scope="col">Статус</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mortgageProgram.regionalCreditLimits.map((regionalLimit) => (
-                    <tr key={regionalLimit.id}>
-                      <td><strong>{regionalLimit.regionName}</strong></td>
-                      <td>{formatCurrency(regionalLimit.creditLimit)}</td>
-                      <td>
-                        {regionalLimit.isActive ? 'Активен' : 'Неактивен'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <InteractiveTable rows={mortgageProgram.regionalCreditLimits} getRowKey={(regionalLimit) => regionalLimit.id}
+              caption={`Региональные лимиты программы ${mortgageProgram.name}`} className="property-table mortgage-program-related-table"
+              columns={[
+                { id: 'column0', label: "Регион", value: (regionalLimit) => regionalLimit.regionName, render: (regionalLimit) => <><strong>{regionalLimit.regionName}</strong></> },
+                { id: 'column1', label: "Кредитный лимит", value: (regionalLimit) => Number(regionalLimit.creditLimit), searchValue: (regionalLimit) => formatCurrency(regionalLimit.creditLimit), render: (regionalLimit) => <>{formatCurrency(regionalLimit.creditLimit)}</> },
+              ]} />
             </div>
-            <div className="property-mobile-list">
-              {mortgageProgram.regionalCreditLimits.map((regionalLimit) => (
-                <article className="property-mobile-card" key={regionalLimit.id}>
-                  <div className="property-mobile-card__heading">
-                    <div><span>Регион</span><h2>{regionalLimit.regionName}</h2></div>
-                    <span>{regionalLimit.isActive ? 'Активен' : 'Неактивен'}</span>
-                  </div>
-                  <dl>
-                    <div>
-                      <dt>Кредитный лимит</dt>
-                      <dd>{formatCurrency(regionalLimit.creditLimit)}</dd>
-                    </div>
-                  </dl>
-                </article>
-              ))}
-            </div>
+
           </>
         ) : (
           <p className="complex-copy">Региональные исключения не заданы.</p>
@@ -229,44 +199,14 @@ export function MortgageProgramDetailPage() {
         {mortgageProgram.aliases.length ? (
           <>
             <div className="property-table-wrapper">
-              <table className="property-table mortgage-program-related-table">
-                <caption className="visually-hidden">
-                  Алиасы программы {mortgageProgram.name}
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Имя из источника</th>
-                    <th scope="col">Ключ сопоставления</th>
-                    <th scope="col">Источник</th>
-                    <th scope="col">Статус</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mortgageProgram.aliases.map((alias) => (
-                    <tr key={alias.id}>
-                      <td><strong>{alias.sourceName}</strong></td>
-                      <td><code>{alias.normalizedName}</code></td>
-                      <td>{alias.source || '—'}</td>
-                      <td>{alias.isActive ? 'Активен' : 'Неактивен'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <InteractiveTable rows={mortgageProgram.aliases} getRowKey={(alias) => alias.id}
+              caption={`Алиасы программы ${mortgageProgram.name}`} className="property-table mortgage-program-related-table"
+              columns={[
+                { id: 'column0', label: "Имя из источника", value: (alias) => alias.sourceName, render: (alias) => <><strong>{alias.sourceName}</strong></> },
+                { id: 'column1', label: "Источник", value: (alias) => alias.source, render: (alias) => <>{alias.source || '—'}</> },
+              ]} />
             </div>
-            <div className="property-mobile-list">
-              {mortgageProgram.aliases.map((alias) => (
-                <article className="property-mobile-card" key={alias.id}>
-                  <div className="property-mobile-card__heading">
-                    <div><span>Алиас</span><h2>{alias.sourceName}</h2></div>
-                    <span>{alias.isActive ? 'Активен' : 'Неактивен'}</span>
-                  </div>
-                  <dl>
-                    <div><dt>Ключ</dt><dd>{alias.normalizedName}</dd></div>
-                    <div><dt>Источник</dt><dd>{alias.source || '—'}</dd></div>
-                  </dl>
-                </article>
-              ))}
-            </div>
+
           </>
         ) : (
           <p className="complex-copy">Алиасы для импорта не добавлены.</p>
@@ -282,9 +222,9 @@ export function MortgageProgramDetailPage() {
       </section>
       <p className="legacy-fallback">
         Нужен прежний экран?{' '}
-        <a className="text-link" href={mortgageProgram.legacyEditUrl}>
+        <LegacyLink className="text-link" href={mortgageProgram.legacyEditUrl}>
           Открыть Django-форму
-        </a>
+        </LegacyLink>
       </p>
 
       {isDeleteDialogOpen ? (

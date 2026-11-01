@@ -1,4 +1,7 @@
-import { calculationOrderingOptions } from '@/features/mortgage/calculationOrdering'
+import { LegacyLink } from '@/shared/ui/LegacyLink'
+import { TableOrdering } from '@/shared/ui/TableOrdering'
+import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
+import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
@@ -21,10 +24,6 @@ import {
 } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
-
-const orderingOptions = [
-  ...calculationOrderingOptions('mainMonthlyPayment'),
-]
 
 function CalculationMobileCard({
   calculation,
@@ -181,7 +180,7 @@ export function SavedMortgageCalculationListPage() {
   }
 
   const { results, page, totalCount, totalPages } = calculationQuery.data
-  const ordering = searchParameters.get('ordering') ?? '-createdAt'
+
 
   return (
     <div className="page-stack">
@@ -201,9 +200,9 @@ export function SavedMortgageCalculationListPage() {
               К клиенту
             </Link>
           ) : (
-            <a className="button button--secondary" href="/mortgage/calculations/">
+            <LegacyLink className="button button--secondary" href="/mortgage/calculations/">
               Прежняя версия
-            </a>
+            </LegacyLink>
           )}
           <Link className="button button--primary" to="/mortgage">
             Новый расчёт
@@ -214,35 +213,13 @@ export function SavedMortgageCalculationListPage() {
       <section className="filter-panel" aria-label="Фильтры истории расчётов">
         <CalculationFilters />
         <form className="search-form" role="search" onSubmit={handleSearch}>
-          <label htmlFor="calculation-search">Поиск по объекту</label>
-          <div className="search-control">
-            <span aria-hidden="true">⌕</span>
-            <input
-              id="calculation-search"
-              name="q"
-              type="search"
-              key={searchParameters.get('q') ?? ''}
-              defaultValue={searchParameters.get('q') ?? ''}
-              placeholder="Город, ЖК, корпус или квартира"
-            />
+          <div className="live-search-control">
+            <LiveFilterInput label="Поиск по объекту" id="calculation-search" parameter="q" placeholder="Город, ЖК, корпус или квартира" />
             <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
-        <div className="sort-control">
-          <label htmlFor="calculation-ordering">Сортировка</label>
-          <select
-            id="calculation-ordering"
-            value={ordering}
-            onChange={(event) => updateParameters({
-              ordering: event.target.value,
-              page: null,
-            })}
-          >
-            {orderingOptions.map((option) => (
-              <option value={option.value} key={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </div>
+        <TableOrdering id="calculation-ordering" defaultOrdering="-createdAt" parameter="ordering" pageParameter="page"
+          fields={[{ field: 'createdAt', label: "Дата" }, { field: 'city', label: "Город" }, { field: 'realEstateComplex', label: "Объект" }, { field: 'finalPropertyCost', label: "Стоимость" }, { field: 'initialPaymentRubles', label: "Первый взнос" }, { field: 'mainMonthlyPayment', label: "Платёж" }, { field: 'mortgageTermMonths', label: "Срок" }, { field: 'annualRate', label: "Ставка" }]} />
       </section>
 
       <div className="results-heading" aria-live="polite">
@@ -297,14 +274,14 @@ export function SavedMortgageCalculationListPage() {
               <thead>
                 <tr>
                   {customerIdentifier ? <th scope="col"><span className="visually-hidden">Выбор</span></th> : null}
-                  <th scope="col">Дата</th>
-                  <th scope="col">Город</th>
-                  <th scope="col">Объект</th>
-                  <th scope="col">Стоимость</th>
-                  <th scope="col">Первый взнос</th>
-                  <th scope="col">Платёж</th>
-                  <th scope="col">Срок</th>
-                  <th scope="col">Ставка</th>
+                  <SortableHeader field="createdAt" defaultOrdering="-createdAt">Дата</SortableHeader>
+                  <SortableHeader field="city" defaultOrdering="-createdAt">Город</SortableHeader>
+                  <SortableHeader field="realEstateComplex" defaultOrdering="-createdAt">Объект</SortableHeader>
+                  <SortableHeader field="finalPropertyCost" defaultOrdering="-createdAt">Стоимость</SortableHeader>
+                  <SortableHeader field="initialPaymentRubles" defaultOrdering="-createdAt">Первый взнос</SortableHeader>
+                  <SortableHeader field="mainMonthlyPayment" defaultOrdering="-createdAt">Платёж</SortableHeader>
+                  <SortableHeader field="mortgageTermMonths" defaultOrdering="-createdAt">Срок</SortableHeader>
+                  <SortableHeader field="annualRate" defaultOrdering="-createdAt">Ставка</SortableHeader>
                   <th scope="col"><span className="visually-hidden">Действия</span></th>
                 </tr>
               </thead>

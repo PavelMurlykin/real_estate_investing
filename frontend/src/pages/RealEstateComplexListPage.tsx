@@ -1,3 +1,8 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
+import { TableOrdering } from '@/shared/ui/TableOrdering'
+import { useTableParameters } from '@/shared/lib/useTableParameters'
+import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
+import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -15,20 +20,13 @@ import { formatInteger } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 
-const orderingOptions = [
-  { value: 'developer', label: 'По застройщику' },
-  { value: 'name', label: 'По названию: А–Я' },
-  { value: '-name', label: 'По названию: Я–А' },
-  { value: 'city', label: 'По городу' },
-  { value: '-buildingCount', label: 'Сначала больше корпусов' },
-]
-
 export function RealEstateComplexListPage() {
   useDocumentTitle('Жилые комплексы')
   const [searchParameters, setSearchParameters] = useSearchParams()
+  const tableParameters = useTableParameters(searchParameters)
   const sessionQuery = useQuery(sessionQueryOptions)
   const complexQuery = useQuery(
-    realEstateComplexListQueryOptions(searchParameters),
+    realEstateComplexListQueryOptions(tableParameters),
   )
   const optionsQuery = useQuery(
     realEstateComplexOptionsQueryOptions({ regionId: null, cityId: null }),
@@ -122,9 +120,9 @@ export function RealEstateComplexListPage() {
           </p>
         </div>
         <div className="page-header__actions">
-          <a className="button button--secondary" href="/property/complexes/">
+          <LegacyLink className="button button--secondary" href="/property/complexes/">
             Прежняя версия
-          </a>
+          </LegacyLink>
           {canManageCatalogs ? (
             <Link className="button button--primary" to="/complexes/new">
               Добавить ЖК
@@ -138,20 +136,9 @@ export function RealEstateComplexListPage() {
         aria-label="Фильтры жилых комплексов"
       >
         <form className="search-form" role="search" onSubmit={handleSearch}>
-          <label htmlFor="complex-search">Поиск</label>
-          <div className="search-control">
-            <span aria-hidden="true">⌕</span>
-            <input
-              id="complex-search"
-              name="search"
-              type="search"
-              key={searchParameters.get('search') ?? ''}
-              defaultValue={searchParameters.get('search') ?? ''}
-              placeholder="ЖК, застройщик или город"
-            />
-            <button className="button button--dark" type="submit">
-              Найти
-            </button>
+          <div className="live-search-control">
+            <LiveFilterInput label="Поиск" id="complex-search" parameter="search" placeholder="ЖК, застройщик или город" />
+            <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
         <div className="sort-control">
@@ -239,23 +226,8 @@ export function RealEstateComplexListPage() {
             <option value="inactive">Неактивные</option>
           </select>
         </div>
-        <div className="sort-control">
-          <label htmlFor="complex-ordering">Сортировка</label>
-          <select
-            id="complex-ordering"
-            value={searchParameters.get('ordering') ?? 'developer'}
-            onChange={(event) => updateParameters({
-              ordering: event.target.value,
-              page: null,
-            })}
-          >
-            {orderingOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <TableOrdering id="complex-ordering" defaultOrdering="name" parameter="ordering" pageParameter="page"
+          fields={[{ field: 'name', label: "Жилой комплекс" }, { field: 'developer', label: "Застройщик" }, { field: 'city', label: "Город" }, { field: 'realEstateClass', label: "Класс" }, { field: 'realEstateType', label: "Тип" }, { field: 'buildingCount', label: "Корпусов" }]} />
       </section>
 
       <div className="results-heading" aria-live="polite">
@@ -282,12 +254,12 @@ export function RealEstateComplexListPage() {
               </caption>
               <thead>
                 <tr>
-                  <th scope="col">Жилой комплекс</th>
-                  <th scope="col">Застройщик</th>
-                  <th scope="col">Город</th>
-                  <th scope="col">Класс</th>
-                  <th scope="col">Тип</th>
-                  <th scope="col">Корпусов</th>
+                  <SortableHeader field="name" defaultOrdering="name">Жилой комплекс</SortableHeader>
+                  <SortableHeader field="developer" defaultOrdering="name">Застройщик</SortableHeader>
+                  <SortableHeader field="city" defaultOrdering="name">Город</SortableHeader>
+                  <SortableHeader field="realEstateClass" defaultOrdering="name">Класс</SortableHeader>
+                  <SortableHeader field="realEstateType" defaultOrdering="name">Тип</SortableHeader>
+                  <SortableHeader field="buildingCount" defaultOrdering="name">Корпусов</SortableHeader>
                   <th scope="col"><span className="visually-hidden">Действия</span></th>
                 </tr>
               </thead>
@@ -301,11 +273,7 @@ export function RealEstateComplexListPage() {
                       >
                         {realEstateComplex.name}
                       </Link>
-                      {!realEstateComplex.isActive ? (
-                        <span className="catalog-status catalog-status--inactive">
-                          Неактивен
-                        </span>
-                      ) : null}
+
                     </td>
                     <td>{realEstateComplex.developer.label}</td>
                     <td>{realEstateComplex.city}</td>
@@ -361,12 +329,7 @@ export function RealEstateComplexListPage() {
                     <span>{realEstateComplex.city}</span>
                     <h2>{realEstateComplex.name}</h2>
                   </div>
-                  <span className={realEstateComplex.isActive
-                    ? 'catalog-status'
-                    : 'catalog-status catalog-status--inactive'}
-                  >
-                    {realEstateComplex.isActive ? 'Активен' : 'Неактивен'}
-                  </span>
+
                 </div>
                 <dl>
                   <div><dt>Застройщик</dt><dd>{realEstateComplex.developer.label}</dd></div>

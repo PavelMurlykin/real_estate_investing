@@ -1,3 +1,8 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
+import { TableOrdering } from '@/shared/ui/TableOrdering'
+import { useTableParameters } from '@/shared/lib/useTableParameters'
+import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
+import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -14,17 +19,13 @@ import { formatInteger } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 
-const orderingOptions = [
-  { value: 'name', label: 'По названию: А–Я' },
-  { value: '-name', label: 'По названию: Я–А' },
-]
-
 export function CompanyGroupListPage() {
   useDocumentTitle('Группы компаний')
   const [searchParameters, setSearchParameters] = useSearchParams()
+  const tableParameters = useTableParameters(searchParameters)
   const sessionQuery = useQuery(sessionQueryOptions)
   const companyGroupQuery = useQuery(
-    companyGroupListQueryOptions(searchParameters),
+    companyGroupListQueryOptions(tableParameters),
   )
   const queryClient = useQueryClient()
   const [selectedCompanyGroup, setSelectedCompanyGroup] = (
@@ -98,7 +99,7 @@ export function CompanyGroupListPage() {
     sessionQuery.data?.capabilities.manageCatalogs === true
   )
   const { results, page, totalCount, totalPages } = companyGroupQuery.data
-  const ordering = searchParameters.get('ordering') ?? 'name'
+
 
   return (
     <div className="page-stack company-group-list-page">
@@ -112,12 +113,12 @@ export function CompanyGroupListPage() {
           </p>
         </div>
         <div className="page-header__actions">
-          <a
+          <LegacyLink
             className="button button--secondary"
             href="/property/company-groups/"
           >
             Прежняя версия
-          </a>
+          </LegacyLink>
           {canManageCatalogs ? (
             <Link className="button button--primary" to="/company-groups/new">
               Добавить группу
@@ -128,39 +129,13 @@ export function CompanyGroupListPage() {
 
       <section className="filter-panel" aria-label="Фильтры групп компаний">
         <form className="search-form" role="search" onSubmit={handleSearch}>
-          <label htmlFor="company-group-search">Поиск по названию</label>
-          <div className="search-control">
-            <span aria-hidden="true">⌕</span>
-            <input
-              id="company-group-search"
-              name="q"
-              type="search"
-              key={searchParameters.get('q') ?? ''}
-              defaultValue={searchParameters.get('q') ?? ''}
-              placeholder="Например, Группа Север"
-            />
-            <button className="button button--dark" type="submit">
-              Найти
-            </button>
+          <div className="live-search-control">
+            <LiveFilterInput label="Поиск по названию" id="company-group-search" parameter="q" placeholder="Например, Группа Север" />
+            <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
-        <div className="sort-control">
-          <label htmlFor="company-group-ordering">Сортировка</label>
-          <select
-            id="company-group-ordering"
-            value={ordering}
-            onChange={(event) => updateParameters({
-              ordering: event.target.value,
-              page: null,
-            })}
-          >
-            {orderingOptions.map((option) => (
-              <option value={option.value} key={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <TableOrdering id="company-group-ordering" defaultOrdering="name" parameter="ordering" pageParameter="page"
+          fields={[{ field: 'name', label: "Название" }, { field: 'developerCount', label: "Застройщиков" }]} />
       </section>
 
       <div className="results-heading" aria-live="polite">
@@ -201,8 +176,8 @@ export function CompanyGroupListPage() {
               </caption>
               <thead>
                 <tr>
-                  <th scope="col">Название</th>
-                  <th scope="col">Застройщиков</th>
+                  <SortableHeader field="name" defaultOrdering="name">Название</SortableHeader>
+                  <SortableHeader field="developerCount" defaultOrdering="name">Застройщиков</SortableHeader>
                   {canManageCatalogs ? (
                     <th scope="col">
                       <span className="visually-hidden">Действия</span>

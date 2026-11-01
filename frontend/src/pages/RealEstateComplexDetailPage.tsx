@@ -1,3 +1,5 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
+import { InteractiveTable } from '@/shared/ui/InteractiveTable'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -237,31 +239,15 @@ export function RealEstateComplexDetailPage() {
         </div>
         {realEstateComplex.buildings.length ? (
           <div className="property-table-wrapper">
-            <table className="property-table complex-related-table">
-              <caption className="visually-hidden">Корпуса жилого комплекса</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Корпус</th>
-                  <th scope="col">Адрес</th>
-                  <th scope="col">Ввод</th>
-                  <th scope="col">Ключи</th>
-                  <th scope="col">Объектов</th>
-                  <th scope="col">Статус</th>
-                </tr>
-              </thead>
-              <tbody>
-                {realEstateComplex.buildings.map((building) => (
-                  <tr key={building.id}>
-                    <td><strong>{building.number}</strong></td>
-                    <td>{building.address || '—'}</td>
-                    <td>{formatBuildingPeriod(building.commissioning)}</td>
-                    <td>{formatBuildingPeriod(building.keyHandover)}</td>
-                    <td>{formatInteger(building.propertyCount)}</td>
-                    <td>{building.isActive ? 'Активен' : 'Неактивен'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <InteractiveTable rows={realEstateComplex.buildings} getRowKey={(building) => building.id}
+              caption={`Корпуса жилого комплекса`} className="property-table complex-related-table"
+              columns={[
+                { id: 'column0', label: "Корпус", value: (building) => building.number, render: (building) => <><strong>{building.number}</strong></> },
+                { id: 'column1', label: "Адрес", value: (building) => building.address, render: (building) => <>{building.address || '—'}</> },
+                { id: 'column2', label: "Ввод", value: (building) => building.commissioningDate ?? (building.commissioningYear ? `${building.commissioningYear}-${(building.commissioningQuarter ?? 1) * 3}-01` : null), searchValue: (building) => formatBuildingPeriod(building.commissioning), render: (building) => <>{formatBuildingPeriod(building.commissioning)}</> },
+                { id: 'column3', label: "Ключи", value: (building) => building.keyHandoverDate ?? (building.keyHandoverYear ? `${building.keyHandoverYear}-${(building.keyHandoverQuarter ?? 1) * 3}-01` : null), searchValue: (building) => formatBuildingPeriod(building.keyHandover), render: (building) => <>{formatBuildingPeriod(building.keyHandover)}</> },
+                { id: 'column4', label: "Объектов", value: (building) => building.propertyCount, render: (building) => <>{formatInteger(building.propertyCount)}</> },
+              ]} />
           </div>
         ) : <p className="complex-copy">Корпуса не добавлены.</p>}
       </section>
@@ -275,36 +261,18 @@ export function RealEstateComplexDetailPage() {
         </div>
         {realEstateComplex.metroAvailability.length ? (
           <div className="property-table-wrapper">
-            <table className="property-table complex-related-table">
-              <caption className="visually-hidden">Метро рядом с жилым комплексом</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Станция</th>
-                  <th scope="col">Линия</th>
-                  <th scope="col">Способ</th>
-                  <th scope="col">Время</th>
-                  <th scope="col">Статус</th>
-                </tr>
-              </thead>
-              <tbody>
-                {realEstateComplex.metroAvailability.map((availability) => (
-                  <tr key={availability.id}>
-                    <td>
-                      <span
+            <InteractiveTable rows={realEstateComplex.metroAvailability} getRowKey={(availability) => availability.id}
+              caption={`Метро рядом с жилым комплексом`} className="property-table complex-related-table"
+              columns={[
+                { id: 'column0', label: "Станция", value: (availability) => availability.station, render: (availability) => <><span
                         className="metro-dot"
                         style={{ backgroundColor: availability.lineColor }}
                         aria-hidden="true"
-                      />
-                      <strong>{availability.station}</strong>
-                    </td>
-                    <td>{availability.line}</td>
-                    <td>{availability.transportAccessibilityType}</td>
-                    <td>{availability.walkingTimeMinutes} мин.</td>
-                    <td>{availability.isActive ? 'Активна' : 'Неактивна'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      /><strong>{availability.station}</strong></> },
+                { id: 'column1', label: "Линия", value: (availability) => availability.line, render: (availability) => <>{availability.line}</> },
+                { id: 'column2', label: "Способ", value: (availability) => availability.transportAccessibilityType, render: (availability) => <>{availability.transportAccessibilityType}</> },
+                { id: 'column3', label: "Время", value: (availability) => availability.walkingTimeMinutes, render: (availability) => <>{availability.walkingTimeMinutes}мин.</> },
+              ]} />
           </div>
         ) : <p className="complex-copy">Доступность метро не заполнена.</p>}
       </section>
@@ -315,9 +283,9 @@ export function RealEstateComplexDetailPage() {
       </section>
       <p className="legacy-fallback">
         Нужен прежний экран?{' '}
-        <a className="text-link" href={realEstateComplex.legacyDetailUrl}>
+        <LegacyLink className="text-link" href={realEstateComplex.legacyDetailUrl}>
           Открыть Django-версию
-        </a>
+        </LegacyLink>
       </p>
 
       {isPhotoOpen && realEstateComplex.photoUrl ? (

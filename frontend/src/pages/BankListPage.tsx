@@ -1,3 +1,8 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
+import { TableOrdering } from '@/shared/ui/TableOrdering'
+import { useTableParameters } from '@/shared/lib/useTableParameters'
+import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
+import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -13,14 +18,6 @@ import type { BankListItem } from '@/api/schemas'
 import { formatInteger, formatPercent } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
-
-const orderingOptions = [
-  { value: 'name', label: 'По названию: А–Я' },
-  { value: '-name', label: 'По названию: Я–А' },
-  { value: 'minimumInterestRate', label: 'Сначала с низкой ставкой' },
-  { value: '-minimumInterestRate', label: 'Сначала с высокой ставкой' },
-  { value: '-updatedAt', label: 'Недавно изменённые' },
-]
 
 function BankIdentity({ bank }: { bank: BankListItem }) {
   return (
@@ -45,7 +42,8 @@ function BankIdentity({ bank }: { bank: BankListItem }) {
 export function BankListPage() {
   useDocumentTitle('Банки и программы')
   const [searchParameters, setSearchParameters] = useSearchParams()
-  const bankQuery = useQuery(bankListQueryOptions(searchParameters))
+  const tableParameters = useTableParameters(searchParameters)
+  const bankQuery = useQuery(bankListQueryOptions(tableParameters))
   const sessionQuery = useQuery(sessionQueryOptions)
   const queryClient = useQueryClient()
   const [selectedBank, setSelectedBank] = useState<BankListItem | null>(null)
@@ -128,9 +126,9 @@ export function BankListPage() {
           </p>
         </div>
         <div className="page-header__actions">
-          <a className="button button--secondary" href="/bank/">
+          <LegacyLink className="button button--secondary" href="/bank/">
             Прежняя версия
-          </a>
+          </LegacyLink>
           {canManageCatalogs ? (
             <Link className="button button--primary" to="/banks/new">
               Добавить банк
@@ -153,20 +151,9 @@ export function BankListPage() {
         aria-label="Фильтры банков"
       >
         <form className="search-form" role="search" onSubmit={handleSearch}>
-          <label htmlFor="bank-search">Поиск</label>
-          <div className="search-control">
-            <span aria-hidden="true">⌕</span>
-            <input
-              id="bank-search"
-              name="q"
-              type="search"
-              key={searchParameters.get('q') ?? ''}
-              defaultValue={searchParameters.get('q') ?? ''}
-              placeholder="Название банка"
-            />
-            <button className="button button--dark" type="submit">
-              Найти
-            </button>
+          <div className="live-search-control">
+            <LiveFilterInput label="Поиск" id="bank-search" parameter="q" placeholder="Название банка" />
+            <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
         <div className="sort-control">
@@ -199,23 +186,8 @@ export function BankListPage() {
             <option value="inactive">Неактивные</option>
           </select>
         </div>
-        <div className="sort-control">
-          <label htmlFor="bank-ordering">Сортировка</label>
-          <select
-            id="bank-ordering"
-            value={searchParameters.get('ordering') ?? 'name'}
-            onChange={(event) => updateParameters({
-              ordering: event.target.value,
-              page: null,
-            })}
-          >
-            {orderingOptions.map((option) => (
-              <option value={option.value} key={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <TableOrdering id="bank-ordering" defaultOrdering="name" parameter="ordering" pageParameter="page"
+          fields={[{ field: 'name', label: "Банк" }, { field: 'programCount', label: "Программ" }, { field: 'minimumInterestRate', label: "Мин. ставка" }]} />
       </section>
 
       <div className="results-heading" aria-live="polite">
@@ -240,10 +212,10 @@ export function BankListPage() {
               <caption className="visually-hidden">Список банков</caption>
               <thead>
                 <tr>
-                  <th scope="col">Банк</th>
-                  <th scope="col">Программ</th>
-                  <th scope="col">Мин. ставка</th>
-                  <th scope="col">Статус</th>
+                  <SortableHeader field="name" defaultOrdering="name">Банк</SortableHeader>
+                  <SortableHeader field="programCount" defaultOrdering="name">Программ</SortableHeader>
+                  <SortableHeader field="minimumInterestRate" defaultOrdering="name">Мин. ставка</SortableHeader>
+
                   {canManageCatalogs ? (
                     <th scope="col"><span className="visually-hidden">Действия</span></th>
                   ) : null}
@@ -259,13 +231,7 @@ export function BankListPage() {
                         ? `от ${formatPercent(bank.minimumInterestRate)}`
                         : '—'}
                     </td>
-                    <td>
-                      <span className={bank.isActive
-                        ? 'catalog-status'
-                        : 'catalog-status catalog-status--inactive'}>
-                        {bank.isActive ? 'Активен' : 'Неактивен'}
-                      </span>
-                    </td>
+
                     {canManageCatalogs ? (
                       <td>
                         <div className="row-actions">
@@ -306,11 +272,7 @@ export function BankListPage() {
                     <span>Банк</span>
                     <h2><Link className="text-link" to={`/banks/${bank.id}`}>{bank.name}</Link></h2>
                   </div>
-                  <span className={bank.isActive
-                    ? 'catalog-status'
-                    : 'catalog-status catalog-status--inactive'}>
-                    {bank.isActive ? 'Активен' : 'Неактивен'}
-                  </span>
+
                 </div>
                 <dl>
                   <div><dt>Программ</dt><dd>{formatInteger(bank.programCount)}</dd></div>

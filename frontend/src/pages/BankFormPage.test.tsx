@@ -170,7 +170,7 @@ describe('BankFormPage', () => {
     expect(screen.getByLabelText('Ставка, % *')).toHaveValue(5.9)
     expect(screen.getByRole('link', { name: 'Django-форма' })).toHaveAttribute(
       'href',
-      '/bank/banks/7/edit/',
+      "/bank/banks/7/edit/?legacy=1",
     )
     await user.clear(nameInput)
     await user.type(nameInput, 'Северо-Западный банк')

@@ -200,7 +200,7 @@ describe('PropertyDictionaryPage', () => {
     expect(await screen.findByLabelText('Название *')).toHaveValue('Бизнес')
     expect(screen.getByRole('link', { name: 'Django-форма' })).toHaveAttribute(
       'href',
-      classEntry.legacyEditUrl,
+      `${classEntry.legacyEditUrl}&legacy=1`,
     )
     const description = screen.getByLabelText('Описание')
     await user.clear(description)

@@ -1,3 +1,4 @@
+import { InteractiveTable } from '@/shared/ui/InteractiveTable'
 import type { ReactNode, RefObject } from 'react'
 import { useState } from 'react'
 
@@ -22,9 +23,6 @@ export function TrenchMortgageResult({
   summaryAction,
 }: TrenchMortgageResultProps) {
   const [showFullSchedule, setShowFullSchedule] = useState(false)
-  const visibleSchedule = showFullSchedule
-    ? result.schedule
-    : result.schedule.slice(0, 12)
 
   return (
     <div className="mortgage-result trench-mortgage-result">
@@ -88,39 +86,19 @@ export function TrenchMortgageResult({
           </div>
         </div>
         <div className="mortgage-schedule-wrapper">
-          <table className="property-table mortgage-schedule trench-table">
-            <caption className="visually-hidden">
-              Рассчитанные параметры траншей
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">№</th>
-                <th scope="col">Дата</th>
-                <th scope="col">Доля</th>
-                <th scope="col">Сумма</th>
-                <th scope="col">Ставка</th>
-                <th scope="col">Платёж после выдачи</th>
-                <th scope="col">Платежей до следующего этапа</th>
-                <th scope="col">Остаток к выдаче</th>
-                <th scope="col">Переплата</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.trenches.map((trench) => (
-                <tr key={trench.number}>
-                  <td>{trench.number}</td>
-                  <td>{formatDate(trench.date)}</td>
-                  <td>{formatPercent(trench.percent)}</td>
-                  <td><strong>{formatCurrency(trench.amount)}</strong></td>
-                  <td>{formatPercent(trench.annualRate)}</td>
-                  <td>{formatCurrency(trench.monthlyPayment)}</td>
-                  <td>{trench.paymentsCount}</td>
-                  <td>{formatCurrency(trench.remainingDebt)}</td>
-                  <td>{formatCurrency(trench.overpayment)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <InteractiveTable rows={result.trenches} getRowKey={(trench) => trench.number}
+              caption={`Рассчитанные параметры траншей`} className="property-table mortgage-schedule trench-table"
+              columns={[
+                { id: 'column0', label: "№", value: (trench) => trench.number, render: (trench) => <>{trench.number}</> },
+                { id: 'column1', label: "Дата", value: (trench) => trench.date, searchValue: (trench) => formatDate(trench.date), render: (trench) => <>{formatDate(trench.date)}</> },
+                { id: 'column2', label: "Доля", value: (trench) => Number(trench.percent), searchValue: (trench) => formatPercent(trench.percent), render: (trench) => <>{formatPercent(trench.percent)}</> },
+                { id: 'column3', label: "Сумма", value: (trench) => Number(trench.amount), render: (trench) => <><strong>{formatCurrency(trench.amount)}</strong></> },
+                { id: 'column4', label: "Ставка", value: (trench) => Number(trench.annualRate), searchValue: (trench) => formatPercent(trench.annualRate), render: (trench) => <>{formatPercent(trench.annualRate)}</> },
+                { id: 'column5', label: "Платёж после выдачи", value: (trench) => Number(trench.monthlyPayment), searchValue: (trench) => formatCurrency(trench.monthlyPayment), render: (trench) => <>{formatCurrency(trench.monthlyPayment)}</> },
+                { id: 'column6', label: "Платежей до следующего этапа", value: (trench) => trench.paymentsCount, render: (trench) => <>{trench.paymentsCount}</> },
+                { id: 'column7', label: "Остаток к выдаче", value: (trench) => Number(trench.remainingDebt), searchValue: (trench) => formatCurrency(trench.remainingDebt), render: (trench) => <>{formatCurrency(trench.remainingDebt)}</> },
+                { id: 'column8', label: "Переплата", value: (trench) => Number(trench.overpayment), searchValue: (trench) => formatCurrency(trench.overpayment), render: (trench) => <>{formatCurrency(trench.overpayment)}</> },
+              ]} />
         </div>
       </section>
 
@@ -143,35 +121,16 @@ export function TrenchMortgageResult({
           ) : null}
         </div>
         <div className="mortgage-schedule-wrapper">
-          <table className="property-table mortgage-schedule">
-            <caption className="visually-hidden">
-              Общий график ежемесячных платежей
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">№</th>
-                <th scope="col">Дата</th>
-                <th scope="col">Платёж</th>
-                <th scope="col">Проценты</th>
-                <th scope="col">Основной долг</th>
-                <th scope="col">Остаток</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleSchedule.map((payment) => (
-                <tr key={payment.paymentNumber}>
-                  <td>{payment.paymentNumber}</td>
-                  <td>{formatDate(payment.paymentDate)}</td>
-                  <td>
-                    <strong>{formatCurrency(payment.paymentAmount)}</strong>
-                  </td>
-                  <td>{formatCurrency(payment.interestAmount)}</td>
-                  <td>{formatCurrency(payment.principalAmount)}</td>
-                  <td>{formatCurrency(payment.remainingDebt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <InteractiveTable rows={result.schedule} getRowKey={(payment) => payment.paymentNumber}
+              caption={`Общий график ежемесячных платежей`} className="property-table mortgage-schedule" previewLimit={showFullSchedule ? undefined : 12}
+              columns={[
+                { id: 'column0', label: "№", value: (payment) => payment.paymentNumber, render: (payment) => <>{payment.paymentNumber}</> },
+                { id: 'column1', label: "Дата", value: (payment) => payment.paymentDate, searchValue: (payment) => formatDate(payment.paymentDate), render: (payment) => <>{formatDate(payment.paymentDate)}</> },
+                { id: 'column2', label: "Платёж", value: (payment) => Number(payment.paymentAmount), render: (payment) => <><strong>{formatCurrency(payment.paymentAmount)}</strong></> },
+                { id: 'column3', label: "Проценты", value: (payment) => Number(payment.interestAmount), searchValue: (payment) => formatCurrency(payment.interestAmount), render: (payment) => <>{formatCurrency(payment.interestAmount)}</> },
+                { id: 'column4', label: "Основной долг", value: (payment) => Number(payment.principalAmount), searchValue: (payment) => formatCurrency(payment.principalAmount), render: (payment) => <>{formatCurrency(payment.principalAmount)}</> },
+                { id: 'column5', label: "Остаток", value: (payment) => Number(payment.remainingDebt), searchValue: (payment) => formatCurrency(payment.remainingDebt), render: (payment) => <>{formatCurrency(payment.remainingDebt)}</> },
+              ]} />
         </div>
       </section>
     </div>

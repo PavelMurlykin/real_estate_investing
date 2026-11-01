@@ -53,7 +53,7 @@ export function RemoteSelect({
       {hasMore ? (
         <button type="button" className="text-button" disabled={choicesQuery.isFetching}
           onClick={loadMore}>
-          Показать ещё варианты
+          {!choicesQuery.data && !options.length ? 'Загрузить варианты' : 'Показать ещё варианты'}
         </button>
       ) : null}
     </div>

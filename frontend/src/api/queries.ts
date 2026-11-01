@@ -424,7 +424,7 @@ export function importDeveloperMortgagePrograms(workbookFile: File) {
 
 export function keyRateListQueryOptions(searchParameters: URLSearchParams) {
   const normalizedParameters = new URLSearchParams()
-  for (const fieldName of ['page', 'pageSize']) {
+  for (const fieldName of ['q', 'ordering', 'page', 'pageSize']) {
     const value = searchParameters.get(fieldName)
     if (value) normalizedParameters.set(fieldName, value)
   }

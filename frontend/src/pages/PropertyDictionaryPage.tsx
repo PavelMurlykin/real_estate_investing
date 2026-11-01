@@ -1,3 +1,8 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
+import { TableOrdering } from '@/shared/ui/TableOrdering'
+import { useTableParameters } from '@/shared/lib/useTableParameters'
+import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
+import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -99,13 +104,6 @@ const emptyFormState: DictionaryFormState = {
   weight: '',
   isActive: true,
 }
-
-const orderingOptions = [
-  { value: 'default', label: 'По умолчанию' },
-  { value: 'name', label: 'По названию: А–Я' },
-  { value: '-name', label: 'По названию: Я–А' },
-  { value: '-updatedAt', label: 'Сначала изменённые' },
-]
 
 function findFirstError(value: unknown): string | undefined {
   if (typeof value === 'string') return value
@@ -302,9 +300,9 @@ function PropertyDictionaryEditor({
               >
                 Отмена
               </Link>
-              <a className="text-link" href={entry.legacyEditUrl}>
+              <LegacyLink className="text-link" href={entry.legacyEditUrl}>
                 Django-форма
-              </a>
+              </LegacyLink>
             </>
           ) : null}
         </div>
@@ -330,11 +328,12 @@ export function PropertyDictionaryPage() {
     Number.isInteger(dictionaryEntryIdentifier) && dictionaryEntryIdentifier > 0
   )
   const [searchParameters, setSearchParameters] = useSearchParams()
+  const tableParameters = useTableParameters(searchParameters)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const sessionQuery = useQuery(sessionQueryOptions)
   const listQuery = useQuery({
-    ...propertyDictionaryListQueryOptions(dictionaryKey, searchParameters),
+    ...propertyDictionaryListQueryOptions(dictionaryKey, tableParameters),
     enabled: parsedDictionaryKey.success,
   })
   const detailQuery = useQuery({
@@ -470,9 +469,9 @@ export function PropertyDictionaryPage() {
           <p>{configuration.description}</p>
         </div>
         <div className="page-header__actions">
-          <a className="button button--secondary" href={legacyCatalogUrl}>
+          <LegacyLink className="button button--secondary" href={legacyCatalogUrl}>
             Прежняя версия
-          </a>
+          </LegacyLink>
         </div>
       </header>
 
@@ -490,17 +489,8 @@ export function PropertyDictionaryPage() {
 
       <section className="filter-panel dictionary-filter-panel" aria-label={`Фильтры: ${configuration.title}`}>
         <form className="search-form" role="search" onSubmit={handleSearch}>
-          <label htmlFor="dictionary-search">Поиск</label>
-          <div className="search-control">
-            <span aria-hidden="true">⌕</span>
-            <input
-              id="dictionary-search"
-              name="q"
-              type="search"
-              key={searchParameters.get('q') ?? ''}
-              defaultValue={searchParameters.get('q') ?? ''}
-              placeholder="Название или описание"
-            />
+          <div className="live-search-control">
+            <LiveFilterInput label="Поиск" id="dictionary-search" parameter="q" placeholder="Название или описание" />
             <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
@@ -519,24 +509,8 @@ export function PropertyDictionaryPage() {
             <option value="inactive">Неактивные</option>
           </select>
         </div>
-        <div className="sort-control">
-          <label htmlFor="dictionary-ordering">Сортировка</label>
-          <select
-            id="dictionary-ordering"
-            value={searchParameters.get('ordering') ?? 'default'}
-            onChange={(event) => updateParameters({
-              ordering: event.target.value,
-              page: null,
-            })}
-          >
-            {orderingOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-            {configuration.hasWeight ? (
-              <option value="-weight">Сначала больший коэффициент</option>
-            ) : null}
-          </select>
-        </div>
+        <TableOrdering id="dictionary-ordering" defaultOrdering="default" parameter="ordering" pageParameter="page"
+          fields={[{ field: 'name', label: "Название" }, { field: 'description', label: "Описание" }, ...(configuration.hasWeight ? [{ field: 'weight', label: "Коэффициент" }] : []), { field: 'usageCount', label: "Используется" }]} />
       </section>
 
       <div className="results-heading" aria-live="polite">
@@ -561,11 +535,11 @@ export function PropertyDictionaryPage() {
                   <caption className="visually-hidden">{configuration.title}</caption>
                   <thead>
                     <tr>
-                      <th scope="col">Название</th>
-                      <th scope="col">Описание</th>
-                      {configuration.hasWeight ? <th scope="col">Коэффициент</th> : null}
-                      <th scope="col">Используется</th>
-                      <th scope="col">Статус</th>
+                      <SortableHeader field="name" defaultOrdering="default">Название</SortableHeader>
+                      <SortableHeader field="description" defaultOrdering="default">Описание</SortableHeader>
+                      {configuration.hasWeight ? <SortableHeader field="weight" defaultOrdering="default">Коэффициент</SortableHeader> : null}
+                      <SortableHeader field="usageCount" defaultOrdering="default">Используется</SortableHeader>
+
                       {canManageCatalogs ? <th scope="col"><span className="visually-hidden">Действия</span></th> : null}
                     </tr>
                   </thead>
@@ -576,7 +550,7 @@ export function PropertyDictionaryPage() {
                         <td className="dictionary-description">{entry.description || '—'}</td>
                         {configuration.hasWeight ? <td>{entry.weight ?? '—'}</td> : null}
                         <td>{formatInteger(entry.usageCount)}</td>
-                        <td>{entry.isActive ? 'Активна' : 'Неактивна'}</td>
+
                         {canManageCatalogs ? (
                           <td>
                             <div className="row-actions">
@@ -611,9 +585,7 @@ export function PropertyDictionaryPage() {
                   <article className="property-mobile-card catalog-mobile-card" key={entry.id}>
                     <div className="property-mobile-card__heading">
                       <div><span>{configuration.title}</span><h2>{entry.name}</h2></div>
-                      <span className={entry.isActive ? 'catalog-status' : 'catalog-status catalog-status--inactive'}>
-                        {entry.isActive ? 'Активна' : 'Неактивна'}
-                      </span>
+
                     </div>
                     <p>{entry.description || 'Описание не заполнено.'}</p>
                     <dl>

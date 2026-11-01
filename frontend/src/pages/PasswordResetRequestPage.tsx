@@ -1,3 +1,4 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useRef, useState } from 'react'
@@ -123,9 +124,9 @@ export function PasswordResetRequestPage() {
           {sessionQuery.data?.isAuthenticated ? (
             <Link to="/password/change">Изменить пароль по текущему</Link>
           ) : null}
-          <a href="/users/password/reset/">
+          <LegacyLink href="/users/password/reset/">
             Прежняя версия восстановления
-          </a>
+          </LegacyLink>
         </div>
       </section>
     </div>

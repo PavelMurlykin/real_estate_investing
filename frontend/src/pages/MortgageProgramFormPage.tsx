@@ -1,3 +1,4 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
@@ -379,9 +380,9 @@ export function MortgageProgramFormPage() {
         </div>
         <div className="page-header__actions">
           {backLink}
-          <a className="button button--secondary" href={legacyUrl}>
+          <LegacyLink className="button button--secondary" href={legacyUrl}>
             Django-справочник
-          </a>
+          </LegacyLink>
         </div>
       </header>
       <form className="customer-form mortgage-program-form" onSubmit={submit} noValidate>

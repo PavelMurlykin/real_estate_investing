@@ -51,10 +51,8 @@ class CustomerListQuerySerializer(serializers.Serializer):
     """Validate URL-driven customer search, ordering, and pagination."""
 
     ORDERING_CHOICES = (
-        '-createdAt',
-        'createdAt',
-        'name',
-        '-name',
+        '-createdAt', 'createdAt', 'name', '-name',
+        'phone', '-phone', 'email', '-email', 'city', '-city',
     )
 
     q = serializers.CharField(
@@ -88,7 +86,12 @@ class CompanyGroupListQuerySerializer(serializers.Serializer):
     )
     ordering = serializers.ChoiceField(
         required=False,
-        choices=('name', '-name'),
+        choices=(
+            'name',
+            '-name',
+            'developerCount',
+            '-developerCount',
+        ),
         default='name',
     )
     page = serializers.IntegerField(required=False, min_value=1, default=1)
@@ -158,8 +161,19 @@ class PropertyDictionaryListQuerySerializer(serializers.Serializer):
     ordering = serializers.ChoiceField(
         required=False,
         choices=(
-            'default', 'name', '-name', 'updatedAt', '-updatedAt',
-            'status', '-status', 'weight', '-weight',
+            'default',
+            'name',
+            '-name',
+            'updatedAt',
+            '-updatedAt',
+            'status',
+            '-status',
+            'weight',
+            '-weight',
+            'description',
+            '-description',
+            'usageCount',
+            '-usageCount',
         ),
         default='default',
     )
@@ -300,8 +314,23 @@ class LocationDictionaryListQuerySerializer(serializers.Serializer):
     ordering = serializers.ChoiceField(
         required=False,
         choices=(
-            'default', 'name', '-name', 'updatedAt', '-updatedAt',
-            'status', '-status',
+            'default',
+            'name',
+            '-name',
+            'updatedAt',
+            '-updatedAt',
+            'status',
+            '-status',
+            'code',
+            '-code',
+            'region',
+            '-region',
+            'city',
+            '-city',
+            'metroLine',
+            '-metroLine',
+            'usageCount',
+            '-usageCount',
         ),
         default='default',
     )
@@ -560,6 +589,8 @@ class BankListQuerySerializer(serializers.Serializer):
             '-minimumInterestRate',
             'updatedAt',
             '-updatedAt',
+            'programCount',
+            '-programCount',
         ),
         default='name',
     )
@@ -823,6 +854,16 @@ class MortgageProgramListQuerySerializer(serializers.Serializer):
             '-creditLimit',
             'updatedAt',
             '-updatedAt',
+            'isPreferential',
+            '-isPreferential',
+            'bankCount',
+            '-bankCount',
+            'regionalLimitCount',
+            '-regionalLimitCount',
+            'aliasCount',
+            '-aliasCount',
+            'developerProgramCount',
+            '-developerProgramCount',
         ),
         default='name',
     )
@@ -1236,6 +1277,20 @@ class DeveloperMortgageProgramListQuerySerializer(serializers.Serializer):
             '-interestRate',
             'updatedAt',
             '-updatedAt',
+            'gracePeriodMonths',
+            '-gracePeriodMonths',
+            'gracePeriodInterestRate',
+            '-gracePeriodInterestRate',
+            'minimumInitialPaymentPercent',
+            '-minimumInitialPaymentPercent',
+            'maximumLoanAmount',
+            '-maximumLoanAmount',
+            'maximumLoanTermYears',
+            '-maximumLoanTermYears',
+            'priceIncreasePercent',
+            '-priceIncreasePercent',
+            'rateDiscountPercent',
+            '-rateDiscountPercent',
         ),
         default='companyGroup',
     )
@@ -1250,6 +1305,13 @@ class DeveloperMortgageProgramListQuerySerializer(serializers.Serializer):
 
 class KeyRateListQuerySerializer(serializers.Serializer):
     """Validate pagination parameters for the key-rate history."""
+
+    q = serializers.CharField(required=False, max_length=100, allow_blank=True)
+    ordering = serializers.ChoiceField(
+        choices=('meetingDate', '-meetingDate', 'keyRate', '-keyRate',
+                 'rateChange', '-rateChange'),
+        default='-meetingDate',
+    )
 
     page = serializers.IntegerField(required=False, min_value=1, default=1)
     pageSize = serializers.IntegerField(
@@ -1591,6 +1653,10 @@ class DeveloperListQuerySerializer(serializers.Serializer):
             '-companyGroup',
             'createdAt',
             '-createdAt',
+            'regions',
+            '-regions',
+            'complexCount',
+            '-complexCount',
         ),
         default='name',
     )

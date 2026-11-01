@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 
 type LiveFilterInputProps = {
   label: string
+  id?: string
   caption?: string
   parameter: string
   pageParameter?: string
@@ -11,8 +12,9 @@ type LiveFilterInputProps = {
   max?: number
 }
 
-export function LiveFilterInput({ label, caption, parameter, pageParameter = 'page', type = 'search', placeholder, max }: LiveFilterInputProps) {
-  const identifier = useId()
+export function LiveFilterInput({ label, id, caption, parameter, pageParameter = 'page', type = 'search', placeholder, max }: LiveFilterInputProps) {
+  const generatedIdentifier = useId()
+  const identifier = id ?? generatedIdentifier
   const [parameters, setParameters] = useSearchParams()
   return (
     <label className="form-field" htmlFor={identifier}>

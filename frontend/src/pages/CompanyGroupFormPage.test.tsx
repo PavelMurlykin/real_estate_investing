@@ -161,7 +161,7 @@ describe('CompanyGroupFormPage', () => {
     expect(nameInput).toHaveValue('Группа Север')
     expect(screen.getByRole('link', { name: 'Django-форма' })).toHaveAttribute(
       'href',
-      '/property/company-groups/7/update/',
+      "/property/company-groups/7/update/?legacy=1",
     )
     await user.clear(nameInput)
     await user.type(nameInput, 'Группа Северо-Запад')

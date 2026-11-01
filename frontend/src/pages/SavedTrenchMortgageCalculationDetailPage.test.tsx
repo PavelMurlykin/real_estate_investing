@@ -157,7 +157,7 @@ describe('SavedTrenchMortgageCalculationDetailPage', () => {
     ).toHaveAttribute('href', '/mortgage/trench?sample=17')
     expect(
       screen.getByRole('link', { name: 'Открыть Django-версию' }),
-    ).toHaveAttribute('href', '/mortgage/trench-calculations/17/')
+    ).toHaveAttribute('href', "/mortgage/trench-calculations/17/?legacy=1")
   })
 
   it('keeps a direct private link behind authentication', () => {

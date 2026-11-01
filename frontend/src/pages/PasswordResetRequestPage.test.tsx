@@ -32,7 +32,7 @@ describe('PasswordResetRequestPage', () => {
       .toHaveAttribute('href', '/login')
     expect(screen.getByRole('link', {
       name: 'Прежняя версия восстановления',
-    })).toHaveAttribute('href', '/users/password/reset/')
+    })).toHaveAttribute('href', "/users/password/reset/?legacy=1")
   })
 
   it('requires an email before sending a request', async () => {

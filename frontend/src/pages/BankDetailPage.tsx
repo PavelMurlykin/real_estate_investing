@@ -1,3 +1,5 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
+import { InteractiveTable } from '@/shared/ui/InteractiveTable'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -156,65 +158,18 @@ export function BankDetailPage() {
         {bank.programs.length ? (
           <>
             <div className="property-table-wrapper">
-              <table className="property-table bank-program-table">
-                <caption className="visually-hidden">
-                  Ипотечные программы банка {bank.name}
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Программа</th>
-                    <th scope="col">Ставка</th>
-                    <th scope="col">Первый взнос</th>
-                    <th scope="col">Макс. срок</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bank.programs.map((program) => (
-                    <tr key={program.id}>
-                      <td><strong>{program.mortgageProgramName}</strong></td>
-                      <td>{formatPercent(program.interestRate)}</td>
-                      <td>
-                        {formatPercent(program.minimumInitialPaymentPercent)}
-                      </td>
-                      <td>
-                        {program.maximumLoanTermYears
+              <InteractiveTable rows={bank.programs} getRowKey={(program) => program.id}
+              caption={`Ипотечные программы банка ${bank.name}`} className="property-table bank-program-table"
+              columns={[
+                { id: 'column0', label: "Программа", value: (program) => program.mortgageProgramName, render: (program) => <><strong>{program.mortgageProgramName}</strong></> },
+                { id: 'column1', label: "Ставка", value: (program) => Number(program.interestRate), searchValue: (program) => formatPercent(program.interestRate), render: (program) => <>{formatPercent(program.interestRate)}</> },
+                { id: 'column2', label: "Первый взнос", value: (program) => Number(program.minimumInitialPaymentPercent), searchValue: (program) => formatPercent(program.minimumInitialPaymentPercent), render: (program) => <>{formatPercent(program.minimumInitialPaymentPercent)}</> },
+                { id: 'column3', label: "Макс. срок", value: (program) => program.maximumLoanTermYears, render: (program) => <>{program.maximumLoanTermYears
                           ? `${program.maximumLoanTermYears} лет`
-                          : 'Не ограничен'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          : 'Не ограничен'}</> },
+              ]} />
             </div>
-            <div className="property-mobile-list bank-program-mobile-list">
-              {bank.programs.map((program) => (
-                <article className="property-mobile-card" key={program.id}>
-                  <div className="property-mobile-card__heading">
-                    <div>
-                      <span>Программа</span>
-                      <h2>{program.mortgageProgramName}</h2>
-                    </div>
-                    <strong>{formatPercent(program.interestRate)}</strong>
-                  </div>
-                  <dl>
-                    <div>
-                      <dt>Первый взнос</dt>
-                      <dd>
-                        {formatPercent(program.minimumInitialPaymentPercent)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Макс. срок</dt>
-                      <dd>
-                        {program.maximumLoanTermYears
-                          ? `${program.maximumLoanTermYears} лет`
-                          : 'Не ограничен'}
-                      </dd>
-                    </div>
-                  </dl>
-                </article>
-              ))}
-            </div>
+
           </>
         ) : (
           <p className="complex-copy">У банка нет добавленных программ.</p>
@@ -230,9 +185,9 @@ export function BankDetailPage() {
       </section>
       <p className="legacy-fallback">
         Нужен прежний экран?{' '}
-        <a className="text-link" href={bank.legacyDetailUrl}>
+        <LegacyLink className="text-link" href={bank.legacyDetailUrl}>
           Открыть Django-версию
-        </a>
+        </LegacyLink>
       </p>
 
       {isDeleteDialogOpen ? (

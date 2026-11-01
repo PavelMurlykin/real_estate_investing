@@ -65,7 +65,7 @@ describe('ProfilePage', () => {
     expect(screen.getByRole('link', { name: 'Сменить пароль' }))
       .toHaveAttribute('href', '/password/change')
     expect(screen.getByRole('link', { name: 'Прежняя версия профиля' }))
-      .toHaveAttribute('href', '/users/profile/edit/')
+      .toHaveAttribute('href', "/users/profile/edit/?legacy=1")
   })
 
   it('redirects anonymous visitors to login with a safe return path', () => {

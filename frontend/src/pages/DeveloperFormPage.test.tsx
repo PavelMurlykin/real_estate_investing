@@ -215,7 +215,7 @@ describe('DeveloperFormPage', () => {
     expect(screen.getByLabelText('Регионы')).toHaveValue(['8'])
     expect(screen.getByRole('link', { name: 'Django-форма' })).toHaveAttribute(
       'href',
-      '/property/developers/7/update/',
+      "/property/developers/7/update/?legacy=1",
     )
     await user.clear(nameInput)
     await user.type(nameInput, 'Северо-Западный девелопер')

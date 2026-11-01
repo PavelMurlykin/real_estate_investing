@@ -1,3 +1,4 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -228,9 +229,9 @@ export function SavedMortgageCalculationDetailPage() {
 
       <p className="legacy-fallback">
         Нужен прежний экран?{' '}
-        <a className="text-link" href={savedCalculation.legacyDetailUrl}>
+        <LegacyLink className="text-link" href={savedCalculation.legacyDetailUrl}>
           Открыть Django-версию
-        </a>
+        </LegacyLink>
       </p>
     </div>
   )

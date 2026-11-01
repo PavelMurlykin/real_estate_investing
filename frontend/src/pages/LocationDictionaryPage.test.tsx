@@ -304,7 +304,7 @@ describe('LocationDictionaryPage', () => {
     expect(screen.getByLabelText('Регион *')).toHaveValue('1')
     expect(screen.getByLabelText('Город *')).toHaveValue('2')
     expect(screen.getByRole('link', { name: 'Django-форма' }))
-      .toHaveAttribute('href', districtEntry.legacyEditUrl)
+      .toHaveAttribute('href', `${districtEntry.legacyEditUrl}&legacy=1`)
     await user.clear(nameInput)
     await user.type(nameInput, 'Центральный округ')
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))

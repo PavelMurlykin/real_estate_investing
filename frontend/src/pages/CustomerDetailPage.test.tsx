@@ -150,7 +150,7 @@ describe('CustomerDetailPage', () => {
     ).toHaveAttribute('href', '/properties?customerId=12')
     expect(
       screen.getByRole('link', { name: 'Открыть Django-версию карточки' }),
-    ).toHaveAttribute('href', '/customers/12/')
+    ).toHaveAttribute('href', "/customers/12/?legacy=1")
     expect(
       screen.getByRole('table', { name: 'Связанные расчёты клиента' }),
     ).toBeInTheDocument()

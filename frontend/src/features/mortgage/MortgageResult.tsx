@@ -1,3 +1,4 @@
+import { InteractiveTable } from '@/shared/ui/InteractiveTable'
 import type { ReactNode, RefObject } from 'react'
 import { useState } from 'react'
 
@@ -22,9 +23,6 @@ export function MortgageResult({
   summaryAction,
 }: MortgageResultProps) {
   const [showFullSchedule, setShowFullSchedule] = useState(false)
-  const visibleSchedule = showFullSchedule
-    ? result.schedule
-    : result.schedule.slice(0, 12)
   const graceCount = result.summary.gracePaymentsCount ?? result.assumptions.gracePeriodTermMonths
   const debtAfterGrace = result.summary.loanAfterGrace
     ?? result.schedule[graceCount - 1]?.remainingDebt
@@ -106,31 +104,16 @@ export function MortgageResult({
           ) : null}
         </div>
         <div className="mortgage-schedule-wrapper">
-          <table className="property-table mortgage-schedule">
-            <caption className="visually-hidden">График ежемесячных платежей</caption>
-            <thead>
-              <tr>
-                <th scope="col">№</th>
-                <th scope="col">Дата</th>
-                <th scope="col">Платёж</th>
-                <th scope="col">Проценты</th>
-                <th scope="col">Основной долг</th>
-                <th scope="col">Остаток</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleSchedule.map((payment) => (
-                <tr key={payment.paymentNumber}>
-                  <td>{payment.paymentNumber}</td>
-                  <td>{formatDate(payment.paymentDate)}</td>
-                  <td><strong>{formatCurrency(payment.paymentAmount)}</strong></td>
-                  <td>{formatCurrency(payment.interestAmount)}</td>
-                  <td>{formatCurrency(payment.principalAmount)}</td>
-                  <td>{formatCurrency(payment.remainingDebt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <InteractiveTable rows={result.schedule} getRowKey={(payment) => payment.paymentNumber}
+              caption={`График ежемесячных платежей`} className="property-table mortgage-schedule" previewLimit={showFullSchedule ? undefined : 12}
+              columns={[
+                { id: 'column0', label: "№", value: (payment) => payment.paymentNumber, render: (payment) => <>{payment.paymentNumber}</> },
+                { id: 'column1', label: "Дата", value: (payment) => payment.paymentDate, searchValue: (payment) => formatDate(payment.paymentDate), render: (payment) => <>{formatDate(payment.paymentDate)}</> },
+                { id: 'column2', label: "Платёж", value: (payment) => Number(payment.paymentAmount), render: (payment) => <><strong>{formatCurrency(payment.paymentAmount)}</strong></> },
+                { id: 'column3', label: "Проценты", value: (payment) => Number(payment.interestAmount), searchValue: (payment) => formatCurrency(payment.interestAmount), render: (payment) => <>{formatCurrency(payment.interestAmount)}</> },
+                { id: 'column4', label: "Основной долг", value: (payment) => Number(payment.principalAmount), searchValue: (payment) => formatCurrency(payment.principalAmount), render: (payment) => <>{formatCurrency(payment.principalAmount)}</> },
+                { id: 'column5', label: "Остаток", value: (payment) => Number(payment.remainingDebt), searchValue: (payment) => formatCurrency(payment.remainingDebt), render: (payment) => <>{formatCurrency(payment.remainingDebt)}</> },
+              ]} />
         </div>
       </section>
     </div>

@@ -1,3 +1,8 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
+import { TableOrdering } from '@/shared/ui/TableOrdering'
+import { useTableParameters } from '@/shared/lib/useTableParameters'
+import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
+import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -16,16 +21,6 @@ import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState
 
 import { DeveloperMortgageProgramImportPanel } from './DeveloperMortgageProgramImportPanel'
 
-const orderingOptions = [
-  { value: 'companyGroup', label: 'По группе компаний' },
-  { value: 'realEstateComplex', label: 'По ЖК' },
-  { value: 'bank', label: 'По банку' },
-  { value: 'mortgageProgram', label: 'По программе' },
-  { value: 'interestRate', label: 'Сначала низкая ставка' },
-  { value: '-interestRate', label: 'Сначала высокая ставка' },
-  { value: '-updatedAt', label: 'Недавно изменённые' },
-]
-
 function scopeName(program: DeveloperMortgageProgram) {
   return program.realEstateComplexName ?? 'Все ЖК группы'
 }
@@ -37,11 +32,12 @@ function valueOrDash(value: string | null, formatter = formatPercent) {
 export function DeveloperMortgageProgramListPage() {
   useDocumentTitle('Программы застройщиков')
   const [searchParameters, setSearchParameters] = useSearchParams()
+  const tableParameters = useTableParameters(searchParameters)
   const selectedCompanyGroup = Number(
     searchParameters.get('companyGroupId') ?? 0,
   ) || null
   const programQuery = useQuery(
-    developerMortgageProgramListQueryOptions(searchParameters),
+    developerMortgageProgramListQueryOptions(tableParameters),
   )
   const optionsQuery = useQuery(
     developerMortgageProgramOptionsQueryOptions(selectedCompanyGroup),
@@ -123,9 +119,9 @@ export function DeveloperMortgageProgramListPage() {
           </p>
         </div>
         <div className="page-header__actions">
-          <a className="button button--secondary" href="/bank/developer-programs/">
+          <LegacyLink className="button button--secondary" href="/bank/developer-programs/">
             Прежняя версия
-          </a>
+          </LegacyLink>
           {canManage ? (
             <Link className="button button--primary" to="/developer-programs/new">
               Добавить программу
@@ -150,17 +146,8 @@ export function DeveloperMortgageProgramListPage() {
         aria-label="Фильтры программ застройщиков"
       >
         <form className="search-form" role="search" onSubmit={submitSearch}>
-          <label htmlFor="developer-program-search">Поиск</label>
-          <div className="search-control">
-            <span aria-hidden="true">⌕</span>
-            <input
-              id="developer-program-search"
-              name="q"
-              type="search"
-              key={searchParameters.get('q') ?? ''}
-              defaultValue={searchParameters.get('q') ?? ''}
-              placeholder="Группа, ЖК, банк или программа"
-            />
+          <div className="live-search-control">
+            <LiveFilterInput label="Поиск" id="developer-program-search" parameter="q" placeholder="Группа, ЖК, банк или программа" />
             <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
@@ -245,23 +232,8 @@ export function DeveloperMortgageProgramListPage() {
             <option value="inactive">На стопе</option>
           </select>
         </div>
-        <div className="sort-control">
-          <label htmlFor="developer-program-ordering">Сортировка</label>
-          <select
-            id="developer-program-ordering"
-            value={searchParameters.get('ordering') ?? 'companyGroup'}
-            onChange={(event) => updateParameters({
-              ordering: event.target.value,
-              page: null,
-            })}
-          >
-            {orderingOptions.map((option) => (
-              <option value={option.value} key={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <TableOrdering id="developer-program-ordering" defaultOrdering="companyGroup" parameter="ordering" pageParameter="page"
+          fields={[{ field: 'companyGroup', label: "Группа и область" }, { field: 'bank', label: "Банк и программа" }, { field: 'interestRate', label: "Ставка" }, { field: 'gracePeriodMonths', label: "Льготный период" }, { field: 'minimumInitialPaymentPercent', label: "Первый взнос" }, { field: 'maximumLoanAmount', label: "Лимит и срок" }, { field: 'priceIncreasePercent', label: "Корректировки" }]} />
         {Object.values(options.truncated).some(Boolean) ? (
           <p className="filter-panel__notice" role="status">
             Часть значений скрыта из-за размера справочников. Уточните группу
@@ -293,14 +265,14 @@ export function DeveloperMortgageProgramListPage() {
               </caption>
               <thead>
                 <tr>
-                  <th scope="col">Группа и область</th>
-                  <th scope="col">Банк и программа</th>
-                  <th scope="col">Ставка</th>
-                  <th scope="col">Льготный период</th>
-                  <th scope="col">Первый взнос</th>
-                  <th scope="col">Лимит и срок</th>
-                  <th scope="col">Корректировки</th>
-                  <th scope="col">Статус</th>
+                  <SortableHeader field="companyGroup" defaultOrdering="companyGroup">Группа и область</SortableHeader>
+                  <SortableHeader field="bank" defaultOrdering="companyGroup">Банк и программа</SortableHeader>
+                  <SortableHeader field="interestRate" defaultOrdering="companyGroup">Ставка</SortableHeader>
+                  <SortableHeader field="gracePeriodMonths" defaultOrdering="companyGroup">Льготный период</SortableHeader>
+                  <SortableHeader field="minimumInitialPaymentPercent" defaultOrdering="companyGroup">Первый взнос</SortableHeader>
+                  <SortableHeader field="maximumLoanAmount" defaultOrdering="companyGroup">Лимит и срок</SortableHeader>
+                  <SortableHeader field="priceIncreasePercent" defaultOrdering="companyGroup">Корректировки</SortableHeader>
+
                   {canManage ? <th scope="col"><span className="visually-hidden">Действия</span></th> : null}
                 </tr>
               </thead>
@@ -341,13 +313,7 @@ export function DeveloperMortgageProgramListPage() {
                         Дисконт: {valueOrDash(program.rateDiscountPercent)}
                       </small>
                     </td>
-                    <td>
-                      <span className={program.isActive
-                        ? 'catalog-status'
-                        : 'catalog-status catalog-status--inactive'}>
-                        {program.isActive ? 'Активна' : 'На стопе'}
-                      </span>
-                    </td>
+
                     {canManage ? (
                       <td>
                         <div className="row-actions">
@@ -384,11 +350,7 @@ export function DeveloperMortgageProgramListPage() {
                       {program.companyGroupName}
                     </Link></h2>
                   </div>
-                  <span className={program.isActive
-                    ? 'catalog-status'
-                    : 'catalog-status catalog-status--inactive'}>
-                    {program.isActive ? 'Активна' : 'На стопе'}
-                  </span>
+
                 </div>
                 <p className="mortgage-program-mobile-condition">
                   {scopeName(program)} · {program.mortgageProgramName}

@@ -70,7 +70,7 @@ describe('PasswordChangePage', () => {
     )
     expect(screen.getByRole('link', {
       name: 'Прежняя версия смены пароля',
-    })).toHaveAttribute('href', '/users/password/change/')
+    })).toHaveAttribute('href', "/users/password/change/?legacy=1")
     expect(screen.getByRole('link', { name: 'Вернуться в профиль' }))
       .toHaveAttribute('href', '/profile')
   })

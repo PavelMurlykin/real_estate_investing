@@ -1,3 +1,4 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { RemoteMultiSelect } from '@/shared/ui/RemoteMultiSelect'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -340,9 +341,9 @@ export function CustomerFormPage() {
           <Link className="button button--secondary" to={cancelPath}>
             Отмена
           </Link>
-          <a className="button button--secondary" href={legacyFormUrl}>
+          <LegacyLink className="button button--secondary" href={legacyFormUrl}>
             Django-форма
-          </a>
+          </LegacyLink>
         </div>
       </header>
 

@@ -1,3 +1,8 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
+import { TableOrdering } from '@/shared/ui/TableOrdering'
+import { useTableParameters } from '@/shared/lib/useTableParameters'
+import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
+import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -14,14 +19,6 @@ import { formatCurrency, formatInteger } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 
-const orderingOptions = [
-  { value: 'name', label: 'По названию: А–Я' },
-  { value: '-name', label: 'По названию: Я–А' },
-  { value: 'creditLimit', label: 'Сначала с меньшим лимитом' },
-  { value: '-creditLimit', label: 'Сначала с большим лимитом' },
-  { value: '-updatedAt', label: 'Недавно изменённые' },
-]
-
 function usageLabel(mortgageProgram: MortgageProgramListItem) {
   const usageCount = (
     mortgageProgram.bankCount + mortgageProgram.developerProgramCount
@@ -34,8 +31,9 @@ function usageLabel(mortgageProgram: MortgageProgramListItem) {
 export function MortgageProgramListPage() {
   useDocumentTitle('Ипотечные программы')
   const [searchParameters, setSearchParameters] = useSearchParams()
+  const tableParameters = useTableParameters(searchParameters)
   const programQuery = useQuery(
-    mortgageProgramListQueryOptions(searchParameters),
+    mortgageProgramListQueryOptions(tableParameters),
   )
   const sessionQuery = useQuery(sessionQueryOptions)
   const queryClient = useQueryClient()
@@ -123,12 +121,12 @@ export function MortgageProgramListPage() {
           </p>
         </div>
         <div className="page-header__actions">
-          <a
+          <LegacyLink
             className="button button--secondary"
             href="/bank/?model=mortgage_program"
           >
             Прежняя версия
-          </a>
+          </LegacyLink>
           {canManageCatalogs ? (
             <Link
               className="button button--primary"
@@ -154,20 +152,9 @@ export function MortgageProgramListPage() {
         aria-label="Фильтры ипотечных программ"
       >
         <form className="search-form" role="search" onSubmit={handleSearch}>
-          <label htmlFor="mortgage-program-search">Поиск</label>
-          <div className="search-control">
-            <span aria-hidden="true">⌕</span>
-            <input
-              id="mortgage-program-search"
-              name="q"
-              type="search"
-              key={searchParameters.get('q') ?? ''}
-              defaultValue={searchParameters.get('q') ?? ''}
-              placeholder="Название, условие или алиас"
-            />
-            <button className="button button--dark" type="submit">
-              Найти
-            </button>
+          <div className="live-search-control">
+            <LiveFilterInput label="Поиск" id="mortgage-program-search" parameter="q" placeholder="Название, условие или алиас" />
+            <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
         <div className="sort-control">
@@ -200,23 +187,8 @@ export function MortgageProgramListPage() {
             <option value="inactive">Неактивные</option>
           </select>
         </div>
-        <div className="sort-control">
-          <label htmlFor="mortgage-program-ordering">Сортировка</label>
-          <select
-            id="mortgage-program-ordering"
-            value={searchParameters.get('ordering') ?? 'name'}
-            onChange={(event) => updateParameters({
-              ordering: event.target.value,
-              page: null,
-            })}
-          >
-            {orderingOptions.map((option) => (
-              <option value={option.value} key={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <TableOrdering id="mortgage-program-ordering" defaultOrdering="name" parameter="ordering" pageParameter="page"
+          fields={[{ field: 'name', label: "Программа" }, { field: 'isPreferential', label: "Тип" }, { field: 'creditLimit', label: "Кредитный лимит" }, { field: 'bankCount', label: "Использование" }, { field: 'regionalLimitCount', label: "Лимиты / алиасы" }]} />
       </section>
 
       <div className="results-heading" aria-live="polite">
@@ -246,12 +218,12 @@ export function MortgageProgramListPage() {
               </caption>
               <thead>
                 <tr>
-                  <th scope="col">Программа</th>
-                  <th scope="col">Тип</th>
-                  <th scope="col">Кредитный лимит</th>
-                  <th scope="col">Использование</th>
-                  <th scope="col">Лимиты / алиасы</th>
-                  <th scope="col">Статус</th>
+                  <SortableHeader field="name" defaultOrdering="name">Программа</SortableHeader>
+                  <SortableHeader field="isPreferential" defaultOrdering="name">Тип</SortableHeader>
+                  <SortableHeader field="creditLimit" defaultOrdering="name">Кредитный лимит</SortableHeader>
+                  <SortableHeader field="bankCount" defaultOrdering="name">Использование</SortableHeader>
+                  <SortableHeader field="regionalLimitCount" defaultOrdering="name">Лимиты / алиасы</SortableHeader>
+
                   {canManageCatalogs ? (
                     <th scope="col"><span className="visually-hidden">Действия</span></th>
                   ) : null}
@@ -282,13 +254,7 @@ export function MortgageProgramListPage() {
                       {formatInteger(mortgageProgram.regionalLimitCount)} /{' '}
                       {formatInteger(mortgageProgram.aliasCount)}
                     </td>
-                    <td>
-                      <span className={mortgageProgram.isActive
-                        ? 'catalog-status'
-                        : 'catalog-status catalog-status--inactive'}>
-                        {mortgageProgram.isActive ? 'Активна' : 'Неактивна'}
-                      </span>
-                    </td>
+
                     {canManageCatalogs ? (
                       <td>
                         <div className="row-actions">
@@ -335,11 +301,7 @@ export function MortgageProgramListPage() {
                       </Link>
                     </h2>
                   </div>
-                  <span className={mortgageProgram.isActive
-                    ? 'catalog-status'
-                    : 'catalog-status catalog-status--inactive'}>
-                    {mortgageProgram.isActive ? 'Активна' : 'Неактивна'}
-                  </span>
+
                 </div>
                 <p className="mortgage-program-mobile-condition">
                   {mortgageProgram.condition}

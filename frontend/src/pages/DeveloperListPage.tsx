@@ -1,3 +1,8 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
+import { TableOrdering } from '@/shared/ui/TableOrdering'
+import { useTableParameters } from '@/shared/lib/useTableParameters'
+import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
+import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -17,18 +22,12 @@ import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState
 
 import { DeveloperRegistryImportPanel } from './DeveloperRegistryImportPanel'
 
-const orderingOptions = [
-  { value: 'name', label: 'По названию: А–Я' },
-  { value: '-name', label: 'По названию: Я–А' },
-  { value: 'companyGroup', label: 'По группе компаний' },
-  { value: '-createdAt', label: 'Сначала новые' },
-]
-
 export function DeveloperListPage() {
   useDocumentTitle('Застройщики')
   const [searchParameters, setSearchParameters] = useSearchParams()
+  const tableParameters = useTableParameters(searchParameters)
   const sessionQuery = useQuery(sessionQueryOptions)
-  const developerQuery = useQuery(developerListQueryOptions(searchParameters))
+  const developerQuery = useQuery(developerListQueryOptions(tableParameters))
   const optionsQuery = useQuery(developerOptionsQueryOptions)
   const queryClient = useQueryClient()
   const [selectedDeveloper, setSelectedDeveloper] = (
@@ -120,9 +119,9 @@ export function DeveloperListPage() {
           </p>
         </div>
         <div className="page-header__actions">
-          <a className="button button--secondary" href="/property/developers/">
+          <LegacyLink className="button button--secondary" href="/property/developers/">
             Прежняя версия
-          </a>
+          </LegacyLink>
           {canManageCatalogs ? (
             <Link className="button button--primary" to="/developers/new">
               Добавить застройщика
@@ -138,20 +137,9 @@ export function DeveloperListPage() {
         aria-label="Фильтры застройщиков"
       >
         <form className="search-form" role="search" onSubmit={handleSearch}>
-          <label htmlFor="developer-search">Поиск</label>
-          <div className="search-control">
-            <span aria-hidden="true">⌕</span>
-            <input
-              id="developer-search"
-              name="q"
-              type="search"
-              key={searchParameters.get('q') ?? ''}
-              defaultValue={searchParameters.get('q') ?? ''}
-              placeholder="Название или группа компаний"
-            />
-            <button className="button button--dark" type="submit">
-              Найти
-            </button>
+          <div className="live-search-control">
+            <LiveFilterInput label="Поиск" id="developer-search" parameter="q" placeholder="Название или группа компаний" />
+            <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
         <div className="sort-control">
@@ -203,23 +191,8 @@ export function DeveloperListPage() {
             <option value="inactive">Неактивные</option>
           </select>
         </div>
-        <div className="sort-control">
-          <label htmlFor="developer-ordering">Сортировка</label>
-          <select
-            id="developer-ordering"
-            value={searchParameters.get('ordering') ?? 'name'}
-            onChange={(event) => updateParameters({
-              ordering: event.target.value,
-              page: null,
-            })}
-          >
-            {orderingOptions.map((option) => (
-              <option value={option.value} key={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <TableOrdering id="developer-ordering" defaultOrdering="name" parameter="ordering" pageParameter="page"
+          fields={[{ field: 'name', label: "Застройщик" }, { field: 'companyGroup', label: "Группа" }, { field: 'regions', label: "Регионы" }, { field: 'complexCount', label: "ЖК" }]} />
         {optionsQuery.data?.truncated.companyGroups
           || optionsQuery.data?.truncated.regions ? (
             <p className="filter-panel__notice" role="status">
@@ -251,11 +224,11 @@ export function DeveloperListPage() {
               <caption className="visually-hidden">Список застройщиков</caption>
               <thead>
                 <tr>
-                  <th scope="col">Застройщик</th>
-                  <th scope="col">Группа</th>
-                  <th scope="col">Регионы</th>
-                  <th scope="col">ЖК</th>
-                  <th scope="col">Статус</th>
+                  <SortableHeader field="name" defaultOrdering="name">Застройщик</SortableHeader>
+                  <SortableHeader field="companyGroup" defaultOrdering="name">Группа</SortableHeader>
+                  <SortableHeader field="regions" defaultOrdering="name">Регионы</SortableHeader>
+                  <SortableHeader field="complexCount" defaultOrdering="name">ЖК</SortableHeader>
+
                   {canManageCatalogs ? (
                     <th scope="col">
                       <span className="visually-hidden">Действия</span>
@@ -274,15 +247,7 @@ export function DeveloperListPage() {
                         : 'Не указаны'}
                     </td>
                     <td>{formatInteger(developer.complexCount)}</td>
-                    <td>
-                      <span
-                        className={developer.isActive
-                          ? 'catalog-status'
-                          : 'catalog-status catalog-status--inactive'}
-                      >
-                        {developer.isActive ? 'Активен' : 'Неактивен'}
-                      </span>
-                    </td>
+
                     {canManageCatalogs ? (
                       <td>
                         <div className="row-actions">
@@ -323,13 +288,7 @@ export function DeveloperListPage() {
                     <span>{developer.companyGroup?.name ?? 'Без группы'}</span>
                     <h2>{developer.name}</h2>
                   </div>
-                  <span
-                    className={developer.isActive
-                      ? 'catalog-status'
-                      : 'catalog-status catalog-status--inactive'}
-                  >
-                    {developer.isActive ? 'Активен' : 'Неактивен'}
-                  </span>
+
                 </div>
                 <dl>
                   <div>

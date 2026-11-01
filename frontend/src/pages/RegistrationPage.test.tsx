@@ -58,7 +58,7 @@ describe('RegistrationPage', () => {
       'new-password',
     )
     expect(screen.getByRole('link', { name: 'Прежняя версия регистрации' }))
-      .toHaveAttribute('href', '/users/register/')
+      .toHaveAttribute('href', "/users/register/?legacy=1")
     expect(screen.getByRole('link', { name: 'Войти' }))
       .toHaveAttribute('href', '/login')
   })

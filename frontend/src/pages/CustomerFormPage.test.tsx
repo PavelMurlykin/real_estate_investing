@@ -167,7 +167,7 @@ describe('CustomerFormPage', () => {
     ).toHaveValue('4')
     expect(screen.getByRole('link', { name: 'Django-форма' })).toHaveAttribute(
       'href',
-      '/customers/12/update/',
+      "/customers/12/update/?legacy=1",
     )
   })
 

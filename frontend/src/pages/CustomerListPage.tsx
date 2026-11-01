@@ -1,3 +1,8 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
+import { TableOrdering } from '@/shared/ui/TableOrdering'
+import { useTableParameters } from '@/shared/lib/useTableParameters'
+import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
+import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useQuery } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -7,16 +12,9 @@ import {
   sessionQueryOptions,
 } from '@/api/queries'
 import type { CustomerListItem } from '@/api/schemas'
-import { formatDateTime, formatInteger } from '@/shared/lib/formatters'
+import { formatInteger } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
-
-const orderingOptions = [
-  { value: '-createdAt', label: 'Сначала новые' },
-  { value: 'createdAt', label: 'Сначала старые' },
-  { value: 'name', label: 'По имени: А–Я' },
-  { value: '-name', label: 'По имени: Я–А' },
-]
 
 function getCustomerName(customer: CustomerListItem) {
   return customer.fullName || `Клиент #${customer.id}`
@@ -30,21 +28,12 @@ function CustomerMobileCard({ customer }: { customer: CustomerListItem }) {
           <span>{customer.residenceCity || 'Город не указан'}</span>
           <h2>{getCustomerName(customer)}</h2>
         </div>
-        <span
-          className={
-            `customer-status ${customer.isActive ? '' : 'customer-status--inactive'}`
-          }
-        >
-          {customer.isActive ? 'Активен' : 'Неактивен'}
-        </span>
+
       </div>
       <dl>
         <div><dt>Телефон</dt><dd>{customer.phone || '—'}</dd></div>
         <div><dt>Email</dt><dd>{customer.email || '—'}</dd></div>
-        <div>
-          <dt>Добавлен</dt>
-          <dd>{formatDateTime(customer.createdAt)}</dd>
-        </div>
+
       </dl>
       <Link className="text-link" to={`/customers/${customer.id}`}>
         Открыть карточку <span aria-hidden="true">→</span>
@@ -56,9 +45,10 @@ function CustomerMobileCard({ customer }: { customer: CustomerListItem }) {
 export function CustomerListPage() {
   useDocumentTitle('Клиенты')
   const [searchParameters, setSearchParameters] = useSearchParams()
+  const tableParameters = useTableParameters(searchParameters)
   const sessionQuery = useQuery(sessionQueryOptions)
   const customerQuery = useQuery({
-    ...customerListQueryOptions(searchParameters),
+    ...customerListQueryOptions(tableParameters),
     enabled: sessionQuery.data?.isAuthenticated === true,
   })
 
@@ -113,7 +103,7 @@ export function CustomerListPage() {
   }
 
   const { results, page, totalCount, totalPages } = customerQuery.data
-  const ordering = searchParameters.get('ordering') ?? '-createdAt'
+
 
   return (
     <div className="page-stack">
@@ -127,9 +117,9 @@ export function CustomerListPage() {
           </p>
         </div>
         <div className="page-header__actions">
-          <a className="button button--secondary" href="/customers/">
+          <LegacyLink className="button button--secondary" href="/customers/">
             Прежняя версия
-          </a>
+          </LegacyLink>
           <Link className="button button--primary" to="/customers/new">
             Добавить клиента
           </Link>
@@ -138,37 +128,13 @@ export function CustomerListPage() {
 
       <section className="filter-panel" aria-label="Фильтры клиентов">
         <form className="search-form" role="search" onSubmit={handleSearch}>
-          <label htmlFor="customer-search">Поиск по клиентам</label>
-          <div className="search-control">
-            <span aria-hidden="true">⌕</span>
-            <input
-              id="customer-search"
-              name="q"
-              type="search"
-              key={searchParameters.get('q') ?? ''}
-              defaultValue={searchParameters.get('q') ?? ''}
-              placeholder="Имя, телефон или email"
-            />
+          <div className="live-search-control">
+            <LiveFilterInput label="Поиск по клиентам" id="customer-search" parameter="q" placeholder="Имя, телефон или email" />
             <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
-        <div className="sort-control">
-          <label htmlFor="customer-ordering">Сортировка</label>
-          <select
-            id="customer-ordering"
-            value={ordering}
-            onChange={(event) => updateParameters({
-              ordering: event.target.value,
-              page: null,
-            })}
-          >
-            {orderingOptions.map((option) => (
-              <option value={option.value} key={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <TableOrdering id="customer-ordering" defaultOrdering="-createdAt" parameter="ordering" pageParameter="page"
+          fields={[{ field: 'name', label: "Клиент" }, { field: 'phone', label: "Телефон" }, { field: 'email', label: "Email" }, { field: 'city', label: "Город" }]} />
       </section>
 
       <div className="results-heading" aria-live="polite">
@@ -205,12 +171,12 @@ export function CustomerListPage() {
               <caption className="visually-hidden">Список клиентов</caption>
               <thead>
                 <tr>
-                  <th scope="col">Клиент</th>
-                  <th scope="col">Телефон</th>
-                  <th scope="col">Email</th>
-                  <th scope="col">Город</th>
-                  <th scope="col">Добавлен</th>
-                  <th scope="col">Статус</th>
+                  <SortableHeader field="name" defaultOrdering="-createdAt">Клиент</SortableHeader>
+                  <SortableHeader field="phone" defaultOrdering="-createdAt">Телефон</SortableHeader>
+                  <SortableHeader field="email" defaultOrdering="-createdAt">Email</SortableHeader>
+                  <SortableHeader field="city" defaultOrdering="-createdAt">Город</SortableHeader>
+
+
                   <th scope="col">
                     <span className="visually-hidden">Действия</span>
                   </th>
@@ -223,18 +189,8 @@ export function CustomerListPage() {
                     <td>{customer.phone || '—'}</td>
                     <td>{customer.email || '—'}</td>
                     <td>{customer.residenceCity || '—'}</td>
-                    <td>{formatDateTime(customer.createdAt)}</td>
-                    <td>
-                      <span
-                        className={
-                          `customer-status ${customer.isActive
-                            ? ''
-                            : 'customer-status--inactive'}`
-                        }
-                      >
-                        {customer.isActive ? 'Активен' : 'Неактивен'}
-                      </span>
-                    </td>
+
+
                     <td>
                       <Link
                         className="row-action"

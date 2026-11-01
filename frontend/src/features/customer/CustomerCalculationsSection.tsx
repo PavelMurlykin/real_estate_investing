@@ -1,4 +1,6 @@
-import { calculationOrderingOptions } from '@/features/mortgage/calculationOrdering'
+import { TableOrdering } from '@/shared/ui/TableOrdering'
+import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
+import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -24,10 +26,6 @@ import { EmptyState, ErrorState } from '@/shared/ui/AsyncState'
 import { CalculationFilters } from '@/features/mortgage/CalculationFilters'
 import { calculationFilterNames } from '@/features/mortgage/calculationFilterFields'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
-
-const orderingOptions = [
-  ...calculationOrderingOptions('monthlyPayment'),
-]
 
 function calculationToken(calculation: CustomerCalculationSelection) {
   return `${calculation.programType}:${calculation.linkId}`
@@ -226,7 +224,7 @@ export function CustomerCalculationsSection({
   const { results, page, totalCount, totalPages } = calculationsQuery.data
   const selectedCount = selections.length
   const programType = searchParameters.get('calculationProgram') ?? 'all'
-  const ordering = searchParameters.get('calculationOrdering') ?? '-createdAt'
+
 
   return (
     <section className="saved-property-card customer-calculations" aria-labelledby="customer-calculations-title">
@@ -261,17 +259,8 @@ export function CustomerCalculationsSection({
       <div className="customer-calculation-toolbar">
         <CalculationFilters prefix="calculation" />
         <form className="search-form" role="search" onSubmit={handleSearch}>
-          <label htmlFor="customer-calculation-search">Поиск по объекту</label>
-          <div className="search-control">
-            <span aria-hidden="true">⌕</span>
-            <input
-              id="customer-calculation-search"
-              name="calculationQ"
-              type="search"
-              key={searchParameters.get('calculationQ') ?? ''}
-              defaultValue={searchParameters.get('calculationQ') ?? ''}
-              placeholder="Город, ЖК, корпус или квартира"
-            />
+          <div className="live-search-control">
+            <LiveFilterInput label="Поиск по объекту" id="customer-calculation-search" parameter="calculationQ" placeholder="Город, ЖК, корпус или квартира" pageParameter="calculationPage" />
             <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
@@ -292,21 +281,8 @@ export function CustomerCalculationsSection({
             <option value="trench">Траншевые</option>
           </select>
         </div>
-        <div className="sort-control">
-          <label htmlFor="customer-calculation-ordering">Сортировка</label>
-          <select
-            id="customer-calculation-ordering"
-            value={ordering}
-            onChange={(event) => updateParameters({
-              calculationOrdering: event.target.value,
-              calculationPage: null,
-            })}
-          >
-            {orderingOptions.map((option) => (
-              <option value={option.value} key={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </div>
+        <TableOrdering id="customer-calculation-ordering" defaultOrdering="-createdAt" parameter="calculationOrdering" pageParameter="calculationPage"
+          fields={[{ field: 'createdAt', label: "Дата" }, { field: 'programType', label: "Тип" }, { field: 'realEstateComplex', label: "Объект" }, { field: 'finalPropertyCost', label: "Стоимость" }, { field: 'initialPaymentRubles', label: 'Первый взнос' }, { field: 'monthlyPayment', label: "Платёж" }, { field: 'mortgageTermMonths', label: "Срок" }, { field: 'annualRate', label: "Ставка" }]} />
       </div>
 
       <div className="results-heading customer-calculation-results">
@@ -344,13 +320,14 @@ export function CustomerCalculationsSection({
               <thead>
                 <tr>
                   <th scope="col"><span className="visually-hidden">Выбор</span></th>
-                  <th scope="col">Дата</th>
-                  <th scope="col">Тип</th>
-                  <th scope="col">Объект</th>
-                  <th scope="col">Стоимость</th>
-                  <th scope="col">Платёж</th>
-                  <th scope="col">Срок</th>
-                  <th scope="col">Ставка</th>
+                  <SortableHeader field="createdAt" defaultOrdering="-createdAt" parameter="calculationOrdering" pageParameter="calculationPage">Дата</SortableHeader>
+                  <SortableHeader field="programType" defaultOrdering="-createdAt" parameter="calculationOrdering" pageParameter="calculationPage">Тип</SortableHeader>
+                  <SortableHeader field="realEstateComplex" defaultOrdering="-createdAt" parameter="calculationOrdering" pageParameter="calculationPage">Объект</SortableHeader>
+                  <SortableHeader field="finalPropertyCost" defaultOrdering="-createdAt" parameter="calculationOrdering" pageParameter="calculationPage">Стоимость</SortableHeader>
+                  <SortableHeader field="initialPaymentRubles" defaultOrdering="-createdAt" parameter="calculationOrdering" pageParameter="calculationPage">Первый взнос</SortableHeader>
+                  <SortableHeader field="monthlyPayment" defaultOrdering="-createdAt" parameter="calculationOrdering" pageParameter="calculationPage">Платёж</SortableHeader>
+                  <SortableHeader field="mortgageTermMonths" defaultOrdering="-createdAt" parameter="calculationOrdering" pageParameter="calculationPage">Срок</SortableHeader>
+                  <SortableHeader field="annualRate" defaultOrdering="-createdAt" parameter="calculationOrdering" pageParameter="calculationPage">Ставка</SortableHeader>
                   <th scope="col"><span className="visually-hidden">Действия</span></th>
                 </tr>
               </thead>
@@ -374,6 +351,7 @@ export function CustomerCalculationsSection({
                       </small>
                     </td>
                     <td>{formatCurrency(calculation.finalPropertyCost)}</td>
+                    <td>{formatCurrency(calculation.initialPaymentRubles)}</td>
                     <td>{calculation.monthlyPayment ? formatCurrency(calculation.monthlyPayment) : '—'}</td>
                     <td>{formatMonths(calculation.mortgageTermMonths)}</td>
                     <td>{formatPercent(calculation.annualRate)}</td>
@@ -424,6 +402,7 @@ export function CustomerCalculationsSection({
                 <p>Расчёт от {formatDateTime(calculation.createdAt)}</p>
                 <dl>
                   <div><dt>Объект</dt><dd>{calculation.property.city}, корп. {calculation.property.building}, кв. {calculation.property.apartmentNumber}</dd></div>
+                  <div><dt>Первый взнос</dt><dd>{formatCurrency(calculation.initialPaymentRubles)}</dd></div>
                   <div><dt>Платёж</dt><dd>{calculation.monthlyPayment ? formatCurrency(calculation.monthlyPayment) : '—'}</dd></div>
                   <div><dt>Срок</dt><dd>{formatMonths(calculation.mortgageTermMonths)}</dd></div>
                   <div><dt>Ставка</dt><dd>{formatPercent(calculation.annualRate)}</dd></div>

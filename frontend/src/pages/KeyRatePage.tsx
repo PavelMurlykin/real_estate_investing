@@ -1,3 +1,8 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
+import { useTableParameters } from '@/shared/lib/useTableParameters'
+import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
+import { TableOrdering } from '@/shared/ui/TableOrdering'
+import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 
@@ -31,7 +36,8 @@ function formatRateChange(value: string | null) {
 export function KeyRatePage() {
   useDocumentTitle('Ключевая ставка')
   const [searchParameters, setSearchParameters] = useSearchParams()
-  const keyRateQuery = useQuery(keyRateListQueryOptions(searchParameters))
+  const tableParameters = useTableParameters(searchParameters)
+  const keyRateQuery = useQuery(keyRateListQueryOptions(tableParameters))
   const sessionQuery = useQuery(sessionQueryOptions)
   const queryClient = useQueryClient()
   const syncMutation = useMutation({
@@ -78,9 +84,9 @@ export function KeyRatePage() {
           </p>
         </div>
         <div className="page-header__actions">
-          <a className="button button--secondary" href={legacyUrl}>
+          <LegacyLink className="button button--secondary" href={legacyUrl}>
             Прежняя версия
-          </a>
+          </LegacyLink>
           {canSynchronize ? (
             <button
               className="button button--primary"
@@ -123,6 +129,14 @@ export function KeyRatePage() {
         </dl>
       </section>
 
+      <section className="filter-panel" aria-label="Фильтры ключевой ставки">
+        <LiveFilterInput label="Поиск по истории ставки" parameter="q" placeholder="Дата решения, ставка или изменение" />
+        <TableOrdering defaultOrdering="-meetingDate" fields={[
+          { field: 'meetingDate', label: 'Дата решения' }, { field: 'keyRate', label: 'Ключевая ставка' },
+          { field: 'rateChange', label: 'Изменение' },
+        ]} />
+      </section>
+
       {syncMutation.isSuccess ? (
         <p className="operation-message operation-message--success" role="status">
           Синхронизация завершена: обработано{' '}
@@ -158,10 +172,10 @@ export function KeyRatePage() {
               </caption>
               <thead>
                 <tr>
-                  <th scope="col">Дата решения</th>
-                  <th scope="col">Ключевая ставка</th>
-                  <th scope="col">Изменение</th>
-                  <th scope="col">Статус</th>
+                  <SortableHeader field="meetingDate" defaultOrdering="-meetingDate">Дата решения</SortableHeader>
+                  <SortableHeader field="keyRate" defaultOrdering="-meetingDate">Ключевая ставка</SortableHeader>
+                  <SortableHeader field="rateChange" defaultOrdering="-meetingDate">Изменение</SortableHeader>
+
                 </tr>
               </thead>
               <tbody>
@@ -176,13 +190,7 @@ export function KeyRatePage() {
                           {rateChange.label}
                         </span>
                       </td>
-                      <td>
-                        <span className={keyRate.isActive
-                          ? 'catalog-status'
-                          : 'catalog-status catalog-status--inactive'}>
-                          {keyRate.isActive ? 'Используется' : 'Неактивна'}
-                        </span>
-                      </td>
+
                     </tr>
                   )
                 })}
@@ -200,11 +208,7 @@ export function KeyRatePage() {
                       <span>Решение от {formatDate(keyRate.meetingDate)}</span>
                       <h2>{formatPercent(keyRate.keyRate)}</h2>
                     </div>
-                    <span className={keyRate.isActive
-                      ? 'catalog-status'
-                      : 'catalog-status catalog-status--inactive'}>
-                      {keyRate.isActive ? 'Используется' : 'Неактивна'}
-                    </span>
+
                   </div>
                   <dl>
                     <div>

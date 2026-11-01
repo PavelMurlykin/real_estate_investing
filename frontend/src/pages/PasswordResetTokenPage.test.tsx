@@ -78,6 +78,6 @@ describe('PasswordResetTokenPage', () => {
       .toHaveAttribute('href', '/password/reset')
     expect(screen.getByRole('link', {
       name: 'Прежняя версия восстановления',
-    })).toHaveAttribute('href', '/users/password/reset/')
+    })).toHaveAttribute('href', "/users/password/reset/?legacy=1")
   })
 })

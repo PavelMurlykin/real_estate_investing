@@ -13,17 +13,21 @@ from django.contrib.auth.forms import (
 from django.contrib.auth.tokens import default_token_generator
 from django.db import transaction
 from django.db.models import (
+    CharField,
     Count,
     DecimalField,
     ExpressionWrapper,
     F,
+    Func,
     Min,
+    OuterRef,
     Prefetch,
     Q,
-    Window,
+    Subquery,
+    Value,
 )
 from django.db.models.deletion import ProtectedError
-from django.db.models.functions import Lead
+from django.db.models.functions import Cast
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -1215,7 +1219,9 @@ class CompanyGroupListCreateAPIView(ListCreateAPIView):
         )
         query_serializer.is_valid(raise_exception=True)
         filters = query_serializer.validated_data
-        queryset = _company_group_queryset()
+        queryset = _company_group_queryset().annotate(
+            developerCount=F('developer_count')
+        )
         search = filters.get('q', '')
         if search:
             queryset = queryset.filter(name__icontains=search)
@@ -1385,6 +1391,8 @@ class PropertyDictionaryListCreateAPIView(
 
     pagination_class = ApplicationPageNumberPagination
     ordering_fields = {
+        'description': 'description',
+        'usageCount': 'usage_count',
         'name': 'name',
         'updatedAt': 'updated_at',
         'status': 'is_active',
@@ -1666,11 +1674,29 @@ class LocationDictionaryListCreateAPIView(
             return queryset.order_by(*configuration['default_ordering'])
         ordering_prefix = '-' if ordering.startswith('-') else ''
         ordering_name = ordering.removeprefix('-')
-        ordering_field = {
+        ordering_fields = {
             'name': configuration['name_field'],
             'updatedAt': 'updated_at',
             'status': 'is_active',
-        }[ordering_name]
+            'usageCount': 'usage_count',
+        }
+        model = configuration['model']
+        if model == Region:
+            ordering_fields['code'] = 'code'
+        elif model == City:
+            ordering_fields['region'] = 'region__name'
+        elif model == District:
+            ordering_fields.update(
+                region='city__region__name', city='city__name',
+            )
+        elif model == Metro:
+            ordering_fields.update(
+                region='metro_line__city__region__name',
+                city='metro_line__city__name', metroLine='metro_line__line',
+            )
+        if ordering_name not in ordering_fields:
+            raise ValidationError({'ordering': 'Поле здесь недоступно.'})
+        ordering_field = ordering_fields[ordering_name]
         return queryset.order_by(
             f'{ordering_prefix}{ordering_field}',
             configuration['name_field'],
@@ -1886,6 +1912,7 @@ class BankListCreateAPIView(BankAPIViewMixin, ListCreateAPIView):
         ordering_field = {
             'name': 'name',
             'minimumInterestRate': 'minimum_interest_rate',
+            'programCount': 'program_count',
             'updatedAt': 'updated_at',
         }[ordering_name]
         return queryset.order_by(
@@ -2069,6 +2096,11 @@ class MortgageProgramListCreateAPIView(
         ordering_field = {
             'name': 'name',
             'creditLimit': 'credit_limit',
+            'isPreferential': 'is_preferential',
+            'bankCount': 'bank_count',
+            'developerProgramCount': 'developer_program_count',
+            'regionalLimitCount': 'regional_limit_count',
+            'aliasCount': 'alias_count',
             'updatedAt': 'updated_at',
         }[ordering_name]
         return queryset.order_by(
@@ -2244,6 +2276,13 @@ class DeveloperMortgageProgramListCreateAPIView(
             'bank': 'bank__name',
             'mortgageProgram': 'mortgage_program__name',
             'interestRate': 'interest_rate',
+            'gracePeriodMonths': 'grace_period_months',
+            'gracePeriodInterestRate': 'grace_period_interest_rate',
+            'minimumInitialPaymentPercent': 'minimum_initial_payment_percent',
+            'maximumLoanAmount': 'maximum_loan_amount',
+            'maximumLoanTermYears': 'maximum_loan_term_years',
+            'priceIncreasePercent': 'price_increase_percent',
+            'rateDiscountPercent': 'rate_discount_percent',
             'updatedAt': 'updated_at',
         }[ordering_name]
         return queryset.order_by(
@@ -2438,17 +2477,18 @@ class KeyRateListAPIView(ListAPIView):
     permission_classes = (AllowAny,)
 
     def get_queryset(self):
-        """Validate pagination and annotate chronological rate changes."""
+        """Search and sort without changing the previous decision's rate."""
         query_serializer = KeyRateListQuerySerializer(
             data=self.request.query_params
         )
         query_serializer.is_valid(raise_exception=True)
-        return (
+        filters = query_serializer.validated_data
+        previous_rate = KeyRate.objects.filter(
+            meeting_date__lt=OuterRef('meeting_date')
+        ).order_by('-meeting_date', '-pk').values('key_rate')[:1]
+        queryset = (
             KeyRate.objects.annotate(
-                previous_rate=Window(
-                    expression=Lead('key_rate'),
-                    order_by=F('meeting_date').desc(),
-                ),
+                previous_rate=Subquery(previous_rate),
             )
             .annotate(
                 rate_change=ExpressionWrapper(
@@ -2459,8 +2499,30 @@ class KeyRateListAPIView(ListAPIView):
                     ),
                 ),
             )
-            .order_by('-meeting_date', '-pk')
         )
+        search = filters.get('q', '')
+        if search:
+            queryset = queryset.annotate(
+                date_label=Func(
+                    'meeting_date', Value('DD.MM.YYYY'),
+                    function='to_char', output_field=CharField(),
+                ),
+                date_iso=Cast('meeting_date', CharField()),
+                rate_text=Cast('key_rate', CharField()),
+                change_text=Cast('rate_change', CharField()),
+            ).filter(
+                Q(date_label__icontains=search)
+                | Q(date_iso__icontains=search)
+                | Q(rate_text__icontains=search.replace(',', '.'))
+                | Q(change_text__icontains=search.replace(',', '.'))
+            )
+        ordering = filters['ordering']
+        field = {
+            'meetingDate': 'meeting_date', 'keyRate': 'key_rate',
+            'rateChange': 'rate_change',
+        }[ordering.removeprefix('-')]
+        prefix = '-' if ordering.startswith('-') else ''
+        return queryset.order_by(f'{prefix}{field}', '-pk')
 
     def list(self, request, *args, **kwargs):
         """Add current-rate and source freshness metadata to the page."""
@@ -2586,6 +2648,8 @@ class DeveloperListCreateAPIView(ListCreateAPIView):
 
     pagination_class = ApplicationPageNumberPagination
     ordering_fields = {
+        'regions': 'first_region_name',
+        'complexCount': 'complex_count',
         'name': 'name',
         'companyGroup': 'company_group__name',
         'createdAt': 'created_at',
@@ -2610,7 +2674,9 @@ class DeveloperListCreateAPIView(ListCreateAPIView):
         )
         query_serializer.is_valid(raise_exception=True)
         filters = query_serializer.validated_data
-        queryset = _developer_queryset()
+        queryset = _developer_queryset().annotate(
+            first_region_name=Min('regions__name')
+        )
 
         search = filters.get('q', '')
         if search:
@@ -3388,6 +3454,9 @@ class CustomerListAPIView(ListCreateAPIView):
     pagination_class = ApplicationPageNumberPagination
     permission_classes = (IsAuthenticated,)
     ordering_fields = {
+        'phone': ('phone',),
+        'email': ('email',),
+        'city': ('residence_city__name',),
         'createdAt': ('created_at',),
         'name': ('first_name', 'last_name'),
     }

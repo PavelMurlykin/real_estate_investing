@@ -1,3 +1,6 @@
+import { TableOrdering } from '@/shared/ui/TableOrdering'
+import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
+import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useQuery } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -9,23 +12,6 @@ import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { formatArea, formatCurrency, formatInteger } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
-
-const orderingOptions = [
-  ...[
-    ['developer', 'Застройщик'], ['building', 'Корпус'],
-    ['apartmentNumber', 'Квартира'], ['layout', 'Планировка'],
-  ].flatMap(([value, label]) => [
-    { value, label: `${label}: А–Я` }, { value: `-${value}`, label: `${label}: Я–А` },
-  ]),
-  { value: 'city', label: 'Городу: А–Я' },
-  { value: '-city', label: 'Городу: Я–А' },
-  { value: 'realEstateComplex', label: 'ЖК: А–Я' },
-  { value: '-realEstateComplex', label: 'ЖК: Я–А' },
-  { value: 'area', label: 'Площади: сначала меньше' },
-  { value: '-area', label: 'Площади: сначала больше' },
-  { value: 'propertyCost', label: 'Цене: сначала дешевле' },
-  { value: '-propertyCost', label: 'Цене: сначала дороже' },
-]
 
 function PropertyMobileCard({
   property,
@@ -121,7 +107,7 @@ export function PropertyListPage() {
   }
 
   const { results, page, totalCount, totalPages } = propertyQuery.data
-  const ordering = searchParameters.get('ordering') ?? 'city'
+
 
   return (
     <div className="page-stack">
@@ -149,38 +135,13 @@ export function PropertyListPage() {
       <section className="filter-panel" aria-label="Фильтры объектов">
         <PropertyFilters />
         <form className="search-form" role="search" onSubmit={handleSearch}>
-          <label htmlFor="property-search">Поиск по каталогу</label>
-          <div className="search-control">
-            <span aria-hidden="true">⌕</span>
-            <input
-              id="property-search"
-              name="search"
-              type="search"
-              key={searchParameters.get('search') ?? ''}
-              defaultValue={searchParameters.get('search') ?? ''}
-              placeholder="Город, ЖК, застройщик, корпус или квартира"
-            />
-            <button className="button button--dark" type="submit">
-              Найти
-            </button>
+          <div className="live-search-control">
+            <LiveFilterInput label="Поиск по каталогу" id="property-search" parameter="search" placeholder="Город, ЖК, застройщик, корпус или квартира" />
+            <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
-        <div className="sort-control">
-          <label htmlFor="property-ordering">Сортировка</label>
-          <select
-            id="property-ordering"
-            value={ordering}
-            onChange={(event) =>
-              updateParameters({ ordering: event.target.value, page: null })
-            }
-          >
-            {orderingOptions.map((option) => (
-              <option value={option.value} key={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <TableOrdering id="property-ordering" defaultOrdering="city" parameter="ordering" pageParameter="page"
+          fields={[{ field: 'city', label: "Город" }, { field: 'developer', label: "Застройщик" }, { field: 'realEstateComplex', label: "ЖК" }, { field: 'building', label: "Корпус" }, { field: 'apartmentNumber', label: "Квартира" }, { field: 'layout', label: "Планировка" }, { field: 'area', label: "Площадь" }, { field: 'propertyCost', label: "Стоимость" }]} />
       </section>
 
       <div className="results-heading" aria-live="polite">
@@ -213,14 +174,14 @@ export function PropertyListPage() {
               </caption>
               <thead>
                 <tr>
-                  <th scope="col">Город</th>
-                  <th scope="col">Застройщик</th>
-                  <th scope="col">ЖК</th>
-                  <th scope="col">Корпус</th>
-                  <th scope="col">Квартира</th>
-                  <th scope="col">Планировка</th>
-                  <th scope="col">Площадь</th>
-                  <th scope="col">Стоимость</th>
+                  <SortableHeader field="city" defaultOrdering="city">Город</SortableHeader>
+                  <SortableHeader field="developer" defaultOrdering="city">Застройщик</SortableHeader>
+                  <SortableHeader field="realEstateComplex" defaultOrdering="city">ЖК</SortableHeader>
+                  <SortableHeader field="building" defaultOrdering="city">Корпус</SortableHeader>
+                  <SortableHeader field="apartmentNumber" defaultOrdering="city">Квартира</SortableHeader>
+                  <SortableHeader field="layout" defaultOrdering="city">Планировка</SortableHeader>
+                  <SortableHeader field="area" defaultOrdering="city">Площадь</SortableHeader>
+                  <SortableHeader field="propertyCost" defaultOrdering="city">Стоимость</SortableHeader>
                   <th scope="col"><span className="visually-hidden">Действия</span></th>
                 </tr>
               </thead>

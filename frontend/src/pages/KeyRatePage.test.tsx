@@ -77,7 +77,7 @@ describe('KeyRatePage', () => {
     expect(screen.queryByRole('button', { name: 'Обновить из ЦБ РФ' }))
       .not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Прежняя версия' }))
-      .toHaveAttribute('href', '/bank/key-rate/')
+      .toHaveAttribute('href', "/bank/key-rate/?legacy=1")
   })
 
   it('lets an administrator synchronize data and reports counts', async () => {

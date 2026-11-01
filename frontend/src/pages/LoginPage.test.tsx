@@ -52,7 +52,7 @@ describe('LoginPage', () => {
     expect(screen.getByRole('link', { name: 'Забыли пароль?' }))
       .toHaveAttribute('href', '/password/reset')
     expect(screen.getByRole('link', { name: 'Прежняя версия входа' }))
-      .toHaveAttribute('href', '/users/login/?next=%2Fapp%2F')
+      .toHaveAttribute('href', "/users/login/?next=%2Fapp%2F&legacy=1")
   })
 
   it('announces successful registration before login', () => {

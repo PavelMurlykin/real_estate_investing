@@ -1,3 +1,4 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
@@ -204,7 +205,7 @@ export function LoginPage() {
             Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
           </p>
           <Link to="/password/reset">Забыли пароль?</Link>
-          <a href={legacyLoginUrl}>Прежняя версия входа</a>
+          <LegacyLink href={legacyLoginUrl}>Прежняя версия входа</LegacyLink>
         </div>
       </section>
     </div>

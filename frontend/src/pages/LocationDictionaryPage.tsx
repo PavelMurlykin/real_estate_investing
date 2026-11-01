@@ -1,3 +1,8 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
+import { TableOrdering } from '@/shared/ui/TableOrdering'
+import { useTableParameters } from '@/shared/lib/useTableParameters'
+import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
+import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
@@ -87,13 +92,6 @@ const emptyFormState: LocationFormState = {
   metroLineId: '',
   isActive: true,
 }
-
-const orderingOptions = [
-  { value: 'default', label: 'По умолчанию' },
-  { value: 'name', label: 'По названию: А–Я' },
-  { value: '-name', label: 'По названию: Я–А' },
-  { value: '-updatedAt', label: 'Сначала изменённые' },
-]
 
 function findFirstError(value: unknown): string | undefined {
   if (typeof value === 'string') return value
@@ -389,9 +387,9 @@ function LocationDictionaryEditor({
               >
                 Отмена
               </Link>
-              <a className="text-link" href={entry.legacyEditUrl}>
+              <LegacyLink className="text-link" href={entry.legacyEditUrl}>
                 Django-форма
-              </a>
+              </LegacyLink>
             </>
           ) : null}
         </div>
@@ -431,11 +429,12 @@ export function LocationDictionaryPage() {
     Number.isInteger(dictionaryEntryIdentifier) && dictionaryEntryIdentifier > 0
   )
   const [searchParameters, setSearchParameters] = useSearchParams()
+  const tableParameters = useTableParameters(searchParameters)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const sessionQuery = useQuery(sessionQueryOptions)
   const listQuery = useQuery({
-    ...locationDictionaryListQueryOptions(dictionaryKey, searchParameters),
+    ...locationDictionaryListQueryOptions(dictionaryKey, tableParameters),
     enabled: parsedDictionaryKey.success,
   })
   const detailQuery = useQuery({
@@ -604,9 +603,9 @@ export function LocationDictionaryPage() {
           <p>{configuration.description}</p>
         </div>
         <div className="page-header__actions">
-          <a className="button button--secondary" href={legacyCatalogUrl}>
+          <LegacyLink className="button button--secondary" href={legacyCatalogUrl}>
             Прежняя версия
-          </a>
+          </LegacyLink>
         </div>
       </header>
 
@@ -627,17 +626,8 @@ export function LocationDictionaryPage() {
         aria-label={`Фильтры: ${configuration.title}`}
       >
         <form className="search-form" role="search" onSubmit={handleSearch}>
-          <label htmlFor="location-search">Поиск</label>
-          <div className="search-control">
-            <span aria-hidden="true">⌕</span>
-            <input
-              id="location-search"
-              name="q"
-              type="search"
-              key={searchParameters.get('q') ?? ''}
-              defaultValue={searchParameters.get('q') ?? ''}
-              placeholder="Название или связанная локация"
-            />
+          <div className="live-search-control">
+            <LiveFilterInput label="Поиск" id="location-search" parameter="q" placeholder="Название или связанная локация" />
             <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
@@ -708,23 +698,8 @@ export function LocationDictionaryPage() {
             <option value="inactive">Неактивные</option>
           </select>
         </div>
-        <div className="sort-control">
-          <label htmlFor="location-ordering">Сортировка</label>
-          <select
-            id="location-ordering"
-            value={searchParameters.get('ordering') ?? 'default'}
-            onChange={(event) => updateParameters({
-              ordering: event.target.value,
-              page: null,
-            })}
-          >
-            {orderingOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <TableOrdering id="location-ordering" defaultOrdering="default" parameter="ordering" pageParameter="page"
+          fields={[{ field: 'name', label: configuration.nameLabel }, ...(dictionaryKey === 'regions' ? [{ field: 'code', label: "Код" }] : []), ...(showRegion ? [{ field: 'region', label: "Регион" }] : []), ...(showCity ? [{ field: 'city', label: "Город" }] : []), ...(showMetroLine ? [{ field: 'metroLine', label: "Линия" }] : []), { field: 'usageCount', label: "Используется" }]} />
       </section>
 
       <div className="results-heading" aria-live="polite">
@@ -753,15 +728,15 @@ export function LocationDictionaryPage() {
                   </caption>
                   <thead>
                     <tr>
-                      <th scope="col">{configuration.nameLabel}</th>
+                      <SortableHeader field="name" defaultOrdering="default">{configuration.nameLabel}</SortableHeader>
                       {dictionaryKey === 'regions'
-                        ? <th scope="col">Код</th>
+                        ? <SortableHeader field="code" defaultOrdering="default">Код</SortableHeader>
                         : null}
-                      {showRegion ? <th scope="col">Регион</th> : null}
-                      {showCity ? <th scope="col">Город</th> : null}
-                      {showMetroLine ? <th scope="col">Линия</th> : null}
-                      <th scope="col">Используется</th>
-                      <th scope="col">Статус</th>
+                      {showRegion ? <SortableHeader field="region" defaultOrdering="default">Регион</SortableHeader> : null}
+                      {showCity ? <SortableHeader field="city" defaultOrdering="default">Город</SortableHeader> : null}
+                      {showMetroLine ? <SortableHeader field="metroLine" defaultOrdering="default">Линия</SortableHeader> : null}
+                      <SortableHeader field="usageCount" defaultOrdering="default">Используется</SortableHeader>
+
                       {canManageCatalogs ? (
                         <th scope="col">
                           <span className="visually-hidden">Действия</span>
@@ -786,7 +761,7 @@ export function LocationDictionaryPage() {
                           ? <td><MetroLineLabel entry={entry} /></td>
                           : null}
                         <td>{formatInteger(entry.usageCount)}</td>
-                        <td>{entry.isActive ? 'Активна' : 'Неактивна'}</td>
+
                         {canManageCatalogs ? (
                           <td>
                             <div className="row-actions">
@@ -827,12 +802,7 @@ export function LocationDictionaryPage() {
                         <span>{configuration.title}</span>
                         <h2>{entry.name}</h2>
                       </div>
-                      <span className={entry.isActive
-                        ? 'catalog-status'
-                        : 'catalog-status catalog-status--inactive'}
-                      >
-                        {entry.isActive ? 'Активна' : 'Неактивна'}
-                      </span>
+
                     </div>
                     <dl>
                       {entry.code ? (

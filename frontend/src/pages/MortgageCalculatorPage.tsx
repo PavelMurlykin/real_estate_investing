@@ -1,3 +1,4 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent, RefObject } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -1143,9 +1144,9 @@ export function MortgageCalculatorPage({
           </p>
         </div>
         <div className="page-header__actions">
-          <a className="button button--secondary" href="/mortgage/?legacy=1">
+          <LegacyLink className="button button--secondary" href="/mortgage/?legacy=1">
             Django-версия
-          </a>
+          </LegacyLink>
         </div>
       </header>
 

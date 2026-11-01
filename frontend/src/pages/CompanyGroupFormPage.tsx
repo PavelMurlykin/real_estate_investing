@@ -1,3 +1,4 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -173,9 +174,9 @@ export function CompanyGroupFormPage() {
           <Link className="button button--secondary" to="/company-groups">
             Отмена
           </Link>
-          <a className="button button--secondary" href={legacyFormUrl}>
+          <LegacyLink className="button button--secondary" href={legacyFormUrl}>
             Django-форма
-          </a>
+          </LegacyLink>
         </div>
       </header>
 

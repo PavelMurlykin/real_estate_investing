@@ -49,7 +49,7 @@ export function RemoteMultiSelect({
       {error ? <span className="field-error" id={`${identifier}-error`}>{error}</span> : null}
       {choicesQuery.isFetching ? <small role="status">Загрузка вариантов…</small> : null}
       {choicesQuery.isError ? <button type="button" className="text-button" onClick={() => void choicesQuery.refetch()}>Повторить загрузку справочника</button> : null}
-      {hasMore ? <button type="button" className="text-button" disabled={choicesQuery.isFetching} onClick={loadMore}>Показать ещё варианты</button> : null}
+      {hasMore ? <button type="button" className="text-button" disabled={choicesQuery.isFetching} onClick={loadMore}>{!choicesQuery.data && !options.length ? 'Загрузить варианты' : 'Показать ещё варианты'}</button> : null}
     </fieldset>
   )
 }

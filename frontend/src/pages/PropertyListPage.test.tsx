@@ -1,5 +1,6 @@
-import { screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
 
 import type { PropertyListResponse } from '@/api/schemas'
 import { createTestQueryClient, renderWithProviders } from '@/test/render'
@@ -30,6 +31,26 @@ const propertyList: PropertyListResponse = {
 }
 
 describe('PropertyListPage', () => {
+  it('searches while typing and sorts the server selection through the column header', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify(propertyList), {
+      status: 200, headers: { 'Content-Type': 'application/json' },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+    const queryClient = createTestQueryClient()
+    queryClient.setQueryData(['properties', ''], propertyList)
+    renderWithProviders(<PropertyListPage />, { queryClient })
+    const search = screen.getByLabelText('Поиск по каталогу')
+    await user.type(search, 'Белые')
+    await waitFor(() => expect(fetchMock.mock.calls.some(([path]) => String(path).includes('search='))).toBe(true))
+    expect(search).toHaveFocus()
+    await user.click(screen.getByRole('button', { name: 'Стоимость' }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([path]) => String(path).includes('ordering=propertyCost'))).toBe(true))
+    expect(screen.getByRole('columnheader', { name: 'Стоимость' })).toHaveAttribute('aria-sort', 'ascending')
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(fetchMock.mock.calls.some(([path]) => String(path).includes('ordering=-propertyCost'))).toBe(true))
+  })
+
   it('renders the paginated property contract in desktop and mobile views', () => {
     const queryClient = createTestQueryClient()
     queryClient.setQueryData(['properties', ''], propertyList)

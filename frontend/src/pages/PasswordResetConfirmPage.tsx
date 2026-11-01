@@ -1,3 +1,4 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
@@ -147,9 +148,9 @@ export function PasswordResetConfirmPage() {
 
         <div className="auth-card__links">
           <Link to="/password/reset">Запросить новую ссылку</Link>
-          <a href="/users/password/reset/">
+          <LegacyLink href="/users/password/reset/">
             Прежняя версия восстановления
-          </a>
+          </LegacyLink>
         </div>
       </section>
     </div>

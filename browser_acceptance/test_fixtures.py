@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pytest
 from django.contrib.auth import get_user_model
 
-from bank.models import Bank, MortgageProgram
+from bank.models import Bank, BankProgram, MortgageProgram
 from browser_acceptance import fixtures
 from customer.models import Customer
 from location.models import MetroLine
@@ -71,6 +71,8 @@ def test_seed_is_idempotent_and_assigns_least_privilege(monkeypatch):
     ).name == 'E2E ипотечная программа'
     assert Bank.objects.count() == 1
     assert Bank.objects.get(pk=manifest['bankId']).name == 'E2E банк'
+    assert BankProgram.objects.count() == 1
+    assert str(BankProgram.objects.get().interest_rate) == '12.00'
     assert CompanyGroup.objects.count() == 1
     property_object = Property.objects.get(pk=manifest['propertyId'])
     real_estate_complex = property_object.building.real_estate_complex

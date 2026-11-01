@@ -1,3 +1,4 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -67,9 +68,9 @@ export function PasswordResetTokenPage() {
           </header>
           <div className="auth-card__links">
             <Link to="/password/reset">Запросить новую ссылку</Link>
-            <a href="/users/password/reset/">
+            <LegacyLink href="/users/password/reset/">
               Прежняя версия восстановления
-            </a>
+            </LegacyLink>
           </div>
         </section>
       </div>

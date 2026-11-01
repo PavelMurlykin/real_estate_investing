@@ -1,3 +1,4 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
@@ -245,7 +246,7 @@ export function RegistrationPage() {
 
         <div className="auth-card__links">
           <p>Уже есть аккаунт? <Link to="/login">Войти</Link></p>
-          <a href="/users/register/">Прежняя версия регистрации</a>
+          <LegacyLink href="/users/register/">Прежняя версия регистрации</LegacyLink>
         </div>
       </section>
     </div>

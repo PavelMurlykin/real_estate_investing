@@ -66,10 +66,10 @@ describe('BankDetailPage', () => {
     expect(screen.getByRole('table')).toHaveAccessibleName(
       'Ипотечные программы банка Северный банк',
     )
-    expect(screen.getAllByText('Семейная ипотека')).toHaveLength(2)
-    expect(screen.getAllByText('5,9%')).toHaveLength(2)
+    expect(screen.getByText('Семейная ипотека')).toBeInTheDocument()
+    expect(screen.getByText('5,9%')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Открыть Django-версию' }))
-      .toHaveAttribute('href', '/bank/banks/7/')
+      .toHaveAttribute('href', "/bank/banks/7/?legacy=1")
     expect(screen.queryByRole('link', { name: 'Редактировать' }))
       .not.toBeInTheDocument()
   })

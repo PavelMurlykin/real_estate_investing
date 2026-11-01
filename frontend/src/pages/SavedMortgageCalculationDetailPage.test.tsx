@@ -138,7 +138,7 @@ describe('SavedMortgageCalculationDetailPage', () => {
     ).toHaveAttribute('href', '/mortgage?sample=7')
     expect(
       screen.getByRole('link', { name: 'Открыть Django-версию' }),
-    ).toHaveAttribute('href', '/mortgage/calculations/7/')
+    ).toHaveAttribute('href', "/mortgage/calculations/7/?legacy=1")
   })
 
   it('keeps a direct private link behind authentication', () => {

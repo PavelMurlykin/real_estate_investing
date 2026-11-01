@@ -283,7 +283,7 @@ describe('PropertyFormPage', () => {
     expect(screen.getByLabelText('Парк')).toBeChecked()
     expect(screen.getByRole('link', { name: 'Django-форма' })).toHaveAttribute(
       'href',
-      '/property/12/update/',
+      "/property/12/update/?legacy=1",
     )
     await user.click(screen.getByRole('button', { name: 'Удалить текущее' }))
     await user.click(

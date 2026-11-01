@@ -1,3 +1,4 @@
+import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
@@ -312,12 +313,12 @@ export function RealEstateComplexFormPage() {
         </div>
         <div className="page-header__actions">
           {isEditing && complexQuery.data ? (
-            <a
+            <LegacyLink
               className="button button--secondary"
               href={complexQuery.data.legacyEditUrl}
             >
               Django-форма
-            </a>
+            </LegacyLink>
           ) : null}
           <Link className="button button--secondary" to="/complexes">
             Отмена
