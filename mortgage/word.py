@@ -731,7 +731,7 @@ def _build_object_template_values(property_obj, object_rows, property_cost):
 
 def _get_property_window_view_text(property_obj):
     """Возвращает виды из окна объекта."""
-    window_views = list(property_obj.window_views.all())
+    window_views = list(property_obj.window_views.all()) if property_obj.pk else []
     if not window_views:
         return ''
     return ', '.join(window_view.name for window_view in window_views)
