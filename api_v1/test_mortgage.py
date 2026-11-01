@@ -101,6 +101,9 @@ def test_mortgage_calculation_api_returns_summary_and_schedule(client):
     assert payload['assumptions']['finalPropertyCost'] == '4500000.00'
     assert payload['assumptions']['initialPaymentRubles'] == '900000.00'
     assert payload['summary']['loanAmount'] == '3600000.00'
+    assert payload['summary']['loanAfterGrace'] == '3600000.00'
+    assert payload['summary']['gracePaymentsCount'] == 0
+    assert payload['summary']['mainPaymentsCount'] == 12
     assert payload['summary']['paymentsCount'] == 12
     assert payload['summary']['mortgageEndDate'] == '2027-01-15'
     assert len(payload['schedule']) == 12
@@ -152,6 +155,9 @@ def test_mortgage_calculation_api_supports_grace_period(client):
     assert payload['summary']['graceMonthlyPayment'] is not None
     assert payload['summary']['gracePeriodEndDate'] == '2026-07-15'
     assert payload['summary']['paymentsCount'] == 24
+    assert payload['summary']['gracePaymentsCount'] == 6
+    assert payload['summary']['mainPaymentsCount'] == 18
+    assert Decimal(payload['summary']['loanAfterGrace']) < Decimal('3600000')
 
 
 @pytest.mark.django_db

@@ -32,6 +32,7 @@ const savedCalculation: SavedMortgageCalculationDetail = {
   createdAt: '2026-09-09T10:30:00+03:00',
   property: {
     id: 3,
+    layoutImageUrl: '/media/plan.png',
     city: 'Казань',
     developer: 'Надёжный застройщик',
     realEstateComplex: 'Зелёный квартал',
@@ -58,12 +59,15 @@ const savedCalculation: SavedMortgageCalculationDetail = {
       initialPaymentDate: '2026-09-09',
       mortgageTermMonths: 12,
       annualRate: '12.00',
-      hasGracePeriod: false,
-      gracePeriodTermMonths: 0,
-      gracePeriodRate: null,
+      hasGracePeriod: true,
+      gracePeriodTermMonths: 6,
+      gracePeriodRate: '0.10',
     },
     summary: {
       loanAmount: '3600000.00',
+      gracePaymentsCount: 6,
+      mainPaymentsCount: 6,
+      loanAfterGrace: '1856789.45',
       mainMonthlyPayment: '319832.06',
       graceMonthlyPayment: null,
       overpayment: '237984.72',
@@ -108,6 +112,14 @@ describe('SavedMortgageCalculationDetailPage', () => {
     expect(screen.getByRole('heading', { name: 'Зелёный квартал' })).toBeInTheDocument()
     expect(screen.getByText('Надёжный застройщик')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Параметры кредита' })).toBeInTheDocument()
+    expect(screen.getAllByText('319 832,06 ₽')).toHaveLength(2)
+    expect(screen.getByText('Долг после льготного периода').parentElement).toHaveTextContent('1 856 789,45 ₽')
+    expect(screen.getByText('Ставка льготного периода').parentElement).toHaveTextContent('0,1%')
+    expect(screen.getByText('Льготных платежей').parentElement).toHaveTextContent('6')
+    expect(screen.getByText('Основных платежей').parentElement).toHaveTextContent('6')
+    expect(screen.getByText('Дата первоначального взноса').parentElement).toHaveTextContent('09.09.2026')
+    expect(screen.getByText('Срок ипотеки, месяцев').parentElement).toHaveTextContent('12 (1 г.)')
+    expect(screen.getByRole('img', { name: 'Планировка квартиры' })).toHaveAttribute('src', '/media/plan.png')
     expect(screen.getByRole('table')).toHaveAccessibleName(
       'График ежемесячных платежей',
     )

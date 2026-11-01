@@ -18,6 +18,8 @@ Authenticated users can save calculations for a selected or manually entered pro
 
 Property search covers the entire catalog; previous/next buttons navigate choice pages. The selected property remains available while searching for alternatives. Excel and Word buttons beside the result export the current market or tranche calculation without saving or signing in, including manual properties or financial parameters alone. Exports create no catalog or history records.
 
+Money values display two decimal places, including kopecks in payments and balances. Both calculators show the down payment percentage/date, base price and adjustment, exact term in months, rate and payment count. Market results also show the grace term/rate, separate grace/main payment counts and debt after the grace period. The tranche table includes overpayment per tranche; “Остаток к выдаче” means the amount yet to be disbursed. Saved details include the apartment layout when an image is uploaded; click it to open the full-size image.
+
 When legacy URLs redirect to React, property/customer context is translated from `property_id`/`customer` to `propertyId`/`customerId`. Legacy filter and sorting names are translated to the new interface parameters; functionality of filters not yet available is restored in subsequent stages.
 
 ## Developer programs and credit limits
@@ -26,7 +28,7 @@ Selecting a property and bank program applies active developer conditions: a spe
 
 ## Current migration limitations
 
-Parity restoration is tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. Result fields, money formatting, filters, table sorting and the homepage still have limitations. Use Django with legacy redirects disabled or an explicit `legacy=1` URL parameter for the previous workflows. Unfinished stages must not be treated as available features.
+Parity restoration is tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. Filters, table sorting and the homepage still have limitations. Use Django with legacy redirects disabled or an explicit `legacy=1` URL parameter for the previous workflows. Unfinished stages must not be treated as available features.
 
 ## Large form dictionaries
 

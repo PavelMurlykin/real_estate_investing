@@ -405,7 +405,7 @@ describe('MortgageCalculatorPage', () => {
     ).toBeInTheDocument()
     expect(
       screen.getAllByText(
-        (_, element) => element?.textContent?.replace(/\s/g, '') === '50578₽',
+        (_, element) => element?.textContent?.replace(/\s/g, '') === '50577,51₽',
         { selector: 'strong' },
       ),
     ).toHaveLength(2)

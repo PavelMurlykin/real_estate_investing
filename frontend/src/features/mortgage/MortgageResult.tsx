@@ -2,21 +2,13 @@ import type { ReactNode, RefObject } from 'react'
 import { useState } from 'react'
 
 import type { MortgageCalculationResponse } from '@/api/schemas'
+import { LoanParameters, SummaryItem } from './LoanParameters'
 import {
   formatCurrency,
   formatDate,
   formatMonths,
   formatPercent,
 } from '@/shared/lib/formatters'
-
-function SummaryItem({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="mortgage-summary__item">
-      <span>{label}</span>
-      <strong>{children}</strong>
-    </div>
-  )
-}
 
 type MortgageResultProps = {
   result: MortgageCalculationResponse
@@ -33,6 +25,9 @@ export function MortgageResult({
   const visibleSchedule = showFullSchedule
     ? result.schedule
     : result.schedule.slice(0, 12)
+  const graceCount = result.summary.gracePaymentsCount ?? result.assumptions.gracePeriodTermMonths
+  const debtAfterGrace = result.summary.loanAfterGrace
+    ?? result.schedule[graceCount - 1]?.remainingDebt
 
   return (
     <div className="mortgage-result">
@@ -69,9 +64,18 @@ export function MortgageResult({
           <SummaryItem label="Всего выплат">
             {formatCurrency(result.summary.totalPayments)}
           </SummaryItem>
-          <SummaryItem label="Годовая ставка">
-            {formatPercent(result.assumptions.annualRate)}
+          <LoanParameters assumptions={result.assumptions} paymentsCount={result.summary.paymentsCount} />
+          <SummaryItem label="Основных платежей">
+            {result.summary.mainPaymentsCount ?? result.summary.paymentsCount - graceCount}
           </SummaryItem>
+          {result.assumptions.hasGracePeriod ? (
+            <>
+              <SummaryItem label="Срок льготного периода, месяцев">{result.assumptions.gracePeriodTermMonths}</SummaryItem>
+              <SummaryItem label="Ставка льготного периода">{formatPercent(result.assumptions.gracePeriodRate ?? '0')}</SummaryItem>
+              <SummaryItem label="Льготных платежей">{graceCount}</SummaryItem>
+              <SummaryItem label="Долг после льготного периода">{debtAfterGrace === undefined ? '—' : formatCurrency(debtAfterGrace)}</SummaryItem>
+            </>
+          ) : null}
         </div>
         {result.summary.graceMonthlyPayment ? (
           <div className="grace-result">

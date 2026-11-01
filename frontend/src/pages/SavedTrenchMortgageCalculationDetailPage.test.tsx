@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -136,6 +136,11 @@ describe('SavedTrenchMortgageCalculationDetailPage', () => {
     expect(screen.getByRole('table', {
       name: 'Рассчитанные параметры траншей',
     })).toBeInTheDocument()
+    const tranches = screen.getByRole('table', { name: 'Рассчитанные параметры траншей' })
+    expect(within(tranches).getByRole('columnheader', { name: 'Переплата' })).toBeInTheDocument()
+    expect(within(tranches).getByText('180 000,00 ₽')).toBeInTheDocument()
+    expect(within(tranches).getByText('250 000,00 ₽')).toBeInTheDocument()
+    expect(screen.getByText('Первоначальный взнос, %').parentElement).toHaveTextContent('20%')
     expect(screen.getByRole('table', {
       name: 'Общий график ежемесячных платежей',
     })).toBeInTheDocument()

@@ -223,7 +223,7 @@ describe('TrenchMortgageCalculatorPage', () => {
     expect(await screen.findByRole('heading', {
       name: 'Параметры траншевого кредита',
     })).toBeInTheDocument()
-    expect(screen.getByText('4 000 000 ₽')).toBeInTheDocument()
+    expect(screen.getByText('4 000 000,00 ₽')).toBeInTheDocument()
     expect(screen.getByRole('table', {
       name: 'Рассчитанные параметры траншей',
     })).toBeInTheDocument()

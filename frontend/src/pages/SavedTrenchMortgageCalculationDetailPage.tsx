@@ -8,11 +8,10 @@ import {
   sessionQueryOptions,
 } from '@/api/queries'
 import { TrenchMortgageResult } from '@/features/mortgage/TrenchMortgageResult'
+import { CalculationLayout } from '@/features/mortgage/CalculationLayout'
 import {
   formatArea,
-  formatCurrency,
   formatDateTime,
-  formatPercent,
 } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
@@ -133,7 +132,6 @@ export function SavedTrenchMortgageCalculationDetailPage() {
 
   const savedCalculation = calculationQuery.data
   const property = savedCalculation.property
-  const assumptions = savedCalculation.calculation.assumptions
 
   return (
     <div className="page-stack saved-calculation-detail">
@@ -260,22 +258,8 @@ export function SavedTrenchMortgageCalculationDetailPage() {
             <dd>{formatArea(property.area)} / {property.floor}</dd>
           </div>
           <div><dt>Отделка</dt><dd>{property.decoration}</dd></div>
-          <div>
-            <dt>Базовая стоимость</dt>
-            <dd>{formatCurrency(assumptions.basePropertyCost)}</dd>
-          </div>
-          <div>
-            <dt>
-              {assumptions.priceAdjustmentType === 'discount'
-                ? 'Скидка'
-                : 'Удорожание'}
-            </dt>
-            <dd>
-              {formatPercent(assumptions.priceAdjustmentPercent)} ·{' '}
-              {formatCurrency(assumptions.priceAdjustmentRubles)}
-            </dd>
-          </div>
         </dl>
+        <CalculationLayout url={property.layoutImageUrl} />
       </section>
 
       <TrenchMortgageResult result={savedCalculation.calculation} />

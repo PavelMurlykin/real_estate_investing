@@ -135,6 +135,11 @@ def calculate_market_mortgage(validated_data):
         },
         'summary': {
             'loanAmount': _format_decimal(loan_amount),
+            'gracePaymentsCount': calculation_result['grace_payments_count'],
+            'mainPaymentsCount': calculation_result['main_payments_count'],
+            'loanAfterGrace': _format_decimal(
+                calculation_result['loan_after_grace']
+            ),
             'mainMonthlyPayment': _format_decimal(
                 calculation_result['main_monthly_payment']
             ),
@@ -264,6 +269,10 @@ def serialize_saved_property(property_object):
         'id': property_object.pk,
         'city': real_estate_complex.district.city.name,
         'district': real_estate_complex.district.name,
+        'layoutImageUrl': (
+            property_object.layout_image.url
+            if property_object.layout_image else ''
+        ),
         'developer': (
             real_estate_complex.developer
             .get_display_name_with_company_group()
@@ -425,6 +434,21 @@ def serialize_saved_mortgage_detail(calculation):
             },
             'summary': {
                 'loanAmount': _format_decimal(loan_amount),
+                'gracePaymentsCount': (
+                    calculation.grace_payments_count
+                    if calculation.grace_payments_count is not None
+                    else recalculated_result['grace_payments_count']
+                ),
+                'mainPaymentsCount': (
+                    calculation.main_payments_count
+                    if calculation.main_payments_count is not None
+                    else recalculated_result['main_payments_count']
+                ),
+                'loanAfterGrace': _format_decimal(
+                    calculation.loan_after_grace
+                    if calculation.loan_after_grace is not None
+                    else recalculated_result['loan_after_grace']
+                ),
                 'mainMonthlyPayment': _format_decimal(
                     main_monthly_payment
                 ),

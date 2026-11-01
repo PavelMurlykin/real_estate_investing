@@ -2,27 +2,13 @@ import type { ReactNode, RefObject } from 'react'
 import { useState } from 'react'
 
 import type { TrenchMortgageCalculationResponse } from '@/api/schemas'
+import { LoanParameters, SummaryItem } from './LoanParameters'
 import {
   formatCurrency,
   formatDate,
   formatMonths,
   formatPercent,
 } from '@/shared/lib/formatters'
-
-function SummaryItem({
-  label,
-  children,
-}: {
-  label: string
-  children: ReactNode
-}) {
-  return (
-    <div className="mortgage-summary__item">
-      <span>{label}</span>
-      <strong>{children}</strong>
-    </div>
-  )
-}
 
 type TrenchMortgageResultProps = {
   result: TrenchMortgageCalculationResponse
@@ -87,6 +73,7 @@ export function TrenchMortgageResult({
           <SummaryItem label="Количество траншей">
             {result.assumptions.trenchCount}
           </SummaryItem>
+          <LoanParameters assumptions={result.assumptions} paymentsCount={result.summary.paymentsCount} />
         </div>
       </section>
 
@@ -115,6 +102,7 @@ export function TrenchMortgageResult({
                 <th scope="col">Платёж после выдачи</th>
                 <th scope="col">Платежей до следующего этапа</th>
                 <th scope="col">Остаток к выдаче</th>
+                <th scope="col">Переплата</th>
               </tr>
             </thead>
             <tbody>
@@ -128,6 +116,7 @@ export function TrenchMortgageResult({
                   <td>{formatCurrency(trench.monthlyPayment)}</td>
                   <td>{trench.paymentsCount}</td>
                   <td>{formatCurrency(trench.remainingDebt)}</td>
+                  <td>{formatCurrency(trench.overpayment)}</td>
                 </tr>
               ))}
             </tbody>

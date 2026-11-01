@@ -63,7 +63,7 @@ describe('DeveloperMortgageProgramDetailPage', () => {
     expect(screen.getAllByText('Группа Север').length).toBeGreaterThan(0)
     expect(screen.getByText('ЖК Речной · Север Девелопмент')).toBeInTheDocument()
     expect(screen.getAllByText('4,3%').length).toBeGreaterThan(0)
-    expect(screen.getByText('12 000 000 ₽')).toBeInTheDocument()
+    expect(screen.getByText('12 000 000,00 ₽')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Django-интерфейсе' }))
       .toHaveAttribute('href', '/bank/developer-programs/9/edit/')
     expect(screen.queryByRole('link', { name: 'Редактировать' }))

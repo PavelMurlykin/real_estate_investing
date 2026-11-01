@@ -861,6 +861,9 @@ const mortgageAssumptionsSchema = z.object({
 
 const mortgageSummarySchema = z.object({
   loanAmount: z.string(),
+  gracePaymentsCount: z.number().int().nonnegative().optional(),
+  mainPaymentsCount: z.number().int().nonnegative().optional(),
+  loanAfterGrace: z.string().optional(),
   mainMonthlyPayment: z.string(),
   graceMonthlyPayment: z.string().nullable(),
   overpayment: z.string(),
@@ -937,6 +940,7 @@ const savedMortgagePropertySchema = z.object({
   id: z.number().int().positive(),
   city: z.string(),
   district: z.string().optional(),
+  layoutImageUrl: z.string().optional(),
   developer: z.string(),
   realEstateComplex: z.string(),
   realEstateClass: z.string(),

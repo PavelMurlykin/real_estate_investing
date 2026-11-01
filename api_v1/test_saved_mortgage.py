@@ -126,6 +126,36 @@ def test_saved_calculation_api_recalculates_and_persists_owner_data(
 
 
 @pytest.mark.django_db
+def test_saved_detail_preserves_grace_totals_and_layout_image(
+    client, calculation_user, saved_calculation_property,
+):
+    """Expose stored grace-period figures and the apartment plan in details."""
+    saved_calculation_property.layout_image = 'property/layouts/test-plan.png'
+    saved_calculation_property.save(update_fields=['layout_image'])
+    client.force_login(calculation_user)
+    response = client.post(
+        reverse('api_v1:saved_mortgage_calculation_list'),
+        data=build_save_payload(
+            saved_calculation_property, mortgageTermMonths=25,
+            hasGracePeriod=True, gracePeriodTermMonths=6,
+            gracePeriodRate='0.10',
+        ), content_type='application/json',
+    )
+    assert response.status_code == 201
+    calculation = MortgageCalculation.objects.get()
+    detail = client.get(reverse(
+        'api_v1:saved_mortgage_calculation_detail',
+        kwargs={'pk': calculation.pk},
+    )).json()
+    summary = detail['calculation']['summary']
+    assert summary['gracePaymentsCount'] == 6
+    assert summary['mainPaymentsCount'] == 19
+    assert Decimal(summary['loanAfterGrace']) == calculation.loan_after_grace
+    assert detail['calculation']['assumptions']['mortgageTermMonths'] == 25
+    assert detail['property']['layoutImageUrl'].endswith('/test-plan.png')
+
+
+@pytest.mark.django_db
 def test_saved_calculation_api_rejects_unknown_property(
     client,
     calculation_user,

@@ -42,7 +42,7 @@ describe('PropertyListPage', () => {
     expect(
       screen.getAllByText(
         (_, element) =>
-          element?.textContent?.replace(/\s/g, '') === '12500000₽',
+          element?.textContent?.replace(/\s/g, '') === '12500000,00₽',
         { selector: 'strong' },
       ),
     ).toHaveLength(2)

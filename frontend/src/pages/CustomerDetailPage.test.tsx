@@ -141,8 +141,8 @@ describe('CustomerDetailPage', () => {
     expect(
       screen.getByRole('heading', { name: 'Финансовый потенциал' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('17 500 000 ₽')).toBeInTheDocument()
-    expect(screen.getByText('14 000 000 ₽')).toBeInTheDocument()
+    expect(screen.getByText('17 500 000,00 ₽')).toBeInTheDocument()
+    expect(screen.getByText('14 000 000,00 ₽')).toBeInTheDocument()
     expect(screen.getByText('Семейная ипотека')).toBeInTheDocument()
     expect(screen.getByText('Евро-3')).toBeInTheDocument()
     expect(
