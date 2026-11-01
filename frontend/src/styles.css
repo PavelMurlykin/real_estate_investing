@@ -1,3 +1,26 @@
+.table-filters {
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  align-items: start;
+}
+
+.filter-range {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+}
+
+.filter-range legend {
+  padding: 0 0.25rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
 .calculation-layout {
   margin: 1.5rem 0 0;
   max-width: 24rem;

@@ -61,6 +61,26 @@ const calculationHistory: SavedMortgageCalculationListResponse = {
 }
 
 describe('SavedMortgageCalculationListPage', () => {
+  it('filters while typing, resets pagination and keeps the customer context and focus', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify(calculationHistory), {
+      status: 200, headers: { 'Content-Type': 'application/json' },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+    const queryClient = createTestQueryClient()
+    queryClient.setQueryData(['session'], authenticatedSession)
+    queryClient.setQueryData(['saved-mortgage-calculations', 'customerId=12&page=4'], calculationHistory)
+    renderWithProviders(<SavedMortgageCalculationListPage />, { queryClient, initialRoute: '/?customerId=12&page=4' })
+    const input = screen.getByLabelText('Стоимость, ₽: от')
+    await user.type(input, '2250000.15')
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    const parameters = new URL(String(fetchMock.mock.calls[0][0]), 'http://localhost').searchParams
+    expect(parameters.get('costFrom')).toBe('2250000.15')
+    expect(parameters.get('customerId')).toBe('12')
+    expect(parameters.has('page')).toBe(false)
+    expect(input).toHaveFocus()
+  })
+
   it('does not request private data and prompts anonymous visitors to sign in', () => {
     renderWithProviders(<SavedMortgageCalculationListPage />)
 

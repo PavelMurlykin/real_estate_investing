@@ -28,7 +28,13 @@ Selecting a property and bank program applies active developer conditions: a spe
 
 ## Current migration limitations
 
-Parity restoration is tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. Filters, table sorting and the homepage still have limitations. Use Django with legacy redirects disabled or an explicit `legacy=1` URL parameter for the previous workflows. Unfinished stages must not be treated as available features.
+Parity restoration is tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. Consistent sorting through all table headers, general live text search and the homepage remain in progress. Use Django with legacy redirects disabled or an explicit `legacy=1` URL parameter for the previous workflows. Unfinished stages must not be treated as available features.
+
+## Catalog and calculation filters
+
+The property catalog combines city, developer, complex, building and layout selectors with apartment number, exact area and price fields. Both histories and linked customer calculations provide city and ranges for price, down payment, payment amount, term in years and rate. The payment range uses the market mortgage's main payment or the tranche mortgage's last payment. Tranche history shows maximum and last payments separately.
+
+Numeric filters apply while typing with a 250 ms delay and reset pagination. Boundaries are inclusive; money boundaries use the displayed kopeck precision. For example, a term from `2.08` to `2.09` years selects 25 months. Filters and sorting remain in the URL, preserving customer selection context. Legacy range URLs translate to the corresponding React parameters.
 
 ## Large form dictionaries
 

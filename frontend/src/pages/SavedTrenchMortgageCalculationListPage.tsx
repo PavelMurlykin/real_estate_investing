@@ -1,3 +1,4 @@
+import { calculationOrderingOptions } from '@/features/mortgage/calculationOrdering'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
@@ -9,6 +10,8 @@ import {
   sessionQueryOptions,
 } from '@/api/queries'
 import type { SavedTrenchMortgageCalculationListItem } from '@/api/schemas'
+import { CalculationFilters } from '@/features/mortgage/CalculationFilters'
+import { useTableParameters } from '@/shared/lib/useTableParameters'
 import {
   formatCurrency,
   formatDateTime,
@@ -20,12 +23,9 @@ import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 
 const orderingOptions = [
-  { value: '-createdAt', label: 'Сначала новые' },
-  { value: 'createdAt', label: 'Сначала старые' },
-  { value: 'finalPropertyCost', label: 'Стоимость: по возрастанию' },
-  { value: '-finalPropertyCost', label: 'Стоимость: по убыванию' },
-  { value: 'annualRate', label: 'Ставка: по возрастанию' },
-  { value: '-annualRate', label: 'Ставка: по убыванию' },
+  ...calculationOrderingOptions('monthlyPayment'),
+  { value: 'maximumMonthlyPayment', label: 'Макс. платёж: по возрастанию' },
+  { value: '-maximumMonthlyPayment', label: 'Макс. платёж: по убыванию' },
   { value: 'trenchCount', label: 'Транши: по возрастанию' },
   { value: '-trenchCount', label: 'Транши: по убыванию' },
 ]
@@ -81,6 +81,10 @@ function TrenchCalculationMobileCard({
           </dd>
         </div>
         <div>
+          <dt>Последний платёж</dt>
+          <dd>{calculation.lastMonthlyPayment ? formatCurrency(calculation.lastMonthlyPayment) : '—'}</dd>
+        </div>
+        <div>
           <dt>Срок</dt>
           <dd>{formatMonths(calculation.mortgageTermMonths)}</dd>
         </div>
@@ -101,6 +105,7 @@ function TrenchCalculationMobileCard({
 
 export function SavedTrenchMortgageCalculationListPage() {
   const [searchParameters, setSearchParameters] = useSearchParams()
+  const tableParameters = useTableParameters(searchParameters)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const rawCustomerIdentifier = Number(searchParameters.get('customerId'))
@@ -117,7 +122,7 @@ export function SavedTrenchMortgageCalculationListPage() {
   )
   const sessionQuery = useQuery(sessionQueryOptions)
   const calculationQuery = useQuery({
-    ...savedTrenchMortgageCalculationListQueryOptions(searchParameters),
+    ...savedTrenchMortgageCalculationListQueryOptions(tableParameters),
     enabled: sessionQuery.data?.isAuthenticated === true,
   })
   const linkMutation = useMutation({
@@ -232,6 +237,7 @@ export function SavedTrenchMortgageCalculationListPage() {
       </header>
 
       <section className="filter-panel" aria-label="Фильтры траншевой истории">
+        <CalculationFilters />
         <form className="search-form" role="search" onSubmit={handleSearch}>
           <label htmlFor="trench-calculation-search">Поиск по объекту</label>
           <div className="search-control">
@@ -330,6 +336,7 @@ export function SavedTrenchMortgageCalculationListPage() {
                   <th scope="col">Стоимость</th>
                   <th scope="col">Первый взнос</th>
                   <th scope="col">Макс. платёж</th>
+                  <th scope="col">Последний платёж</th>
                   <th scope="col">Срок</th>
                   <th scope="col">Ставка / транши</th>
                   <th scope="col">
@@ -371,6 +378,7 @@ export function SavedTrenchMortgageCalculationListPage() {
                           : '—'}
                       </strong>
                     </td>
+                    <td>{calculation.lastMonthlyPayment ? formatCurrency(calculation.lastMonthlyPayment) : '—'}</td>
                     <td>{formatMonths(calculation.mortgageTermMonths)}</td>
                     <td>
                       {formatPercent(calculation.annualRate)}

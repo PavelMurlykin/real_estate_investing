@@ -1,3 +1,4 @@
+import { calculationOrderingOptions } from '@/features/mortgage/calculationOrdering'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
@@ -9,6 +10,8 @@ import {
   sessionQueryOptions,
 } from '@/api/queries'
 import type { SavedMortgageCalculationListItem } from '@/api/schemas'
+import { CalculationFilters } from '@/features/mortgage/CalculationFilters'
+import { useTableParameters } from '@/shared/lib/useTableParameters'
 import {
   formatCurrency,
   formatDateTime,
@@ -20,14 +23,7 @@ import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 
 const orderingOptions = [
-  { value: '-createdAt', label: 'Сначала новые' },
-  { value: 'createdAt', label: 'Сначала старые' },
-  { value: 'finalPropertyCost', label: 'Стоимость: по возрастанию' },
-  { value: '-finalPropertyCost', label: 'Стоимость: по убыванию' },
-  { value: 'mainMonthlyPayment', label: 'Платёж: по возрастанию' },
-  { value: '-mainMonthlyPayment', label: 'Платёж: по убыванию' },
-  { value: 'annualRate', label: 'Ставка: по возрастанию' },
-  { value: '-annualRate', label: 'Ставка: по убыванию' },
+  ...calculationOrderingOptions('mainMonthlyPayment'),
 ]
 
 function CalculationMobileCard({
@@ -89,6 +85,7 @@ function CalculationMobileCard({
 
 export function SavedMortgageCalculationListPage() {
   const [searchParameters, setSearchParameters] = useSearchParams()
+  const tableParameters = useTableParameters(searchParameters)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const rawCustomerIdentifier = Number(searchParameters.get('customerId'))
@@ -105,7 +102,7 @@ export function SavedMortgageCalculationListPage() {
   )
   const sessionQuery = useQuery(sessionQueryOptions)
   const calculationQuery = useQuery({
-    ...savedMortgageCalculationListQueryOptions(searchParameters),
+    ...savedMortgageCalculationListQueryOptions(tableParameters),
     enabled: sessionQuery.data?.isAuthenticated === true,
   })
   const linkMutation = useMutation({
@@ -215,6 +212,7 @@ export function SavedMortgageCalculationListPage() {
       </header>
 
       <section className="filter-panel" aria-label="Фильтры истории расчётов">
+        <CalculationFilters />
         <form className="search-form" role="search" onSubmit={handleSearch}>
           <label htmlFor="calculation-search">Поиск по объекту</label>
           <div className="search-control">

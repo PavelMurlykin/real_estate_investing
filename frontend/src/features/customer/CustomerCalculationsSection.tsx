@@ -1,3 +1,4 @@
+import { calculationOrderingOptions } from '@/features/mortgage/calculationOrdering'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -20,16 +21,12 @@ import {
   formatPercent,
 } from '@/shared/lib/formatters'
 import { EmptyState, ErrorState } from '@/shared/ui/AsyncState'
+import { CalculationFilters } from '@/features/mortgage/CalculationFilters'
+import { calculationFilterNames } from '@/features/mortgage/calculationFilterFields'
+import { useTableParameters } from '@/shared/lib/useTableParameters'
 
 const orderingOptions = [
-  { value: '-createdAt', label: 'Сначала новые' },
-  { value: 'createdAt', label: 'Сначала старые' },
-  { value: 'finalPropertyCost', label: 'Стоимость: по возрастанию' },
-  { value: '-finalPropertyCost', label: 'Стоимость: по убыванию' },
-  { value: 'monthlyPayment', label: 'Платёж: по возрастанию' },
-  { value: '-monthlyPayment', label: 'Платёж: по убыванию' },
-  { value: 'annualRate', label: 'Ставка: по возрастанию' },
-  { value: '-annualRate', label: 'Ставка: по убыванию' },
+  ...calculationOrderingOptions('monthlyPayment'),
 ]
 
 function calculationToken(calculation: CustomerCalculationSelection) {
@@ -79,13 +76,18 @@ export function CustomerCalculationsSection({
     if (programType) parameters.set('programType', programType)
     if (ordering) parameters.set('ordering', ordering)
     if (page) parameters.set('page', page)
+    calculationFilterNames.forEach((name) => {
+      const value = searchParameters.get(`calculation${name[0].toUpperCase()}${name.slice(1)}`)
+      if (value) parameters.set(name, value)
+    })
     parameters.set('pageSize', '10')
     return parameters
   }, [searchParameters])
+  const tableParameters = useTableParameters(calculationParameters)
   const calculationsQuery = useQuery(
     customerCalculationListQueryOptions(
       customerIdentifier,
-      calculationParameters,
+      tableParameters,
     ),
   )
   const exportMutation = useMutation({
@@ -257,6 +259,7 @@ export function CustomerCalculationsSection({
       </div>
 
       <div className="customer-calculation-toolbar">
+        <CalculationFilters prefix="calculation" />
         <form className="search-form" role="search" onSubmit={handleSearch}>
           <label htmlFor="customer-calculation-search">Поиск по объекту</label>
           <div className="search-control">

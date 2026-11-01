@@ -51,6 +51,21 @@ function renderCalculations() {
 }
 
 describe('CustomerCalculationsSection', () => {
+  it('applies namespaced range fields without a search submission', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify(customerCalculations), {
+      status: 200, headers: { 'Content-Type': 'application/json' },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+    renderCalculations()
+    await user.type(screen.getByLabelText('Срок, лет: от'), '2.08')
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    const parameters = new URL(String(fetchMock.mock.calls[0][0]), 'http://localhost').searchParams
+    expect(parameters.get('termFrom')).toBe('2.08')
+    expect(parameters.has('calculationTermFrom')).toBe(false)
+    expect(parameters.get('pageSize')).toBe('10')
+  })
+
   it('renders unified calculations and downloads selected rows as Word', async () => {
     const user = userEvent.setup()
     const clickMock = vi

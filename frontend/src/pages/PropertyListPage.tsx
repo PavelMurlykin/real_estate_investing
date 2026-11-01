@@ -4,11 +4,19 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import { propertyListQueryOptions, sessionQueryOptions } from '@/api/queries'
 import type { PropertyListItem } from '@/api/schemas'
+import { PropertyFilters } from '@/features/property/PropertyFilters'
+import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { formatArea, formatCurrency, formatInteger } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 
 const orderingOptions = [
+  ...[
+    ['developer', 'Застройщик'], ['building', 'Корпус'],
+    ['apartmentNumber', 'Квартира'], ['layout', 'Планировка'],
+  ].flatMap(([value, label]) => [
+    { value, label: `${label}: А–Я` }, { value: `-${value}`, label: `${label}: Я–А` },
+  ]),
   { value: 'city', label: 'Городу: А–Я' },
   { value: '-city', label: 'Городу: Я–А' },
   { value: 'realEstateComplex', label: 'ЖК: А–Я' },
@@ -80,7 +88,8 @@ export function PropertyListPage() {
     ? `&customerId=${customerIdentifier}`
     : ''
   const sessionQuery = useQuery(sessionQueryOptions)
-  const propertyQuery = useQuery(propertyListQueryOptions(searchParameters))
+  const tableParameters = useTableParameters(searchParameters)
+  const propertyQuery = useQuery(propertyListQueryOptions(tableParameters))
 
   const updateParameters = (updates: Record<string, string | null>) => {
     const nextParameters = new URLSearchParams(searchParameters)
@@ -138,6 +147,7 @@ export function PropertyListPage() {
       </header>
 
       <section className="filter-panel" aria-label="Фильтры объектов">
+        <PropertyFilters />
         <form className="search-form" role="search" onSubmit={handleSearch}>
           <label htmlFor="property-search">Поиск по каталогу</label>
           <div className="search-control">

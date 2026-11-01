@@ -11,10 +11,12 @@ from django.db.models import (
     Subquery,
     Value,
 )
+from django.db.models.functions import Round
 
 from customer.models import CustomerCalculation, CustomerTrenchCalculation
 from trench_mortgage.models import Trench
 from users.roles import can_view_all_private_records
+from .calculation_filters import apply_calculation_ranges
 
 
 MONEY_QUANTUM = Decimal('0.01')
@@ -106,7 +108,7 @@ def _annotate_link_values(
         building=F('calculation__property__building__number'),
         apartmentNumber=F('calculation__property__apartment_number'),
         finalPropertyCost=F('calculation__final_property_cost'),
-        initialPaymentRubles=_initial_payment_expression(),
+        initialPaymentRubles=Round(_initial_payment_expression(), precision=2),
         monthlyPayment=monthly_payment_expression,
         mortgageTermMonths=F('calculation__mortgage_term'),
         annualRate=F('calculation__annual_rate'),
@@ -147,6 +149,16 @@ def build_customer_calculation_queryset(customer, user, filters):
         ),
         F('calculation__trench_count'),
     )
+
+    range_fields = {
+        'city': ('calculation__property__building__real_estate_complex'
+                 '__district__city_id'),
+        'cost': 'finalPropertyCost', 'initialPayment': 'initialPaymentRubles',
+        'monthlyPayment': 'monthlyPayment', 'term': 'mortgageTermMonths',
+        'rate': 'annualRate',
+    }
+    market_values = apply_calculation_ranges(market_values, filters, range_fields)
+    trench_values = apply_calculation_ranges(trench_values, filters, range_fields)
 
     program_type = filters['programType']
     if program_type == 'market':

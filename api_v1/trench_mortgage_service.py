@@ -255,6 +255,10 @@ def serialize_saved_trench_mortgage_list_item(
         ),
         default=None,
     )
+    last_trench = max(
+        calculation.trenches.all(),
+        key=lambda trench: trench.trench_number, default=None,
+    )
     return {
         'id': calculation.pk,
         'createdAt': calculation.timestamp.isoformat(),
@@ -269,6 +273,10 @@ def serialize_saved_trench_mortgage_list_item(
             _format_decimal(maximum_monthly_payment)
             if maximum_monthly_payment is not None
             else None
+        ),
+        'lastMonthlyPayment': (
+            _format_decimal(last_trench.monthly_payment)
+            if last_trench is not None else None
         ),
         'mortgageTermMonths': calculation.mortgage_term,
         'annualRate': _format_decimal(

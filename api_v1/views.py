@@ -118,6 +118,7 @@ from .customer_calculation_service import (
     serialize_customer_calculation_link,
 )
 from .calculation_property_service import resolve_saved_property
+from .calculation_filters import filter_saved_calculations
 from .mortgage_service import (
     build_saved_mortgage_payment_schedule,
     calculate_market_mortgage,
@@ -829,6 +830,11 @@ class SavedTrenchMortgageCalculationListCreateAPIView(APIView):
 
     permission_classes = (IsAuthenticated,)
     ordering_fields = {
+        'city': 'property__building__real_estate_complex__district__city__name',
+        'realEstateComplex': 'property__building__real_estate_complex__name',
+        'initialPaymentRubles': 'table_initial_payment_amount',
+        'monthlyPayment': 'monthlyPayment',
+        'maximumMonthlyPayment': 'maximumMonthlyPayment',
         'createdAt': 'timestamp',
         'finalPropertyCost': 'final_property_cost',
         'mortgageTermMonths': 'mortgage_term',
@@ -843,7 +849,10 @@ class SavedTrenchMortgageCalculationListCreateAPIView(APIView):
         )
         query_serializer.is_valid(raise_exception=True)
         filters = query_serializer.validated_data
-        queryset = _saved_trench_mortgage_calculation_queryset(request.user)
+        queryset = filter_saved_calculations(
+            _saved_trench_mortgage_calculation_queryset(request.user),
+            filters, tranche=True,
+        )
 
         search = filters.get('q', '')
         if search:
@@ -1019,6 +1028,10 @@ class SavedMortgageCalculationListCreateAPIView(APIView):
 
     permission_classes = (IsAuthenticated,)
     ordering_fields = {
+        'city': 'property__building__real_estate_complex__district__city__name',
+        'realEstateComplex': 'property__building__real_estate_complex__name',
+        'initialPaymentRubles': 'table_initial_payment_amount',
+        'monthlyPayment': 'monthlyPayment',
         'createdAt': 'timestamp',
         'finalPropertyCost': 'final_property_cost',
         'mainMonthlyPayment': 'main_monthly_payment',
@@ -1033,7 +1046,9 @@ class SavedMortgageCalculationListCreateAPIView(APIView):
         )
         query_serializer.is_valid(raise_exception=True)
         filters = query_serializer.validated_data
-        queryset = _saved_mortgage_calculation_queryset(request.user)
+        queryset = filter_saved_calculations(
+            _saved_mortgage_calculation_queryset(request.user), filters,
+        )
 
         search = filters.get('q', '')
         if search:
@@ -3082,6 +3097,14 @@ class PropertyListAPIView(ListCreateAPIView):
             value = filters.get(query_name)
             if value:
                 queryset = queryset.filter(**{model_field: value})
+
+        if filters.get('apartmentNumber'):
+            queryset = queryset.filter(
+                apartment_number__icontains=filters['apartmentNumber']
+            )
+        for name, field in (('area', 'area'), ('propertyCost', 'property_cost')):
+            if name in filters:
+                queryset = queryset.filter(**{field: filters[name]})
 
         ordering = filters['ordering']
         descending = ordering.startswith('-')

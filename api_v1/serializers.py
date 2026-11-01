@@ -1739,7 +1739,43 @@ class DeveloperSerializer(DeveloperPublicSerializer):
         )
 
 
-class CustomerCalculationListQuerySerializer(serializers.Serializer):
+class CalculationRangeQuerySerializer(serializers.Serializer):
+    """Validate the shared history filters and inclusive numeric ranges."""
+
+    city = serializers.IntegerField(required=False, min_value=1)
+    costFrom = serializers.DecimalField(
+        required=False, max_digits=15, decimal_places=2, min_value=0,
+    )
+    costTo = serializers.DecimalField(
+        required=False, max_digits=15, decimal_places=2, min_value=0,
+    )
+    initialPaymentFrom = serializers.DecimalField(
+        required=False, max_digits=15, decimal_places=2, min_value=0,
+    )
+    initialPaymentTo = serializers.DecimalField(
+        required=False, max_digits=15, decimal_places=2, min_value=0,
+    )
+    monthlyPaymentFrom = serializers.DecimalField(
+        required=False, max_digits=15, decimal_places=2, min_value=0,
+    )
+    monthlyPaymentTo = serializers.DecimalField(
+        required=False, max_digits=15, decimal_places=2, min_value=0,
+    )
+    termFrom = serializers.DecimalField(
+        required=False, max_digits=4, decimal_places=2, min_value=0,
+    )
+    termTo = serializers.DecimalField(
+        required=False, max_digits=4, decimal_places=2, min_value=0,
+    )
+    rateFrom = serializers.DecimalField(
+        required=False, max_digits=5, decimal_places=2, min_value=0,
+    )
+    rateTo = serializers.DecimalField(
+        required=False, max_digits=5, decimal_places=2, min_value=0,
+    )
+
+
+class CustomerCalculationListQuerySerializer(CalculationRangeQuerySerializer):
     """Validate filters and pagination for a customer's calculations."""
 
     ORDERING_CHOICES = (
@@ -1755,6 +1791,9 @@ class CustomerCalculationListQuerySerializer(serializers.Serializer):
         '-monthlyPayment',
         'annualRate',
         '-annualRate',
+        'mortgageTermMonths', '-mortgageTermMonths',
+        'initialPaymentRubles', '-initialPaymentRubles',
+        'programType', '-programType',
     )
 
     q = serializers.CharField(
@@ -3192,6 +3231,13 @@ class PropertyListQuerySerializer(serializers.Serializer):
     realEstateComplex = serializers.IntegerField(required=False, min_value=1)
     building = serializers.IntegerField(required=False, min_value=1)
     layout = serializers.IntegerField(required=False, min_value=1)
+    apartmentNumber = serializers.CharField(required=False, max_length=50)
+    area = serializers.DecimalField(
+        required=False, max_digits=10, decimal_places=2, min_value=0,
+    )
+    propertyCost = serializers.DecimalField(
+        required=False, max_digits=15, decimal_places=2, min_value=0,
+    )
     ordering = serializers.ChoiceField(
         required=False,
         choices=ORDERING_CHOICES,
@@ -4099,10 +4145,15 @@ class SavedTrenchMortgageCalculationCreateSerializer(serializers.Serializer):
         return attributes
 
 
-class SavedMortgageCalculationListQuerySerializer(serializers.Serializer):
+class SavedMortgageCalculationListQuerySerializer(
+    CalculationRangeQuerySerializer,
+):
     """Validate bounded filtering and ordering for saved calculations."""
 
     ORDERING_CHOICES = (
+        'city', '-city', 'realEstateComplex', '-realEstateComplex',
+        'initialPaymentRubles', '-initialPaymentRubles',
+        'monthlyPayment', '-monthlyPayment',
         'createdAt',
         '-createdAt',
         'finalPropertyCost',
@@ -4137,11 +4188,15 @@ class SavedMortgageCalculationListQuerySerializer(serializers.Serializer):
 
 
 class SavedTrenchMortgageCalculationListQuerySerializer(
-    serializers.Serializer
+    CalculationRangeQuerySerializer,
 ):
     """Validate bounded filtering and ordering for tranche history."""
 
     ORDERING_CHOICES = (
+        'city', '-city', 'realEstateComplex', '-realEstateComplex',
+        'initialPaymentRubles', '-initialPaymentRubles',
+        'monthlyPayment', '-monthlyPayment',
+        'maximumMonthlyPayment', '-maximumMonthlyPayment',
         'createdAt',
         '-createdAt',
         'finalPropertyCost',

@@ -989,6 +989,7 @@ export const savedTrenchMortgageCalculationListItemSchema = z.object({
   finalPropertyCost: z.string(),
   initialPaymentRubles: z.string(),
   maximumMonthlyPayment: z.string().nullable(),
+  lastMonthlyPayment: z.string().nullable().optional(),
   mortgageTermMonths: z.number().int().positive(),
   annualRate: z.string(),
   trenchCount: z.number().int().min(1).max(5),
