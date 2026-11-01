@@ -1,5 +1,7 @@
 # User manual
 
+Verified on November 1, 2026. Restored React features and page comparison results, including tables and calculation forms: [report](../.audit/REACT_DJANGO_PARITY_REPORT.md). Permanent regression tests compare the financial matrix against the Django form.
+
 ## Starting the application
 
 Configure `.env` using `.env.example`, then run `docker compose up -d --build` from the repository root. Open the nginx address configured in `compose.yaml`. For local development use `.venv\Scripts\python.exe manage.py runserver` and Vite from `frontend` (`npm ci`, `npm run dev`). React is available at `/app/`; Django pages remain accessible when `REACT_FRONTEND_LEGACY_REDIRECTS_ENABLED` is disabled.

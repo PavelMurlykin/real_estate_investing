@@ -1,5 +1,7 @@
 # Руководство пользователя
 
+Проверено 1 ноября 2026 года. Итоги восстановления функций React и постраничной сверки, включая таблицы и формы расчётов: [отчёт](../.audit/REACT_DJANGO_PARITY_REPORT.md). Финансовая матрица сравнивается с Django-формой постоянными регрессионными тестами.
+
 ## Запуск
 
 Настройте `.env` по `.env.example` и выполните `docker compose up -d --build` из корня проекта. Откройте адрес nginx, указанный в `compose.yaml`. Для локальной разработки используйте `.venv\Scripts\python.exe manage.py runserver` и Vite из `frontend` (`npm ci`, `npm run dev`). Рабочий интерфейс React находится по `/app/`; при отключённом `REACT_FRONTEND_LEGACY_REDIRECTS_ENABLED` доступны и Django-страницы.
