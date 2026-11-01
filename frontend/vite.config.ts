@@ -16,12 +16,13 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: false,
     cssCodeSplit: false,
+    manifest: true,
     rollupOptions: {
       input: fileURLToPath(new URL('./src/main.tsx', import.meta.url)),
       output: {
-        entryFileNames: 'app.js',
+        entryFileNames: 'app-[hash].js',
         chunkFileNames: 'chunks/[name]-[hash].js',
-        assetFileNames: 'app[extname]',
+        assetFileNames: 'app-[hash][extname]',
       },
     },
   },

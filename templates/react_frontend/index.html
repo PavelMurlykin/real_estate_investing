@@ -27,11 +27,13 @@
         document.documentElement.style.colorScheme = theme;
       })();
     </script>
-    <link rel="stylesheet" href="{% static 'react/app.css' %}">
+    {% for stylesheet in react_stylesheets %}
+    <link rel="stylesheet" href="{% static stylesheet %}">
+    {% endfor %}
   </head>
   <body>
     <div id="root"></div>
     <noscript>Для работы нового интерфейса необходимо включить JavaScript.</noscript>
-    <script type="module" src="{% static 'react/app.js' %}"></script>
+    <script type="module" src="{% static react_script %}"></script>
   </body>
 </html>
