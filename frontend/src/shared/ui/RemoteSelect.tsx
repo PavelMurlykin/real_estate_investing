@@ -3,6 +3,7 @@ import { useId } from 'react'
 import type { CatalogOption } from '@/api/schemas'
 import { useCatalogOptions } from './useCatalogOptions'
 import type { CatalogChoicesProps } from './useCatalogOptions'
+import { SearchableSelect } from './SearchableSelect'
 
 type RemoteSelectProps = CatalogChoicesProps & {
   label: string
@@ -10,16 +11,23 @@ type RemoteSelectProps = CatalogChoicesProps & {
   onChange: (value: string, option?: CatalogOption) => void
   required?: boolean
   error?: string | null
+  filter?: boolean
 }
 
 export function RemoteSelect({
   dictionary, label, value, onChange, filters = {}, initialOptions,
-  truncated = false, disabled = false, required = false, error,
+  truncated = false, disabled = false, required = false, error, filter = false,
 }: RemoteSelectProps) {
   const identifier = useId()
   const { options, choicesQuery, search, setSearch, hasMore, loadMore } = useCatalogOptions({
-    dictionary, filters, initialOptions, truncated, disabled, values: value ? [value] : [],
+    dictionary, filters, initialOptions, truncated, disabled, autoLoad: filter, values: value ? [value] : [],
   })
+  if (filter) return (
+    <SearchableSelect label={label} value={value} options={options.map((option) => ({ value: String(option.id), label: option.label }))}
+      onChange={(next) => onChange(next, options.find((option) => String(option.id) === next))}
+      disabled={disabled} loading={choicesQuery.isFetching} onSearch={setSearch} hasMore={hasMore} onLoadMore={loadMore}
+      error={choicesQuery.isError} onRetry={() => void choicesQuery.refetch()} />
+  )
   return (
     <div className="form-field remote-select">
       <label htmlFor={identifier}>{label}{required ? ' *' : ''}</label>

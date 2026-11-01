@@ -98,6 +98,74 @@
   min-width: 0;
 }
 
+.searchable-select {
+  position: relative;
+  min-width: 0;
+}
+
+.searchable-select__control {
+  position: relative;
+}
+
+.form-field .searchable-select__control input {
+  padding-right: 2.25rem;
+}
+
+.searchable-select__chevron {
+  position: absolute;
+  right: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--text-muted);
+}
+
+.searchable-select__list {
+  position: absolute;
+  z-index: 50;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: min(18rem, 45vh);
+  margin: 0.35rem 0 0;
+  padding: 0.35rem;
+  overflow-y: auto;
+  list-style: none;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.searchable-select__list [role='option'] {
+  padding: 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.searchable-select__list [aria-selected='true'],
+.searchable-select__list .is-highlighted {
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.searchable-select__notice {
+  padding: 0.75rem;
+  color: var(--text-muted);
+}
+
+.filter-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .interactive-table > .form-field {
   max-width: 28rem;
   width: 100%;

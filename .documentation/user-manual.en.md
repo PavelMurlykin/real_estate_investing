@@ -54,6 +54,8 @@ Description fields in forms beside tables use the same fonts, background, border
 
 ## Catalog and calculation filters
 
+Property dictionary filters and the calculation city filter combine selection and search in one control. Choices load automatically; open the field and type part of a name. Scrolling loads more choices. “Все” clears that filter; changing a parent also resets dependent fields. Arrow keys and Enter select a choice; Escape closes the list without changing the selection.
+
 The property catalog combines city, developer, complex, building and layout selectors with apartment number, exact area and price fields. Both histories and linked customer calculations provide city and ranges for price, down payment, payment amount, term in years and rate. The payment range uses the market mortgage's main payment or the tranche mortgage's last payment. Tranche history shows maximum and last payments separately.
 
 Numeric filters apply while typing with a 250 ms delay and reset pagination. Boundaries are inclusive; money boundaries use the displayed kopeck precision. For example, a term from `2.08` to `2.09` years selects 25 months. Filters and sorting remain in the URL, preserving customer selection context. Legacy range URLs translate to the corresponding React parameters.

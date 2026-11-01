@@ -12,11 +12,12 @@ export type CatalogChoicesProps = {
   initialOptions?: CatalogOption[]
   truncated?: boolean
   disabled?: boolean
+  autoLoad?: boolean
 }
 
 export function useCatalogOptions({
   dictionary, filters = {}, initialOptions, truncated = false, disabled = false,
-  values,
+  values, autoLoad = false,
 }: CatalogChoicesProps & { values: string[] }) {
   const [search, setSearch] = useState('')
   const [remoteActivated, setRemoteActivated] = useState(false)
@@ -40,7 +41,7 @@ export function useCatalogOptions({
       return requestJson(`/api/v1/catalog-options/${dictionary}/?${parameters}`, catalogOptionsResponseSchema, { signal })
     },
     getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
-    enabled: !disabled && (!initialOptions || remoteActivated || selectedMissing),
+    enabled: !disabled && (autoLoad || !initialOptions || remoteActivated || selectedMissing),
     staleTime: 60_000,
   })
   const options = choicesQuery.data

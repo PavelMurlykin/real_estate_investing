@@ -11,7 +11,7 @@ export function CalculationFilters({ prefix = '' }: { prefix?: string }) {
   const cityParameter = parameterName('city')
   return (
     <div className="field-grid table-filters">
-      <RemoteSelect dictionary="cities" label="Город расчёта" value={parameters.get(cityParameter) ?? ''}
+      <RemoteSelect filter dictionary="cities" label="Город расчёта" value={parameters.get(cityParameter) ?? ''}
         initialOptions={[]} truncated
         onChange={(value) => {
           const next = new URLSearchParams(parameters)

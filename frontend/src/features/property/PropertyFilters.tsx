@@ -14,7 +14,7 @@ export function PropertyFilters() {
     setParameters(next)
   }
   const select = (dictionary: string, label: string, name: string, dependents: string[] = [], filters = {}) => (
-    <RemoteSelect dictionary={dictionary} label={label} value={parameters.get(name) ?? ''}
+    <RemoteSelect filter dictionary={dictionary} label={label} value={parameters.get(name) ?? ''}
       initialOptions={[]} truncated filters={filters} onChange={(value) => update(name, value, dependents)} />
   )
   return (
