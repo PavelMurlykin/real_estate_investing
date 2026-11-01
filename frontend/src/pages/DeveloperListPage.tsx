@@ -1,5 +1,6 @@
+import { ResetFilters } from '@/shared/ui/ResetFilters'
+import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { LegacyLink } from '@/shared/ui/LegacyLink'
-import { TableOrdering } from '@/shared/ui/TableOrdering'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
@@ -142,40 +143,18 @@ export function DeveloperListPage() {
             <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
-        <div className="sort-control">
-          <label htmlFor="developer-company-group">Группа компаний</label>
-          <select
-            id="developer-company-group"
-            value={searchParameters.get('companyGroupId') ?? ''}
-            onChange={(event) => updateParameters({
-              companyGroupId: event.target.value || null,
+        <RemoteSelect filter dictionary="company-groups" label="Группа компаний" value={searchParameters.get('companyGroupId') ?? ''}
+            initialOptions={companyGroups.map((option) => ({ id: option.id, label: option.name }))}
+            onChange={(value) => updateParameters({
+              companyGroupId: value || null,
               page: null,
-            })}
-          >
-            <option value="">Все группы</option>
-            {companyGroups.map((companyGroup) => (
-              <option value={companyGroup.id} key={companyGroup.id}>
-                {companyGroup.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="sort-control">
-          <label htmlFor="developer-region">Регион</label>
-          <select
-            id="developer-region"
-            value={searchParameters.get('regionId') ?? ''}
-            onChange={(event) => updateParameters({
-              regionId: event.target.value || null,
+            })} />
+        <RemoteSelect filter dictionary="regions" label="Регион" value={searchParameters.get('regionId') ?? ''}
+            initialOptions={regions.map((option) => ({ id: option.id, label: option.name }))}
+            onChange={(value) => updateParameters({
+              regionId: value || null,
               page: null,
-            })}
-          >
-            <option value="">Все регионы</option>
-            {regions.map((region) => (
-              <option value={region.id} key={region.id}>{region.name}</option>
-            ))}
-          </select>
-        </div>
+            })} />
         <div className="sort-control">
           <label htmlFor="developer-status">Статус</label>
           <select
@@ -191,15 +170,8 @@ export function DeveloperListPage() {
             <option value="inactive">Неактивные</option>
           </select>
         </div>
-        <TableOrdering id="developer-ordering" defaultOrdering="name" parameter="ordering" pageParameter="page"
-          fields={[{ field: 'name', label: "Застройщик" }, { field: 'companyGroup', label: "Группа" }, { field: 'regions', label: "Регионы" }, { field: 'complexCount', label: "ЖК" }]} />
-        {optionsQuery.data?.truncated.companyGroups
-          || optionsQuery.data?.truncated.regions ? (
-            <p className="filter-panel__notice" role="status">
-              Показана только первая часть справочников. Полный перечень
-              доступен в прежней версии.
-            </p>
-          ) : null}
+        <ResetFilters />
+
       </section>
 
       <div className="results-heading" aria-live="polite">

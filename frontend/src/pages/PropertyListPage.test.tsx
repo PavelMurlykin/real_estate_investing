@@ -40,10 +40,12 @@ describe('PropertyListPage', () => {
     const queryClient = createTestQueryClient()
     queryClient.setQueryData(['properties', ''], propertyList)
     renderWithProviders(<PropertyListPage />, { queryClient })
-    const search = screen.getByLabelText('Поиск по каталогу')
-    await user.type(search, 'Белые')
-    await waitFor(() => expect(fetchMock.mock.calls.some(([path]) => String(path).includes('search='))).toBe(true))
+    const search = screen.getByLabelText('Номер квартиры')
+    await user.type(search, '101')
+    await waitFor(() => expect(fetchMock.mock.calls.some(([path]) => String(path).includes('apartmentNumber=101'))).toBe(true))
     expect(search).toHaveFocus()
+    expect(screen.queryByLabelText('Поиск по каталогу')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Сортировка')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Стоимость' }))
     await waitFor(() => expect(fetchMock.mock.calls.some(([path]) => String(path).includes('ordering=propertyCost'))).toBe(true))
     expect(screen.getByRole('columnheader', { name: 'Стоимость' })).toHaveAttribute('aria-sort', 'ascending')
@@ -100,7 +102,8 @@ describe('PropertyListPage', () => {
         name: 'По вашему запросу ничего не найдено',
       }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Сбросить фильтры' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Сбросить' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Убрать поиск из ссылки' })).toBeInTheDocument()
   })
 
   it('preserves the customer context in property and mortgage links', () => {

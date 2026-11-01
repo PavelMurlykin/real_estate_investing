@@ -1,7 +1,7 @@
+import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
-import { TableOrdering } from '@/shared/ui/TableOrdering'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -131,10 +131,7 @@ export function KeyRatePage() {
 
       <section className="filter-panel" aria-label="Фильтры ключевой ставки">
         <LiveFilterInput label="Поиск по истории ставки" parameter="q" placeholder="Дата решения, ставка или изменение" />
-        <TableOrdering defaultOrdering="-meetingDate" fields={[
-          { field: 'meetingDate', label: 'Дата решения' }, { field: 'keyRate', label: 'Ключевая ставка' },
-          { field: 'rateChange', label: 'Изменение' },
-        ]} />
+        <ResetFilters />
       </section>
 
       {syncMutation.isSuccess ? (

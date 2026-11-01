@@ -1,5 +1,5 @@
+import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { LegacyLink } from '@/shared/ui/LegacyLink'
-import { TableOrdering } from '@/shared/ui/TableOrdering'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -239,8 +239,7 @@ export function SavedTrenchMortgageCalculationListPage() {
             <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
-        <TableOrdering id="trench-calculation-ordering" defaultOrdering="-createdAt" parameter="ordering" pageParameter="page"
-          fields={[{ field: 'createdAt', label: "Дата" }, { field: 'city', label: "Город" }, { field: 'realEstateComplex', label: "Объект" }, { field: 'finalPropertyCost', label: "Стоимость" }, { field: 'initialPaymentRubles', label: "Первый взнос" }, { field: 'maximumMonthlyPayment', label: "Макс. платёж" }, { field: 'monthlyPayment', label: "Последний платёж" }, { field: 'mortgageTermMonths', label: "Срок" }, { field: 'annualRate', label: "Ставка / транши" }]} />
+        <ResetFilters />
       </section>
 
       <div className="results-heading" aria-live="polite">
@@ -273,17 +272,7 @@ export function SavedTrenchMortgageCalculationListPage() {
           description={searchParameters.get('q')
             ? 'По вашему запросу ничего не найдено.'
             : 'Выберите объект, рассчитайте траншевую ипотеку и сохраните результат.'}
-          action={searchParameters.get('q') ? (
-            <button
-              className="button button--secondary"
-              type="button"
-              onClick={() => setSearchParameters(
-                customerIdentifier ? { customerId: String(customerIdentifier) } : {},
-              )}
-            >
-              Сбросить фильтры
-            </button>
-          ) : (
+          action={searchParameters.get('q') ? null : (
             <Link className="button button--primary" to="/properties">
               Выбрать объект
             </Link>

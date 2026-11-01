@@ -73,8 +73,9 @@ describe('SavedMortgageCalculationListPage', () => {
     renderWithProviders(<SavedMortgageCalculationListPage />, { queryClient, initialRoute: '/?customerId=12&page=4' })
     const input = screen.getByLabelText('Стоимость, ₽: от')
     await user.type(input, '2250000.15')
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
-    const parameters = new URL(String(fetchMock.mock.calls[0][0]), 'http://localhost').searchParams
+    await waitFor(() => expect(fetchMock.mock.calls.some(([path]) => new URL(String(path), 'http://localhost').searchParams.get('costFrom') === '2250000.15')).toBe(true))
+    const request = fetchMock.mock.calls.find(([path]) => new URL(String(path), 'http://localhost').searchParams.get('costFrom') === '2250000.15')!
+    const parameters = new URL(String(request[0]), 'http://localhost').searchParams
     expect(parameters.get('costFrom')).toBe('2250000.15')
     expect(parameters.get('customerId')).toBe('12')
     expect(parameters.has('page')).toBe(false)
@@ -117,8 +118,10 @@ describe('SavedMortgageCalculationListPage', () => {
 
   it('adds selected saved calculations to a customer', async () => {
     const user = userEvent.setup()
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({
+    const fetchMock = vi.fn().mockImplementation(async (path: string) =>
+      new Response(JSON.stringify(path.startsWith('/api/v1/catalog-options/') ? {
+        page: 1, nextPage: null, totalCount: 0, selected: [], results: [],
+      } : {
         createdCount: 1,
         linkedCalculationIds: [7],
       }), {
@@ -153,12 +156,13 @@ describe('SavedMortgageCalculationListPage', () => {
     }))
     await user.click(screen.getByRole('button', { name: 'Добавить клиенту' }))
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([path]) => String(path) === '/api/v1/customers/12/calculations/')).toHaveLength(1))
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/customers/12/calculations/',
       expect.objectContaining({ method: 'POST' }),
     )
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({
+    const postRequest = fetchMock.mock.calls.find(([path]) => String(path) === '/api/v1/customers/12/calculations/')!
+    expect(JSON.parse((postRequest[1] as RequestInit).body as string)).toEqual({
       programType: 'market',
       calculationIds: [7],
     })

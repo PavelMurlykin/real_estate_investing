@@ -9,7 +9,7 @@ export function PropertyFilters() {
     const next = new URLSearchParams(parameters)
     if (value) next.set(name, value)
     else next.delete(name)
-    dependents.forEach((field) => next.delete(field))
+    if (value && value !== (parameters.get(name) ?? '')) dependents.forEach((field) => next.delete(field))
     next.delete('page')
     setParameters(next)
   }

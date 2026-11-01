@@ -59,8 +59,9 @@ describe('CustomerCalculationsSection', () => {
     vi.stubGlobal('fetch', fetchMock)
     renderCalculations()
     await user.type(screen.getByLabelText('Срок, лет: от'), '2.08')
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
-    const parameters = new URL(String(fetchMock.mock.calls[0][0]), 'http://localhost').searchParams
+    await waitFor(() => expect(fetchMock.mock.calls.some(([path]) => new URL(String(path), 'http://localhost').searchParams.get('termFrom') === '2.08')).toBe(true))
+    const request = fetchMock.mock.calls.find(([path]) => new URL(String(path), 'http://localhost').searchParams.get('termFrom') === '2.08')!
+    const parameters = new URL(String(request[0]), 'http://localhost').searchParams
     expect(parameters.get('termFrom')).toBe('2.08')
     expect(parameters.has('calculationTermFrom')).toBe(false)
     expect(parameters.get('pageSize')).toBe('10')
@@ -80,8 +81,10 @@ describe('CustomerCalculationsSection', () => {
       revokeObjectURL: revokeObjectUrlMock,
     })
     vi.stubGlobal('URL', DownloadUrl)
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response('report', {
+    const fetchMock = vi.fn().mockImplementation(async (path: string) =>
+      path.startsWith('/api/v1/catalog-options/') ? new Response(JSON.stringify({
+        page: 1, nextPage: null, totalCount: 0, selected: [], results: [],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } }) : new Response('report', {
         status: 200,
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -105,12 +108,13 @@ describe('CustomerCalculationsSection', () => {
     }))
     await user.click(screen.getByRole('button', { name: 'Скачать Word' }))
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([path]) => String(path).endsWith('/export/word/'))).toHaveLength(1))
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/customers/12/calculations/export/word/',
       expect.objectContaining({ method: 'POST' }),
     )
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({
+    const postRequest = fetchMock.mock.calls.find(([path]) => String(path).endsWith('/export/word/'))!
+    expect(JSON.parse((postRequest[1] as RequestInit).body as string)).toEqual({
       selections: [{ programType: 'market', linkId: 31 }],
     })
     expect(createObjectUrlMock).toHaveBeenCalled()

@@ -1,5 +1,5 @@
+import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { LegacyLink } from '@/shared/ui/LegacyLink'
-import { TableOrdering } from '@/shared/ui/TableOrdering'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
@@ -216,8 +216,7 @@ export function BankListPage() {
             <option value="inactive">Неактивные</option>
           </select>
         </div>
-        <TableOrdering id="bank-ordering" defaultOrdering="name" parameter="ordering" pageParameter="page"
-          fields={[{ field: 'name', label: "Банк" }, { field: 'programCount', label: "Программ" }, { field: 'minimumInterestRate', label: "Мин. ставка" }]} />
+        <ResetFilters />
       </section>
 
       <div className="results-heading" aria-live="polite">

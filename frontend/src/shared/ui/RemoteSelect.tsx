@@ -19,13 +19,17 @@ export function RemoteSelect({
   truncated = false, disabled = false, required = false, error, filter = false,
 }: RemoteSelectProps) {
   const identifier = useId()
-  const { options, choicesQuery, search, setSearch, hasMore, loadMore } = useCatalogOptions({
+  const { options, choicesQuery, search, setSearch, hasMore, loadMore, isSearching } = useCatalogOptions({
     dictionary, filters, initialOptions, truncated, disabled, autoLoad: filter, values: value ? [value] : [],
   })
+  const matchingIdentifiers = new Set(choicesQuery.data?.pages.flatMap((page) => page.results.map((option) => option.id)))
   if (filter) return (
-    <SearchableSelect label={label} value={value} options={options.map((option) => ({ value: String(option.id), label: option.label }))}
+    <SearchableSelect label={label} value={value}
+      options={options.filter((option) => (!search.trim() || matchingIdentifiers.has(option.id))
+        && (choicesQuery.data || !choicesQuery.isFetching || String(option.id) === value))
+        .map((option) => ({ value: String(option.id), label: option.label }))}
       onChange={(next) => onChange(next, options.find((option) => String(option.id) === next))}
-      disabled={disabled} loading={choicesQuery.isFetching} onSearch={setSearch} hasMore={hasMore} onLoadMore={loadMore}
+      disabled={disabled} loading={isSearching} onSearch={setSearch} hasMore={hasMore} onLoadMore={loadMore}
       error={choicesQuery.isError} onRetry={() => void choicesQuery.refetch()} />
   )
   return (

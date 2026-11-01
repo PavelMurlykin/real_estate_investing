@@ -41,6 +41,9 @@ export function useCatalogOptions({
       return requestJson(`/api/v1/catalog-options/${dictionary}/?${parameters}`, catalogOptionsResponseSchema, { signal })
     },
     getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
+    placeholderData: (previous, previousQuery) => (
+      previousQuery?.queryKey[1] === dictionary && previousQuery.queryKey[2] === filterString ? previous : undefined
+    ),
     enabled: !disabled && (autoLoad || !initialOptions || remoteActivated || selectedMissing),
     staleTime: 60_000,
   })
@@ -49,7 +52,7 @@ export function useCatalogOptions({
       .map((option) => [option.id, option])).values()]
     : initialOptions ?? []
   return {
-    options, choicesQuery, search,
+    options, choicesQuery, search, isSearching: choicesQuery.isFetching || query !== search.trim(),
     setSearch: (value: string) => { setSearch(value); setRemoteActivated(true) },
     hasMore: choicesQuery.data ? choicesQuery.hasNextPage : truncated,
     loadMore: () => {

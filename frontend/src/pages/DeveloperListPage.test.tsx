@@ -110,10 +110,8 @@ describe('DeveloperListPage', () => {
       queryClient: createDirectoryQueryClient(),
     })
 
-    await user.selectOptions(
-      screen.getByLabelText('Группа компаний'),
-      '4',
-    )
+    await user.click(screen.getByRole('combobox', { name: 'Группа компаний' }))
+    await user.click(screen.getByRole('option', { name: 'Группа Север' }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/developers/?companyGroupId=4',
@@ -191,7 +189,7 @@ describe('DeveloperListPage', () => {
     const user = userEvent.setup()
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
+      vi.fn().mockImplementation(async () =>
         new Response(JSON.stringify({ detail: 'Связаны ЖК.' }), {
           status: 409,
           headers: { 'Content-Type': 'application/json' },

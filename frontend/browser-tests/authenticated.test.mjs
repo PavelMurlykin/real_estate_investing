@@ -43,13 +43,9 @@ for (const width of [360, 1280]) {
     await page.getByText(updatedName, { exact: true }).filter({
       visible: true,
     }).waitFor()
-    const deleteButton = width < 720
-      ? page.getByRole('article').filter({
-          has: page.getByRole('heading', { name: updatedName, exact: true }),
-        }).getByRole('button', { name: 'Удалить', exact: true })
-      : page.getByRole('button', {
-          name: `Удалить: ${updatedName}`, exact: true,
-        })
+    const deleteButton = page.getByRole('button', {
+      name: `Удалить: ${updatedName}`, exact: true,
+    })
     await deleteButton.click()
     await page.getByRole('alertdialog').getByRole('button', { name: 'Удалить' }).click()
     await page.waitForFunction(

@@ -6,12 +6,12 @@ import { baseUrl, createPage, openPage, screenshot } from './helpers.mjs'
 test('catalog searches while typing and sorts the full server selection by header', async (context) => {
   const page = await openPage(context, { width: 1440, height: 1000 }, '/app/properties')
   const table = page.getByRole('table', { name: 'Список объектов недвижимости' })
-  const city = (await table.locator('tbody tr').first().locator('td').first().textContent()).trim()
+  const apartment = (await table.locator('tbody tr').first().locator('td').nth(4).textContent()).trim()
   const loaded = page.waitForResponse((response) => {
     const url = new URL(response.url())
-    return url.pathname === '/api/v1/properties/' && url.searchParams.get('search') === city
+    return url.pathname === '/api/v1/properties/' && url.searchParams.get('apartmentNumber') === apartment
   })
-  await page.getByLabel('Поиск по каталогу').fill(city)
+  await page.getByLabel('Номер квартиры').fill(apartment)
   assert.equal((await loaded).status(), 200)
   const sorted = page.waitForResponse((response) => {
     const url = new URL(response.url())
@@ -20,7 +20,7 @@ test('catalog searches while typing and sorts the full server selection by heade
   await table.getByRole('button', { name: 'Стоимость', exact: true }).click()
   assert.equal((await sorted).status(), 200)
   assert.equal(await table.getByRole('columnheader', { name: 'Стоимость' }).getAttribute('aria-sort'), 'ascending')
-  assert.equal(new URL(page.url()).searchParams.get('search'), city)
+  assert.equal(new URL(page.url()).searchParams.get('apartmentNumber'), apartment)
   assert.equal(await table.getByRole('columnheader', { name: /Статус|Обновл|^ID$/ }).count(), 0)
   await table.scrollIntoViewIfNeeded()
   await screenshot(page, 'tables-catalog-desktop.png')

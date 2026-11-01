@@ -1,5 +1,6 @@
+import { ResetFilters } from '@/shared/ui/ResetFilters'
+import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { LegacyLink } from '@/shared/ui/LegacyLink'
-import { TableOrdering } from '@/shared/ui/TableOrdering'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
@@ -151,72 +152,32 @@ export function DeveloperMortgageProgramListPage() {
             <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
-        <div className="sort-control">
-          <label htmlFor="developer-program-group">Группа компаний</label>
-          <select
-            id="developer-program-group"
-            value={searchParameters.get('companyGroupId') ?? ''}
-            onChange={(event) => updateParameters({
-              companyGroupId: event.target.value || null,
-              realEstateComplexId: null,
+        <RemoteSelect filter dictionary="company-groups" label="Группа компаний" value={searchParameters.get('companyGroupId') ?? ''}
+            initialOptions={options.companyGroups.map((option) => ({ id: option.id, label: option.name }))}
+            onChange={(value) => updateParameters({
+              companyGroupId: value || null,
+              ...(value && value !== searchParameters.get('companyGroupId') ? { realEstateComplexId: null } : {}),
               page: null,
-            })}
-          >
-            <option value="">Все группы</option>
-            {options.companyGroups.map((option) => (
-              <option value={option.id} key={option.id}>{option.name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="sort-control">
-          <label htmlFor="developer-program-complex">Жилой комплекс</label>
-          <select
-            id="developer-program-complex"
-            value={searchParameters.get('realEstateComplexId') ?? ''}
-            disabled={!selectedCompanyGroup}
-            onChange={(event) => updateParameters({
-              realEstateComplexId: event.target.value || null,
+            })} />
+        <RemoteSelect filter dictionary="complexes" label="Жилой комплекс" value={searchParameters.get('realEstateComplexId') ?? ''}
+            initialOptions={options.realEstateComplexes.map((option) => ({ id: option.id, label: option.name }))}
+            filters={{ companyGroupId: searchParameters.get('companyGroupId') }}
+            onChange={(value) => updateParameters({
+              realEstateComplexId: value || null,
               page: null,
-            })}
-          >
-            <option value="">Все ЖК группы</option>
-            {options.realEstateComplexes.map((option) => (
-              <option value={option.id} key={option.id}>{option.name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="sort-control">
-          <label htmlFor="developer-program-bank">Банк</label>
-          <select
-            id="developer-program-bank"
-            value={searchParameters.get('bankId') ?? ''}
-            onChange={(event) => updateParameters({
-              bankId: event.target.value || null,
+            })} />
+        <RemoteSelect filter dictionary="banks" label="Банк" value={searchParameters.get('bankId') ?? ''}
+            initialOptions={options.banks.map((option) => ({ id: option.id, label: option.name }))}
+            onChange={(value) => updateParameters({
+              bankId: value || null,
               page: null,
-            })}
-          >
-            <option value="">Все банки</option>
-            {options.banks.map((option) => (
-              <option value={option.id} key={option.id}>{option.name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="sort-control">
-          <label htmlFor="developer-program-canonical">Программа</label>
-          <select
-            id="developer-program-canonical"
-            value={searchParameters.get('mortgageProgramId') ?? ''}
-            onChange={(event) => updateParameters({
-              mortgageProgramId: event.target.value || null,
+            })} />
+        <RemoteSelect filter dictionary="mortgage-programs" label="Программа" value={searchParameters.get('mortgageProgramId') ?? ''}
+            initialOptions={options.mortgagePrograms.map((option) => ({ id: option.id, label: option.name }))}
+            onChange={(value) => updateParameters({
+              mortgageProgramId: value || null,
               page: null,
-            })}
-          >
-            <option value="">Все программы</option>
-            {options.mortgagePrograms.map((option) => (
-              <option value={option.id} key={option.id}>{option.name}</option>
-            ))}
-          </select>
-        </div>
+            })} />
         <div className="sort-control">
           <label htmlFor="developer-program-status">Статус</label>
           <select
@@ -232,14 +193,8 @@ export function DeveloperMortgageProgramListPage() {
             <option value="inactive">На стопе</option>
           </select>
         </div>
-        <TableOrdering id="developer-program-ordering" defaultOrdering="companyGroup" parameter="ordering" pageParameter="page"
-          fields={[{ field: 'companyGroup', label: "Группа и область" }, { field: 'bank', label: "Банк и программа" }, { field: 'interestRate', label: "Ставка" }, { field: 'gracePeriodMonths', label: "Льготный период" }, { field: 'minimumInitialPaymentPercent', label: "Первый взнос" }, { field: 'maximumLoanAmount', label: "Лимит и срок" }, { field: 'priceIncreasePercent', label: "Корректировки" }]} />
-        {Object.values(options.truncated).some(Boolean) ? (
-          <p className="filter-panel__notice" role="status">
-            Часть значений скрыта из-за размера справочников. Уточните группу
-            компаний или используйте сохранённый Django-интерфейс.
-          </p>
-        ) : null}
+        <ResetFilters />
+
       </section>
 
       <div className="results-heading" aria-live="polite">

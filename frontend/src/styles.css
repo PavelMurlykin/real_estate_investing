@@ -2740,11 +2740,13 @@ textarea:focus-visible {
   }
 
   .property-table-wrapper {
-    display: none;
+    display: block;
+    max-width: 100%;
+    min-width: 0;
   }
 
   .property-mobile-list {
-    display: grid;
+    display: none;
     gap: 12px;
   }
 

@@ -1,5 +1,5 @@
+import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { LegacyLink } from '@/shared/ui/LegacyLink'
-import { TableOrdering } from '@/shared/ui/TableOrdering'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
@@ -133,8 +133,7 @@ export function CustomerListPage() {
             <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
-        <TableOrdering id="customer-ordering" defaultOrdering="-createdAt" parameter="ordering" pageParameter="page"
-          fields={[{ field: 'name', label: "Клиент" }, { field: 'phone', label: "Телефон" }, { field: 'email', label: "Email" }, { field: 'city', label: "Город" }]} />
+        <ResetFilters />
       </section>
 
       <div className="results-heading" aria-live="polite">
@@ -150,15 +149,7 @@ export function CustomerListPage() {
           description={searchParameters.get('q')
             ? 'Измените поисковую фразу или сбросьте фильтры.'
             : 'Добавьте первого клиента, чтобы сохранить его запрос и бюджет.'}
-          action={searchParameters.get('q') ? (
-            <button
-              className="button button--secondary"
-              type="button"
-              onClick={() => setSearchParameters({})}
-            >
-              Сбросить фильтры
-            </button>
-          ) : (
+          action={searchParameters.get('q') ? null : (
             <Link className="button button--primary" to="/customers/new">
               Добавить клиента
             </Link>

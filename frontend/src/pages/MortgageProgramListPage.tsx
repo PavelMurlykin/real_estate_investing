@@ -1,5 +1,5 @@
+import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { LegacyLink } from '@/shared/ui/LegacyLink'
-import { TableOrdering } from '@/shared/ui/TableOrdering'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
@@ -187,8 +187,7 @@ export function MortgageProgramListPage() {
             <option value="inactive">Неактивные</option>
           </select>
         </div>
-        <TableOrdering id="mortgage-program-ordering" defaultOrdering="name" parameter="ordering" pageParameter="page"
-          fields={[{ field: 'name', label: "Программа" }, { field: 'isPreferential', label: "Тип" }, { field: 'creditLimit', label: "Кредитный лимит" }, { field: 'bankCount', label: "Использование" }, { field: 'regionalLimitCount', label: "Лимиты / алиасы" }]} />
+        <ResetFilters />
       </section>
 
       <div className="results-heading" aria-live="polite">

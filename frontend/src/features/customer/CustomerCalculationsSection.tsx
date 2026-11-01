@@ -1,4 +1,4 @@
-import { TableOrdering } from '@/shared/ui/TableOrdering'
+import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -281,8 +281,7 @@ export function CustomerCalculationsSection({
             <option value="trench">Траншевые</option>
           </select>
         </div>
-        <TableOrdering id="customer-calculation-ordering" defaultOrdering="-createdAt" parameter="calculationOrdering" pageParameter="calculationPage"
-          fields={[{ field: 'createdAt', label: "Дата" }, { field: 'programType', label: "Тип" }, { field: 'realEstateComplex', label: "Объект" }, { field: 'finalPropertyCost', label: "Стоимость" }, { field: 'initialPaymentRubles', label: 'Первый взнос' }, { field: 'monthlyPayment', label: "Платёж" }, { field: 'mortgageTermMonths', label: "Срок" }, { field: 'annualRate', label: "Ставка" }]} />
+        <ResetFilters prefix="calculation" />
       </div>
 
       <div className="results-heading customer-calculation-results">

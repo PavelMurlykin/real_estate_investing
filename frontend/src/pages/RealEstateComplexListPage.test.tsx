@@ -113,7 +113,8 @@ describe('RealEstateComplexListPage', () => {
       queryClient: createDirectoryQueryClient(),
     })
 
-    await user.selectOptions(screen.getByLabelText('Город'), '2')
+    await user.click(screen.getByRole('combobox', { name: 'Город' }))
+    await user.click(screen.getByRole('option', { name: 'Санкт-Петербург' }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/complexes/?cityId=2',

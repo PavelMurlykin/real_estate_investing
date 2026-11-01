@@ -1,5 +1,5 @@
+import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { LegacyLink } from '@/shared/ui/LegacyLink'
-import { TableOrdering } from '@/shared/ui/TableOrdering'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
@@ -134,8 +134,7 @@ export function CompanyGroupListPage() {
             <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
-        <TableOrdering id="company-group-ordering" defaultOrdering="name" parameter="ordering" pageParameter="page"
-          fields={[{ field: 'name', label: "Название" }, { field: 'developerCount', label: "Застройщиков" }]} />
+        <ResetFilters />
       </section>
 
       <div className="results-heading" aria-live="polite">
@@ -153,15 +152,7 @@ export function CompanyGroupListPage() {
           description={searchParameters.get('q')
             ? 'Измените название или сбросьте фильтр.'
             : 'Добавьте первую группу, чтобы привязать к ней застройщиков.'}
-          action={searchParameters.get('q') ? (
-            <button
-              className="button button--secondary"
-              type="button"
-              onClick={() => setSearchParameters({})}
-            >
-              Сбросить фильтр
-            </button>
-          ) : canManageCatalogs ? (
+          action={searchParameters.get('q') ? null : canManageCatalogs ? (
             <Link className="button button--primary" to="/company-groups/new">
               Добавить группу
             </Link>

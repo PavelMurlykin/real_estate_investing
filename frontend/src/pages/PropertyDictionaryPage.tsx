@@ -1,5 +1,5 @@
+import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { LegacyLink } from '@/shared/ui/LegacyLink'
-import { TableOrdering } from '@/shared/ui/TableOrdering'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
@@ -509,8 +509,7 @@ export function PropertyDictionaryPage() {
             <option value="inactive">Неактивные</option>
           </select>
         </div>
-        <TableOrdering id="dictionary-ordering" defaultOrdering="default" parameter="ordering" pageParameter="page"
-          fields={[{ field: 'name', label: "Название" }, { field: 'description', label: "Описание" }, ...(configuration.hasWeight ? [{ field: 'weight', label: "Коэффициент" }] : []), { field: 'usageCount', label: "Используется" }]} />
+        <ResetFilters />
       </section>
 
       <div className="results-heading" aria-live="polite">

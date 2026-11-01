@@ -44,17 +44,19 @@ Administrators have two actions on the bank page. “Обновить данны
 
 ## Working with tables
 
-Click a column header to sort ascending, then click again to sort descending. An arrow shows the direction; headers also work with the keyboard. Paginated lists sort the entire server selection, retain filters and reset pagination. On phones, the “Сортировка” selector above the cards offers the same fields.
+Click a column header to sort ascending, then click again to sort descending. An arrow shows the direction; headers also work with the keyboard. Paginated lists sort the entire server selection, retain filters and reset pagination. On phones, the table scrolls horizontally inside its card and headers remain sortable. There is no separate “Сортировка” selector.
 
 Text search applies while typing with a 250 ms delay; “Найти” remains available. Nested bank, limit, building, metro, tranche and schedule tables have their own “Поиск в таблице” field; sorting and search cover all loaded rows. Schedule search covers the full calculation even with the twelve-payment preview. Displayed dates and comma-separated money values are searchable. Wide nested tables scroll inside their cards on phones.
 
-Tables and their mobile cards hide technical IDs, creation/update timestamps, internal activity flags and matching keys. Calculation, payment and Central Bank decision dates remain as business data. Key rate search preserves the delta against the previous decision in the full history. Linked customer calculations also show the down payment separately.
+Tables at every screen size hide technical IDs, creation/update timestamps, internal activity flags and matching keys. Calculation, payment and Central Bank decision dates remain as business data. Key rate search preserves the delta against the previous decision in the full history. Linked customer calculations also show the down payment separately.
 
 Description fields in forms beside tables use the same fonts, background, borders and focus indicator as other site controls, in both light and dark themes. Multiline fields can be resized vertically. An empty dictionary shows a no-records message; row sorting becomes available once data exists.
 
 ## Catalog and calculation filters
 
-Property dictionary filters and the calculation city filter combine selection and search in one control. Choices load automatically; open the field and type part of a name. Scrolling loads more choices. “Все” clears that filter; changing a parent also resets dependent fields. Arrow keys and Enter select a choice; Escape closes the list without changing the selection.
+Dictionary filters across all table sections combine selection and search in one control. Choices load automatically; open the field and type part of a name. Scrolling loads more choices. “Все” clears only that filter. Selecting a different city, region or group resets dependent fields when the previous choice no longer fits. Arrow keys and Enter select a choice; Escape closes the list without changing the selection.
+
+“Сбросить” is always available in the panel, including empty results: it clears filters, pagination and ordering. Customer context is preserved when choosing properties/calculations; on a customer profile, only linked calculation filters reset. The property catalog uses individual fields instead of a general “Поиск по каталогу” input. Name, description or contact search remains in lists where other fields do not replace it. Search supplied by a legacy URL appears as a notice with an “Убрать” action; the common reset clears it too.
 
 The property catalog combines city, developer, complex, building and layout selectors with apartment number, exact area and price fields. Both histories and linked customer calculations provide city and ranges for price, down payment, payment amount, term in years and rate. The payment range uses the market mortgage's main payment or the tranche mortgage's last payment. Tranche history shows maximum and last payments separately.
 

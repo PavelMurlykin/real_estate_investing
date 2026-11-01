@@ -1,8 +1,6 @@
-import { TableOrdering } from '@/shared/ui/TableOrdering'
-import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
+import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useQuery } from '@tanstack/react-query'
-import type { FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { propertyListQueryOptions, sessionQueryOptions } from '@/api/queries'
@@ -89,15 +87,6 @@ export function PropertyListPage() {
     setSearchParameters(nextParameters)
   }
 
-  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const searchInput = event.currentTarget.elements.namedItem('search')
-    const searchValue = searchInput instanceof HTMLInputElement
-      ? searchInput.value.trim()
-      : ''
-    updateParameters({ search: searchValue || null, page: null })
-  }
-
   if (propertyQuery.isLoading) {
     return <PageLoadingState />
   }
@@ -134,14 +123,12 @@ export function PropertyListPage() {
 
       <section className="filter-panel" aria-label="Фильтры объектов">
         <PropertyFilters />
-        <form className="search-form" role="search" onSubmit={handleSearch}>
-          <div className="live-search-control">
-            <LiveFilterInput label="Поиск по каталогу" id="property-search" parameter="search" placeholder="Город, ЖК, застройщик, корпус или квартира" />
-            <button className="button button--dark" type="submit">Найти</button>
-          </div>
-        </form>
-        <TableOrdering id="property-ordering" defaultOrdering="city" parameter="ordering" pageParameter="page"
-          fields={[{ field: 'city', label: "Город" }, { field: 'developer', label: "Застройщик" }, { field: 'realEstateComplex', label: "ЖК" }, { field: 'building', label: "Корпус" }, { field: 'apartmentNumber', label: "Квартира" }, { field: 'layout', label: "Планировка" }, { field: 'area', label: "Площадь" }, { field: 'propertyCost', label: "Стоимость" }]} />
+        {searchParameters.get('search') ? <p className="filter-panel__notice">
+          Поиск из ссылки: {searchParameters.get('search')}{' '}
+          <button type="button" className="text-button" aria-label="Убрать поиск из ссылки"
+            onClick={() => updateParameters({ search: null, page: null })}>Убрать</button>
+        </p> : null}
+        <ResetFilters />
       </section>
 
       <div className="results-heading" aria-live="polite">
@@ -152,18 +139,7 @@ export function PropertyListPage() {
       {results.length === 0 ? (
         <EmptyState
           title="По вашему запросу ничего не найдено"
-          description="Измените поисковую фразу или сбросьте фильтры."
-          action={
-            <button
-              className="button button--secondary"
-              type="button"
-              onClick={() => setSearchParameters(
-                customerIdentifier ? { customerId: String(customerIdentifier) } : {},
-              )}
-            >
-              Сбросить фильтры
-            </button>
-          }
+          description="Измените значения фильтров или нажмите «Сбросить»."
         />
       ) : (
         <>

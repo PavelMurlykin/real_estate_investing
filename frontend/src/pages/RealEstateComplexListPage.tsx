@@ -1,5 +1,6 @@
+import { ResetFilters } from '@/shared/ui/ResetFilters'
+import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { LegacyLink } from '@/shared/ui/LegacyLink'
-import { TableOrdering } from '@/shared/ui/TableOrdering'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
@@ -141,76 +142,30 @@ export function RealEstateComplexListPage() {
             <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
-        <div className="sort-control">
-          <label htmlFor="complex-developer">Застройщик</label>
-          <select
-            id="complex-developer"
-            value={searchParameters.get('developerId') ?? ''}
-            onChange={(event) => updateParameters({
-              developerId: event.target.value || null,
+        <RemoteSelect filter dictionary="developers" label="Застройщик" value={searchParameters.get('developerId') ?? ''}
+            initialOptions={options?.developers.map((option) => ({ id: option.id, label: option.label }))}
+            onChange={(value) => updateParameters({
+              developerId: value || null,
               page: null,
-            })}
-          >
-            <option value="">Все застройщики</option>
-            {options?.developers.map((developer) => (
-              <option key={developer.id} value={developer.id}>
-                {developer.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="sort-control">
-          <label htmlFor="complex-city">Город</label>
-          <select
-            id="complex-city"
-            value={searchParameters.get('cityId') ?? ''}
-            onChange={(event) => updateParameters({
-              cityId: event.target.value || null,
+            })} />
+        <RemoteSelect filter dictionary="cities" label="Город" value={searchParameters.get('cityId') ?? ''}
+            initialOptions={options?.cities.map((option) => ({ id: option.id, label: option.name }))}
+            onChange={(value) => updateParameters({
+              cityId: value || null,
               page: null,
-            })}
-          >
-            <option value="">Все города</option>
-            {options?.cities.map((city) => (
-              <option key={city.id} value={city.id}>{city.name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="sort-control">
-          <label htmlFor="complex-class">Класс</label>
-          <select
-            id="complex-class"
-            value={searchParameters.get('realEstateClassId') ?? ''}
-            onChange={(event) => updateParameters({
-              realEstateClassId: event.target.value || null,
+            })} />
+        <RemoteSelect filter dictionary="real-estate-classes" label="Класс" value={searchParameters.get('realEstateClassId') ?? ''}
+            initialOptions={options?.realEstateClasses.map((option) => ({ id: option.id, label: option.name }))}
+            onChange={(value) => updateParameters({
+              realEstateClassId: value || null,
               page: null,
-            })}
-          >
-            <option value="">Все классы</option>
-            {options?.realEstateClasses.map((complexClass) => (
-              <option key={complexClass.id} value={complexClass.id}>
-                {complexClass.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="sort-control">
-          <label htmlFor="complex-type">Тип</label>
-          <select
-            id="complex-type"
-            value={searchParameters.get('realEstateTypeId') ?? ''}
-            onChange={(event) => updateParameters({
-              realEstateTypeId: event.target.value || null,
+            })} />
+        <RemoteSelect filter dictionary="real-estate-types" label="Тип" value={searchParameters.get('realEstateTypeId') ?? ''}
+            initialOptions={options?.realEstateTypes.map((option) => ({ id: option.id, label: option.name }))}
+            onChange={(value) => updateParameters({
+              realEstateTypeId: value || null,
               page: null,
-            })}
-          >
-            <option value="">Все типы</option>
-            {options?.realEstateTypes.map((complexType) => (
-              <option key={complexType.id} value={complexType.id}>
-                {complexType.name}
-              </option>
-            ))}
-          </select>
-        </div>
+            })} />
         <div className="sort-control">
           <label htmlFor="complex-status">Статус</label>
           <select
@@ -226,8 +181,7 @@ export function RealEstateComplexListPage() {
             <option value="inactive">Неактивные</option>
           </select>
         </div>
-        <TableOrdering id="complex-ordering" defaultOrdering="name" parameter="ordering" pageParameter="page"
-          fields={[{ field: 'name', label: "Жилой комплекс" }, { field: 'developer', label: "Застройщик" }, { field: 'city', label: "Город" }, { field: 'realEstateClass', label: "Класс" }, { field: 'realEstateType', label: "Тип" }, { field: 'buildingCount', label: "Корпусов" }]} />
+        <ResetFilters />
       </section>
 
       <div className="results-heading" aria-live="polite">

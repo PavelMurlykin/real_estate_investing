@@ -1,5 +1,5 @@
+import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { LegacyLink } from '@/shared/ui/LegacyLink'
-import { TableOrdering } from '@/shared/ui/TableOrdering'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
@@ -506,14 +506,13 @@ export function LocationDictionaryPage() {
   const updateRegionFilter = (regionId: string) => {
     updateParameters({
       regionId,
-      cityId: null,
-      metroLineId: null,
+      ...(regionId && regionId !== searchParameters.get('regionId') ? { cityId: null, metroLineId: null } : {}),
       page: null,
     })
   }
 
   const updateCityFilter = (cityId: string) => {
-    updateParameters({ cityId, metroLineId: null, page: null })
+    updateParameters({ cityId, ...(cityId && cityId !== searchParameters.get('cityId') ? { metroLineId: null } : {}), page: null })
   }
 
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
@@ -632,56 +631,24 @@ export function LocationDictionaryPage() {
           </div>
         </form>
         {showRegion ? (
-          <div className="sort-control">
-            <label htmlFor="location-filter-region">Регион</label>
-            <select
-              id="location-filter-region"
-              value={searchParameters.get('regionId') ?? ''}
-              onChange={(event) => updateRegionFilter(event.target.value)}
-            >
-              <option value="">Все регионы</option>
-              {options.regions.map((region) => (
-                <option key={region.id} value={region.id}>{region.name}</option>
-              ))}
-            </select>
-          </div>
+          <RemoteSelect filter dictionary="regions" label="Регион" value={searchParameters.get('regionId') ?? ''}
+            initialOptions={options.regions.map((option) => ({ id: option.id, label: option.name }))}
+            onChange={(value) => updateRegionFilter(value)} />
         ) : null}
         {showCity ? (
-          <div className="sort-control">
-            <label htmlFor="location-filter-city">Город</label>
-            <select
-              id="location-filter-city"
-              value={searchParameters.get('cityId') ?? ''}
-              disabled={!searchParameters.get('regionId')}
-              onChange={(event) => updateCityFilter(event.target.value)}
-            >
-              <option value="">Все города</option>
-              {options.cities.map((city) => (
-                <option key={city.id} value={city.id}>{city.name}</option>
-              ))}
-            </select>
-          </div>
+          <RemoteSelect filter dictionary="cities" label="Город" value={searchParameters.get('cityId') ?? ''}
+            initialOptions={options.cities.map((option) => ({ id: option.id, label: option.name }))}
+            filters={{ regionId: searchParameters.get('regionId') }}
+            onChange={(value) => updateCityFilter(value)} />
         ) : null}
         {showMetroLine ? (
-          <div className="sort-control">
-            <label htmlFor="location-filter-line">Линия метро</label>
-            <select
-              id="location-filter-line"
-              value={searchParameters.get('metroLineId') ?? ''}
-              disabled={!searchParameters.get('cityId')}
-              onChange={(event) => updateParameters({
-                metroLineId: event.target.value,
+          <RemoteSelect filter dictionary="metro-lines" label="Линия метро" value={searchParameters.get('metroLineId') ?? ''}
+            initialOptions={options.metroLines.map((option) => ({ id: option.id, label: option.name }))}
+            filters={{ cityId: searchParameters.get('cityId') }}
+            onChange={(value) => updateParameters({
+                metroLineId: value,
                 page: null,
-              })}
-            >
-              <option value="">Все линии</option>
-              {options.metroLines.map((metroLine) => (
-                <option key={metroLine.id} value={metroLine.id}>
-                  {metroLine.name}
-                </option>
-              ))}
-            </select>
-          </div>
+              })} />
         ) : null}
         <div className="sort-control">
           <label htmlFor="location-status">Статус</label>
@@ -698,8 +665,7 @@ export function LocationDictionaryPage() {
             <option value="inactive">Неактивные</option>
           </select>
         </div>
-        <TableOrdering id="location-ordering" defaultOrdering="default" parameter="ordering" pageParameter="page"
-          fields={[{ field: 'name', label: configuration.nameLabel }, ...(dictionaryKey === 'regions' ? [{ field: 'code', label: "Код" }] : []), ...(showRegion ? [{ field: 'region', label: "Регион" }] : []), ...(showCity ? [{ field: 'city', label: "Город" }] : []), ...(showMetroLine ? [{ field: 'metroLine', label: "Линия" }] : []), { field: 'usageCount', label: "Используется" }]} />
+        <ResetFilters />
       </section>
 
       <div className="results-heading" aria-live="polite">
