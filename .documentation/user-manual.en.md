@@ -50,6 +50,8 @@ Text search applies while typing with a 250 ms delay; “Найти” remains a
 
 Tables and their mobile cards hide technical IDs, creation/update timestamps, internal activity flags and matching keys. Calculation, payment and Central Bank decision dates remain as business data. Key rate search preserves the delta against the previous decision in the full history. Linked customer calculations also show the down payment separately.
 
+Description fields in forms beside tables use the same fonts, background, borders and focus indicator as other site controls, in both light and dark themes. Multiline fields can be resized vertically. An empty dictionary shows a no-records message; row sorting becomes available once data exists.
+
 ## Catalog and calculation filters
 
 The property catalog combines city, developer, complex, building and layout selectors with apartment number, exact area and price fields. Both histories and linked customer calculations provide city and ranges for price, down payment, payment amount, term in years and rate. The payment range uses the market mortgage's main payment or the tranche mortgage's last payment. Tranche history shows maximum and last payments separately.

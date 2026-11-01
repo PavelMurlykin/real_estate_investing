@@ -265,7 +265,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -281,7 +282,8 @@ a {
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible {
   outline: 3px solid var(--accent-strong);
   outline-offset: 3px;
 }
@@ -1536,7 +1538,8 @@ select:focus-visible {
 }
 
 .form-field input,
-.form-field select {
+.form-field select,
+.form-field textarea {
   width: 100%;
   min-height: 48px;
   padding: 0 13px;
@@ -1549,8 +1552,16 @@ select:focus-visible {
   text-transform: none;
 }
 
+.form-field textarea {
+  min-height: 116px;
+  padding: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
 .form-field input[aria-invalid='true'],
-.form-field select[aria-invalid='true'] {
+.form-field select[aria-invalid='true'],
+.form-field textarea[aria-invalid='true'] {
   border-color: var(--danger);
 }
 
@@ -3552,26 +3563,6 @@ select:focus-visible {
 
 .customer-form-grid {
   align-content: start;
-}
-
-.customer-form .form-field textarea {
-  width: 100%;
-  min-height: 116px;
-  padding: 13px;
-  color: var(--text);
-  background: var(--background);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  font: inherit;
-  font-weight: 500;
-  letter-spacing: normal;
-  line-height: 1.5;
-  resize: vertical;
-  text-transform: none;
-}
-
-.customer-form .form-field textarea[aria-invalid='true'] {
-  border-color: var(--danger);
 }
 
 .customer-form input:disabled,
