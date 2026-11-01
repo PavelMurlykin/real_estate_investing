@@ -10,8 +10,11 @@ import type {
   Session,
 } from '@/api/schemas'
 import { createTestQueryClient, renderWithProviders } from '@/test/render'
+import { downloadFile } from '@/shared/lib/downloadFile'
 
 import { MortgageCalculatorPage } from './MortgageCalculatorPage'
+
+vi.mock('@/shared/lib/downloadFile', () => ({ downloadFile: vi.fn() }))
 
 const mortgageOptions: MortgageOptions = {
   defaultInitialPaymentDate: '2026-01-15',
@@ -192,6 +195,58 @@ afterEach(() => {
 })
 
 describe('MortgageCalculatorPage', () => {
+  it('submits manual object identifiers and allows a moderator to save the scenario', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockImplementation(async (path: string) => {
+      if (path.includes('/catalog-options/')) {
+        const dictionary = path.split('/catalog-options/')[1].split('/')[0]
+        const label = dictionary === 'complexes' ? 'Ручной ЖК' : dictionary
+        const option = { id: 1, label, regionId: 1, cityId: 1, districtId: 1, developerId: 1, realEstateComplexId: 1 }
+        return new Response(JSON.stringify({ results: [option], selected: [option], totalCount: 1, page: 1, nextPage: null }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+      const response = path.includes('/options/') ? { ...mortgageOptions, developerPrograms: [] }
+        : path.endsWith('/calculate/') ? mortgageResult : savedCalculation
+      return new Response(JSON.stringify(response), { status: path.endsWith('/calculations/') ? 201 : 200, headers: { 'Content-Type': 'application/json' } })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderCalculator({ session: { ...authenticatedSession, capabilities: { ...authenticatedSession.capabilities, manageCatalogs: true } } })
+    await user.click(screen.getByRole('button', { name: 'Заполнить объект вручную' }))
+    await user.selectOptions(await screen.findByLabelText(/^Жилой комплекс/), '1')
+    await user.selectOptions(await screen.findByLabelText(/^Корпус/), '1')
+    await user.selectOptions(await screen.findByLabelText(/^Планировка/), '1')
+    await user.selectOptions(await screen.findByLabelText(/^Отделка/), '1')
+    await user.type(screen.getByLabelText('Номер квартиры'), 'NEW-42')
+    await user.type(screen.getByLabelText('Площадь, м²'), '51.25')
+    await user.type(screen.getByLabelText('Этаж'), '9')
+    await user.click(screen.getByRole('button', { name: 'Рассчитать ипотеку' }))
+    await user.click(await screen.findByRole('button', { name: 'Сохранить расчёт' }))
+    const calculation = fetchMock.mock.calls.find(([path]) => path === '/api/v1/mortgage/calculate/')
+    expect(JSON.parse(calculation?.[1].body as string).manualProperty).toEqual({
+      cityId: 1, districtId: 1, developerId: 1, realEstateComplexId: 1, buildingId: 1,
+      apartmentNumber: 'NEW-42', area: '51.25', floor: 9, layoutId: 1, decorationId: 1,
+    })
+    const saved = fetchMock.mock.calls.find(([path]) => path === '/api/v1/mortgage/calculations/')
+    expect(JSON.parse(saved?.[1].body as string)).not.toHaveProperty('propertyId')
+  })
+
+  it('exports an anonymous scenario without selecting or saving a property', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockImplementation(async (path: string) => (
+      path.includes('/export/')
+        ? new Response('workbook', { status: 200, headers: { 'Content-Type': 'application/octet-stream', 'Content-Disposition': 'attachment; filename="scenario.xlsx"' } })
+        : new Response(JSON.stringify(mortgageResult), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    ))
+    vi.stubGlobal('fetch', fetchMock)
+    renderCalculator()
+    await user.click(screen.getByRole('button', { name: 'Рассчитать ипотеку' }))
+    await user.click(await screen.findByRole('button', { name: 'Excel' }))
+    await waitFor(() => expect(downloadFile).toHaveBeenCalledWith(expect.objectContaining({ filename: 'scenario.xlsx' })))
+    const exported = fetchMock.mock.calls.find(([path]) => path === '/api/v1/mortgage/export/excel/')
+    expect(JSON.parse(exported?.[1].body as string)).toEqual({ parameters: expect.objectContaining({ propertyCost: '5000000' }) })
+    expect(fetchMock.mock.calls.some(([path]) => path === '/api/v1/mortgage/calculations/')).toBe(false)
+  })
+
   it.each(['market', 'trench'] as const)('applies complex conditions and restores group defaults in %s mode', async (mode) => {
     const user = userEvent.setup()
     const groupProgram = {
@@ -236,6 +291,14 @@ describe('MortgageCalculatorPage', () => {
       expect(screen.getAllByLabelText('Годовая ставка, %').every((input) => (input as HTMLInputElement).value === '3')).toBe(true)
     }
     expect(screen.getByLabelText('Район')).toHaveValue('Центральный')
+    const fetchMock = vi.fn().mockImplementation(() => new Promise(() => {}))
+    vi.stubGlobal('fetch', fetchMock)
+    await user.type(screen.getByLabelText('Поиск объекта'), 'Другой ЖК')
+    await waitFor(() => expect(fetchMock.mock.calls.some(([path]) => String(path).includes('search='))).toBe(true))
+    expect(screen.getAllByLabelText('Годовая ставка, %')[0]).toHaveValue(3)
+    expect(screen.getByLabelText('Удорожание, %')).toHaveValue(8)
+    await user.clear(screen.getByLabelText('Поиск объекта'))
+    await waitFor(() => expect(screen.getByLabelText('Объект недвижимости')).toBeEnabled())
     await user.selectOptions(screen.getByLabelText('Объект недвижимости'), '4')
     expect(screen.getAllByLabelText('Годовая ставка, %')[0]).toHaveValue(5)
     expect(screen.getByLabelText('Скидка, %')).toHaveValue(2.5)

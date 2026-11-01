@@ -7,6 +7,26 @@ export const capabilitiesSchema = z.object({
   viewAllPrivateRecords: z.boolean(),
 })
 
+export const catalogOptionSchema = z.object({
+  id: z.number().int().positive(),
+  label: z.string(),
+  regionId: z.number().int().positive().optional(),
+  cityId: z.number().int().positive().optional(),
+  districtId: z.number().int().positive().optional(),
+  developerId: z.number().int().positive().optional(),
+  realEstateComplexId: z.number().int().positive().optional(),
+})
+
+export const catalogOptionsResponseSchema = z.object({
+  results: z.array(catalogOptionSchema),
+  selected: z.array(catalogOptionSchema),
+  totalCount: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  nextPage: z.number().int().positive().nullable(),
+})
+
+export type CatalogOption = z.infer<typeof catalogOptionSchema>
+
 export const sessionSchema = z.object({
   isAuthenticated: z.boolean(),
   user: z
@@ -93,6 +113,11 @@ export const propertyListItemSchema = z.object({
   realEstateComplexId: z.number().int().positive().optional(),
   regionId: z.number().int().positive().optional(),
   district: z.string().optional(),
+  cityId: z.number().int().positive().optional(),
+  districtId: z.number().int().positive().optional(),
+  buildingId: z.number().int().positive().optional(),
+  layoutId: z.number().int().positive().optional(),
+  decorationId: z.number().int().positive().optional(),
   city: z.string(),
   developer: z.string(),
   realEstateComplex: z.string(),
@@ -911,6 +936,7 @@ export const savedTrenchMortgageCalculationCreateResponseSchema = z.object({
 const savedMortgagePropertySchema = z.object({
   id: z.number().int().positive(),
   city: z.string(),
+  district: z.string().optional(),
   developer: z.string(),
   realEstateComplex: z.string(),
   realEstateClass: z.string(),
@@ -1014,7 +1040,21 @@ export const customerCalculationLinkResponseSchema = z.object({
   linkedCalculationIds: z.array(z.number().int().positive()),
 })
 
+export type ManualCalculationProperty = {
+  cityId: number
+  districtId: number
+  developerId: number
+  realEstateComplexId: number
+  buildingId: number
+  apartmentNumber: string
+  area: string
+  floor: number
+  layoutId: number
+  decorationId: number
+}
+
 export type MortgageCalculationRequest = {
+  manualProperty?: ManualCalculationProperty
   propertyCost: string
   priceAdjustmentType: 'discount' | 'markup'
   priceAdjustmentUnit: 'percent' | 'rubles'
@@ -1030,7 +1070,7 @@ export type MortgageCalculationRequest = {
 }
 
 export type SavedMortgageCalculationCreateRequest = {
-  propertyId: number
+  propertyId?: number
   parameters: MortgageCalculationRequest
   customerId?: number
 }
@@ -1043,6 +1083,7 @@ export type TrenchMortgageEntryRequest = {
 }
 
 export type TrenchMortgageCalculationRequest = {
+  manualProperty?: ManualCalculationProperty
   propertyCost: string
   priceAdjustmentType: 'discount' | 'markup'
   priceAdjustmentUnit: 'percent' | 'rubles'
@@ -1056,7 +1097,7 @@ export type TrenchMortgageCalculationRequest = {
 }
 
 export type SavedTrenchMortgageCalculationCreateRequest = {
-  propertyId: number
+  propertyId?: number
   parameters: TrenchMortgageCalculationRequest
   customerId?: number
 }

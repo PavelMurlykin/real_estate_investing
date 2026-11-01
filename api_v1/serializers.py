@@ -3235,6 +3235,15 @@ class PropertyListItemSerializer(serializers.ModelSerializer):
     district = serializers.CharField(
         source='building.real_estate_complex.district.name', read_only=True,
     )
+    cityId = serializers.IntegerField(
+        source='building.real_estate_complex.district.city_id', read_only=True,
+    )
+    districtId = serializers.IntegerField(
+        source='building.real_estate_complex.district_id', read_only=True,
+    )
+    buildingId = serializers.IntegerField(source='building_id', read_only=True)
+    layoutId = serializers.IntegerField(source='layout_id', read_only=True)
+    decorationId = serializers.IntegerField(source='decoration_id', read_only=True)
 
     city = serializers.CharField(
         source='building.real_estate_complex.district.city.name',
@@ -3278,6 +3287,11 @@ class PropertyListItemSerializer(serializers.ModelSerializer):
             'realEstateComplexId',
             'regionId',
             'district',
+            'cityId',
+            'districtId',
+            'buildingId',
+            'layoutId',
+            'decorationId',
             'city',
             'developer',
             'realEstateComplex',
@@ -3721,6 +3735,29 @@ class PropertyWriteSerializer(serializers.ModelSerializer):
                 storage.delete(image_name)
 
 
+class ManualCalculationPropertySerializer(serializers.Serializer):
+    """Validate calculator object data through the existing Django form."""
+
+    cityId = serializers.IntegerField(min_value=1)
+    districtId = serializers.IntegerField(min_value=1)
+    developerId = serializers.IntegerField(min_value=1)
+    realEstateComplexId = serializers.IntegerField(min_value=1)
+    buildingId = serializers.IntegerField(min_value=1)
+    apartmentNumber = serializers.CharField(max_length=50)
+    area = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal('0.01'),
+    )
+    layoutId = serializers.IntegerField(min_value=1)
+    floor = serializers.IntegerField()
+    decorationId = serializers.IntegerField(min_value=1)
+
+    def validate(self, attributes):
+        """Keep object relationship checks identical across the two UIs."""
+        from .calculation_property_service import validate_manual_property
+
+        return validate_manual_property(attributes)
+
+
 class MortgageOptionsQuerySerializer(serializers.Serializer):
     """Validate the optional developer context for calculator programs."""
 
@@ -3729,6 +3766,8 @@ class MortgageOptionsQuerySerializer(serializers.Serializer):
 
 class MortgageCalculationRequestSerializer(serializers.Serializer):
     """Validate a side-effect-free market mortgage calculation request."""
+
+    manualProperty = ManualCalculationPropertySerializer(required=False)
 
     propertyCost = serializers.DecimalField(
         max_digits=15,
@@ -3884,6 +3923,8 @@ class TrenchMortgageEntryRequestSerializer(serializers.Serializer):
 class TrenchMortgageCalculationRequestSerializer(serializers.Serializer):
     """Validate a side-effect-free trench mortgage calculation request."""
 
+    manualProperty = ManualCalculationPropertySerializer(required=False)
+
     propertyCost = serializers.DecimalField(
         max_digits=15,
         decimal_places=2,
@@ -3988,15 +4029,52 @@ class TrenchMortgageCalculationRequestSerializer(serializers.Serializer):
         return attributes
 
 
+class MortgageCalculationExportSerializer(serializers.Serializer):
+    """Validate an export without requiring persistence or a catalog object."""
+
+    propertyId = serializers.PrimaryKeyRelatedField(
+        source='property', queryset=Property.objects.all(), required=False,
+    )
+    parameters = MortgageCalculationRequestSerializer()
+
+    def validate(self, attributes):
+        """Disallow ambiguous object sources in a financial report."""
+        if (attributes.get('property')
+                and attributes['parameters'].get('manualProperty')):
+            raise serializers.ValidationError(
+                'Укажите только один источник объекта.'
+            )
+        return attributes
+
+
+class TrenchMortgageCalculationExportSerializer(
+    MortgageCalculationExportSerializer,
+):
+    """Validate a report-only tranche mortgage scenario."""
+
+    parameters = TrenchMortgageCalculationRequestSerializer()
+
+
 class SavedMortgageCalculationCreateSerializer(serializers.Serializer):
     """Validate a request to persist a property-backed calculation."""
 
     propertyId = serializers.PrimaryKeyRelatedField(
         source='property',
         queryset=Property.objects.all(),
+        required=False,
     )
     customerId = serializers.IntegerField(required=False, min_value=1)
     parameters = MortgageCalculationRequestSerializer()
+
+    def validate(self, attributes):
+        """Require exactly one selected or manually described object."""
+        if bool(attributes.get('property')) == bool(
+            attributes['parameters'].get('manualProperty')
+        ):
+            raise serializers.ValidationError(
+                'Выберите объект либо заполните его данные вручную.'
+            )
+        return attributes
 
 
 class SavedTrenchMortgageCalculationCreateSerializer(serializers.Serializer):
@@ -4005,9 +4083,20 @@ class SavedTrenchMortgageCalculationCreateSerializer(serializers.Serializer):
     propertyId = serializers.PrimaryKeyRelatedField(
         source='property',
         queryset=Property.objects.all(),
+        required=False,
     )
     customerId = serializers.IntegerField(required=False, min_value=1)
     parameters = TrenchMortgageCalculationRequestSerializer()
+
+    def validate(self, attributes):
+        """Require exactly one selected or manually described object."""
+        if bool(attributes.get('property')) == bool(
+            attributes['parameters'].get('manualProperty')
+        ):
+            raise serializers.ValidationError(
+                'Выберите объект либо заполните его данные вручную.'
+            )
+        return attributes
 
 
 class SavedMortgageCalculationListQuerySerializer(serializers.Serializer):

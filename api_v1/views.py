@@ -117,6 +117,7 @@ from .customer_calculation_service import (
     build_customer_calculation_queryset,
     serialize_customer_calculation_link,
 )
+from .calculation_property_service import resolve_saved_property
 from .mortgage_service import (
     build_saved_mortgage_payment_schedule,
     calculate_market_mortgage,
@@ -922,7 +923,7 @@ class SavedTrenchMortgageCalculationListCreateAPIView(APIView):
             try:
                 response_payload = create_saved_trench_mortgage(
                     parameters=validated_data['parameters'],
-                    property_object=validated_data['property'],
+                    property_object=resolve_saved_property(validated_data, request.user),
                     user=request.user,
                 )
             except TrenchMortgageValidationError as error:
@@ -1111,7 +1112,7 @@ class SavedMortgageCalculationListCreateAPIView(APIView):
         with transaction.atomic():
             calculation = create_saved_market_mortgage(
                 parameters=validated_data['parameters'],
-                property_object=validated_data['property'],
+                property_object=resolve_saved_property(validated_data, request.user),
                 user=request.user,
             )
             if customer is not None:

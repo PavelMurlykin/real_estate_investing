@@ -7,6 +7,7 @@ import { ApiError } from '@/api/client'
 import {
   calculateMortgage,
   calculateTrenchMortgage,
+  exportUnsavedCalculation,
   mortgageOptionsQueryOptions,
   mortgageDeveloperOptionsQueryOptions,
   propertyDetailQueryOptions,
@@ -29,7 +30,12 @@ import type {
 import { MortgageResult } from '@/features/mortgage/MortgageResult'
 import { TrenchMortgageResult } from '@/features/mortgage/TrenchMortgageResult'
 import { getProgramConditions, getProgramCreditLimit, matchDeveloperProgram } from '@/features/mortgage/programs'
+import { ManualPropertyEditor } from '@/features/mortgage/ManualPropertyEditor'
+import { buildManualPropertyPayload, manualPropertyFromSelected } from '@/features/mortgage/manualProperty'
+import type { ManualPropertyState } from '@/features/mortgage/manualProperty'
+import { downloadFile } from '@/shared/lib/downloadFile'
 import { formatCurrency, formatPercent } from '@/shared/lib/formatters'
+import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 
 type CalculationType = 'market' | 'trench'
@@ -418,9 +424,17 @@ export function MortgageCalculatorPage({
   const queryClient = useQueryClient()
   const optionsQuery = useQuery(mortgageOptionsQueryOptions)
   const sessionQuery = useQuery(sessionQueryOptions)
+  const [propertySearch, setPropertySearch] = useState('')
+  const debouncedPropertySearch = useDebouncedValue(propertySearch.trim())
+  const [propertyPage, setPropertyPage] = useState(1)
   const propertyListParameters = useMemo(
-    () => new URLSearchParams({ pageSize: '100', ordering: 'realEstateComplex' }),
-    [],
+    () => {
+      const parameters = new URLSearchParams({ pageSize: '100', ordering: 'realEstateComplex' })
+      if (debouncedPropertySearch) parameters.set('search', debouncedPropertySearch)
+      if (propertyPage > 1) parameters.set('page', String(propertyPage))
+      return parameters
+    },
+    [debouncedPropertySearch, propertyPage],
   )
   const propertyListQuery = useQuery({
     ...propertyListQueryOptions(propertyListParameters),
@@ -479,12 +493,16 @@ export function MortgageCalculatorPage({
   const [propertyData, setPropertyData] = useState<PropertyDataState>(
     EMPTY_PROPERTY_DATA,
   )
+  const [manualProperty, setManualProperty] = useState<ManualPropertyState | null>(null)
+  const [selectedPropertySummary, setSelectedPropertySummary] = useState<PropertyListItem | PropertyDetail | null>(null)
   const selectedProperty = propertyItems.find(
     (property) => property.id === selectedPropertyIdentifier,
-  ) ?? selectedPropertyQuery.data
-  const developerIdentifier = selectedProperty?.developerId ?? null
-  const complexIdentifier = selectedProperty?.realEstateComplexId ?? null
-  const regionIdentifier = selectedProperty?.regionId ?? null
+  ) ?? selectedPropertyQuery.data ?? (
+    selectedPropertySummary?.id === selectedPropertyIdentifier ? selectedPropertySummary : undefined
+  )
+  const developerIdentifier = selectedProperty?.developerId || Number(manualProperty?.developerId) || null
+  const complexIdentifier = selectedProperty?.realEstateComplexId || Number(manualProperty?.realEstateComplexId) || null
+  const regionIdentifier = selectedProperty?.regionId || Number(manualProperty?.regionId) || null
   const developerOptionsQuery = useQuery({
     ...mortgageDeveloperOptionsQueryOptions(developerIdentifier ?? 0),
     enabled: developerIdentifier !== null,
@@ -498,6 +516,10 @@ export function MortgageCalculatorPage({
   const marketCalculationMutation = useMutation({ mutationFn: calculateMortgage })
   const trenchCalculationMutation = useMutation({
     mutationFn: calculateTrenchMortgage,
+  })
+  const exportMutation = useMutation({
+    mutationFn: (argumentsList: Parameters<typeof exportUnsavedCalculation>) => exportUnsavedCalculation(...argumentsList),
+    onSuccess: (file) => downloadFile(file),
   })
   const marketSaveMutation = useMutation({
     mutationFn: saveMortgageCalculation,
@@ -542,6 +564,7 @@ export function MortgageCalculatorPage({
     calculationType,
     propertyId: selectedPropertyIdentifier,
     propertyData,
+    manualProperty,
     parameters: calculationType === 'market'
       ? buildMarketPayload(formState, initialPaymentDate)
       : buildTrenchPayload(formState, initialPaymentDate),
@@ -644,6 +667,7 @@ export function MortgageCalculatorPage({
       (item) => item.id === selectedPropertyIdentifier,
     )
     if (!property || appliedPropertyIdentifierRef.current === property.id) return
+    setSelectedPropertySummary(property)
     setPropertyData(propertyDataFromListItem(property))
     setFormState((current) => synchronizeMoneyFields({
       ...current,
@@ -657,6 +681,7 @@ export function MortgageCalculatorPage({
   useEffect(() => {
     const property = selectedPropertyQuery.data
     if (!property || appliedPropertyIdentifierRef.current === property.id) return
+    setSelectedPropertySummary(property)
     setPropertyData(propertyDataFromDetail(property))
     setFormState((current) => synchronizeMoneyFields({
       ...current,
@@ -676,7 +701,7 @@ export function MortgageCalculatorPage({
     setSelectedPropertyIdentifier(marketSampleQuery.data.property.id)
     setPropertyData({
       city: marketSampleQuery.data.property.city,
-      district: '',
+      district: marketSampleQuery.data.property.district ?? '',
       developer: marketSampleQuery.data.property.developer,
       realEstateComplex: marketSampleQuery.data.property.realEstateComplex,
       building: marketSampleQuery.data.property.building,
@@ -726,7 +751,7 @@ export function MortgageCalculatorPage({
     setSelectedPropertyIdentifier(trenchSampleQuery.data.property.id)
     setPropertyData({
       city: trenchSampleQuery.data.property.city,
-      district: '',
+      district: trenchSampleQuery.data.property.district ?? '',
       developer: trenchSampleQuery.data.property.developer,
       realEstateComplex: trenchSampleQuery.data.property.realEstateComplex,
       building: trenchSampleQuery.data.property.building,
@@ -802,16 +827,8 @@ export function MortgageCalculatorPage({
     setFormState((current) => ({ ...current, [fieldName]: value }))
   }
 
-  const updatePropertyData = (
-    fieldName: keyof PropertyDataState,
-    value: string,
-  ) => {
-    setSelectedPropertyIdentifier(null)
-    appliedPropertyIdentifierRef.current = null
-    setPropertyData((current) => ({ ...current, [fieldName]: value }))
-  }
-
   const selectProperty = (propertyIdentifier: string) => {
+    setManualProperty(null)
     const identifier = Number(propertyIdentifier)
     if (!Number.isInteger(identifier) || identifier <= 0) {
       setSelectedPropertyIdentifier(null)
@@ -820,6 +837,7 @@ export function MortgageCalculatorPage({
     }
     const property = propertyItems.find((item) => item.id === identifier)
     setSelectedPropertyIdentifier(identifier)
+    setSelectedPropertySummary(property ?? null)
     appliedPropertyIdentifierRef.current = property ? identifier : null
     if (!property) return
     setPropertyData(propertyDataFromListItem(property))
@@ -986,16 +1004,19 @@ export function MortgageCalculatorPage({
     setCalculatedScenarioKey(currentScenarioKey)
     if (calculationType === 'market') {
       marketCalculationMutation.mutate(
-        buildMarketPayload(formState, initialPaymentDate),
+        { ...buildMarketPayload(formState, initialPaymentDate),
+          ...(manualProperty ? { manualProperty: buildManualPropertyPayload(manualProperty) } : {}) },
       )
     } else {
       trenchCalculationMutation.mutate(
-        buildTrenchPayload(formState, initialPaymentDate),
+        { ...buildTrenchPayload(formState, initialPaymentDate),
+          ...(manualProperty ? { manualProperty: buildManualPropertyPayload(manualProperty) } : {}) },
       )
     }
   }
 
   const generalError = fieldErrors.nonFieldErrors
+    ?? fieldErrors['manualProperty.nonFieldErrors']
     ?? (activeCalculationMutation.isError
       && Object.keys(fieldErrors).length === 0
       ? 'Не удалось выполнить расчёт. Проверьте данные и повторите попытку.'
@@ -1006,6 +1027,24 @@ export function MortgageCalculatorPage({
       aria-label="Сохранение расчёта"
     >
       <div>
+        <div className="page-header__actions" aria-label="Выгрузка текущего расчёта">
+          {(['excel', 'word'] as const).map((format) => (
+            <button className="button button--secondary" type="button" key={format}
+              disabled={!isResultCurrent || exportMutation.isPending}
+              onClick={() => {
+                if (!isResultCurrent) return
+                const propertyContext = selectedPropertyIdentifier ? { propertyId: selectedPropertyIdentifier } : {}
+                if (calculationType === 'market' && marketCalculationMutation.variables) {
+                  exportMutation.mutate(['market', format, { ...propertyContext, parameters: marketCalculationMutation.variables }])
+                } else if (calculationType === 'trench' && trenchCalculationMutation.variables) {
+                  exportMutation.mutate(['trench', format, { ...propertyContext, parameters: trenchCalculationMutation.variables }])
+                }
+              }}>
+              {format === 'excel' ? 'Excel' : 'Word'}
+            </button>
+          ))}
+        </div>
+        {exportMutation.isError ? <p className="form-error" role="alert">Не удалось подготовить выгрузку. Повторите попытку.</p> : null}
         <span className="eyebrow">История расчётов</span>
         <h2>Сохранить этот сценарий</h2>
         {!isResultCurrent ? (
@@ -1015,9 +1054,9 @@ export function MortgageCalculatorPage({
         ) : null}
         {!sessionQuery.data?.isAuthenticated ? (
           <p>Войдите в аккаунт, чтобы сохранить расчёт.</p>
-        ) : selectedPropertyIdentifier ? (
+        ) : selectedPropertyIdentifier || manualProperty ? (
           <p>
-            Расчёт будет связан с выбранным объектом
+            Расчёт будет связан с объектом
             {customerIdentifier ? ' и карточкой клиента' : ''}.
           </p>
         ) : (
@@ -1025,7 +1064,7 @@ export function MortgageCalculatorPage({
         )}
         {activeSaveMutation.isError ? (
           <p className="save-calculation-panel__error" role="alert">
-            Не удалось сохранить расчёт. Повторите попытку.
+            {extractFieldErrors(activeSaveMutation.error).detail ?? 'Не удалось сохранить расчёт. Проверьте данные и повторите попытку.'}
           </p>
         ) : null}
       </div>
@@ -1037,7 +1076,7 @@ export function MortgageCalculatorPage({
           >
             Войти
           </a>
-        ) : selectedPropertyIdentifier ? (
+        ) : selectedPropertyIdentifier || manualProperty ? (
           activeSaveMutation.data && customerIdentifier ? (
             <Link className="button button--primary" to={`/customers/${customerIdentifier}`}>
               Открыть карточку клиента
@@ -1061,7 +1100,7 @@ export function MortgageCalculatorPage({
                 if (calculationType === 'market'
                   && marketCalculationMutation.variables) {
                   marketSaveMutation.mutate({
-                    propertyId: selectedPropertyIdentifier,
+                    ...(selectedPropertyIdentifier ? { propertyId: selectedPropertyIdentifier } : {}),
                     parameters: marketCalculationMutation.variables,
                     ...(customerIdentifier
                       ? { customerId: customerIdentifier }
@@ -1071,7 +1110,7 @@ export function MortgageCalculatorPage({
                 if (calculationType === 'trench'
                   && trenchCalculationMutation.variables) {
                   trenchSaveMutation.mutate({
-                    propertyId: selectedPropertyIdentifier,
+                    ...(selectedPropertyIdentifier ? { propertyId: selectedPropertyIdentifier } : {}),
                     parameters: trenchCalculationMutation.variables,
                     ...(customerIdentifier
                       ? { customerId: customerIdentifier }
@@ -1142,11 +1181,20 @@ export function MortgageCalculatorPage({
                 onClick={() => {
                   setSelectedPropertyIdentifier(null)
                   setPropertyData(EMPTY_PROPERTY_DATA)
+                  setManualProperty(null)
+                  appliedPropertyIdentifierRef.current = null
                 }}
               >
                 Очистить поля
               </button>
             </div>
+            <label className="form-field">
+              <span>Поиск объекта</span>
+              <input type="search" value={propertySearch}
+                onChange={(event) => { setPropertySearch(event.target.value); setPropertyPage(1) }}
+                onKeyDown={(event) => { if (event.key === 'Enter') event.preventDefault() }}
+                placeholder="Город, ЖК, корпус или квартира" />
+            </label>
             <div className="field-grid property-data-grid">
               <label className="form-field form-field--wide">
                 <span>Объект недвижимости</span>
@@ -1156,6 +1204,11 @@ export function MortgageCalculatorPage({
                   onChange={(event) => selectProperty(event.target.value)}
                 >
                   <option value="">Не выбран — ручное заполнение</option>
+                  {selectedPropertyIdentifier && !propertyItems.some((property) => property.id === selectedPropertyIdentifier) ? (
+                    <option value={selectedPropertyIdentifier}>{selectedProperty
+                      ? `${selectedProperty.realEstateComplex}, кв. ${selectedProperty.apartmentNumber}`
+                      : 'Загрузка выбранного объекта…'}</option>
+                  ) : null}
                   {propertyItems.map((property) => (
                     <option value={property.id} key={property.id}>
                       {property.city}, {property.realEstateComplex}, корпус {property.building}, кв. {property.apartmentNumber}
@@ -1166,7 +1219,7 @@ export function MortgageCalculatorPage({
                   <small role="status">Каталог временно недоступен; поля можно заполнить вручную.</small>
                 ) : null}
               </label>
-              {([
+              {!manualProperty ? ([
                 ['city', 'Город'],
                 ['district', 'Район'],
                 ['developer', 'Застройщик'],
@@ -1184,11 +1237,30 @@ export function MortgageCalculatorPage({
                     type={fieldName === 'area' || fieldName === 'floor' ? 'number' : 'text'}
                     step={fieldName === 'area' ? '0.01' : undefined}
                     value={propertyData[fieldName]}
-                    onChange={(event) => updatePropertyData(fieldName, event.target.value)}
+                    readOnly
                   />
                 </label>
-              ))}
+              )) : null}
             </div>
+            {propertyListQuery.data && propertyListQuery.data.totalPages > 1 ? (
+              <nav className="pagination" aria-label="Страницы выбора объекта">
+                <button type="button" disabled={propertyPage <= 1} onClick={() => setPropertyPage((page) => page - 1)}>Назад</button>
+                <span>{propertyPage} / {propertyListQuery.data.totalPages}</span>
+                <button type="button" disabled={propertyPage >= propertyListQuery.data.totalPages} onClick={() => setPropertyPage((page) => page + 1)}>Далее</button>
+              </nav>
+            ) : null}
+            {!manualProperty ? (
+              <button className="text-button" type="button" onClick={() => {
+                setManualProperty(manualPropertyFromSelected(selectedProperty))
+                setSelectedPropertyIdentifier(null)
+                appliedPropertyIdentifierRef.current = null
+              }}>Заполнить объект вручную</button>
+            ) : (
+              <>
+                <p>Новую квартиру может сохранить модератор каталога. Существующая квартира определяется по корпусу и номеру.</p>
+                <ManualPropertyEditor value={manualProperty} onChange={setManualProperty} errors={fieldErrors} />
+              </>
+            )}
           </section>
 
           <section className="calculator-section" aria-labelledby="object-cost-heading">

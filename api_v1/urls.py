@@ -1,5 +1,8 @@
 from django.urls import path
 
+from .calculation_export_views import UnsavedCalculationExportAPIView
+from .catalog_options import CatalogOptionsAPIView
+
 from .views import (
     BankDetailAPIView,
     BankListCreateAPIView,
@@ -60,6 +63,20 @@ from .views import (
 app_name = 'api_v1'
 
 urlpatterns = [
+    path('catalog-options/<str:dictionary_key>/', CatalogOptionsAPIView.as_view(),
+         name='catalog_options'),
+    path('mortgage/export/excel/', UnsavedCalculationExportAPIView.as_view(),
+         {'calculation_type': 'market', 'export_format': 'excel'},
+         name='unsaved_mortgage_export_excel'),
+    path('mortgage/export/word/', UnsavedCalculationExportAPIView.as_view(),
+         {'calculation_type': 'market', 'export_format': 'word'},
+         name='unsaved_mortgage_export_word'),
+    path('mortgage/trench/export/excel/', UnsavedCalculationExportAPIView.as_view(),
+         {'calculation_type': 'trench', 'export_format': 'excel'},
+         name='unsaved_trench_export_excel'),
+    path('mortgage/trench/export/word/', UnsavedCalculationExportAPIView.as_view(),
+         {'calculation_type': 'trench', 'export_format': 'word'},
+         name='unsaved_trench_export_word'),
     path('auth/session/', SessionAPIView.as_view(), name='session'),
     path('auth/login/', LoginAPIView.as_view(), name='login'),
     path('auth/logout/', LogoutAPIView.as_view(), name='logout'),

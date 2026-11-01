@@ -4,6 +4,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from django.urls import reverse
 
 from mortgage.mortgage_calculator import MortgageCalculator
+from mortgage.excel import MortgageExcelData
 from mortgage.models import MortgageCalculation
 
 
@@ -163,6 +164,45 @@ def calculate_market_mortgage(validated_data):
     }
 
 
+def build_market_mortgage_export_data(parameters, property_object=None):
+    """Reuse validated inputs and the established Excel/Word report contract."""
+    percent, adjustment, final_cost = _calculate_price_adjustment(parameters)
+    initial_percent, _ = _calculate_initial_payment(parameters, final_cost)
+    grace_term = parameters.get('gracePeriodTermMonths') or 0
+    grace_rate = parameters.get('gracePeriodRate') or Decimal('0')
+    calculator = MortgageCalculator(
+        property_cost=float(final_cost),
+        initial_payment_percent=float(initial_percent),
+        initial_payment_date=parameters['initialPaymentDate'],
+        mortgage_term=parameters['mortgageTermMonths'],
+        annual_rate=float(parameters['annualRate']),
+        has_grace_period=parameters['hasGracePeriod'],
+        grace_period_term=grace_term, grace_period_rate=float(grace_rate),
+    )
+    return MortgageExcelData(
+        property_obj=property_object,
+        mortgage_data={
+            'DISCOUNT_MARKUP_TYPE': parameters['priceAdjustmentType'],
+            'INITIAL_PAYMENT_DATE': parameters['initialPaymentDate'],
+            'MORTGAGE_TERM_YEARS': parameters['mortgageTermMonths'] // 12,
+            'MORTGAGE_TERM': parameters['mortgageTermMonths'],
+            'ANNUAL_RATE': parameters['annualRate'],
+            'HAS_GRACE_PERIOD': 'yes' if parameters['hasGracePeriod'] else 'no',
+            'GRACE_PERIOD_TERM_YEARS': grace_term // 12,
+            'GRACE_PERIOD_TERM': grace_term, 'GRACE_PERIOD_RATE': grace_rate,
+            **parameters.get('manualProperty', {}),
+        },
+        property_cost=float(parameters['propertyCost']),
+        discount_markup_value=float(percent),
+        discount_markup_rubles=float(adjustment),
+        final_property_cost=float(final_cost),
+        initial_payment_percent=float(initial_percent),
+        result=calculator.calculate(),
+        payment_schedule=calculator.get_payment_schedule(),
+        has_manual_property_data=bool(parameters.get('manualProperty')),
+    )
+
+
 def create_saved_market_mortgage(parameters, property_object, user):
     """Recalculate and persist a property-backed mortgage scenario."""
     response_payload = calculate_market_mortgage(parameters)
@@ -223,6 +263,7 @@ def serialize_saved_property(property_object):
     return {
         'id': property_object.pk,
         'city': real_estate_complex.district.city.name,
+        'district': real_estate_complex.district.name,
         'developer': (
             real_estate_complex.developer
             .get_display_name_with_company_group()

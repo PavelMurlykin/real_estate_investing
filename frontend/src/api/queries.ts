@@ -918,6 +918,17 @@ export function calculateMortgage(payload: MortgageCalculationRequest) {
   )
 }
 
+export function exportUnsavedCalculation(
+  calculationType: 'market' | 'trench',
+  format: 'excel' | 'word',
+  payload: SavedMortgageCalculationCreateRequest | SavedTrenchMortgageCalculationCreateRequest,
+) {
+  const prefix = calculationType === 'trench' ? '/trench' : ''
+  return requestFile(`/api/v1/mortgage${prefix}/export/${format}/`, {
+    method: 'POST', body: JSON.stringify(payload),
+  }, `mortgage_calculation.${format === 'excel' ? 'xlsx' : 'docx'}`)
+}
+
 export function calculateTrenchMortgage(
   payload: TrenchMortgageCalculationRequest,
 ) {
