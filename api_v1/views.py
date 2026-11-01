@@ -59,6 +59,9 @@ from bank.developer_mortgage_program_importer import (
 )
 from bank.forms import DeveloperMortgageProgramImportForm
 from bank.key_rate_sync import KeyRateSyncError, sync_key_rates
+from bank.mortgage_offer_sync import (
+    BankMortgageSyncError, sync_bank_mortgage_offers,
+)
 from bank.models import (
     Bank,
     BankProgram,
@@ -135,6 +138,7 @@ from .serializers import (
     BankDetailSerializer,
     BankListItemSerializer,
     BankListQuerySerializer,
+    BankSynchronizationRequestSerializer,
     BankWriteSerializer,
     CompanyGroupListQuerySerializer,
     CompanyGroupSerializer,
@@ -1831,6 +1835,45 @@ class LocationDictionaryOptionsAPIView(APIView):
                 },
             }
         )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class BankSynchronizationAPIView(APIView):
+    """Expose both existing administrative mortgage synchronization actions."""
+
+    permission_classes = (IsAuthenticated, CanSyncExternalData)
+
+    def post(self, request):
+        """Synchronize with the established service and preserve its warnings."""
+        serializer = BankSynchronizationRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        update_registry = serializer.validated_data['updateBankRegistry']
+        try:
+            result = sync_bank_mortgage_offers(
+                update_bank_registry=update_registry
+            )
+        except BankMortgageSyncError as error:
+            return Response({
+                'detail': f'Не удалось обновить данные банков: {error}',
+            }, status=status.HTTP_502_BAD_GATEWAY)
+        fields = {
+            'created': 'created', 'updated': 'updated',
+            'processed': 'processed', 'banksProcessed': 'banks_processed',
+            'offersProcessed': 'offers_processed',
+            'referenceProgramsProcessed': 'reference_programs_processed',
+            'referenceProgramsCreated': 'reference_programs_created',
+            'referenceProgramAliasesCreated': (
+                'reference_program_aliases_created'
+            ),
+            'googleSheetOffersProcessed': 'google_sheet_offers_processed',
+            'skipped': 'skipped',
+        }
+        return Response({
+            **{name: result.get(source, 0) for name, source in fields.items()},
+            'warnings': result.get('warnings', []),
+            'updateBankRegistry': update_registry,
+            'synchronizedAt': timezone.now(),
+        })
 
 
 def _bank_list_queryset():

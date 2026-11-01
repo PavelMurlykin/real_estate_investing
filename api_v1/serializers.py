@@ -561,6 +561,12 @@ class LocationDictionaryWriteSerializer(serializers.Serializer):
         return instance
 
 
+class BankSynchronizationRequestSerializer(serializers.Serializer):
+    """Select the established full-registry or existing-bank sync workflow."""
+
+    updateBankRegistry = serializers.BooleanField(default=True)
+
+
 class BankListQuerySerializer(serializers.Serializer):
     """Validate URL-driven filters and pagination for banks."""
 

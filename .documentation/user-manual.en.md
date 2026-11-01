@@ -28,7 +28,11 @@ Selecting a property and bank program applies active developer conditions: a spe
 
 ## Current migration limitations
 
-Parity restoration is tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. Bank synchronization and the homepage map remain in progress. “Django-форма”/“Прежняя версия” fallback links open the legacy screen directly even when redirects are enabled. Unfinished stages must not be treated as available features.
+Parity restoration is tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. The homepage map remains in progress. “Django-форма”/“Прежняя версия” fallback links open the legacy screen directly even when redirects are enabled. Unfinished stages must not be treated as available features.
+
+## Updating bank data
+
+Administrators have two actions on the bank page. “Обновить данные банков” updates the bank registry and offers; “Обновить ипотечные программы” updates offers for existing banks without updating the registry. Catalog moderators and ordinary users do not have these actions. Both buttons are disabled during synchronization. Completion shows created, updated and processed counts, program statistics and provider warnings; catalogs and calculator conditions refresh in the interface. A failed operation shows an error and can be retried.
 
 ## Working with tables
 

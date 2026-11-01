@@ -7,6 +7,7 @@ from .views import (
     BankDetailAPIView,
     BankListCreateAPIView,
     BankOptionsAPIView,
+    BankSynchronizationAPIView,
     CompanyGroupDetailAPIView,
     CompanyGroupListCreateAPIView,
     DeveloperDetailAPIView,
@@ -118,6 +119,10 @@ urlpatterns = [
         'banks/options/',
         BankOptionsAPIView.as_view(),
         name='bank_options',
+    ),
+    path(
+        'banks/sync/', BankSynchronizationAPIView.as_view(),
+        name='bank_synchronization',
     ),
     path(
         'banks/<int:pk>/',

@@ -365,6 +365,16 @@ export const bankOptionsSchema = z.object({
   truncated: z.boolean(),
 })
 
+export const bankSynchronizationResultSchema = z.object({
+  created: z.number().int().nonnegative(), updated: z.number().int().nonnegative(),
+  processed: z.number().int().nonnegative(), banksProcessed: z.number().int().nonnegative(),
+  offersProcessed: z.number().int().nonnegative(), referenceProgramsProcessed: z.number().int().nonnegative(),
+  referenceProgramsCreated: z.number().int().nonnegative(), referenceProgramAliasesCreated: z.number().int().nonnegative(),
+  googleSheetOffersProcessed: z.number().int().nonnegative(), skipped: z.number().int().nonnegative(),
+  warnings: z.array(z.string()), updateBankRegistry: z.boolean(),
+  synchronizedAt: z.iso.datetime({ offset: true }),
+})
+
 export const mortgageProgramListItemSchema = z.object({
   id: z.number().int().positive(),
   name: z.string(),

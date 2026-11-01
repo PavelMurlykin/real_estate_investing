@@ -51,6 +51,50 @@ function createDirectoryQueryClient(session?: Session) {
 }
 
 describe('BankListPage', () => {
+  it.each([true, false])('exposes administrator sync mode %s and its warnings', async (updateBankRegistry) => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockImplementation(async (path: string) => new Response(JSON.stringify(path.endsWith('/sync/') ? {
+      created: 2, updated: 3, processed: 5, banksProcessed: 4, offersProcessed: 6,
+      referenceProgramsProcessed: 12, referenceProgramsCreated: 1, referenceProgramAliasesCreated: 2,
+      googleSheetOffersProcessed: 3, skipped: 1, warnings: ['Источник временно недоступен'],
+      updateBankRegistry, synchronizedAt: '2026-11-01T12:00:00Z',
+    } : bankDirectory), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    vi.stubGlobal('fetch', fetchMock)
+    renderWithProviders(<BankListPage />, { queryClient: createDirectoryQueryClient({
+      ...managerSession, capabilities: { ...managerSession.capabilities, syncExternalData: true },
+    }) })
+    await user.click(screen.getByRole('button', { name: updateBankRegistry ? 'Обновить данные банков' : 'Обновить ипотечные программы' }))
+    expect(await screen.findByText('Источник временно недоступен')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Результат синхронизации банков' })).toHaveTextContent('создано 2, обновлено 3, обработано 5')
+    const request = fetchMock.mock.calls.find(([path]) => path === '/api/v1/banks/sync/')
+    expect(JSON.parse(request?.[1].body as string)).toEqual({ updateBankRegistry })
+  })
+
+  it('does not offer external synchronization to catalog moderators', () => {
+    renderWithProviders(<BankListPage />, { queryClient: createDirectoryQueryClient(managerSession) })
+    expect(screen.queryByRole('button', { name: 'Обновить данные банков' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Обновить ипотечные программы' })).not.toBeInTheDocument()
+  })
+
+  it('guards duplicate requests and shows a recoverable provider error', async () => {
+    const user = userEvent.setup()
+    let finish: (response: Response) => void = () => {}
+    const fetchMock = vi.fn().mockImplementation(() => new Promise<Response>((resolve) => { finish = resolve }))
+    vi.stubGlobal('fetch', fetchMock)
+    renderWithProviders(<BankListPage />, { queryClient: createDirectoryQueryClient({
+      ...managerSession, capabilities: { ...managerSession.capabilities, syncExternalData: true },
+    }) })
+    await user.click(screen.getByRole('button', { name: 'Обновить ипотечные программы' }))
+    expect(screen.getByRole('button', { name: 'Обновить данные банков' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Обновить ипотечные программы' })).toBeDisabled()
+    finish(new Response(JSON.stringify({ detail: 'Источник банков временно недоступен' }), {
+      status: 502, headers: { 'Content-Type': 'application/json' },
+    }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Источник банков временно недоступен')
+    expect(screen.getByRole('button', { name: 'Обновить ипотечные программы' })).toBeEnabled()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
   it('renders the public directory with React detail links', () => {
     renderWithProviders(<BankListPage />, {
       queryClient: createDirectoryQueryClient(),

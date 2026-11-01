@@ -5,6 +5,7 @@ import {
   bankDetailSchema,
   bankListResponseSchema,
   bankOptionsSchema,
+  bankSynchronizationResultSchema,
   companyGroupListResponseSchema,
   companyGroupSchema,
   customerCalculationLinkResponseSchema,
@@ -447,6 +448,12 @@ export function synchronizeKeyRates() {
     keyRateSyncResultSchema,
     { method: 'POST' },
   )
+}
+
+export function synchronizeBankOffers(updateBankRegistry: boolean) {
+  return requestJson('/api/v1/banks/sync/', bankSynchronizationResultSchema, {
+    method: 'POST', body: JSON.stringify({ updateBankRegistry }),
+  })
 }
 
 export function companyGroupListQueryOptions(

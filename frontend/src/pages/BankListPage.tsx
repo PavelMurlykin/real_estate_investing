@@ -13,6 +13,7 @@ import {
   bankListQueryOptions,
   deleteBank,
   sessionQueryOptions,
+  synchronizeBankOffers,
 } from '@/api/queries'
 import type { BankListItem } from '@/api/schemas'
 import { formatInteger, formatPercent } from '@/shared/lib/formatters'
@@ -46,6 +47,16 @@ export function BankListPage() {
   const bankQuery = useQuery(bankListQueryOptions(tableParameters))
   const sessionQuery = useQuery(sessionQueryOptions)
   const queryClient = useQueryClient()
+  const syncMutation = useMutation({
+    mutationFn: synchronizeBankOffers,
+    onSuccess: () => queryClient.invalidateQueries({
+      predicate: (query) => new Set([
+        'banks', 'bank', 'bank-options', 'mortgage-programs', 'mortgage-program',
+        'mortgage-program-options', 'mortgage-options', 'mortgage-developer-options',
+        'developer-mortgage-program-options', 'overview',
+      ]).has(String(query.queryKey[0])),
+    }),
+  })
   const [selectedBank, setSelectedBank] = useState<BankListItem | null>(null)
   const deleteTriggerRef = useRef<HTMLButtonElement | null>(null)
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
@@ -112,6 +123,11 @@ export function BankListPage() {
   const canManageCatalogs = (
     sessionQuery.data?.capabilities.manageCatalogs === true
   )
+  const canSynchronize = sessionQuery.data?.capabilities.syncExternalData === true
+  const syncErrorDetails = syncMutation.error instanceof ApiError ? syncMutation.error.details : null
+  const syncError = syncErrorDetails && typeof syncErrorDetails === 'object'
+    && 'detail' in syncErrorDetails && typeof syncErrorDetails.detail === 'string'
+    ? syncErrorDetails.detail : 'Не удалось обновить данные банков. Повторите попытку позже.'
   const { results, page, totalCount, totalPages } = bankQuery.data
 
   return (
@@ -134,8 +150,22 @@ export function BankListPage() {
               Добавить банк
             </Link>
           ) : null}
+          {canSynchronize ? <>
+            <button type="button" className="button button--secondary" disabled={syncMutation.isPending} onClick={() => syncMutation.mutate(true)}>Обновить данные банков</button>
+            <button type="button" className="button button--secondary" disabled={syncMutation.isPending} onClick={() => syncMutation.mutate(false)}>Обновить ипотечные программы</button>
+          </> : null}
         </div>
       </header>
+
+      {syncMutation.isPending ? <p className="status-notice" role="status">Обновляем данные из внешних источников…</p> : null}
+      {syncMutation.isError ? <p className="form-error" role="alert">{syncError}</p> : null}
+      {syncMutation.isSuccess ? (
+        <section className="saved-property-card" aria-label="Результат синхронизации банков">
+          <p role="status">{syncMutation.data.updateBankRegistry ? 'Обновление данных банков' : 'Обновление ипотечных программ'} завершено: создано {formatInteger(syncMutation.data.created)}, обновлено {formatInteger(syncMutation.data.updated)}, обработано {formatInteger(syncMutation.data.processed)}.</p>
+          <p>Банков: {formatInteger(syncMutation.data.banksProcessed)}; предложений: {formatInteger(syncMutation.data.offersProcessed)}; эталонных программ: {formatInteger(syncMutation.data.referenceProgramsProcessed)}; новых алиасов: {formatInteger(syncMutation.data.referenceProgramAliasesCreated)}; пропущено: {formatInteger(syncMutation.data.skipped)}.</p>
+          {syncMutation.data.warnings.length ? <ul aria-label="Предупреждения синхронизации">{syncMutation.data.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul> : null}
+        </section>
+      ) : null}
 
       <nav className="dictionary-tabs" aria-label="Разделы банков">
         <Link to="/banks" aria-current="page">Банки</Link>
