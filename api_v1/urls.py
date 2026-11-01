@@ -2,6 +2,7 @@ from django.urls import path
 
 from .calculation_export_views import UnsavedCalculationExportAPIView
 from .catalog_options import CatalogOptionsAPIView
+from .homepage_views import HomepageComplexListAPIView
 
 from .views import (
     BankDetailAPIView,
@@ -104,6 +105,10 @@ urlpatterns = [
         name='password_reset_confirm',
     ),
     path('overview/', OverviewAPIView.as_view(), name='overview'),
+    path(
+        'homepage/complexes/', HomepageComplexListAPIView.as_view(),
+        name='homepage_complex_list',
+    ),
     path('key-rates/', KeyRateListAPIView.as_view(), name='key_rate_list'),
     path(
         'key-rates/sync/',

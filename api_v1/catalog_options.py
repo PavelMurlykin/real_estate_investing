@@ -32,6 +32,7 @@ class CatalogOptionQuerySerializer(serializers.Serializer):
     realEstateComplexId = serializers.IntegerField(required=False, min_value=1)
     companyGroupId = serializers.IntegerField(required=False, min_value=1)
     metroLineId = serializers.IntegerField(required=False, min_value=1)
+    activeOnly = serializers.BooleanField(default=False)
 
 
 CATALOG_OPTIONS = {
@@ -107,6 +108,8 @@ class CatalogOptionsAPIView(APIView):
         parameters = serializer.validated_data
         model, label_field, related, filters = configuration
         base_queryset = model.objects.all()
+        if parameters['activeOnly']:
+            base_queryset = base_queryset.filter(is_active=True)
         if dictionary_key == 'preferential-programs':
             base_queryset = base_queryset.filter(is_preferential=True)
         if related:

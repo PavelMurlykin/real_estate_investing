@@ -33,6 +33,7 @@ import {
   mortgageProgramListResponseSchema,
   mortgageProgramOptionsSchema,
   overviewSchema,
+  homepageComplexListSchema,
   passwordChangeResultSchema,
   passwordResetConfirmResultSchema,
   passwordResetRequestResultSchema,
@@ -169,6 +170,12 @@ export const overviewQueryOptions = queryOptions({
     requestJson('/api/v1/overview/', overviewSchema, { signal }),
   staleTime: 60_000,
 })
+
+export function fetchHomepageComplexes(city: string, page: number, signal?: AbortSignal) {
+  const parameters = new URLSearchParams({ page: String(page), pageSize: '50' })
+  if (city) parameters.set('city', city)
+  return requestJson(`/api/v1/homepage/complexes/?${parameters}`, homepageComplexListSchema, { signal })
+}
 
 export function bankListQueryOptions(searchParameters: URLSearchParams) {
   const normalizedParameters = new URLSearchParams()

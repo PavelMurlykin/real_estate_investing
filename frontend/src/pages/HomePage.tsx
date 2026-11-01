@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 
 import { overviewQueryOptions } from '@/api/queries'
+import { HomepageComplexes } from '@/features/homepage/HomepageComplexes'
 import { formatArea, formatCurrency, formatInteger } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
@@ -44,6 +45,8 @@ export function HomePage() {
           <span className="hero-panel__sun" />
         </div>
       </section>
+
+      <HomepageComplexes />
 
       <section aria-labelledby="statistics-title">
         <div className="section-heading">

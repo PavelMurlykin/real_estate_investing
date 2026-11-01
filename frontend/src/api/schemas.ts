@@ -608,6 +608,17 @@ export const realEstateComplexListResponseSchema = z.object({
   results: z.array(realEstateComplexListItemSchema),
 })
 
+export const homepageComplexSchema = realEstateComplexListItemSchema.extend({
+  district: z.string(), description: z.string(), photoUrl: z.string().nullable(),
+  mapUrl: z.string().nullable(), presentationUrl: z.string().nullable(),
+})
+
+export const homepageComplexListSchema = realEstateComplexListResponseSchema.extend({
+  results: z.array(homepageComplexSchema).max(100), selectedCity: namedOptionSchema.nullable(),
+})
+
+export type HomepageComplex = z.infer<typeof homepageComplexSchema>
+
 const realEstateComplexBuildingSchema = z.object({
   id: z.number().int().positive(),
   number: z.string(),

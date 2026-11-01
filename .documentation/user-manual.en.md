@@ -20,7 +20,7 @@ Property search covers the entire catalog; previous/next buttons navigate choice
 
 Money values display two decimal places, including kopecks in payments and balances. Both calculators show the down payment percentage/date, base price and adjustment, exact term in months, rate and payment count. Market results also show the grace term/rate, separate grace/main payment counts and debt after the grace period. The tranche table includes overpayment per tranche; “Остаток к выдаче” means the amount yet to be disbursed. Saved details include the apartment layout when an image is uploaded; click it to open the full-size image.
 
-When legacy URLs redirect to React, property/customer context is translated from `property_id`/`customer` to `propertyId`/`customerId`. Legacy filter and sorting names are translated to the new interface parameters; functionality of filters not yet available is restored in subsequent stages.
+When legacy URLs redirect to React, property/customer context is translated from `property_id`/`customer` to `propertyId`/`customerId`. Legacy filter and sorting names also translate to the new interface parameters and preserve the selected context.
 
 ## Developer programs and credit limits
 
@@ -28,7 +28,13 @@ Selecting a property and bank program applies active developer conditions: a spe
 
 ## Current migration limitations
 
-Parity restoration is tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. The homepage map remains in progress. “Django-форма”/“Прежняя версия” fallback links open the legacy screen directly even when redirects are enabled. Unfinished stages must not be treated as available features.
+Implementation and verification results are tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. “Django-форма”/“Прежняя версия” fallback links open the legacy screen directly even when redirects are enabled. Bank updates and the map depend on external provider availability.
+
+## Homepage and complex map
+
+In “Жилые комплексы по городам”, select an active city; typing in the dictionary search finds it. The default is active Saint Petersburg, or the first active city by name. Cards show active complexes in active districts of that city, with a photo, developer, district, class, type and description. Links open complex details, its properties, and the map or presentation when available.
+
+“Списком” and “На карте” switch views; the city and view remain in the URL. The first 50 complexes load immediately; “Показать ещё ЖК” loads more. The counter shows total and loaded counts; the map contains loaded complexes. Coordinates come from the map link or are resolved by complex name and city. When the map provider is unavailable or coordinates cannot be found, cards and direct links remain available; use “Повторить загрузку карты” to retry.
 
 ## Updating bank data
 
