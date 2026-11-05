@@ -1,16 +1,26 @@
-import { useId } from 'react'
+import { useCallback, useId, useState } from 'react'
 
 import type { KeyRateChartPoint } from '@/api/schemas'
 import { formatDate, formatPercent } from '@/shared/lib/formatters'
 
-const left = 57
-const right = 618
-const top = 20
-const bottom = 191
+const left = 54
+const rightMargin = 24
+const top = 16
+const shortestYearInMilliseconds = 365 * 24 * 60 * 60 * 1000
+const minimumYearLabelSpacing = 44
 
 export function KeyRateChart({ history }: { history: KeyRateChartPoint[] }) {
   const titleId = useId()
   const descriptionId = useId()
+  const [width, setWidth] = useState(640)
+  const observeChartWidth = useCallback((chart: SVGSVGElement | null) => {
+    if (!chart || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width > 0) setWidth(entry.contentRect.width)
+    })
+    observer.observe(chart)
+    return () => observer.disconnect()
+  }, [])
   const points = history.map(({ meetingDate, keyRate }) => ({
     date: meetingDate,
     time: Date.parse(meetingDate),
@@ -26,19 +36,26 @@ export function KeyRateChart({ history }: { history: KeyRateChartPoint[] }) {
   const lowerRate = Math.floor(minimum.rate / step) * step
   const ticks = Array.from({ length: 6 }, (_, index) => lowerRate + index * step)
   const rateSpan = ticks[ticks.length - 1] - lowerRate
+  // The original 800px card had 750px of space for the 640:232 plot.
+  const height = Math.min(272, Math.max(144, Math.round(width * 232 / 640)))
+  const bottom = height - 34
+  const plotWidth = Math.max(1, width - left - rightMargin)
+  const right = left + plotWidth
   const timeSpan = latest.time - first.time
   const x = (time: number) => timeSpan
-    ? left + ((time - first.time) / timeSpan) * (right - left)
+    ? left + ((time - first.time) / timeSpan) * plotWidth
     : (left + right) / 2
   const y = (rate: number) => bottom - ((rate - lowerRate) / rateSpan) * (bottom - top)
   const path = points.slice(1).map((point) => `H ${x(point.time)} V ${y(point.rate)}`).join(' ')
   const firstYear = Number(first.date.slice(0, 4))
   const latestYear = Number(latest.date.slice(0, 4))
-  const yearStep = Math.max(1, Math.ceil((latestYear - firstYear) / 5))
-  const yearTicks = Array.from(
-    { length: Math.floor((latestYear - firstYear) / yearStep) + 1 },
-    (_, index) => latestYear - index * yearStep,
-  ).filter((year) => Date.UTC(year, 0, 1) >= first.time)
+  const yearsSpanned = timeSpan / shortestYearInMilliseconds
+  const labelIntervals = plotWidth / minimumYearLabelSpacing
+  const yearStep = Math.max(1, Math.ceil(yearsSpanned / labelIntervals))
+  const tickCount = Math.floor((latestYear - firstYear) / yearStep) + 1
+  const yearTicks = Array.from({ length: tickCount }, (_, index) => (
+    latestYear - (tickCount - 1 - index) * yearStep
+  )).filter((year) => Date.UTC(year, 0, 1) >= first.time)
   const highlights = [
     { label: 'Минимум', point: minimum, kind: 'minimum' },
     { label: 'Максимум', point: maximum, kind: 'maximum' },
@@ -49,7 +66,14 @@ export function KeyRateChart({ history }: { history: KeyRateChartPoint[] }) {
   return (
     <figure className="key-rate-chart">
       <figcaption id={titleId}>Динамика ключевой ставки</figcaption>
-      <svg viewBox="0 0 640 232" role="img" aria-labelledby={titleId} aria-describedby={descriptionId}>
+      <svg
+        ref={observeChartWidth}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+      >
         <desc id={descriptionId}>
           Ключевая ставка в процентах годовых. Ступени показывают даты изменения ставки,
           точки отмечают записи в истории. Значения приведены в таблице ниже.
@@ -62,19 +86,21 @@ export function KeyRateChart({ history }: { history: KeyRateChartPoint[] }) {
             </text>
           </g>
         ))}
-        {yearTicks.map((year, index) => (
+        {yearTicks.map((year) => (
           <text
-            className={index % 2 === 1 ? 'key-rate-chart__minor-tick' : undefined}
+            className="key-rate-chart__year"
             key={year}
             x={x(Date.UTC(year, 0, 1))}
-            y={220}
+            y={height - 7}
             textAnchor="middle"
           >
             {year}
           </text>
         ))}
         {yearTicks.length === 0 ? (
-          <text x={(left + right) / 2} y={220} textAnchor="middle">{latestYear}</text>
+          <text className="key-rate-chart__year" x={(left + right) / 2} y={height - 7} textAnchor="middle">
+            {latestYear}
+          </text>
         ) : null}
         <path className="key-rate-chart__line" d={`M ${x(first.time)} ${y(first.rate)} ${path}`} />
         {points.map((point) => {

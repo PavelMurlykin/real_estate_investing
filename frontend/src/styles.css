@@ -3200,6 +3200,7 @@ textarea:focus-visible {
   display: block;
   width: 100%;
   font-size: 13px;
+  font-variant-numeric: tabular-nums;
   fill: var(--text-muted);
 }
 
@@ -3297,14 +3298,6 @@ textarea:focus-visible {
 }
 
 @media (max-width: 520px) {
-  .key-rate-chart svg {
-    font-size: 23px;
-  }
-
-  .key-rate-chart__minor-tick {
-    display: none;
-  }
-
   .key-rate-table th,
   .key-rate-table td {
     padding-inline: 6px;

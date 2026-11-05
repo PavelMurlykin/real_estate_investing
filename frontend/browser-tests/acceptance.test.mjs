@@ -150,9 +150,10 @@ test('an unknown React URL provides a working way home', async (context) => {
   assert.equal(await page.getByRole('alert').count(), 0)
 })
 
-test('key rate chart fills the page, enlarges points on hover and leaves room for the count', async (context) => {
+test('key rate chart stays wide and compact, spaces years and enlarges points on hover', async (context) => {
   const page = await createPage(context, { width: 2048, height: 1000 })
   const points = [
+    { meetingDate: '2013-09-17', keyRate: '5.50' },
     { meetingDate: '2022-02-28', keyRate: '20.00' },
     { meetingDate: '2023-07-24', keyRate: '8.50' },
     { meetingDate: '2024-10-28', keyRate: '21.00' },
@@ -176,18 +177,37 @@ test('key rate chart fills the page, enlarges points on hover and leaves room fo
   const count = page.locator('.results-heading')
   await table.waitFor()
   assert((await figure.boundingBox()).width > 1380)
-  for (const width of [2048, 360]) {
+  for (const [width, yearStep] of [[2048, 1], [600, 2], [360, 3], [2048, 1]]) {
     await page.setViewportSize({ width, height: 1000 })
+    await page.waitForFunction(() => {
+      const svg = document.querySelector('.key-rate-chart svg')
+      return Math.abs(svg.viewBox.baseVal.width - svg.getBoundingClientRect().width) < 1
+    })
     const figureBox = await figure.boundingBox()
     const contentBox = await content.boundingBox()
     assert(Math.abs(figureBox.x - contentBox.x) < 1)
     assert(Math.abs(figureBox.width - contentBox.width) < 1)
+    const graphBox = await graph.boundingBox()
+    assert(graphBox.height <= 272)
+    const gridLine = await graph.locator('.key-rate-chart__grid').first().boundingBox()
+    assert(gridLine.width > graphBox.width - 80)
+    const yearLabels = await graph.locator('.key-rate-chart__year').evaluateAll((labels) => labels.map((label) => {
+      const { left, right } = label.getBoundingClientRect()
+      return { year: Number(label.textContent), left, right }
+    }))
+    assert(yearLabels.length > 1)
+    assert.equal(yearLabels.at(-1).year, 2026)
+    for (let index = 1; index < yearLabels.length; index++) {
+      const previous = yearLabels[index - 1]
+      const current = yearLabels[index]
+      assert.equal(current.year - previous.year, yearStep, `year interval at ${width}px`)
+      assert(current.left >= previous.right, `year labels overlap at ${width}px`)
+    }
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
     const countBox = await count.boundingBox()
     assert(countBox.y + countBox.height <= (await table.boundingBox()).y)
   }
 
-  await page.setViewportSize({ width: 2048, height: 1000 })
   const circles = graph.locator('circle')
   for (const date of ['28.02.2022', '23.10.2026']) {
     const point = circles.filter({ hasText: date })
