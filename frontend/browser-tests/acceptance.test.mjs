@@ -150,6 +150,55 @@ test('an unknown React URL provides a working way home', async (context) => {
   assert.equal(await page.getByRole('alert').count(), 0)
 })
 
+test('key rate chart fills the page, enlarges points on hover and leaves room for the count', async (context) => {
+  const page = await createPage(context, { width: 2048, height: 1000 })
+  const points = [
+    { meetingDate: '2022-02-28', keyRate: '20.00' },
+    { meetingDate: '2023-07-24', keyRate: '8.50' },
+    { meetingDate: '2024-10-28', keyRate: '21.00' },
+    { meetingDate: '2026-10-23', keyRate: '14.00' },
+  ]
+  await page.route('**/api/v1/key-rates/chart/', (route) => route.fulfill({ json: points }))
+  await page.route('**/api/v1/key-rates/', (route) => route.fulfill({ json: {
+    page: 1, pageSize: 20, totalCount: points.length, totalPages: 1,
+    currentRate: points.at(-1), lastSyncedAt: null, legacyUrl: '/bank/key-rate/',
+    results: points.map((point, index) => ({
+      ...point, id: index + 1, rateChange: null, isActive: true, updatedAt: '2026-11-05T00:00:00Z',
+    })).reverse(),
+  } }))
+  await page.goto(new URL('/app/key-rate', baseUrl).href)
+
+  const graph = page.getByRole('img', { name: 'Динамика ключевой ставки' })
+  await graph.waitFor()
+  const figure = page.locator('figure.key-rate-chart')
+  const content = page.getByRole('main').locator('.key-rate-page')
+  const table = page.getByRole('table', { name: 'История ключевой ставки Банка России' })
+  const count = page.locator('.results-heading')
+  await table.waitFor()
+  assert((await figure.boundingBox()).width > 1380)
+  for (const width of [2048, 360]) {
+    await page.setViewportSize({ width, height: 1000 })
+    const figureBox = await figure.boundingBox()
+    const contentBox = await content.boundingBox()
+    assert(Math.abs(figureBox.x - contentBox.x) < 1)
+    assert(Math.abs(figureBox.width - contentBox.width) < 1)
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+    const countBox = await count.boundingBox()
+    assert(countBox.y + countBox.height <= (await table.boundingBox()).y)
+  }
+
+  await page.setViewportSize({ width: 2048, height: 1000 })
+  const circles = graph.locator('circle')
+  for (const date of ['28.02.2022', '23.10.2026']) {
+    const point = circles.filter({ hasText: date })
+    const original = await point.boundingBox()
+    await point.hover()
+    assert((await point.boundingBox()).width > original.width)
+    await figure.locator('figcaption').hover()
+    assert.equal((await point.boundingBox()).width, original.width)
+  }
+})
+
 test('wide tables keep accessible action labels and scrolling inside the card', async (context) => {
   const page = await createPage(context, { width: 1280, height: 900 })
   // A populated fixture ensures this regression is tested even on an empty database.
@@ -169,6 +218,8 @@ test('wide tables keep accessible action labels and scrolling inside the card', 
   await page.goto(new URL('/app/complexes', baseUrl).href)
   const table = page.getByRole('table', { name: 'Список жилых комплексов' })
   await table.waitFor()
+  const count = await page.locator('.results-heading').boundingBox()
+  assert(count.y + count.height <= (await table.boundingBox()).y)
   assert.equal(await table.getByRole('columnheader', { name: 'Действия' }).count(), 1)
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
   const scrollsInsideCard = await table.evaluate((element) => {

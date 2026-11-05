@@ -1158,10 +1158,11 @@ textarea:focus-visible {
 
 .results-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 6px 12px;
   min-height: 24px;
-  margin-bottom: -28px;
 }
 
 .results-heading p {
@@ -3173,10 +3174,15 @@ textarea:focus-visible {
   }
 }
 
+.key-rate-page {
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .key-rate-chart {
-  width: min(100%, 800px);
+  width: 100%;
   box-sizing: border-box;
-  margin: 0 auto;
+  margin: 0;
   padding: clamp(12px, 3vw, 24px);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -3212,6 +3218,12 @@ textarea:focus-visible {
 
 .key-rate-chart__point {
   fill: var(--brand);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.key-rate-chart__point:hover {
+  transform: scale(1.35);
 }
 
 .key-rate-chart__marker {
@@ -3220,7 +3232,6 @@ textarea:focus-visible {
   stroke: var(--surface);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
-  pointer-events: none;
 }
 
 .key-rate-chart__marker--minimum {
@@ -4374,8 +4385,7 @@ textarea:focus-visible {
   gap: 20px;
 }
 
-.customer-calculations .section-heading,
-.customer-calculations .results-heading {
+.customer-calculations .section-heading {
   margin-bottom: 0;
 }
 

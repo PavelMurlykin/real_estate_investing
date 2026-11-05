@@ -44,6 +44,7 @@ export function KeyRateChart({ history }: { history: KeyRateChartPoint[] }) {
     { label: 'Максимум', point: maximum, kind: 'maximum' },
     { label: 'Последняя запись', point: latest, kind: 'latest' },
   ]
+  const highlightKinds = new Map(highlights.map(({ point, kind }) => [point.date, kind]))
 
   return (
     <figure className="key-rate-chart">
@@ -76,20 +77,21 @@ export function KeyRateChart({ history }: { history: KeyRateChartPoint[] }) {
           <text x={(left + right) / 2} y={220} textAnchor="middle">{latestYear}</text>
         ) : null}
         <path className="key-rate-chart__line" d={`M ${x(first.time)} ${y(first.rate)} ${path}`} />
-        {points.map((point) => (
-          <circle className="key-rate-chart__point" key={point.date} cx={x(point.time)} cy={y(point.rate)} r={3}>
-            <title>{formatDate(point.date)} · {formatPercent(String(point.rate))}</title>
-          </circle>
-        ))}
-        {highlights.map(({ point, kind }) => (
-          <circle
-            className={`key-rate-chart__marker key-rate-chart__marker--${kind}`}
-            key={kind}
-            cx={x(point.time)}
-            cy={y(point.rate)}
-            r={6}
-          />
-        ))}
+        {points.map((point) => {
+          const kind = highlightKinds.get(point.date)
+          const markerClasses = kind ? ` key-rate-chart__marker key-rate-chart__marker--${kind}` : ''
+          return (
+            <circle
+              className={`key-rate-chart__point${markerClasses}`}
+              key={point.date}
+              cx={x(point.time)}
+              cy={y(point.rate)}
+              r={kind ? 6 : 3}
+            >
+              <title>{formatDate(point.date)} · {formatPercent(String(point.rate))}</title>
+            </circle>
+          )
+        })}
       </svg>
       <ul className="key-rate-chart__legend">
         {highlights.map(({ label, point, kind }) => (
