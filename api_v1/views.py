@@ -2587,6 +2587,22 @@ class KeyRateListAPIView(ListAPIView):
         return response
 
 
+class KeyRateChartAPIView(APIView):
+    """Return the chronological series independently of table pagination."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request):
+        """Return the date and percentage for each history entry."""
+        rates = KeyRate.objects.order_by('meeting_date').values_list(
+            'meeting_date', 'key_rate',
+        )
+        return Response([
+            {'meetingDate': meeting_date, 'keyRate': str(key_rate)}
+            for meeting_date, key_rate in rates
+        ])
+
+
 @method_decorator(csrf_protect, name='dispatch')
 class KeyRateSyncAPIView(APIView):
     """Synchronize key-rate history with the Central Bank source."""

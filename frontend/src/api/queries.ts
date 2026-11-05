@@ -22,6 +22,7 @@ import {
   developerMortgageProgramSchema,
   developerOptionsSchema,
   developerSchema,
+  keyRateChartSchema,
   keyRateListResponseSchema,
   keyRateSyncResultSchema,
   locationDictionaryEntrySchema,
@@ -456,6 +457,12 @@ export function synchronizeKeyRates() {
     { method: 'POST' },
   )
 }
+
+export const keyRateChartQueryOptions = queryOptions({
+  queryKey: ['key-rates', 'chart'],
+  queryFn: ({ signal }) => requestJson('/api/v1/key-rates/chart/', keyRateChartSchema, { signal }),
+  staleTime: 60_000,
+})
 
 export function synchronizeBankOffers(updateBankRegistry: boolean) {
   return requestJson('/api/v1/banks/sync/', bankSynchronizationResultSchema, {

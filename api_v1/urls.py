@@ -30,6 +30,7 @@ from .views import (
     LocationDictionaryListCreateAPIView,
     LocationDictionaryOptionsAPIView,
     LogoutAPIView,
+    KeyRateChartAPIView,
     KeyRateListAPIView,
     KeyRateSyncAPIView,
     MortgageCalculationAPIView,
@@ -110,6 +111,7 @@ urlpatterns = [
         name='homepage_complex_list',
     ),
     path('key-rates/', KeyRateListAPIView.as_view(), name='key_rate_list'),
+    path('key-rates/chart/', KeyRateChartAPIView.as_view(), name='key_rate_chart'),
     path(
         'key-rates/sync/',
         KeyRateSyncAPIView.as_view(),

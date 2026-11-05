@@ -503,6 +503,10 @@ export const currentKeyRateSchema = z.object({
   keyRate: z.string(),
 })
 
+export const keyRateChartSchema = z.array(currentKeyRateSchema.extend({
+  keyRate: z.string().regex(/^-?\d+(?:\.\d{1,2})?$/),
+}))
+
 export const keyRateHistoryItemSchema = z.object({
   id: z.number().int().positive(),
   meetingDate: z.iso.date(),
@@ -1176,6 +1180,7 @@ export type DeveloperMortgageProgramImportResult = z.infer<
   typeof developerMortgageProgramImportResultSchema
 >
 export type KeyRateHistoryItem = z.infer<typeof keyRateHistoryItemSchema>
+export type KeyRateChartPoint = z.infer<typeof keyRateChartSchema>[number]
 export type KeyRateListResponse = z.infer<typeof keyRateListResponseSchema>
 export type KeyRateSyncResult = z.infer<typeof keyRateSyncResultSchema>
 export type PropertyDictionaryKey = z.infer<

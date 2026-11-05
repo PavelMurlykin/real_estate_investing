@@ -3173,76 +3173,131 @@ textarea:focus-visible {
   }
 }
 
-.key-rate-summary {
-  display: grid;
-  grid-template-columns: minmax(240px, 0.55fr) minmax(0, 1fr);
-  gap: 24px;
-  padding: clamp(24px, 4vw, 38px);
-  background:
-    linear-gradient(135deg, rgb(255 255 255 / 30%), transparent 58%),
-    var(--brand-soft);
-  border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--border));
-  border-radius: 22px;
+.key-rate-chart {
+  width: min(100%, 800px);
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: clamp(12px, 3vw, 24px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
   box-shadow: var(--shadow-sm);
 }
 
-.key-rate-summary__value {
-  display: grid;
-  align-content: center;
-  gap: 5px;
-}
-
-.key-rate-summary__value > span,
-.key-rate-summary__meta dt {
-  color: var(--text-muted);
-  font-size: 11px;
+.key-rate-chart figcaption {
+  margin-bottom: 12px;
+  font-size: 20px;
   font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
-.key-rate-summary__value strong {
-  font-family: var(--font-display);
-  font-size: clamp(42px, 7vw, 72px);
-  line-height: 1;
+.key-rate-chart svg {
+  display: block;
+  width: 100%;
+  font-size: 13px;
+  fill: var(--text-muted);
 }
 
-.key-rate-summary__value small {
+.key-rate-chart__grid {
+  stroke: var(--border);
+  vector-effect: non-scaling-stroke;
+}
+
+.key-rate-chart__line {
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.key-rate-chart__point {
+  fill: var(--brand);
+}
+
+.key-rate-chart__marker {
+  color: var(--brand);
+  fill: currentColor;
+  stroke: var(--surface);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.key-rate-chart__marker--minimum {
   color: var(--text-muted);
+}
+
+.key-rate-chart__marker--maximum {
+  color: var(--danger);
+}
+
+.key-rate-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 20px;
+  padding: 0;
+  margin: 12px 0 0;
+  list-style: none;
   font-size: 13px;
 }
 
-.key-rate-summary__meta {
+.key-rate-chart__legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.key-rate-chart__legend .key-rate-chart__marker {
+  flex: 0 0 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.key-rate-history {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin: 0;
-}
-
-.key-rate-summary__meta div {
-  display: grid;
-  align-content: center;
-  gap: 8px;
-  min-height: 112px;
-  padding: 20px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-}
-
-.key-rate-summary__meta dd {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(18px, 2.4vw, 26px);
+  width: min(100%, 560px);
+  margin-inline: auto;
 }
 
 .key-rate-table {
-  min-width: 720px;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
 }
 
-.key-rate-table th:not(:first-child),
-.key-rate-table td:not(:first-child) {
-  text-align: right;
+.key-rate-table th,
+.key-rate-table td {
+  width: 33.33%;
+  text-align: center;
+}
+
+.key-rate-table th {
+  font-size: 14px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.key-rate-table .sortable-header {
+  justify-content: center;
+  gap: 0.25rem;
+  text-align: center;
+}
+
+@media (max-width: 520px) {
+  .key-rate-chart svg {
+    font-size: 23px;
+  }
+
+  .key-rate-chart__minor-tick {
+    display: none;
+  }
+
+  .key-rate-table th,
+  .key-rate-table td {
+    padding-inline: 6px;
+  }
 }
 
 .key-rate-change {
@@ -3267,22 +3322,6 @@ textarea:focus-visible {
 .operation-message--success {
   background: var(--brand-soft);
   border-color: color-mix(in srgb, var(--brand) 30%, var(--border));
-}
-
-@media (max-width: 760px) {
-  .key-rate-summary {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 520px) {
-  .key-rate-summary__meta {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .key-rate-summary__meta div {
-    min-height: auto;
-  }
 }
 
 .catalog-import-card {

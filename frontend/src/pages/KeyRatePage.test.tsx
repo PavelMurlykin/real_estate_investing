@@ -51,53 +51,63 @@ const administrator: Session = {
   },
 }
 
+const chart = [...history.results].reverse().map(({ meetingDate, keyRate }) => ({ meetingDate, keyRate }))
+
 function keyRateQueryClient(session?: Session, data = history) {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['key-rates', ''], data)
+  queryClient.setQueryData(['key-rates', 'chart'], chart)
   if (session) queryClient.setQueryData(['session'], session)
   return queryClient
 }
 
 describe('KeyRatePage', () => {
-  it('renders the public current rate and chronological history', () => {
+  it('shows the chart above the history table and removes the previous controls', () => {
     renderWithProviders(<KeyRatePage />, {
       queryClient: keyRateQueryClient(),
     })
 
     expect(screen.getByRole('heading', { name: 'Ключевая ставка' }))
       .toBeInTheDocument()
-    expect(screen.getAllByText('12%').length).toBeGreaterThan(0)
-    expect(screen.getByText('Действует с 01.02.2026')).toBeInTheDocument()
+    const chartImage = screen.getByRole('img', { name: 'Динамика ключевой ставки' })
+    expect(screen.getByText(/Минимум/)).toHaveTextContent('10% · 01.01.2026')
+    expect(screen.getByText(/Максимум/)).toHaveTextContent('12% · 01.02.2026')
     const table = screen.getByRole('table', {
-      name: 'История изменений ключевой ставки Банка России',
+      name: 'История ключевой ставки Банка России',
     })
-    expect(within(table).getByText('↑ 2%')).toHaveClass(
+    expect(chartImage.compareDocumentPosition(table)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(within(table).getByText('↑ 2 п.п.')).toHaveClass(
       'key-rate-change--up',
     )
     expect(screen.queryByRole('button', { name: 'Обновить из ЦБ РФ' }))
       .not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Прежняя версия' }))
-      .toHaveAttribute('href', "/bank/key-rate/?legacy=1")
+    expect(screen.queryByRole('link', { name: 'Прежняя версия' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Поиск по истории ставки')).not.toBeInTheDocument()
+    expect(screen.queryByText('Текущая ставка')).not.toBeInTheDocument()
   })
 
-  it('lets an administrator synchronize data and reports counts', async () => {
+  it('refreshes the table and chart when an administrator imports a retained rate', async () => {
     const user = userEvent.setup()
+    const latest = { meetingDate: '2026-03-01', keyRate: '12.00' }
+    const refreshedHistory = {
+      ...history,
+      totalCount: 3,
+      currentRate: latest,
+      results: [{ ...history.results[0], ...latest, id: 3, rateChange: '0.00' }, ...history.results],
+    }
     const syncResult = {
-      created: 2,
-      updated: 1,
-      processed: 8,
-      currentRate: history.currentRate,
+      created: 1,
+      updated: 0,
+      processed: 3,
+      currentRate: latest,
       synchronizedAt: '2026-02-03T10:00:00Z',
     }
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify(syncResult), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(history), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }))
+    const responses: Record<string, unknown> = {
+      '/api/v1/key-rates/sync/': syncResult,
+      '/api/v1/key-rates/': refreshedHistory,
+      '/api/v1/key-rates/chart/': [...chart, latest],
+    }
+    const fetchMock = vi.fn(async (url: string) => Response.json(responses[url]))
     vi.stubGlobal('fetch', fetchMock)
     renderWithProviders(<KeyRatePage />, {
       queryClient: keyRateQueryClient(administrator),
@@ -110,8 +120,10 @@ describe('KeyRatePage', () => {
       expect.objectContaining({ method: 'POST' }),
     ))
     expect(await screen.findByRole('status')).toHaveTextContent(
-      'обработано 8, добавлено 2, обновлено 1',
+      'Обработано 3, добавлено 1, обновлено 0',
     )
+    expect(screen.getByRole('row', { name: /01.03.2026.*0 п.п./ })).toBeInTheDocument()
+    expect(screen.getByText(/Последняя запись/)).toHaveTextContent('12% · 01.03.2026')
   })
 
   it('stores pagination in the URL and requests the selected page', async () => {
@@ -132,5 +144,7 @@ describe('KeyRatePage', () => {
       '/api/v1/key-rates/?page=2',
       expect.objectContaining({ credentials: 'same-origin' }),
     ))
+    expect(screen.getByRole('img', { name: 'Динамика ключевой ставки' })).toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/v1/key-rates/chart/', expect.anything())
   })
 })

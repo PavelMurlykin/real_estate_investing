@@ -44,13 +44,19 @@ In “Жилые комплексы по городам”, select an active cit
 
 Administrators have two actions on the bank page. “Обновить данные банков” updates the bank registry and offers; “Обновить ипотечные программы” updates offers for existing banks without updating the registry. Catalog moderators and ordinary users do not have these actions. Both buttons are disabled during synchronization. Completion shows created, updated and processed counts, program statistics and provider warnings; catalogs and calculator conditions refresh in the interface. A failed operation shows an error and can be retried.
 
+## Bank of Russia key rate
+
+The key-rate page shows a step chart of the full history above the table. Points represent history entries, with the minimum, maximum and latest entry highlighted. You can sort the table by date, rate or change in percentage points.
+
+Administrators can click “Обновить из ЦБ РФ” to refresh the data. When the rate changes, the table uses the effective date. When the Bank of Russia retains the rate, the table uses the date of the published decision and shows a change of 0 percentage points. New entries appear in the chart and table after a refresh. Repeated updates do not create duplicates.
+
 ## Working with tables
 
 Click a column header to sort ascending, then click again to sort descending. An arrow shows the direction; headers also work with the keyboard. Paginated lists sort the entire server selection, retain filters and reset pagination. On phones, the table scrolls horizontally inside its card and headers remain sortable. There is no separate “Сортировка” selector.
 
 Text search applies while typing with a 250 ms delay; “Найти” remains available. Nested bank, limit, building, metro, tranche and schedule tables have their own “Поиск в таблице” field; sorting and search cover all loaded rows. Schedule search covers the full calculation even with the twelve-payment preview. Displayed dates and comma-separated money values are searchable. Wide nested tables scroll inside their cards on phones.
 
-Tables at every screen size hide technical IDs, creation/update timestamps, internal activity flags and matching keys. Calculation, payment and Central Bank decision dates remain as business data. Key rate search preserves the delta against the previous decision in the full history. Linked customer calculations also show the down payment separately.
+Tables at every screen size hide technical IDs, creation/update timestamps, internal activity flags and matching keys. Calculation, payment and key-rate history dates remain as business data. Linked customer calculations also show the down payment separately.
 
 Description fields in forms beside tables use the same fonts, background, borders and focus indicator as other site controls, in both light and dark themes. Multiline fields can be resized vertically. An empty dictionary shows a no-records message; row sorting becomes available once data exists.
 
