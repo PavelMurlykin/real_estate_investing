@@ -4907,7 +4907,8 @@ textarea:focus-visible {
   grid-template-columns: repeat(4, minmax(150px, 1fr));
 }
 
-.developer-program-filter-panel > .live-search-control {
+.developer-program-filter-panel__search,
+.developer-program-filter-panel__last {
   grid-column: span 2;
 }
 
@@ -4991,7 +4992,7 @@ textarea:focus-visible {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .developer-program-filter-panel > .live-search-control {
+  .developer-program-filter-panel__search {
     grid-column: 1 / -1;
   }
 }
@@ -5004,6 +5005,10 @@ textarea:focus-visible {
 
   .developer-program-summary-card {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .developer-program-filter-panel__last {
+    grid-column: auto;
   }
 }
 

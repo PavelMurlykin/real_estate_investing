@@ -138,9 +138,8 @@ export function DeveloperMortgageProgramListPage() {
         className="filter-panel developer-program-filter-panel"
         aria-label="Фильтры программ застройщиков"
       >
-        <div className="live-search-control" role="search">
+        <div className="developer-program-filter-panel__search" role="search">
           <LiveFilterInput label="Поиск" id="developer-program-search" parameter="q" placeholder="Группа, ЖК, банк или программа" />
-          <ResetFilters />
         </div>
         <RemoteSelect filter dictionary="company-groups" label="Группа компаний" value={searchParameters.get('companyGroupId') ?? ''}
             initialOptions={options.companyGroups.map((option) => ({ id: option.id, label: option.name }))}
@@ -161,12 +160,15 @@ export function DeveloperMortgageProgramListPage() {
               bankId: value || null,
               page: null,
             })} />
-        <RemoteSelect filter dictionary="mortgage-programs" label="Программа" value={searchParameters.get('mortgageProgramId') ?? ''}
+        <div className="live-search-control developer-program-filter-panel__last">
+          <RemoteSelect filter dictionary="mortgage-programs" label="Программа" value={searchParameters.get('mortgageProgramId') ?? ''}
             initialOptions={options.mortgagePrograms.map((option) => ({ id: option.id, label: option.name }))}
             onChange={(value) => updateParameters({
               mortgageProgramId: value || null,
               page: null,
             })} />
+          <ResetFilters />
+        </div>
       </section>
 
       <div className="results-heading" aria-live="polite">

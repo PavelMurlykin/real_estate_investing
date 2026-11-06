@@ -98,7 +98,7 @@ describe('DeveloperMortgageProgramListPage', () => {
     expect(screen.queryByLabelText('Статус')).not.toBeInTheDocument()
   })
 
-  it('searches while typing and clears the query with the adjacent reset', async () => {
+  it('searches while typing and clears the query with the reset after the filters', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn(async () => Response.json(directory))
     vi.stubGlobal('fetch', fetchMock)
@@ -115,7 +115,11 @@ describe('DeveloperMortgageProgramListPage', () => {
       `/api/v1/developer-mortgage-programs/?${parameters}`,
       expect.objectContaining({ credentials: 'same-origin' }),
     ))
-    await user.click(search.getByRole('button', { name: 'Сбросить' }))
+    const filters = within(screen.getByRole('region', { name: 'Фильтры программ застройщиков' }))
+    const program = filters.getByRole('combobox', { name: 'Программа' })
+    const reset = filters.getByRole('button', { name: 'Сбросить' })
+    expect(program.compareDocumentPosition(reset) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await user.click(reset)
     expect(search.getByRole('searchbox', { name: 'Поиск' })).toHaveValue('')
   })
 

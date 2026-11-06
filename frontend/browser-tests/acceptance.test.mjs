@@ -283,9 +283,10 @@ test('mortgage program descriptions wrap and reset stays beside search', async (
   }
 })
 
-test('developer programs search as you type and keep reset beside the field', async (context) => {
+test('developer programs search as you type and keep reset after the filters on the same row', async (context) => {
   const page = await openPage(context, { width: 1280, height: 900 }, '/app/developer-programs')
   const search = page.getByRole('searchbox', { name: 'Поиск' })
+  const program = page.getByRole('combobox', { name: 'Программа', exact: true })
   const reset = page.getByRole('button', { name: 'Сбросить', exact: true })
   assert.equal(await page.getByRole('link', { name: 'Прежняя версия' }).count(), 0)
   assert.equal(await page.getByRole('button', { name: 'Найти' }).count(), 0)
@@ -294,12 +295,12 @@ test('developer programs search as you type and keep reset beside the field', as
     await page.getByRole('combobox', { name, exact: true }).waitFor()
   }
 
-  for (const width of [1280, 360]) {
+  for (const width of [1280, 900, 700, 360]) {
     await page.setViewportSize({ width, height: 900 })
-    const inputBox = await search.boundingBox()
+    const programBox = await program.boundingBox()
     const resetBox = await reset.boundingBox()
-    assert(resetBox.x >= inputBox.x + inputBox.width)
-    assert(Math.abs(resetBox.y - inputBox.y) < 1)
+    assert(resetBox.x >= programBox.x + programBox.width)
+    assert(Math.abs(resetBox.y + resetBox.height - programBox.y - programBox.height) < 1)
   }
 
   const searchText = 'zz-no-developer-program-827'
