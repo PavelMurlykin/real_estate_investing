@@ -93,25 +93,30 @@ describe('DeveloperMortgageProgramListPage', () => {
       .not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Импорт из XLSX' }))
       .not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Прежняя версия' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Найти' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Статус')).not.toBeInTheDocument()
   })
 
-  it('stores filters in the URL and requests filtered rows', async () => {
+  it('searches while typing and clears the query with the adjacent reset', async () => {
     const user = userEvent.setup()
-    const fetchMock = vi.fn().mockResolvedValue(new Response(
-      JSON.stringify(directory),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    ))
+    const fetchMock = vi.fn(async () => Response.json(directory))
     vi.stubGlobal('fetch', fetchMock)
     renderWithProviders(<DeveloperMortgageProgramListPage />, {
+      initialRoute: '/developer-programs?status=inactive',
       queryClient: queryClient(),
     })
 
-    await user.selectOptions(screen.getByLabelText('Статус'), 'inactive')
+    const search = within(screen.getByRole('search'))
+    await user.type(search.getByRole('searchbox', { name: 'Поиск' }), 'Речной')
+    const parameters = new URLSearchParams({ q: 'Речной' })
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-      '/api/v1/developer-mortgage-programs/?status=inactive',
+      `/api/v1/developer-mortgage-programs/?${parameters}`,
       expect.objectContaining({ credentials: 'same-origin' }),
     ))
+    await user.click(search.getByRole('button', { name: 'Сбросить' }))
+    expect(search.getByRole('searchbox', { name: 'Поиск' })).toHaveValue('')
   })
 
   it('offers manager actions and confirms deletion', async () => {

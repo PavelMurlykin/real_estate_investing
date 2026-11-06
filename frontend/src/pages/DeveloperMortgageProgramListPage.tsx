@@ -1,13 +1,12 @@
 import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
+import { useTableSearchParams } from '@/shared/lib/useTableSearchParams'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 import {
   deleteDeveloperMortgageProgram,
@@ -32,7 +31,7 @@ function valueOrDash(value: string | null, formatter = formatPercent) {
 
 export function DeveloperMortgageProgramListPage() {
   useDocumentTitle('Программы застройщиков')
-  const [searchParameters, setSearchParameters] = useSearchParams()
+  const [searchParameters, updateSearchParameters] = useTableSearchParams()
   const tableParameters = useTableParameters(searchParameters)
   const selectedCompanyGroup = Number(
     searchParameters.get('companyGroupId') ?? 0,
@@ -75,19 +74,15 @@ export function DeveloperMortgageProgramListPage() {
   }, [deleteMutation.isPending, selectedProgram])
 
   const updateParameters = (updates: Record<string, string | null>) => {
-    const nextParameters = new URLSearchParams(searchParameters)
-    for (const [fieldName, value] of Object.entries(updates)) {
-      if (!value || value === 'all') nextParameters.delete(fieldName)
-      else nextParameters.set(fieldName, value)
-    }
-    setSearchParameters(nextParameters)
-  }
-  const submitSearch = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const input = event.currentTarget.elements.namedItem('q')
-    updateParameters({
-      q: input instanceof HTMLInputElement ? input.value.trim() || null : null,
-      page: null,
+    updateSearchParameters((nextParameters) => {
+      const companyGroup = updates.companyGroupId
+      if (companyGroup && companyGroup !== nextParameters.get('companyGroupId')) {
+        nextParameters.delete('realEstateComplexId')
+      }
+      for (const [fieldName, value] of Object.entries(updates)) {
+        if (value) nextParameters.set(fieldName, value)
+        else nextParameters.delete(fieldName)
+      }
     })
   }
   const canManage = sessionQuery.data?.capabilities.manageCatalogs === true
@@ -119,16 +114,13 @@ export function DeveloperMortgageProgramListPage() {
             Ипотечные условия групп компаний и отдельных жилых комплексов.
           </p>
         </div>
-        <div className="page-header__actions">
-          <LegacyLink className="button button--secondary" href="/bank/developer-programs/">
-            Прежняя версия
-          </LegacyLink>
-          {canManage ? (
+        {canManage ? (
+          <div className="page-header__actions">
             <Link className="button button--primary" to="/developer-programs/new">
               Добавить программу
             </Link>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </header>
 
       <nav className="dictionary-tabs" aria-label="Разделы банков">
@@ -146,17 +138,14 @@ export function DeveloperMortgageProgramListPage() {
         className="filter-panel developer-program-filter-panel"
         aria-label="Фильтры программ застройщиков"
       >
-        <form className="search-form" role="search" onSubmit={submitSearch}>
-          <div className="live-search-control">
-            <LiveFilterInput label="Поиск" id="developer-program-search" parameter="q" placeholder="Группа, ЖК, банк или программа" />
-            <button className="button button--dark" type="submit">Найти</button>
-          </div>
-        </form>
+        <div className="live-search-control" role="search">
+          <LiveFilterInput label="Поиск" id="developer-program-search" parameter="q" placeholder="Группа, ЖК, банк или программа" />
+          <ResetFilters />
+        </div>
         <RemoteSelect filter dictionary="company-groups" label="Группа компаний" value={searchParameters.get('companyGroupId') ?? ''}
             initialOptions={options.companyGroups.map((option) => ({ id: option.id, label: option.name }))}
             onChange={(value) => updateParameters({
               companyGroupId: value || null,
-              ...(value && value !== searchParameters.get('companyGroupId') ? { realEstateComplexId: null } : {}),
               page: null,
             })} />
         <RemoteSelect filter dictionary="complexes" label="Жилой комплекс" value={searchParameters.get('realEstateComplexId') ?? ''}
@@ -178,23 +167,6 @@ export function DeveloperMortgageProgramListPage() {
               mortgageProgramId: value || null,
               page: null,
             })} />
-        <div className="sort-control">
-          <label htmlFor="developer-program-status">Статус</label>
-          <select
-            id="developer-program-status"
-            value={searchParameters.get('status') ?? 'all'}
-            onChange={(event) => updateParameters({
-              status: event.target.value,
-              page: null,
-            })}
-          >
-            <option value="all">Все</option>
-            <option value="active">Активные</option>
-            <option value="inactive">На стопе</option>
-          </select>
-        </div>
-        <ResetFilters />
-
       </section>
 
       <div className="results-heading" aria-live="polite">

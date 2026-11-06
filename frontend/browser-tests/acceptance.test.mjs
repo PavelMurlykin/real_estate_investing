@@ -283,6 +283,39 @@ test('mortgage program descriptions wrap and reset stays beside search', async (
   }
 })
 
+test('developer programs search as you type and keep reset beside the field', async (context) => {
+  const page = await openPage(context, { width: 1280, height: 900 }, '/app/developer-programs')
+  const search = page.getByRole('searchbox', { name: 'Поиск' })
+  const reset = page.getByRole('button', { name: 'Сбросить', exact: true })
+  assert.equal(await page.getByRole('link', { name: 'Прежняя версия' }).count(), 0)
+  assert.equal(await page.getByRole('button', { name: 'Найти' }).count(), 0)
+  assert.equal(await page.getByRole('combobox', { name: 'Статус', exact: true }).count(), 0)
+  for (const name of ['Группа компаний', 'Жилой комплекс', 'Банк', 'Программа']) {
+    await page.getByRole('combobox', { name, exact: true }).waitFor()
+  }
+
+  for (const width of [1280, 360]) {
+    await page.setViewportSize({ width, height: 900 })
+    const inputBox = await search.boundingBox()
+    const resetBox = await reset.boundingBox()
+    assert(resetBox.x >= inputBox.x + inputBox.width)
+    assert(Math.abs(resetBox.y - inputBox.y) < 1)
+  }
+
+  const searchText = 'zz-no-developer-program-827'
+  const results = page.waitForResponse((response) => {
+    const url = new URL(response.url())
+    return url.pathname === '/api/v1/developer-mortgage-programs/'
+      && url.searchParams.get('q') === searchText
+  })
+  await search.fill(searchText)
+  assert.equal((await results).status(), 200)
+  await page.getByRole('heading', { name: 'Программы застройщиков не найдены' }).waitFor()
+  await reset.click()
+  await page.waitForURL((url) => url.search === '')
+  await page.waitForFunction(() => document.querySelector('#developer-program-search')?.value === '')
+})
+
 test('wide tables keep accessible action labels and scrolling inside the card', async (context) => {
   const page = await createPage(context, { width: 1280, height: 900 })
   // A populated fixture ensures this regression is tested even on an empty database.

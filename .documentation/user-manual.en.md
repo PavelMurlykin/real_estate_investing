@@ -28,6 +28,8 @@ When legacy URLs redirect to React, property/customer context is translated from
 
 ## Developer programs and credit limits
 
+The developer program list updates as you type the name of a company group, residential complex, bank or program. The same options are available in separate filters. The “Сбросить” button sits beside the search field and restores the full list.
+
 Selecting a property and bank program applies active developer conditions: a specific complex takes priority over group-wide conditions. The adjustment, down payment, term, rate and grace period are populated; changing the program restores the base conditions. Zero rates are supported, including during the grace period. Exceeding the regional limit (or the federal fallback) shows the required/additional down payment and combined rate; apply your chosen option by editing the form fields. This is guidance, not an automatic calculation prohibition. A developer program's maximum loan amount is also considered when provided.
 
 ## Current migration limitations

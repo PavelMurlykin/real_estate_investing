@@ -221,6 +221,14 @@
   min-width: 0;
 }
 
+.live-search-control > .filter-actions {
+  grid-column: auto;
+}
+
+.live-search-control > .filter-actions .button {
+  min-height: 48px;
+}
+
 .field-grid.table-filters {
   grid-column: 1 / -1;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
@@ -2398,14 +2406,6 @@ textarea:focus-visible {
 .mortgage-program-filter-panel {
   grid-template-columns: minmax(145px, 0.35fr) minmax(0, 1fr);
   align-items: end;
-}
-
-.mortgage-program-filter-panel .filter-actions {
-  grid-column: auto;
-}
-
-.mortgage-program-filter-panel .filter-actions .button {
-  min-height: 48px;
 }
 
 .mortgage-program-table {
@@ -4907,9 +4907,8 @@ textarea:focus-visible {
   grid-template-columns: repeat(4, minmax(150px, 1fr));
 }
 
-.developer-program-filter-panel .search-form {
+.developer-program-filter-panel > .live-search-control {
   grid-column: span 2;
-  grid-template-columns: minmax(0, 1fr);
 }
 
 .developer-program-filter-panel .filter-panel__notice {
@@ -4992,7 +4991,7 @@ textarea:focus-visible {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .developer-program-filter-panel .search-form {
+  .developer-program-filter-panel > .live-search-control {
     grid-column: 1 / -1;
   }
 }
@@ -5012,9 +5011,5 @@ textarea:focus-visible {
   .developer-program-filter-panel,
   .developer-program-facts {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .developer-program-filter-panel .search-form {
-    grid-column: auto;
   }
 }

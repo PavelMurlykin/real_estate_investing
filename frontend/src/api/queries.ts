@@ -338,7 +338,6 @@ export function developerMortgageProgramListQueryOptions(
     'realEstateComplexId',
     'bankId',
     'mortgageProgramId',
-    'status',
     'ordering',
     'page',
     'pageSize',
