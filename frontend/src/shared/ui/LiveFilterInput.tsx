@@ -1,5 +1,6 @@
 import { useId } from 'react'
-import { useSearchParams } from 'react-router-dom'
+
+import { useTableSearchParams } from '@/shared/lib/useTableSearchParams'
 
 type LiveFilterInputProps = {
   label: string
@@ -15,7 +16,7 @@ type LiveFilterInputProps = {
 export function LiveFilterInput({ label, id, caption, parameter, pageParameter = 'page', type = 'search', placeholder, max }: LiveFilterInputProps) {
   const generatedIdentifier = useId()
   const identifier = id ?? generatedIdentifier
-  const [parameters, setParameters] = useSearchParams()
+  const [parameters, updateParameters] = useTableSearchParams()
   return (
     <label className="form-field" htmlFor={identifier}>
       <span>{caption ?? label}</span>
@@ -25,11 +26,11 @@ export function LiveFilterInput({ label, id, caption, parameter, pageParameter =
         onChange={(event) => {
           const value = event.target.value
           if (type === 'number' && value && (Number(value) < 0 || (max !== undefined && Number(value) > max))) return
-          const next = new URLSearchParams(parameters)
-          if (value) next.set(parameter, value)
-          else next.delete(parameter)
-          next.delete(pageParameter)
-          setParameters(next, { replace: true })
+          updateParameters((next) => {
+            if (value) next.set(parameter, value)
+            else next.delete(parameter)
+            next.delete(pageParameter)
+          }, { replace: true })
         }} />
     </label>
   )

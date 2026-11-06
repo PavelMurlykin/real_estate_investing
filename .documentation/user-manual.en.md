@@ -52,7 +52,7 @@ Administrators can click “Обновить из ЦБ РФ” to refresh the da
 
 ## Mortgage programs
 
-The list updates as you type a name, description or alias in the search field. You can filter by preferential or market programs. The “Сбросить” button sits beside the search field and restores the full list. The table has separate name and description columns, and long descriptions wrap onto multiple lines.
+The list updates as you type a name, description or alias in the search field. The program type filter is to the left of search and moves above it on narrow screens. Select preferential or market programs. The “Сбросить” button sits beside the search field and restores the full list. The table has separate name and description columns, and long descriptions wrap onto multiple lines.
 
 ## Working with tables
 

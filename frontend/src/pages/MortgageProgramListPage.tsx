@@ -122,10 +122,6 @@ export function MortgageProgramListPage() {
         className="filter-panel mortgage-program-filter-panel"
         aria-label="Фильтры ипотечных программ"
       >
-        <div className="live-search-control" role="search">
-          <LiveFilterInput label="Поиск" id="mortgage-program-search" parameter="q" placeholder="Название, описание или алиас" />
-          <ResetFilters />
-        </div>
         <div className="sort-control">
           <label htmlFor="mortgage-program-type">Тип программы</label>
           <select
@@ -140,6 +136,10 @@ export function MortgageProgramListPage() {
             <option value="preferential">Льготные</option>
             <option value="market">Рыночные</option>
           </select>
+        </div>
+        <div className="live-search-control" role="search">
+          <LiveFilterInput label="Поиск" id="mortgage-program-search" parameter="q" placeholder="Название, описание или алиас" />
+          <ResetFilters />
         </div>
       </section>
 

@@ -1,10 +1,11 @@
-import { screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocation } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 
 import { renderWithProviders } from '@/test/render'
 
+import { LiveFilterInput } from './LiveFilterInput'
 import { SortableHeader } from './SortableHeader'
 
 function Table({ namespaced = false }: { namespaced?: boolean }) {
@@ -16,6 +17,26 @@ function Table({ namespaced = false }: { namespaced?: boolean }) {
 }
 
 describe('SortableHeader', () => {
+  it('toggles twice when activated before the router renders again', () => {
+    renderWithProviders(<><LiveFilterInput label="Поиск" parameter="q" /><Table /></>, {
+      initialRoute: '/?page=4',
+    })
+    const search = screen.getByRole('searchbox', { name: 'Поиск' })
+    const button = screen.getByRole('button', { name: 'Площадь' })
+
+    act(() => {
+      fireEvent.change(search, { target: { value: 'Казань' } })
+      button.click()
+      button.click()
+    })
+
+    const parameters = new URLSearchParams(screen.getByLabelText('Адрес').textContent ?? '')
+    expect(parameters.get('ordering')).toBe('-area')
+    expect(parameters.get('q')).toBe('Казань')
+    expect(parameters.has('page')).toBe(false)
+    expect(screen.getByRole('columnheader', { name: 'Площадь' })).toHaveAttribute('aria-sort', 'descending')
+  })
+
   it.each([false, true])('toggles direction, resets only its page and preserves filters (namespace %s)', async (namespaced) => {
     const user = userEvent.setup()
     renderWithProviders(<Table namespaced={namespaced} />, { initialRoute: '/?q=Казань&page=4&calculationPage=3&customerId=12' })

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { useSearchParams } from 'react-router-dom'
+
+import { useTableSearchParams } from '@/shared/lib/useTableSearchParams'
 
 type SortableHeaderProps = {
   field: string
@@ -10,18 +11,17 @@ type SortableHeaderProps = {
 }
 
 export function SortableHeader({ field, children, defaultOrdering = 'name', parameter = 'ordering', pageParameter = 'page' }: SortableHeaderProps) {
-  const [parameters, setParameters] = useSearchParams()
+  const [parameters, updateParameters] = useTableSearchParams()
   const current = parameters.get(parameter) ?? defaultOrdering
   const active = current.replace(/^-/, '') === field
   const descending = active && current.startsWith('-')
   return (
     <th scope="col" aria-sort={active ? descending ? 'descending' : 'ascending' : 'none'}>
-      <button type="button" className="sortable-header" onClick={() => {
-        const next = new URLSearchParams(parameters)
-        next.set(parameter, active && !descending ? `-${field}` : field)
+      <button type="button" className="sortable-header" onClick={() => updateParameters((next) => {
+        const currentOrdering = next.get(parameter) ?? defaultOrdering
+        next.set(parameter, currentOrdering === field ? `-${field}` : field)
         next.delete(pageParameter)
-        setParameters(next)
-      }}>
+      })}>
         <span>{children}</span><span aria-hidden="true">{active ? descending ? '↓' : '↑' : '↕'}</span>
       </button>
     </th>

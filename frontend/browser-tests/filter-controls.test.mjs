@@ -59,7 +59,7 @@ for (const width of [360, 1280]) {
     assert.equal(await cityInput.inputValue(), '')
     await table.getByRole('button', { name: 'Стоимость', exact: true }).click()
     await page.waitForURL((url) => url.searchParams.get('ordering') === 'propertyCost')
-    assert.equal(await table.getByRole('columnheader', { name: 'Стоимость' }).getAttribute('aria-sort'), 'ascending')
+    await table.getByRole('columnheader', { name: 'Стоимость' }).and(page.locator('[aria-sort="ascending"]')).waitFor()
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
     await screenshot(page, `filter-controls-${width}.png`)
   })
