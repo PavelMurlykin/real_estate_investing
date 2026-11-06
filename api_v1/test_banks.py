@@ -72,7 +72,7 @@ def test_bank_list_is_public_filtered_and_query_efficient(
     django_assert_num_queries,
 ):
     """Return aggregate bank rows with bounded database work."""
-    with django_assert_num_queries(2):
+    with django_assert_num_queries(3):
         response = client.get(
             reverse('api_v1:bank_list'),
             {
@@ -91,6 +91,14 @@ def test_bank_list_is_public_filtered_and_query_efficient(
             'name': 'Тест Банк',
             'logoUrl': 'https://example.com/test-bank.svg',
             'programCount': 1,
+            'programs': [{
+                'id': bank_catalog['bank_program'].pk,
+                'mortgageProgramId': bank_catalog['family_program'].pk,
+                'mortgageProgramName': 'Семейная ипотека',
+                'interestRate': '5.90',
+                'minimumInitialPaymentPercent': '20.10',
+                'maximumLoanTermYears': 30,
+            }],
             'minimumInterestRate': '5.90',
             'isActive': True,
             'updatedAt': response.json()['results'][0]['updatedAt'],

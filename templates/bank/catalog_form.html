@@ -38,29 +38,28 @@
                 Добавить банк
             </a>
             {% endif %}
-            {% if can_sync_external_data %}
-            <form method="post" action="{{ form_action_url }}">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="sync_bank_mortgage_offers">
-                <input type="hidden" name="model" value="bank">
-                <button type="submit" class="btn btn-outline-primary">
-                    Обновить данные банков
-                </button>
-            </form>
-            <form method="post" action="{{ form_action_url }}">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="sync_existing_bank_mortgage_offers">
-                <input type="hidden" name="model" value="bank">
-                <button type="submit" class="btn btn-outline-primary">
-                    Обновить ипотечные программы
-                </button>
-            </form>
-            {% endif %}
         </div>
         {% endif %}
     </div>
 
     {% include "bank/includes/catalog_tabs.html" %}
+
+    {% if can_sync_external_data %}
+        {% if model_key == 'bank' or model_key == 'mortgage_program' %}
+        <form method="post" action="{{ form_action_url }}" enctype="multipart/form-data"
+              class="d-flex flex-wrap align-items-center gap-2 mb-3">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="import_catalog">
+            <input type="hidden" name="model" value="{{ model_key }}">
+            <label class="visually-hidden" for="bank-catalog-file">Файл JSON</label>
+            <input id="bank-catalog-file" type="file" name="file" accept=".json"
+                   class="form-control form-control-sm w-auto" required>
+            <button type="submit" class="btn btn-sm btn-outline-primary">
+                {% if model_key == 'bank' %}Импорт банков{% else %}Импорт ипотечных программ{% endif %}
+            </button>
+        </form>
+        {% endif %}
+    {% endif %}
 
     {% if delete_error %}
     <div class="alert alert-danger">{{ delete_error }}</div>

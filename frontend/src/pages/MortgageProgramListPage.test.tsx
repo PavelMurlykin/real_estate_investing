@@ -31,7 +31,6 @@ const directory: MortgageProgramListResponse = {
     bankCount: 2,
     developerProgramCount: 1,
     regionalLimitCount: 1,
-    aliasCount: 2,
     isActive: true,
     updatedAt: '2026-01-11T10:00:00Z',
     detailUrl: '/mortgage-programs/5',

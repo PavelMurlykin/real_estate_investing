@@ -4724,6 +4724,51 @@ textarea:focus-visible {
   gap: 0.25rem;
 }
 
+.bank-catalog-import {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.bank-catalog-import summary,
+.bank-program-disclosure summary {
+  cursor: pointer;
+}
+
+.bank-catalog-import form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.bank-catalog-import input {
+  max-width: 100%;
+}
+
+.bank-catalog-import p {
+  margin: 0.5rem 0 0;
+}
+
+.bank-program-disclosure {
+  margin-top: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.bank-program-disclosure ul {
+  margin: 0.5rem 0 0;
+  padding-inline-start: 1.25rem;
+}
+
+.bank-program-disclosure li + li {
+  margin-top: 0.35rem;
+}
+
+.bank-program-disclosure li span {
+  display: block;
+}
+
 .bank-identity {
   display: flex;
   align-items: center;

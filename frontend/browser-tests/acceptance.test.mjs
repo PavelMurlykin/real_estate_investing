@@ -247,7 +247,7 @@ test('mortgage program descriptions wrap and reset stays beside search', async (
     results: [{
       id: 5, name: 'Семейная ипотека', condition: description, isPreferential: true,
       creditLimit: '12000000.00', bankCount: 2, developerProgramCount: 1, regionalLimitCount: 1,
-      aliasCount: 2, isActive: true, updatedAt: '2026-01-11T10:00:00Z',
+      isActive: true, updatedAt: '2026-01-11T10:00:00Z',
       detailUrl: '/mortgage-programs/5', legacyEditUrl: '/bank/?model=mortgage_program&edit=5',
     }],
   } }))
@@ -367,7 +367,7 @@ test('bank table fits narrow screens with long names and catalog actions', async
   await page.route('**/api/v1/banks/', (route) => route.fulfill({ json: {
     page: 1, pageSize: 20, totalCount: names.length, totalPages: 1,
     results: names.map((name, index) => ({
-      id: index + 1, name, logoUrl: '', programCount: 20,
+      id: index + 1, name, logoUrl: '', programCount: 20, programs: [],
       minimumInterestRate: '12.75', isActive: true, updatedAt: '2026-01-11T10:00:00Z',
       detailUrl: `/banks/${index + 1}`, legacyDetailUrl: `/bank/banks/${index + 1}/`,
     })),

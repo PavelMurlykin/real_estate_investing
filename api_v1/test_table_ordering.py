@@ -17,7 +17,7 @@ from .test_location_dictionaries import location_dictionary_catalog
     ('developers', ['name', 'companyGroup', 'regions', 'complexCount']),
     ('banks', ['name', 'programCount', 'minimumInterestRate']),
     ('mortgage-programs', ['name', 'isPreferential', 'creditLimit', 'bankCount',
-                           'regionalLimitCount', 'aliasCount']),
+                           'regionalLimitCount']),
     ('developer-mortgage-programs', ['companyGroup', 'bank', 'interestRate',
         'gracePeriodMonths', 'minimumInitialPaymentPercent',
         'maximumLoanAmount', 'priceIncreasePercent']),

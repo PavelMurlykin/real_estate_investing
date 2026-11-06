@@ -7,12 +7,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { BankCatalogImport } from '@/shared/ui/BankCatalogImport'
 import { ApiError } from '@/api/client'
 import {
   bankListQueryOptions,
   deleteBank,
   sessionQueryOptions,
-  synchronizeBankOffers,
 } from '@/api/queries'
 import type { BankListItem } from '@/api/schemas'
 import { formatInteger, formatPercent } from '@/shared/lib/formatters'
@@ -39,6 +39,29 @@ function BankIdentity({ bank }: { bank: BankListItem }) {
   )
 }
 
+function BankProgramDisclosure({ bank }: { bank: BankListItem }) {
+  if (bank.programs.length === 0) return null
+
+  return (
+    <details className="bank-program-disclosure">
+      <summary aria-label={'Ипотечные программы — ' + bank.name}>Ипотечные программы</summary>
+      <ul>
+        {bank.programs.map((program) => (
+          <li key={program.id}>
+            <Link className="text-link" to={'/mortgage-programs/' + program.mortgageProgramId}>
+              {program.mortgageProgramName}
+            </Link>
+            <span>
+              от {formatPercent(program.interestRate)} · взнос от {formatPercent(program.minimumInitialPaymentPercent)}
+              {program.maximumLoanTermYears ? ' · до ' + program.maximumLoanTermYears + ' лет' : ''}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  )
+}
+
 export function BankListPage() {
   useDocumentTitle('Банки и программы')
   const [searchParameters, updateSearchParameters] = useTableSearchParams()
@@ -46,16 +69,6 @@ export function BankListPage() {
   const bankQuery = useQuery(bankListQueryOptions(tableParameters))
   const sessionQuery = useQuery(sessionQueryOptions)
   const queryClient = useQueryClient()
-  const syncMutation = useMutation({
-    mutationFn: synchronizeBankOffers,
-    onSuccess: () => queryClient.invalidateQueries({
-      predicate: (query) => new Set([
-        'banks', 'bank', 'bank-options', 'mortgage-programs', 'mortgage-program',
-        'mortgage-program-options', 'mortgage-options', 'mortgage-developer-options',
-        'developer-mortgage-program-options', 'overview',
-      ]).has(String(query.queryKey[0])),
-    }),
-  })
   const [selectedBank, setSelectedBank] = useState<BankListItem | null>(null)
   const deleteTriggerRef = useRef<HTMLButtonElement | null>(null)
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
@@ -113,11 +126,6 @@ export function BankListPage() {
   const canManageCatalogs = (
     sessionQuery.data?.capabilities.manageCatalogs === true
   )
-  const canSynchronize = sessionQuery.data?.capabilities.syncExternalData === true
-  const syncErrorDetails = syncMutation.error instanceof ApiError ? syncMutation.error.details : null
-  const syncError = syncErrorDetails && typeof syncErrorDetails === 'object'
-    && 'detail' in syncErrorDetails && typeof syncErrorDetails.detail === 'string'
-    ? syncErrorDetails.detail : 'Не удалось обновить данные банков. Повторите попытку позже.'
   const { results, page, totalCount, totalPages } = bankQuery.data
 
   return (
@@ -131,30 +139,10 @@ export function BankListPage() {
             предельный срок кредита.
           </p>
         </div>
-        {canManageCatalogs || canSynchronize ? (
-          <div className="page-header__actions">
-            {canManageCatalogs ? (
-              <Link className="button button--primary" to="/banks/new">
-                Добавить банк
-              </Link>
-            ) : null}
-            {canSynchronize ? <>
-              <button type="button" className="button button--secondary" disabled={syncMutation.isPending} onClick={() => syncMutation.mutate(true)}>Обновить данные банков</button>
-              <button type="button" className="button button--secondary" disabled={syncMutation.isPending} onClick={() => syncMutation.mutate(false)}>Обновить ипотечные программы</button>
-            </> : null}
-          </div>
+        {canManageCatalogs ? (
+          <Link className="button button--primary" to="/banks/new">Добавить банк</Link>
         ) : null}
       </header>
-
-      {syncMutation.isPending ? <p className="status-notice" role="status">Обновляем данные из внешних источников…</p> : null}
-      {syncMutation.isError ? <p className="form-error" role="alert">{syncError}</p> : null}
-      {syncMutation.isSuccess ? (
-        <section className="saved-property-card" aria-label="Результат синхронизации банков">
-          <p role="status">{syncMutation.data.updateBankRegistry ? 'Обновление данных банков' : 'Обновление ипотечных программ'} завершено: создано {formatInteger(syncMutation.data.created)}, обновлено {formatInteger(syncMutation.data.updated)}, обработано {formatInteger(syncMutation.data.processed)}.</p>
-          <p>Банков: {formatInteger(syncMutation.data.banksProcessed)}; предложений: {formatInteger(syncMutation.data.offersProcessed)}; эталонных программ: {formatInteger(syncMutation.data.referenceProgramsProcessed)}; новых алиасов: {formatInteger(syncMutation.data.referenceProgramAliasesCreated)}; пропущено: {formatInteger(syncMutation.data.skipped)}.</p>
-          {syncMutation.data.warnings.length ? <ul aria-label="Предупреждения синхронизации">{syncMutation.data.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul> : null}
-        </section>
-      ) : null}
 
       <nav className="dictionary-tabs" aria-label="Разделы банков">
         <Link to="/banks" aria-current="page">Банки</Link>
@@ -164,6 +152,8 @@ export function BankListPage() {
         </Link>
         <Link to="/key-rate">Ключевая ставка</Link>
       </nav>
+
+      {sessionQuery.data?.capabilities.syncExternalData ? <BankCatalogImport section="banks" /> : null}
 
       <section
         className="filter-panel bank-filter-panel"
@@ -232,7 +222,10 @@ export function BankListPage() {
               <tbody>
                 {results.map((bank) => (
                   <tr key={bank.id}>
-                    <td><BankIdentity bank={bank} /></td>
+                    <td>
+                      <BankIdentity bank={bank} />
+                      <BankProgramDisclosure bank={bank} />
+                    </td>
                     <td>{formatInteger(bank.programCount)}</td>
                     <td>
                       {bank.minimumInterestRate
@@ -291,6 +284,7 @@ export function BankListPage() {
                       : '—'}</dd>
                   </div>
                 </dl>
+                <BankProgramDisclosure bank={bank} />
                 <div className="property-mobile-card__actions">
                   <Link className="text-link" to={`/banks/${bank.id}`}>
                     Открыть

@@ -187,33 +187,6 @@ export function MortgageProgramDetailPage() {
       </section>
 
       <section
-        className="saved-property-card"
-        aria-labelledby="mortgage-program-aliases-title"
-      >
-        <div className="section-heading">
-          <div>
-            <span className="eyebrow">Сопоставление данных</span>
-            <h2 id="mortgage-program-aliases-title">Алиасы программы</h2>
-          </div>
-        </div>
-        {mortgageProgram.aliases.length ? (
-          <>
-            <div className="property-table-wrapper">
-              <InteractiveTable rows={mortgageProgram.aliases} getRowKey={(alias) => alias.id}
-              caption={`Алиасы программы ${mortgageProgram.name}`} className="property-table mortgage-program-related-table"
-              columns={[
-                { id: 'column0', label: "Имя из источника", value: (alias) => alias.sourceName, render: (alias) => <><strong>{alias.sourceName}</strong></> },
-                { id: 'column1', label: "Источник", value: (alias) => alias.source, render: (alias) => <>{alias.source || '—'}</> },
-              ]} />
-            </div>
-
-          </>
-        ) : (
-          <p className="complex-copy">Алиасы для импорта не добавлены.</p>
-        )}
-      </section>
-
-      <section
         className="property-system-information"
         aria-label="Системная информация"
       >
@@ -252,7 +225,7 @@ export function MortgageProgramDetailPage() {
               Удалить программу?
             </h2>
             <p id="mortgage-program-detail-delete-description">
-              «{mortgageProgram.name}», её лимиты и алиасы будут удалены.
+              «{mortgageProgram.name}», её лимиты будут удалены.
             </p>
             {deleteMutation.isError ? (
               <p className="form-error" role="alert">

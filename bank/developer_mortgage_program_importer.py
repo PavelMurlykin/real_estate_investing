@@ -17,7 +17,7 @@ from openpyxl.utils.exceptions import InvalidFileException
 from property.models import CompanyGroup, RealEstateComplex
 
 from .models import Bank, DeveloperMortgageProgram, MortgageProgram
-from .mortgage_offer_sync import _normalize_bank_match_name
+from .bank_matching import normalize_bank_match_name
 
 IMPORT_WORKSHEET_NAME = 'db_import'
 MAXIMUM_IMPORT_ROWS = 20_000
@@ -118,7 +118,7 @@ class DeveloperMortgageProgramSourceRecord:
             normalize_reference_name(self.company_group_name),
             normalize_reference_name(self.real_estate_complex_name),
             self.object_scope,
-            _normalize_bank_match_name(self.bank_name),
+            normalize_bank_match_name(self.bank_name),
             self.program_type_code,
             self.source_program_column,
             self.source_program_variant_index,
@@ -513,7 +513,7 @@ def load_developer_mortgage_programs(parsed_workbook):
     )
     bank_lookup = build_unique_lookup(
         Bank.objects.all(),
-        lambda bank: _normalize_bank_match_name(bank.name),
+        lambda bank: normalize_bank_match_name(bank.name),
     )
     mortgage_program_lookup = build_unique_lookup(
         MortgageProgram.objects.all(),
@@ -667,7 +667,7 @@ def resolve_source_record(
 
     bank, issue_message = resolve_unique_lookup_value(
         bank_lookup,
-        _normalize_bank_match_name(source_record.bank_name),
+        normalize_bank_match_name(source_record.bank_name),
         'банк',
         source_record.bank_name,
     )

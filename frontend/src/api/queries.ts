@@ -5,7 +5,7 @@ import {
   bankDetailSchema,
   bankListResponseSchema,
   bankOptionsSchema,
-  bankSynchronizationResultSchema,
+  bankCatalogImportResultSchema,
   companyGroupListResponseSchema,
   companyGroupSchema,
   customerCalculationLinkResponseSchema,
@@ -461,10 +461,14 @@ export const keyRateChartQueryOptions = queryOptions({
   staleTime: 60_000,
 })
 
-export function synchronizeBankOffers(updateBankRegistry: boolean) {
-  return requestJson('/api/v1/banks/sync/', bankSynchronizationResultSchema, {
-    method: 'POST', body: JSON.stringify({ updateBankRegistry }),
-  })
+export function importBankCatalog(section: 'banks' | 'mortgage-programs', file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return requestJson(
+    '/api/v1/' + section + '/import/',
+    bankCatalogImportResultSchema,
+    { method: 'POST', body: formData },
+  )
 }
 
 export function companyGroupListQueryOptions(

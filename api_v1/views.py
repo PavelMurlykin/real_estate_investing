@@ -59,16 +59,13 @@ from bank.developer_mortgage_program_importer import (
 )
 from bank.forms import DeveloperMortgageProgramImportForm
 from bank.key_rate_sync import KeyRateSyncError, sync_key_rates
-from bank.mortgage_offer_sync import (
-    BankMortgageSyncError, sync_bank_mortgage_offers,
-)
+from bank.catalog_import import CatalogImportError, import_catalog, read_catalog_file
 from bank.models import (
     Bank,
     BankProgram,
     DeveloperMortgageProgram,
     KeyRate,
     MortgageProgram,
-    MortgageProgramAlias,
     MortgageProgramRegionalCreditLimit,
 )
 from customer.models import (
@@ -138,7 +135,6 @@ from .serializers import (
     BankDetailSerializer,
     BankListItemSerializer,
     BankListQuerySerializer,
-    BankSynchronizationRequestSerializer,
     BankWriteSerializer,
     CompanyGroupListQuerySerializer,
     CompanyGroupSerializer,
@@ -1838,47 +1834,26 @@ class LocationDictionaryOptionsAPIView(APIView):
 
 
 @method_decorator(csrf_protect, name='dispatch')
-class BankSynchronizationAPIView(APIView):
-    """Expose both existing administrative mortgage synchronization actions."""
+class BankCatalogImportAPIView(APIView):
+    """Import a JSON catalog using the same service as the Django catalog."""
 
     permission_classes = (IsAuthenticated, CanSyncExternalData)
+    parser_classes = (MultiPartParser,)
+    section = 'bank'
 
     def post(self, request):
-        """Synchronize with the established service and preserve its warnings."""
-        serializer = BankSynchronizationRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        update_registry = serializer.validated_data['updateBankRegistry']
+        """Validate the upload and return an atomic import summary."""
         try:
-            result = sync_bank_mortgage_offers(
-                update_bank_registry=update_registry
-            )
-        except BankMortgageSyncError as error:
-            return Response({
-                'detail': f'Не удалось обновить данные банков: {error}',
-            }, status=status.HTTP_502_BAD_GATEWAY)
-        fields = {
-            'created': 'created', 'updated': 'updated',
-            'processed': 'processed', 'banksProcessed': 'banks_processed',
-            'offersProcessed': 'offers_processed',
-            'referenceProgramsProcessed': 'reference_programs_processed',
-            'referenceProgramsCreated': 'reference_programs_created',
-            'referenceProgramAliasesCreated': (
-                'reference_program_aliases_created'
-            ),
-            'googleSheetOffersProcessed': 'google_sheet_offers_processed',
-            'skipped': 'skipped',
-        }
-        return Response({
-            **{name: result.get(source, 0) for name, source in fields.items()},
-            'warnings': result.get('warnings', []),
-            'updateBankRegistry': update_registry,
-            'synchronizedAt': timezone.now(),
-        })
+            payload = read_catalog_file(request.FILES.get('file'))
+            result = import_catalog(payload, self.section)
+        except CatalogImportError as error:
+            return Response({'detail': str(error)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(result)
 
 
 def _bank_list_queryset():
     """Return banks with aggregate program data for the public list."""
-    return Bank.objects.annotate(
+    return _bank_detail_queryset().annotate(
         program_count=Count('bankprogram', distinct=True),
         minimum_interest_rate=Min('bankprogram__interest_rate'),
     )
@@ -2049,7 +2024,6 @@ def _mortgage_program_list_queryset():
             distinct=True,
         ),
         regional_limit_count=Count('regional_credit_limits', distinct=True),
-        alias_count=Count('aliases', distinct=True),
     )
 
 
@@ -2058,17 +2032,11 @@ def _mortgage_program_detail_queryset():
     regional_limits = MortgageProgramRegionalCreditLimit.objects.select_related(
         'region'
     ).order_by('region__name', 'pk')
-    aliases = MortgageProgramAlias.objects.order_by('source_name', 'pk')
     return _mortgage_program_list_queryset().prefetch_related(
         Prefetch(
             'regional_credit_limits',
             queryset=regional_limits,
             to_attr='api_regional_credit_limits',
-        ),
-        Prefetch(
-            'aliases',
-            queryset=aliases,
-            to_attr='api_aliases',
         ),
     )
 
@@ -2122,7 +2090,6 @@ class MortgageProgramListCreateAPIView(
             queryset = queryset.filter(
                 Q(name__icontains=search)
                 | Q(condition__icontains=search)
-                | Q(aliases__source_name__icontains=search)
             ).distinct()
         if filters['programType'] != 'all':
             queryset = queryset.filter(
@@ -2143,7 +2110,6 @@ class MortgageProgramListCreateAPIView(
             'bankCount': 'bank_count',
             'developerProgramCount': 'developer_program_count',
             'regionalLimitCount': 'regional_limit_count',
-            'aliasCount': 'alias_count',
             'updatedAt': 'updated_at',
         }[ordering_name]
         return queryset.order_by(

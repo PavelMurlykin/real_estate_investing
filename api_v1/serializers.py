@@ -15,10 +15,8 @@ from bank.models import (
     DeveloperMortgageProgram,
     KeyRate,
     MortgageProgram,
-    MortgageProgramAlias,
     MortgageProgramRegionalCreditLimit,
 )
-from bank.program_matching import normalize_mortgage_program_match_name
 from customer.models import Customer
 from location.models import City, District, Metro, MetroLine, Region
 from property.models import (
@@ -561,12 +559,6 @@ class LocationDictionaryWriteSerializer(serializers.Serializer):
         return instance
 
 
-class BankSynchronizationRequestSerializer(serializers.Serializer):
-    """Select the established full-registry or existing-bank sync workflow."""
-
-    updateBankRegistry = serializers.BooleanField(default=True)
-
-
 class BankListQuerySerializer(serializers.Serializer):
     """Validate URL-driven filters and pagination for banks."""
 
@@ -627,6 +619,12 @@ class BankListItemSerializer(serializers.Serializer):
     legacyDetailUrl = serializers.SerializerMethodField(
         method_name='get_legacy_detail_url'
     )
+
+    programs = serializers.SerializerMethodField()
+
+    def get_programs(self, bank):
+        """Serialize the prefetched offers for the expandable bank row."""
+        return BankProgramReadSerializer(bank.api_programs, many=True).data
 
     def get_minimum_interest_rate(self, bank):
         """Return a stable decimal minimum rate when programs exist."""
@@ -866,8 +864,6 @@ class MortgageProgramListQuerySerializer(serializers.Serializer):
             '-bankCount',
             'regionalLimitCount',
             '-regionalLimitCount',
-            'aliasCount',
-            '-aliasCount',
             'developerProgramCount',
             '-developerProgramCount',
         ),
@@ -908,7 +904,6 @@ class MortgageProgramListItemSerializer(serializers.Serializer):
         source='regional_limit_count',
         read_only=True,
     )
-    aliasCount = serializers.IntegerField(source='alias_count', read_only=True)
     isActive = serializers.BooleanField(source='is_active', read_only=True)
     updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
     detailUrl = serializers.SerializerMethodField(method_name='get_detail_url')
@@ -946,21 +941,8 @@ class MortgageProgramRegionalLimitReadSerializer(serializers.Serializer):
     isActive = serializers.BooleanField(source='is_active', read_only=True)
 
 
-class MortgageProgramAliasReadSerializer(serializers.Serializer):
-    """Serialize one source-name alias for canonical program matching."""
-
-    id = serializers.IntegerField(read_only=True)
-    sourceName = serializers.CharField(source='source_name', read_only=True)
-    normalizedName = serializers.CharField(
-        source='normalized_name',
-        read_only=True,
-    )
-    source = serializers.CharField(read_only=True)
-    isActive = serializers.BooleanField(source='is_active', read_only=True)
-
-
 class MortgageProgramDetailSerializer(serializers.ModelSerializer):
-    """Serialize a canonical program with its limits and aliases."""
+    """Serialize a canonical program with its limits."""
 
     isPreferential = serializers.BooleanField(
         source='is_preferential',
@@ -984,7 +966,6 @@ class MortgageProgramDetailSerializer(serializers.ModelSerializer):
     regionalCreditLimits = serializers.SerializerMethodField(
         method_name='get_regional_credit_limits'
     )
-    aliases = serializers.SerializerMethodField(method_name='get_aliases')
     legacyEditUrl = serializers.SerializerMethodField(
         method_name='get_legacy_edit_url'
     )
@@ -1008,7 +989,6 @@ class MortgageProgramDetailSerializer(serializers.ModelSerializer):
             'createdAt',
             'updatedAt',
             'regionalCreditLimits',
-            'aliases',
             'legacyEditUrl',
             'legacyCatalogUrl',
         )
@@ -1017,13 +997,6 @@ class MortgageProgramDetailSerializer(serializers.ModelSerializer):
         """Return regional limits from the optimized detail prefetch."""
         return MortgageProgramRegionalLimitReadSerializer(
             mortgage_program.api_regional_credit_limits,
-            many=True,
-        ).data
-
-    def get_aliases(self, mortgage_program):
-        """Return aliases from the optimized detail prefetch."""
-        return MortgageProgramAliasReadSerializer(
-            mortgage_program.api_aliases,
             many=True,
         ).data
 
@@ -1063,28 +1036,6 @@ class MortgageProgramRegionalLimitWriteSerializer(serializers.Serializer):
     )
 
 
-class MortgageProgramAliasWriteSerializer(serializers.Serializer):
-    """Validate one editable source-name alias."""
-
-    sourceName = serializers.CharField(
-        source='source_name',
-        max_length=255,
-        trim_whitespace=True,
-    )
-    source = serializers.CharField(
-        required=False,
-        allow_blank=True,
-        default='',
-        max_length=255,
-        trim_whitespace=True,
-    )
-    isActive = serializers.BooleanField(
-        source='is_active',
-        required=False,
-        default=True,
-    )
-
-
 class MortgageProgramWriteSerializer(serializers.Serializer):
     """Validate and atomically persist a complete canonical program."""
 
@@ -1115,13 +1066,6 @@ class MortgageProgramWriteSerializer(serializers.Serializer):
         max_length=100,
         source='regional_credit_limits_payload',
     )
-    aliases = MortgageProgramAliasWriteSerializer(
-        many=True,
-        required=False,
-        max_length=100,
-        source='aliases_payload',
-    )
-
     def validate_name(self, value):
         """Normalize whitespace and reject case-insensitive duplicates."""
         normalized_name = ' '.join(value.split())
@@ -1150,38 +1094,10 @@ class MortgageProgramWriteSerializer(serializers.Serializer):
             )
         return regional_limits
 
-    def validate_aliases(self, aliases):
-        """Reject empty, repeated, and globally conflicting alias keys."""
-        normalized_aliases = [
-            normalize_mortgage_program_match_name(alias['source_name'])
-            for alias in aliases
-        ]
-        if any(not normalized_alias for normalized_alias in normalized_aliases):
-            raise serializers.ValidationError(
-                'Каждый алиас должен формировать непустой ключ сопоставления.'
-            )
-        if len(normalized_aliases) != len(set(normalized_aliases)):
-            raise serializers.ValidationError(
-                'Один алиас программы указан несколько раз.'
-            )
-        conflicting_aliases = MortgageProgramAlias.objects.filter(
-            normalized_name__in=normalized_aliases
-        )
-        if self.instance is not None:
-            conflicting_aliases = conflicting_aliases.exclude(
-                mortgage_program=self.instance
-            )
-        if conflicting_aliases.exists():
-            raise serializers.ValidationError(
-                'Один из алиасов уже связан с другой ипотечной программой.'
-            )
-        return aliases
-
     def replace_related_rows(
         self,
         mortgage_program,
         regional_limits,
-        aliases,
     ):
         """Replace submitted related rows using bounded bulk operations."""
         if regional_limits is not None:
@@ -1197,25 +1113,6 @@ class MortgageProgramWriteSerializer(serializers.Serializer):
                     for regional_limit in regional_limits
                 ]
             )
-        if aliases is not None:
-            MortgageProgramAlias.objects.filter(
-                mortgage_program=mortgage_program
-            ).delete()
-            MortgageProgramAlias.objects.bulk_create(
-                [
-                    MortgageProgramAlias(
-                        mortgage_program=mortgage_program,
-                        normalized_name=(
-                            normalize_mortgage_program_match_name(
-                                alias['source_name']
-                            )
-                        ),
-                        **alias,
-                    )
-                    for alias in aliases
-                ]
-            )
-
     @transaction.atomic
     def create(self, validated_data):
         """Create a canonical program with all submitted related rows."""
@@ -1223,13 +1120,8 @@ class MortgageProgramWriteSerializer(serializers.Serializer):
             'regional_credit_limits_payload',
             [],
         )
-        aliases = validated_data.pop('aliases_payload', [])
         mortgage_program = MortgageProgram.objects.create(**validated_data)
-        self.replace_related_rows(
-            mortgage_program,
-            regional_limits,
-            aliases,
-        )
+        self.replace_related_rows(mortgage_program, regional_limits)
         return mortgage_program
 
     @transaction.atomic
@@ -1239,11 +1131,10 @@ class MortgageProgramWriteSerializer(serializers.Serializer):
             'regional_credit_limits_payload',
             None,
         )
-        aliases = validated_data.pop('aliases_payload', None)
         for field_name, value in validated_data.items():
             setattr(instance, field_name, value)
         instance.save(update_fields=(*validated_data.keys(), 'updated_at'))
-        self.replace_related_rows(instance, regional_limits, aliases)
+        self.replace_related_rows(instance, regional_limits)
         return instance
 
 

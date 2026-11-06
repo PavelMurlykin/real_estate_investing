@@ -9,7 +9,6 @@ from bank.models import (
     Bank,
     BankProgram,
     MortgageProgram,
-    MortgageProgramAlias,
     MortgageProgramRegionalCreditLimit,
 )
 from location.models import Region
@@ -47,13 +46,7 @@ def mortgage_program_catalog():
         region=moscow,
         credit_limit=Decimal('15000000.00'),
     )
-    alias = MortgageProgramAlias.objects.create(
-        mortgage_program=family_program,
-        source_name='Family mortgage special',
-        source='Тестовый источник',
-    )
     return {
-        'alias': alias,
         'bank': bank,
         'family_program': family_program,
         'market_program': market_program,
@@ -83,12 +76,12 @@ def test_mortgage_program_list_is_public_filtered_and_query_efficient(
     mortgage_program_catalog,
     django_assert_num_queries,
 ):
-    """Search aliases and return aggregate usage with two queries."""
+    """Search canonical names and return aggregate usage with two queries."""
     with django_assert_num_queries(2):
         response = client.get(
             reverse('api_v1:mortgage_program_list'),
             {
-                'q': 'Family',
+                'q': 'Семейная',
                 'programType': 'preferential',
                 'status': 'active',
                 'ordering': '-creditLimit',
@@ -107,7 +100,6 @@ def test_mortgage_program_list_is_public_filtered_and_query_efficient(
             'bankCount': 1,
             'developerProgramCount': 0,
             'regionalLimitCount': 1,
-            'aliasCount': 1,
             'isActive': True,
             'updatedAt': response.json()['results'][0]['updatedAt'],
             'detailUrl': (
@@ -145,8 +137,8 @@ def test_mortgage_program_detail_is_complete_and_query_efficient(
     mortgage_program_catalog,
     django_assert_num_queries,
 ):
-    """Return canonical data, limits, aliases, and usage in three queries."""
-    with django_assert_num_queries(3):
+    """Return canonical data, limits and usage in two queries."""
+    with django_assert_num_queries(2):
         response = client.get(
             reverse(
                 'api_v1:mortgage_program_detail',
@@ -164,15 +156,6 @@ def test_mortgage_program_detail_is_complete_and_query_efficient(
             'regionId': mortgage_program_catalog['moscow'].pk,
             'regionName': 'Москва',
             'creditLimit': '15000000.00',
-            'isActive': True,
-        }
-    ]
-    assert response.json()['aliases'] == [
-        {
-            'id': mortgage_program_catalog['alias'].pk,
-            'sourceName': 'Family mortgage special',
-            'normalizedName': 'familymortgagespecial',
-            'source': 'Тестовый источник',
             'isActive': True,
         }
     ]
@@ -229,7 +212,7 @@ def test_catalog_manager_can_create_complete_mortgage_program(
     client,
     mortgage_program_catalog,
 ):
-    """Create a normalized program with regional limits and aliases."""
+    """Create a normalized program with regional limits."""
     client.force_login(create_catalog_manager())
 
     response = client.post(
@@ -249,13 +232,6 @@ def test_catalog_manager_can_create_complete_mortgage_program(
                     'isActive': True,
                 }
             ],
-            'aliases': [
-                {
-                    'sourceName': 'New build special',
-                    'source': 'Партнёрский файл',
-                    'isActive': True,
-                }
-            ],
         },
         content_type='application/json',
     )
@@ -267,18 +243,14 @@ def test_catalog_manager_can_create_complete_mortgage_program(
     assert mortgage_program.condition == 'Для покупателей новостроек'
     assert response.json()['id'] == mortgage_program.pk
     assert len(response.json()['regionalCreditLimits']) == 1
-    assert len(response.json()['aliases']) == 1
-    assert MortgageProgramAlias.objects.get(
-        mortgage_program=mortgage_program
-    ).normalized_name == 'newbuildspecial'
 
 
 @pytest.mark.django_db
-def test_catalog_manager_patch_replaces_limits_and_aliases(
+def test_catalog_manager_patch_replaces_limits(
     client,
     mortgage_program_catalog,
 ):
-    """Replace both submitted nested collections in one transaction."""
+    """Replace submitted regional limits in one transaction."""
     client.force_login(create_catalog_manager())
     response = client.patch(
         reverse(
@@ -294,13 +266,6 @@ def test_catalog_manager_patch_replaces_limits_and_aliases(
                     ),
                     'creditLimit': '18000000.00',
                     'isActive': False,
-                }
-            ],
-            'aliases': [
-                {
-                    'sourceName': 'Updated family offer',
-                    'source': '',
-                    'isActive': True,
                 }
             ],
         },
@@ -319,11 +284,6 @@ def test_catalog_manager_patch_replaces_limits_and_aliases(
     assert regional_limits.get().region == (
         mortgage_program_catalog['saint_petersburg']
     )
-    aliases = MortgageProgramAlias.objects.filter(
-        mortgage_program=mortgage_program_catalog['family_program']
-    )
-    assert aliases.count() == 1
-    assert aliases.get().normalized_name == 'updatedfamilyoffer'
 
 
 @pytest.mark.django_db
@@ -358,10 +318,6 @@ def test_mortgage_program_api_validates_nested_duplicates_and_values(
                     'creditLimit': '200.00',
                 },
             ],
-            'aliases': [
-                {'sourceName': 'Unique source offer'},
-                {'sourceName': 'Unique source offer'},
-            ],
         },
         content_type='application/json',
     )
@@ -377,7 +333,6 @@ def test_mortgage_program_api_validates_nested_duplicates_and_values(
                     'creditLimit': '-2.00',
                 }
             ],
-            'aliases': [{'sourceName': 'Ипотека'}],
         },
         content_type='application/json',
     )
@@ -386,39 +341,12 @@ def test_mortgage_program_api_validates_nested_duplicates_and_values(
     assert 'name' in duplicate_name_response.json()
     assert duplicate_relations_response.status_code == 400
     assert 'regionalCreditLimits' in duplicate_relations_response.json()
-    assert 'aliases' in duplicate_relations_response.json()
     assert invalid_values_response.status_code == 400
     assert 'condition' in invalid_values_response.json()
     assert 'creditLimit' in invalid_values_response.json()
     assert 'regionalCreditLimits' in invalid_values_response.json()
-    assert 'aliases' in invalid_values_response.json()
     assert not MortgageProgram.objects.filter(
         name='Программа с ошибками'
-    ).exists()
-
-
-@pytest.mark.django_db
-def test_mortgage_program_api_rejects_alias_owned_by_another_program(
-    client,
-    mortgage_program_catalog,
-):
-    """Keep globally unique normalized alias ownership authoritative."""
-    client.force_login(create_catalog_manager())
-
-    response = client.post(
-        reverse('api_v1:mortgage_program_list'),
-        data={
-            'name': 'Конфликтующая программа',
-            'condition': 'Условия',
-            'aliases': [{'sourceName': 'Family mortgage special'}],
-        },
-        content_type='application/json',
-    )
-
-    assert response.status_code == 400
-    assert 'aliases' in response.json()
-    assert not MortgageProgram.objects.filter(
-        name='Конфликтующая программа'
     ).exists()
 
 
@@ -430,10 +358,6 @@ def test_mortgage_program_delete_reports_dependencies_and_cascades_nested_rows(
     """Block used programs and cascade nested rows for unused programs."""
     client.force_login(create_catalog_manager())
     unused_program = mortgage_program_catalog['market_program']
-    unused_alias = MortgageProgramAlias.objects.create(
-        mortgage_program=unused_program,
-        source_name='Unused market offer',
-    )
     unused_limit = MortgageProgramRegionalCreditLimit.objects.create(
         mortgage_program=unused_program,
         region=mortgage_program_catalog['saint_petersburg'],
@@ -459,7 +383,6 @@ def test_mortgage_program_delete_reports_dependencies_and_cascades_nested_rows(
     ).exists()
     assert delete_response.status_code == 204
     assert not MortgageProgram.objects.filter(pk=unused_program.pk).exists()
-    assert not MortgageProgramAlias.objects.filter(pk=unused_alias.pk).exists()
     assert not MortgageProgramRegionalCreditLimit.objects.filter(
         pk=unused_limit.pk
     ).exists()

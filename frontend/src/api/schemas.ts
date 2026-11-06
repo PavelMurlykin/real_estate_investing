@@ -318,18 +318,6 @@ const namedOptionSchema = z.object({
   name: z.string(),
 })
 
-export const bankListItemSchema = z.object({
-  id: z.number().int().positive(),
-  name: z.string(),
-  logoUrl: z.string(),
-  programCount: z.number().int().nonnegative(),
-  minimumInterestRate: z.string().nullable(),
-  isActive: z.boolean(),
-  updatedAt: z.iso.datetime({ offset: true }),
-  detailUrl: z.string(),
-  legacyDetailUrl: z.string(),
-})
-
 export const bankProgramSchema = z.object({
   id: z.number().int().positive(),
   mortgageProgramId: z.number().int().positive(),
@@ -337,6 +325,19 @@ export const bankProgramSchema = z.object({
   interestRate: z.string(),
   minimumInitialPaymentPercent: z.string(),
   maximumLoanTermYears: z.number().int().positive().nullable(),
+})
+
+export const bankListItemSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  logoUrl: z.string(),
+  programCount: z.number().int().nonnegative(),
+  programs: z.array(bankProgramSchema),
+  minimumInterestRate: z.string().nullable(),
+  isActive: z.boolean(),
+  updatedAt: z.iso.datetime({ offset: true }),
+  detailUrl: z.string(),
+  legacyDetailUrl: z.string(),
 })
 
 export const bankDetailSchema = z.object({
@@ -365,14 +366,10 @@ export const bankOptionsSchema = z.object({
   truncated: z.boolean(),
 })
 
-export const bankSynchronizationResultSchema = z.object({
-  created: z.number().int().nonnegative(), updated: z.number().int().nonnegative(),
-  processed: z.number().int().nonnegative(), banksProcessed: z.number().int().nonnegative(),
-  offersProcessed: z.number().int().nonnegative(), referenceProgramsProcessed: z.number().int().nonnegative(),
-  referenceProgramsCreated: z.number().int().nonnegative(), referenceProgramAliasesCreated: z.number().int().nonnegative(),
-  googleSheetOffersProcessed: z.number().int().nonnegative(), skipped: z.number().int().nonnegative(),
-  warnings: z.array(z.string()), updateBankRegistry: z.boolean(),
-  synchronizedAt: z.iso.datetime({ offset: true }),
+export const bankCatalogImportResultSchema = z.object({
+  created: z.number().int().nonnegative(),
+  updated: z.number().int().nonnegative(),
+  unchanged: z.number().int().nonnegative(),
 })
 
 export const mortgageProgramListItemSchema = z.object({
@@ -384,7 +381,6 @@ export const mortgageProgramListItemSchema = z.object({
   bankCount: z.number().int().nonnegative(),
   developerProgramCount: z.number().int().nonnegative(),
   regionalLimitCount: z.number().int().nonnegative(),
-  aliasCount: z.number().int().nonnegative(),
   isActive: z.boolean(),
   updatedAt: z.iso.datetime({ offset: true }),
   detailUrl: z.string(),
@@ -396,14 +392,6 @@ const mortgageProgramRegionalLimitSchema = z.object({
   regionId: z.number().int().positive(),
   regionName: z.string(),
   creditLimit: z.string(),
-  isActive: z.boolean(),
-})
-
-const mortgageProgramAliasSchema = z.object({
-  id: z.number().int().positive(),
-  sourceName: z.string(),
-  normalizedName: z.string(),
-  source: z.string(),
   isActive: z.boolean(),
 })
 
@@ -419,7 +407,6 @@ export const mortgageProgramDetailSchema = z.object({
   createdAt: z.iso.datetime({ offset: true }),
   updatedAt: z.iso.datetime({ offset: true }),
   regionalCreditLimits: z.array(mortgageProgramRegionalLimitSchema).max(100),
-  aliases: z.array(mortgageProgramAliasSchema).max(100),
   legacyEditUrl: z.string(),
   legacyCatalogUrl: z.string(),
 })
@@ -1324,12 +1311,6 @@ export type MortgageProgramRegionalLimitWriteRequest = {
   isActive: boolean
 }
 
-export type MortgageProgramAliasWriteRequest = {
-  sourceName: string
-  source: string
-  isActive: boolean
-}
-
 export type MortgageProgramWriteRequest = {
   name: string
   condition: string
@@ -1337,7 +1318,6 @@ export type MortgageProgramWriteRequest = {
   creditLimit: string | null
   isActive: boolean
   regionalCreditLimits: MortgageProgramRegionalLimitWriteRequest[]
-  aliases: MortgageProgramAliasWriteRequest[]
 }
 
 export type DeveloperMortgageProgramWriteRequest = {

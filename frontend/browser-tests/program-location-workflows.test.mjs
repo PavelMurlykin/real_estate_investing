@@ -87,13 +87,12 @@ async function assertNoPageOverflow(page) {
 }
 
 for (const width of [360, 1280]) {
-  writeTest(`mortgage program preserves regional limits and aliases at ${width}px`, async (context) => {
+  writeTest(`mortgage program preserves regional limits at ${width}px`, async (context) => {
     const { page, trackCleanup } = await createAuthenticatedPage(
       context, 'moderator', { width, height: 900 },
     )
     const suffix = randomUUID().slice(0, 8)
     const name = `E2E ипотека ${suffix}`
-    const alias = `E2E внешнее имя ${suffix}`
 
     await openRoute(page, 'mortgage-programs/new')
     await page.getByRole('button', { name: 'Создать программу' }).click()
@@ -105,18 +104,13 @@ for (const width of [360, 1280]) {
     await page.getByRole('button', { name: 'Добавить регион' }).click()
     await page.getByLabel(/^Регион \*/).selectOption({ label: 'E2E регион' })
     await page.getByLabel(/^Лимит, ₽/).fill('15000000')
-    await page.getByRole('button', { name: 'Добавить алиас' }).click()
-    await page.locator('input[name="aliases.0.sourceName"]').fill(alias)
-    await page.locator('input[name="aliases.0.source"]').fill('E2E источник')
     await assertNoPageOverflow(page)
     const program = await submitRecord(
       page, '/api/v1/mortgage-programs/', 'Создать программу',
     )
     trackCleanup(`/api/v1/mortgage-programs/${program.id}/`)
     assert.equal(program.regionalCreditLimits[0].creditLimit, '15000000.00')
-    assert.equal(program.aliases[0].sourceName, alias)
     await page.getByRole('heading', { name, level: 1, exact: true }).waitFor()
-    await page.getByText(alias, { exact: true }).filter({ visible: true }).waitFor()
     await page.getByRole('link', { name: 'Редактировать', exact: true }).click()
     await page.getByLabel(/^Федеральный лимит/).fill('12500000')
     const updatedProgram = await submitRecord(
@@ -125,7 +119,6 @@ for (const width of [360, 1280]) {
     )
     assert.equal(updatedProgram.creditLimit, '12500000.00')
     assert.equal(updatedProgram.regionalCreditLimits.length, 1)
-    assert.equal(updatedProgram.aliases.length, 1)
     await deleteDetailRecord(
       page, `/api/v1/mortgage-programs/${program.id}/`, 'Ипотечные программы',
     )

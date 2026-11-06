@@ -5,7 +5,6 @@ from .models import (
     BankProgram,
     DeveloperMortgageProgram,
     KeyRate,
-    MortgageProgramAlias,
     MortgageProgram,
     MortgageProgramRegionalCreditLimit,
 )
@@ -73,27 +72,6 @@ class MortgageProgramRegionalCreditLimitAdmin(admin.ModelAdmin):
     )
     search_fields = ('mortgage_program__name', 'region__name')
     ordering = ('mortgage_program__name', 'region__name')
-
-
-@admin.register(MortgageProgramAlias)
-class MortgageProgramAliasAdmin(admin.ModelAdmin):
-    """Администрирование алиасов ипотечных программ."""
-
-    list_display = (
-        'source_name',
-        'mortgage_program',
-        'normalized_name',
-        'source',
-        'is_active',
-        'created_at',
-    )
-    list_filter = ('mortgage_program', 'source', 'is_active', 'created_at')
-    search_fields = (
-        'source_name',
-        'normalized_name',
-        'mortgage_program__name',
-    )
-    ordering = ('mortgage_program__name', 'source_name')
 
 
 @admin.register(BankProgram)

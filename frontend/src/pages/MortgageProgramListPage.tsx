@@ -1,3 +1,4 @@
+import { BankCatalogImport } from '@/shared/ui/BankCatalogImport'
 import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
@@ -118,6 +119,8 @@ export function MortgageProgramListPage() {
         <Link to="/key-rate">Ключевая ставка</Link>
       </nav>
 
+      {sessionQuery.data?.capabilities.syncExternalData ? <BankCatalogImport section="mortgage-programs" /> : null}
+
       <section
         className="filter-panel mortgage-program-filter-panel"
         aria-label="Фильтры ипотечных программ"
@@ -138,7 +141,7 @@ export function MortgageProgramListPage() {
           </select>
         </div>
         <div className="live-search-control" role="search">
-          <LiveFilterInput label="Поиск" id="mortgage-program-search" parameter="q" placeholder="Название, описание или алиас" />
+          <LiveFilterInput label="Поиск" id="mortgage-program-search" parameter="q" placeholder="Название или описание" />
           <ResetFilters />
         </div>
       </section>
@@ -274,7 +277,7 @@ export function MortgageProgramListPage() {
             <span className="eyebrow">Подтверждение</span>
             <h2 id="mortgage-program-delete-title">Удалить программу?</h2>
             <p id="mortgage-program-delete-description">
-              «{selectedProgram.name}», её лимиты и алиасы будут удалены.
+              «{selectedProgram.name}», её лимиты будут удалены.
             </p>
             {deleteMutation.isError ? (
               <p className="form-error" role="alert">

@@ -8,7 +8,7 @@ from .views import (
     BankDetailAPIView,
     BankListCreateAPIView,
     BankOptionsAPIView,
-    BankSynchronizationAPIView,
+    BankCatalogImportAPIView,
     CompanyGroupDetailAPIView,
     CompanyGroupListCreateAPIView,
     DeveloperDetailAPIView,
@@ -128,8 +128,8 @@ urlpatterns = [
         name='bank_options',
     ),
     path(
-        'banks/sync/', BankSynchronizationAPIView.as_view(),
-        name='bank_synchronization',
+        'banks/import/', BankCatalogImportAPIView.as_view(),
+        name='bank_import',
     ),
     path(
         'banks/<int:pk>/',
@@ -140,6 +140,11 @@ urlpatterns = [
         'mortgage-programs/',
         MortgageProgramListCreateAPIView.as_view(),
         name='mortgage_program_list',
+    ),
+    path(
+        'mortgage-programs/import/',
+        BankCatalogImportAPIView.as_view(section='mortgage_program'),
+        name='mortgage_program_import',
     ),
     path(
         'mortgage-programs/options/',

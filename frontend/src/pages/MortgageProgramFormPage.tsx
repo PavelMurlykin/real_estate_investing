@@ -23,12 +23,6 @@ type RegionalLimit = {
   creditLimit: string
   isActive: boolean
 }
-type ProgramAlias = {
-  key: string
-  sourceName: string
-  source: string
-  isActive: boolean
-}
 type FormState = {
   name: string
   condition: string
@@ -36,14 +30,12 @@ type FormState = {
   isPreferential: boolean
   isActive: boolean
   regionalCreditLimits: RegionalLimit[]
-  aliases: ProgramAlias[]
 }
 type Errors = {
   name?: string
   condition?: string
   creditLimit?: string
   limits: Record<string, { regionId?: string; creditLimit?: string }>
-  aliases: Record<string, { sourceName?: string }>
 }
 
 const emptyState: FormState = {
@@ -53,9 +45,8 @@ const emptyState: FormState = {
   isPreferential: false,
   isActive: true,
   regionalCreditLimits: [],
-  aliases: [],
 }
-const emptyErrors: Errors = { limits: {}, aliases: {} }
+const emptyErrors: Errors = { limits: {} }
 
 function normalizeDecimal(value: string) {
   return value.trim().replace(',', '.')
@@ -146,12 +137,6 @@ export function MortgageProgramFormPage() {
         creditLimit: limit.creditLimit,
         isActive: limit.isActive,
       })),
-      aliases: program.aliases.map((alias) => ({
-        key: `alias-${alias.id}`,
-        sourceName: alias.sourceName,
-        source: alias.source,
-        isActive: alias.isActive,
-      })),
     })
     initializedRef.current = program.id
   }, [detailQuery.data])
@@ -162,7 +147,7 @@ export function MortgageProgramFormPage() {
   }
   const setField = <Field extends keyof Omit<
     FormState,
-    'regionalCreditLimits' | 'aliases'
+    'regionalCreditLimits'
   >>(field: Field, value: FormState[Field]) => {
     setFormState((current) => ({ ...current, [field]: value }))
     changed()
@@ -200,40 +185,8 @@ export function MortgageProgramFormPage() {
     }))
     changed()
   }
-  const addAlias = () => {
-    const key = `new-alias-${nextKeyRef.current++}`
-    setFormState((current) => ({
-      ...current,
-      aliases: [
-        ...current.aliases,
-        { key, sourceName: '', source: '', isActive: true },
-      ],
-    }))
-    changed()
-  }
-  const updateAlias = (
-    key: string,
-    field: keyof Omit<ProgramAlias, 'key'>,
-    value: string | boolean,
-  ) => {
-    setFormState((current) => ({
-      ...current,
-      aliases: current.aliases.map((alias) => (
-        alias.key === key ? { ...alias, [field]: value } : alias
-      )),
-    }))
-    changed()
-  }
-  const removeAlias = (key: string) => {
-    setFormState((current) => ({
-      ...current,
-      aliases: current.aliases.filter((alias) => alias.key !== key),
-    }))
-    changed()
-  }
-
   const validate = () => {
-    const nextErrors: Errors = { limits: {}, aliases: {} }
+    const nextErrors: Errors = { limits: {} }
     if (!formState.name.trim()) nextErrors.name = 'Укажите название программы.'
     if (!formState.condition.trim()) {
       nextErrors.condition = 'Опишите условия программы.'
@@ -249,26 +202,11 @@ export function MortgageProgramFormPage() {
       row.creditLimit = creditLimitError(limit.creditLimit, true)
       if (row.regionId || row.creditLimit) nextErrors.limits[limit.key] = row
     }
-    const aliases = new Set<string>()
-    for (const alias of formState.aliases) {
-      const aliasKey = alias.sourceName.trim().replace(/\s+/g, ' ')
-        .toLocaleLowerCase('ru')
-      if (!aliasKey) {
-        nextErrors.aliases[alias.key] = {
-          sourceName: 'Укажите название из источника.',
-        }
-      } else if (aliases.has(aliasKey)) {
-        nextErrors.aliases[alias.key] = {
-          sourceName: 'Этот алиас уже добавлен.',
-        }
-      } else aliases.add(aliasKey)
-    }
     setErrors(nextErrors)
     return !nextErrors.name
       && !nextErrors.condition
       && !nextErrors.creditLimit
       && Object.keys(nextErrors.limits).length === 0
-      && Object.keys(nextErrors.aliases).length === 0
   }
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -286,11 +224,6 @@ export function MortgageProgramFormPage() {
         regionId: Number(limit.regionId),
         creditLimit: normalizeDecimal(limit.creditLimit),
         isActive: limit.isActive,
-      })),
-      aliases: formState.aliases.map((alias) => ({
-        sourceName: alias.sourceName.trim(),
-        source: alias.source.trim(),
-        isActive: alias.isActive,
       })),
     })
   }
@@ -376,7 +309,7 @@ export function MortgageProgramFormPage() {
           <h1>{isEditing
             ? 'Редактирование ипотечной программы'
             : 'Новая ипотечная программа'}</h1>
-          <p>Общие условия, региональные лимиты и алиасы импорта.</p>
+          <p>Общие условия и региональные лимиты.</p>
         </div>
         <div className="page-header__actions">
           {backLink}
@@ -575,98 +508,6 @@ export function MortgageProgramFormPage() {
                         )}
                       />
                       <span><strong>Активен</strong><small>Участвует в расчётах.</small></span>
-                    </label>
-                  </div>
-                </fieldset>
-              )
-            })}
-          </div>
-        </section>
-        <section className="customer-form-section" aria-labelledby="program-aliases">
-          <div className="customer-form-section__heading">
-            <span aria-hidden="true">03</span>
-            <div>
-              <h2 id="program-aliases">Алиасы импорта</h2>
-              <p>Названия, по которым импорт сопоставляет внешние данные.</p>
-              <button
-                className="button button--secondary nested-editor-add-button"
-                type="button"
-                onClick={addAlias}
-                disabled={formState.aliases.length >= 100}
-              >
-                Добавить алиас
-              </button>
-            </div>
-          </div>
-          <div className="nested-editor-list">
-            {formState.aliases.length === 0 ? (
-              <div className="bank-program-empty">
-                <strong>Алиасы не добавлены</strong>
-                <p>Импорт будет сопоставлять программу по основному названию.</p>
-              </div>
-            ) : null}
-            {formState.aliases.map((alias, index) => {
-              const rowErrors = errors.aliases[alias.key] ?? {}
-              return (
-                <fieldset className="nested-editor-card" key={alias.key}>
-                  <legend>Алиас {index + 1}</legend>
-                  <div className="nested-editor-card__heading">
-                    <strong>Название из источника</strong>
-                    <button
-                      className="text-button text-button--danger"
-                      type="button"
-                      onClick={() => removeAlias(alias.key)}
-                      aria-label={`Удалить алиас ${index + 1}`}
-                    >
-                      Удалить
-                    </button>
-                  </div>
-                  <div className="field-grid nested-editor-fields">
-                    <label className="form-field">
-                      Название *
-                      <input
-                        name={`aliases.${index}.sourceName`}
-                        value={alias.sourceName}
-                        onChange={(event) => updateAlias(
-                          alias.key,
-                          'sourceName',
-                          event.target.value,
-                        )}
-                        maxLength={255}
-                        required
-                        aria-invalid={Boolean(rowErrors.sourceName)}
-                      />
-                      {rowErrors.sourceName ? (
-                        <span className="field-error">
-                          {rowErrors.sourceName}
-                        </span>
-                      ) : null}
-                    </label>
-                    <label className="form-field">
-                      Источник
-                      <input
-                        name={`aliases.${index}.source`}
-                        value={alias.source}
-                        onChange={(event) => updateAlias(
-                          alias.key,
-                          'source',
-                          event.target.value,
-                        )}
-                        maxLength={255}
-                        placeholder="Например, Домклик"
-                      />
-                    </label>
-                    <label className="developer-active-field nested-editor-status">
-                      <input
-                        type="checkbox"
-                        checked={alias.isActive}
-                        onChange={(event) => updateAlias(
-                          alias.key,
-                          'isActive',
-                          event.target.checked,
-                        )}
-                      />
-                      <span><strong>Активен</strong><small>Используется при импорте.</small></span>
                     </label>
                   </div>
                 </fieldset>

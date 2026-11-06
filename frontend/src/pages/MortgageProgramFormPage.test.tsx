@@ -40,13 +40,6 @@ const program: MortgageProgramDetail = {
     creditLimit: '15000000.00',
     isActive: true,
   }],
-  aliases: [{
-    id: 8,
-    sourceName: 'Семейная программа',
-    normalizedName: 'семейная программа',
-    source: 'Домклик',
-    isActive: true,
-  }],
   legacyEditUrl: '/bank/?model=mortgage_program&edit=5',
   legacyCatalogUrl: '/bank/?model=mortgage_program',
 }
@@ -85,7 +78,7 @@ describe('MortgageProgramFormPage', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('creates a program with a regional limit and import alias', async () => {
+  it('creates a program with a regional limit', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn().mockResolvedValue(new Response(
       JSON.stringify(program),
@@ -101,10 +94,6 @@ describe('MortgageProgramFormPage', () => {
     await user.click(screen.getByRole('button', { name: 'Добавить регион' }))
     await user.selectOptions(screen.getByLabelText('Регион *'), '77')
     await user.type(screen.getByLabelText('Лимит, ₽ *'), '15000000')
-    await user.click(screen.getByRole('button', { name: 'Добавить алиас' }))
-    const nameInputs = screen.getAllByLabelText('Название *')
-    await user.type(nameInputs[1], 'Семейная программа')
-    await user.type(screen.getByLabelText('Источник'), 'Домклик')
     await user.click(screen.getByRole('button', { name: 'Создать программу' }))
 
     expect(await screen.findByRole('heading', { name: 'Программа сохранена' }))
@@ -123,7 +112,6 @@ describe('MortgageProgramFormPage', () => {
         creditLimit: '15000000',
         isActive: true,
       }],
-      aliases: [{ sourceName: 'Семейная программа', source: 'Домклик', isActive: true }],
     })
   })
 
@@ -146,7 +134,6 @@ describe('MortgageProgramFormPage', () => {
 
     expect(await screen.findByLabelText('Условия *')).toHaveValue('Для семей с детьми')
     expect(screen.getByLabelText('Регион *')).toHaveValue('77')
-    expect(screen.getAllByLabelText('Название *')[1]).toHaveValue('Семейная программа')
     expect(screen.getByRole('link', { name: 'Django-справочник' }))
       .toHaveAttribute('href', "/bank/?model=mortgage_program&edit=5&legacy=1")
     await user.clear(screen.getByLabelText('Условия *'))

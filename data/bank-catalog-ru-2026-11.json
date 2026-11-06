@@ -1,0 +1,814 @@
+{
+  "version": 1,
+  "metadata": {
+    "prepared_on": "2026-11-06",
+    "ranking_as_of": "2026-10-01",
+    "ranking_criterion": "Первые 30 банков по активам в открытом рейтинге Бробанка на октябрь 2026 года. Порядок в banks соответствует рейтингу.",
+    "ranking_and_logos_url": "https://brobank.ru/banki/rating/aktivy/",
+    "notes": [
+      "Ставки приведены в процентах годовых по доступным источникам. Ставка и минимальный взнос могут относиться к разным условиям одного продукта.",
+      "Незаполненный срок означает, что значение для выбранной ставки не подтверждено.",
+      "Отсутствие банка в offers означает, что подходящее предложение с опубликованной ставкой и взносом не добавлено в этот срез.",
+      "Срок с неполным последним годом округлён вниз. Для программ с индивидуальным ценообразованием и торговой наценкой ставка не подставляется."
+    ],
+    "program_sources": {
+      "Семейная ипотека": [
+        "https://minfin.gov.ru/ru/press-center/?id_4=40636-utverzhdeny_izmeneniya_v_programmu_semeinaya_ipoteka",
+        "https://ipoteka.center/ipoteka/semeynaya"
+      ],
+      "IT-ипотека": [
+        "https://alfabank.ru/get-money/mortgage/lgotnaya-ipoteka-dlya-it-specialistov/"
+      ],
+      "Дальневосточная и арктическая ипотека": [
+        "https://www.vtb.ru/personal/ipoteka/dalnevostochnaya/"
+      ],
+      "Сельская ипотека": [
+        "https://www.rshb.ru/natural/mortgage"
+      ],
+      "Семейная военная ипотека": [
+        "https://m.rosvoenipoteka.ru/prgramms/kreditnie_programmi/semeynaya_ipoteka/ao_ab_rossiya"
+      ]
+    },
+    "offer_sources": [
+      {
+        "bank": "СберБанк",
+        "program": "IT-ипотека",
+        "urls": [
+          "https://lugansk.domclick.ru/ipoteka/programs/it-workers"
+        ]
+      },
+      {
+        "bank": "СберБанк",
+        "program": "Рыночная ипотека",
+        "urls": [
+          "https://realty5.ru/analitika/rynok",
+          "https://spb.domclick.ru/ipoteka/programs/new-apartments?from=topline2020"
+        ],
+        "source_date": "2026-11-01"
+      },
+      {
+        "bank": "СберБанк",
+        "program": "Семейная ипотека",
+        "urls": [
+          "https://ipoteka.center/ipoteka/semeynaya"
+        ],
+        "note": "Минимум шкалы программы для регионов. Срок зависит от условий банка."
+      },
+      {
+        "bank": "ВТБ",
+        "program": "Дальневосточная и арктическая ипотека",
+        "urls": [
+          "https://www.vtb.ru/personal/ipoteka/dalnevostochnaya/"
+        ],
+        "note": "Взнос от 20,1% при проектном финансировании ВТБ. В других случаях от 40,1%. Максимальный срок 20 лет и 2 месяца."
+      },
+      {
+        "bank": "ВТБ",
+        "program": "Рыночная ипотека",
+        "urls": [
+          "https://realty5.ru/analitika/rynok",
+          "https://www.vtb.ru/personal/ipoteka/stavki-po-ipoteke/"
+        ],
+        "source_date": "2026-11-01"
+      },
+      {
+        "bank": "ВТБ",
+        "program": "Семейная ипотека",
+        "urls": [
+          "https://www.vtb.ru/personal/ipoteka/dlya-semej-s-detmi/",
+          "https://belka-bank.ru/ipoteka/semeynaya",
+          "https://ipoteka.center/ipoteka/semeynaya"
+        ]
+      },
+      {
+        "bank": "Газпромбанк",
+        "program": "IT-ипотека",
+        "urls": [
+          "https://www.gazprombank.ru/personal/take_credit/mortgage/6881595/"
+        ],
+        "note": "Минимум по опубликованному тарифу банка. Уточняйте структуру льготной и рыночной частей."
+      },
+      {
+        "bank": "Газпромбанк",
+        "program": "Вторичное жилье",
+        "urls": [
+          "https://www.gazprombank.ru/personal/take_credit/mortgage/6383789/"
+        ],
+        "note": "Минимальная ставка для суммы кредита от 7 млн ₽."
+      },
+      {
+        "bank": "Газпромбанк",
+        "program": "Дальневосточная и арктическая ипотека",
+        "urls": [
+          "https://www.gazprombank.ru/personal/take_credit/mortgage/5737909/?mortgage_uid=141"
+        ],
+        "note": "Для готового жилья взнос зависит от зарплатного статуса. Максимальный срок 20 лет и 2 месяца."
+      },
+      {
+        "bank": "Газпромбанк",
+        "program": "Рыночная ипотека",
+        "urls": [
+          "https://www.gazprombank.ru/personal/take_credit/mortgage/5546683/"
+        ],
+        "note": "Минимальная ставка для суммы кредита от 7 млн ₽."
+      },
+      {
+        "bank": "Газпромбанк",
+        "program": "Семейная ипотека",
+        "urls": [
+          "https://www.gazprombank.ru/personal/mortgage/for-a-young-family-mortgage/",
+          "https://www.gazprombank.ru/personal/mortgage/",
+          "https://belka-bank.ru/ipoteka/semeynaya"
+        ]
+      },
+      {
+        "bank": "Альфа-Банк",
+        "program": "IT-ипотека",
+        "urls": [
+          "https://alfabank.ru/get-money/mortgage/lgotnaya-ipoteka-dlya-it-specialistov/"
+        ]
+      },
+      {
+        "bank": "Альфа-Банк",
+        "program": "Рыночная ипотека",
+        "urls": [
+          "https://alfabank.ru/get-money/mortgage/novostrojki/",
+          "https://alfabank.ru/get-money/mortgage/stavki/"
+        ],
+        "note": "17,99% при сумме кредита от 10 млн ₽ и взносе от 50%."
+      },
+      {
+        "bank": "Альфа-Банк",
+        "program": "Семейная ипотека",
+        "urls": [
+          "https://alfabank.ru/get-money/mortgage/ipoteka-dlya-molodoy-semi/",
+          "https://alfabank.ru/get-money/mortgage/novostrojki/"
+        ]
+      },
+      {
+        "bank": "Россельхозбанк",
+        "program": "Сельская ипотека",
+        "urls": [
+          "https://www.rshb.ru/natural/mortgage",
+          "https://www.rshb.ru/news/31012024-000003"
+        ],
+        "note": "Выдача зависит от лимитов субсидирования."
+      },
+      {
+        "bank": "Россельхозбанк",
+        "program": "Семейная ипотека",
+        "urls": [
+          "https://www.rshb.ru/natural/mortgage",
+          "https://ipoteka.center/ipoteka/semeynaya"
+        ],
+        "note": "Минимум шкалы программы для регионов. Срок зависит от условий банка."
+      },
+      {
+        "bank": "Т-Банк",
+        "program": "Вторичное жилье",
+        "urls": [
+          "https://brobank.ru/izmenenie-rejtinga-ipotek-2026/",
+          "https://www.tbank.ru/mortgage/secondary-property/"
+        ],
+        "source_date": "2026-10-13"
+      },
+      {
+        "bank": "Т-Банк",
+        "program": "Рыночная ипотека",
+        "urls": [
+          "https://realty5.ru/analitika/rynok",
+          "https://brobank.ru/izmenenie-rejtinga-ipotek-2026/"
+        ],
+        "source_date": "2026-11-01",
+        "note": "Рыночная ставка по ноябрьскому мониторингу. В октябрьской сводке были предложения с дополнительными условиями."
+      },
+      {
+        "bank": "Т-Банк",
+        "program": "Семейная ипотека",
+        "urls": [
+          "https://www.tbank.ru/mortgage/family-mortgage/",
+          "https://ipoteka.center/ipoteka/semeynaya",
+          "https://belka-bank.ru/ipoteka/semeynaya"
+        ]
+      },
+      {
+        "bank": "Банк ДОМ.РФ",
+        "program": "Вторичное жилье",
+        "urls": [
+          "https://brobank.ru/izmenenie-rejtinga-ipotek-2026/"
+        ],
+        "source_date": "2026-10-13"
+      },
+      {
+        "bank": "Банк ДОМ.РФ",
+        "program": "Рыночная ипотека",
+        "urls": [
+          "https://realty5.ru/analitika/rynok",
+          "https://domrfbank.ru/mortgage/"
+        ],
+        "source_date": "2026-11-01"
+      },
+      {
+        "bank": "Банк ДОМ.РФ",
+        "program": "Семейная ипотека",
+        "urls": [
+          "https://domrfbank.ru/mortgage/programs/family-mortgage/",
+          "https://ipoteka.center/ipoteka/semeynaya",
+          "https://belka-bank.ru/ipoteka/semeynaya"
+        ]
+      },
+      {
+        "bank": "Московский кредитный банк",
+        "program": "Вторичное жилье",
+        "urls": [
+          "https://brobank.ru/izmenenie-rejtinga-ipotek-2026/",
+          "https://ir.mkb.ru/investor-relations/news/74141"
+        ],
+        "source_date": "2026-10-13"
+      },
+      {
+        "bank": "Московский кредитный банк",
+        "program": "Рыночная ипотека",
+        "urls": [
+          "https://realty5.ru/analitika/rynok",
+          "https://brobank.ru/izmenenie-rejtinga-ipotek-2026/"
+        ],
+        "source_date": "2026-11-01"
+      },
+      {
+        "bank": "Совкомбанк",
+        "program": "Рыночная ипотека",
+        "urls": [
+          "https://realty5.ru/analitika/rynok",
+          "https://sovcombank.ru/about/press-center/news/novosti-kompanii/sovkombank-uluchshaet-usloviya-po-ipoteke"
+        ],
+        "source_date": "2026-11-01",
+        "note": "Минимальная ставка по мониторингу. Размер взноса влияет на ставку."
+      },
+      {
+        "bank": "Новикомбанк",
+        "program": "Рыночная ипотека",
+        "urls": [
+          "https://brobank.ru/izmenenie-rejtinga-ipotek-2026/"
+        ],
+        "source_date": "2026-10-13",
+        "note": "Банк выделяет тарифы для сотрудников организаций-партнёров. Условия зависят от заёмщика."
+      },
+      {
+        "bank": "Банк Россия",
+        "program": "Рыночная ипотека",
+        "urls": [
+          "https://www.cds.spb.ru/banks/rossiya/bank-rossiya-ipoteka-s0/"
+        ],
+        "note": "Базовая ставка в карточке застройщика. Зарплатным клиентам доступны скидки."
+      },
+      {
+        "bank": "Банк Россия",
+        "program": "Семейная военная ипотека",
+        "urls": [
+          "https://m.rosvoenipoteka.ru/prgramms/kreditnie_programmi/semeynaya_ipoteka/ao_ab_rossiya"
+        ]
+      },
+      {
+        "bank": "Банк Санкт-Петербург",
+        "program": "IT-ипотека",
+        "urls": [
+          "https://www.bspb.ru/retail/mortgage/it",
+          "https://www.bspb.ru/news/2025/250530"
+        ]
+      },
+      {
+        "bank": "Банк Санкт-Петербург",
+        "program": "Вторичное жилье",
+        "urls": [
+          "https://brobank.ru/izmenenie-rejtinga-ipotek-2026/",
+          "https://www.bspb.ru/retail/mortgage/second/kvartira"
+        ],
+        "source_date": "2026-10-13"
+      },
+      {
+        "bank": "Банк Санкт-Петербург",
+        "program": "Рыночная ипотека",
+        "urls": [
+          "https://realty5.ru/analitika/rynok",
+          "https://brobank.ru/izmenenie-rejtinga-ipotek-2026/"
+        ],
+        "source_date": "2026-11-01"
+      },
+      {
+        "bank": "Банк Санкт-Петербург",
+        "program": "Семейная ипотека",
+        "urls": [
+          "https://www.bspb.ru/news/2026/261002",
+          "https://ipoteka.center/ipoteka/semeynaya"
+        ]
+      },
+      {
+        "bank": "Банк Уралсиб",
+        "program": "Семейная ипотека",
+        "urls": [
+          "https://uralsib.ru/ipoteka/ipoteka-dlya-semey-s-detmi?mortgage_uid=8907",
+          "https://ipoteka.center/ipoteka/semeynaya"
+        ],
+        "note": "Предельный срок льготного тарифа в партнёрской сводке от 07.10.2026."
+      },
+      {
+        "bank": "МТС Банк",
+        "program": "Семейная ипотека",
+        "urls": [
+          "https://www.mtsbank.ru/chastnim-licam/ipoteka/semeynaya-ipoteka/",
+          "https://ipoteka.center/ipoteka/semeynaya"
+        ],
+        "note": "Минимум шкалы программы для регионов."
+      },
+      {
+        "bank": "Азиатско-Тихоокеанский Банк",
+        "program": "Рыночная ипотека",
+        "urls": [
+          "https://realty5.ru/analitika/rynok",
+          "https://krsk.jilfond.ru/ipoteka/banks/aoaziatsko-tixookeanskii-bank/gotovoe-zilenovostroika"
+        ],
+        "source_date": "2026-11-01"
+      },
+      {
+        "bank": "Банк Аверс",
+        "program": "Вторичное жилье",
+        "urls": [
+          "https://www.aversbank.ru/individuals/mortgage/programma-ipotechnogo-kreditovaniya-na-priobretenie-nedvizhimosti/"
+        ],
+        "note": "Минимальная ставка учитывает все скидки. Условия доступны при постоянной регистрации в Татарстане."
+      },
+      {
+        "bank": "Банк Аверс",
+        "program": "Рыночная ипотека",
+        "urls": [
+          "https://www.aversbank.ru/individuals/mortgage/programma-ipotechnogo-kreditovaniya-na-priobretenie-nedvizhimosti/"
+        ],
+        "note": "Минимальная ставка учитывает все скидки. Условия доступны при постоянной регистрации в Татарстане."
+      },
+      {
+        "bank": "Абсолют Банк",
+        "program": "Вторичное жилье",
+        "urls": [
+          "https://realty.yandex.ru/ipoteka/absolyut-322407/ipoteka-na-gotovoe-zhilyo-2845382/"
+        ]
+      },
+      {
+        "bank": "Абсолют Банк",
+        "program": "Рыночная ипотека",
+        "urls": [
+          "https://absolutbank.ru/about/press/news/3857584/"
+        ]
+      },
+      {
+        "bank": "Абсолют Банк",
+        "program": "Семейная ипотека",
+        "urls": [
+          "https://absolutbank.ru/about/press/news/3855334/",
+          "https://ipoteka.center/ipoteka/semeynaya"
+        ]
+      }
+    ]
+  },
+  "banks": [
+    {
+      "name": "СберБанк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2019/09/sberbank_logo_icon.svg"
+    },
+    {
+      "name": "ВТБ",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2019/10/vtb_logo_icon.svg"
+    },
+    {
+      "name": "Газпромбанк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2019/10/gazprombank_logo_icon.svg"
+    },
+    {
+      "name": "Альфа-Банк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2019/09/alfabank_logo_icon.svg"
+    },
+    {
+      "name": "Россельхозбанк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2023/04/rshb-logo-icon.svg"
+    },
+    {
+      "name": "Т-Банк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2023/04/tbank-logo-icon.svg"
+    },
+    {
+      "name": "Банк ДОМ.РФ",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2020/03/domrfbank_logo_icon.svg"
+    },
+    {
+      "name": "Московский кредитный банк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2023/04/mkb-logo-icon.svg"
+    },
+    {
+      "name": "Совкомбанк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2019/09/sovcombank_logo_icon.svg"
+    },
+    {
+      "name": "Райффайзенбанк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2019/09/raiffeisen_logo_icon.svg"
+    },
+    {
+      "name": "Новикомбанк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2023/04/novikom-logo-icon.svg"
+    },
+    {
+      "name": "Банк Россия",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2025/06/logo-icon-br.svg"
+    },
+    {
+      "name": "БМ-Банк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2020/12/bmbank_logo_icon.svg"
+    },
+    {
+      "name": "Банк Санкт-Петербург",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2019/12/bspb_logo_icon.svg"
+    },
+    {
+      "name": "РенКап Банк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2023/04/logo-icon-renkap.svg"
+    },
+    {
+      "name": "Ак Барс Банк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2020/02/akbars_logo_icon.svg"
+    },
+    {
+      "name": "Ozon Банк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2023/04/bankozon-logo-icon.svg"
+    },
+    {
+      "name": "ОТП Банк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2025/08/logo-icon-otpbank.svg"
+    },
+    {
+      "name": "Банк Уралсиб",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2023/04/uralsib-logo-icon.svg"
+    },
+    {
+      "name": "МТС Банк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2019/09/mtsbank_logo_icon.svg"
+    },
+    {
+      "name": "НРБанк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2020/11/nrb_logo_icon.svg"
+    },
+    {
+      "name": "ЮниКредит Банк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2019/12/unicreditbank_logo_icon.svg"
+    },
+    {
+      "name": "Дж.П. Морган Банк Интернешнл",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2022/02/jpmorgan_logo_icon.svg"
+    },
+    {
+      "name": "Яндекс Банк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2023/04/bankyandex-logo-icon.svg"
+    },
+    {
+      "name": "ТрансКапиталБанк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2020/02/tkbbank_logo_icon.svg"
+    },
+    {
+      "name": "Точка Банк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2020/06/tochka-logo-icon-1.svg"
+    },
+    {
+      "name": "Азиатско-Тихоокеанский Банк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2019/10/atb_logo_icon.svg"
+    },
+    {
+      "name": "Экспобанк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2023/04/expobank-logo-icon.svg"
+    },
+    {
+      "name": "Банк Аверс",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2020/04/aversbank_logo_icon.svg"
+    },
+    {
+      "name": "Абсолют Банк",
+      "logo_url": "https://brobank.ru/wp-content/uploads/2019/12/absolutbank_logo_icon.svg"
+    }
+  ],
+  "programs": [
+    {
+      "name": "Рыночная ипотека",
+      "condition": "Рыночная программа покупки квартиры в новостройке. Ставка зависит от объекта, взноса, суммы кредита и применимых скидок банка.",
+      "is_preferential": false
+    },
+    {
+      "name": "Вторичное жилье",
+      "condition": "Рыночная программа покупки готового жилья на вторичном рынке. Банк проверяет объект и определяет условия страхования и кредитования.",
+      "is_preferential": false
+    },
+    {
+      "name": "Семейная ипотека",
+      "condition": "Господдержка для семей с детьми. Для договоров с 1 октября 2026 года ставка и размер льготной части зависят от числа детей, региона и объекта. Минимальная ставка в предложении применима только при соответствующих параметрах. Субсидирование ограничено 15 годами.",
+      "is_preferential": true
+    },
+    {
+      "name": "IT-ипотека",
+      "condition": "Господдержка для работников подходящих аккредитованных ИТ-компаний. Действуют требования к работодателю, доходу и региону. Базовый лимит льготной части — 9 млн ₽.",
+      "is_preferential": true
+    },
+    {
+      "name": "Дальневосточная и арктическая ипотека",
+      "condition": "Льготная программа для установленных категорий заёмщиков при покупке жилья на Дальнем Востоке или в Арктической зоне. Лимит зависит от площади и типа объекта.",
+      "is_preferential": true
+    },
+    {
+      "name": "Сельская ипотека",
+      "condition": "Льготная программа для покупки или строительства жилья на сельских территориях. Банк проверяет право заёмщика на господдержку, населённый пункт и наличие лимитов выдачи.",
+      "is_preferential": true
+    },
+    {
+      "name": "Семейная военная ипотека",
+      "condition": "Семейная ипотека для заёмщиков, которые участвуют в накопительно-ипотечной системе жилищного обеспечения военнослужащих. Условия зависят от статуса заёмщика и объекта.",
+      "is_preferential": true
+    }
+  ],
+  "offers": [
+    {
+      "bank": "СберБанк",
+      "program": "IT-ипотека",
+      "interest_rate": "6.00",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "СберБанк",
+      "program": "Рыночная ипотека",
+      "interest_rate": "18.70",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "СберБанк",
+      "program": "Семейная ипотека",
+      "interest_rate": "2.00",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": null
+    },
+    {
+      "bank": "ВТБ",
+      "program": "Дальневосточная и арктическая ипотека",
+      "interest_rate": "2.00",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": 20
+    },
+    {
+      "bank": "ВТБ",
+      "program": "Рыночная ипотека",
+      "interest_rate": "19.40",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "ВТБ",
+      "program": "Семейная ипотека",
+      "interest_rate": "2.00",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Газпромбанк",
+      "program": "IT-ипотека",
+      "interest_rate": "7.90",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Газпромбанк",
+      "program": "Вторичное жилье",
+      "interest_rate": "17.90",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Газпромбанк",
+      "program": "Дальневосточная и арктическая ипотека",
+      "interest_rate": "2.00",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": 20
+    },
+    {
+      "bank": "Газпромбанк",
+      "program": "Рыночная ипотека",
+      "interest_rate": "17.90",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Газпромбанк",
+      "program": "Семейная ипотека",
+      "interest_rate": "2.00",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": 15
+    },
+    {
+      "bank": "Альфа-Банк",
+      "program": "IT-ипотека",
+      "interest_rate": "6.00",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Альфа-Банк",
+      "program": "Рыночная ипотека",
+      "interest_rate": "17.99",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Альфа-Банк",
+      "program": "Семейная ипотека",
+      "interest_rate": "2.00",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Россельхозбанк",
+      "program": "Сельская ипотека",
+      "interest_rate": "3.00",
+      "minimum_initial_payment_percent": "20.00",
+      "maximum_loan_term_years": 25
+    },
+    {
+      "bank": "Россельхозбанк",
+      "program": "Семейная ипотека",
+      "interest_rate": "2.00",
+      "minimum_initial_payment_percent": "30.00",
+      "maximum_loan_term_years": null
+    },
+    {
+      "bank": "Т-Банк",
+      "program": "Вторичное жилье",
+      "interest_rate": "16.90",
+      "minimum_initial_payment_percent": "20.00",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Т-Банк",
+      "program": "Рыночная ипотека",
+      "interest_rate": "17.90",
+      "minimum_initial_payment_percent": "20.00",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Т-Банк",
+      "program": "Семейная ипотека",
+      "interest_rate": "2.00",
+      "minimum_initial_payment_percent": "20.00",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Банк ДОМ.РФ",
+      "program": "Вторичное жилье",
+      "interest_rate": "17.80",
+      "minimum_initial_payment_percent": "20.01",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Банк ДОМ.РФ",
+      "program": "Рыночная ипотека",
+      "interest_rate": "18.80",
+      "minimum_initial_payment_percent": "20.01",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Банк ДОМ.РФ",
+      "program": "Семейная ипотека",
+      "interest_rate": "2.00",
+      "minimum_initial_payment_percent": "20.00",
+      "maximum_loan_term_years": null
+    },
+    {
+      "bank": "Московский кредитный банк",
+      "program": "Вторичное жилье",
+      "interest_rate": "15.90",
+      "minimum_initial_payment_percent": "20.01",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Московский кредитный банк",
+      "program": "Рыночная ипотека",
+      "interest_rate": "17.60",
+      "minimum_initial_payment_percent": "20.01",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Совкомбанк",
+      "program": "Рыночная ипотека",
+      "interest_rate": "18.50",
+      "minimum_initial_payment_percent": "15.00",
+      "maximum_loan_term_years": null
+    },
+    {
+      "bank": "Новикомбанк",
+      "program": "Рыночная ипотека",
+      "interest_rate": "17.30",
+      "minimum_initial_payment_percent": "20.01",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Банк Россия",
+      "program": "Рыночная ипотека",
+      "interest_rate": "18.50",
+      "minimum_initial_payment_percent": "20.01",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Банк Россия",
+      "program": "Семейная военная ипотека",
+      "interest_rate": "2.00",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": null
+    },
+    {
+      "bank": "Банк Санкт-Петербург",
+      "program": "IT-ипотека",
+      "interest_rate": "6.00",
+      "minimum_initial_payment_percent": "20.01",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Банк Санкт-Петербург",
+      "program": "Вторичное жилье",
+      "interest_rate": "17.49",
+      "minimum_initial_payment_percent": "20.01",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Банк Санкт-Петербург",
+      "program": "Рыночная ипотека",
+      "interest_rate": "17.50",
+      "minimum_initial_payment_percent": "20.01",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Банк Санкт-Петербург",
+      "program": "Семейная ипотека",
+      "interest_rate": "2.00",
+      "minimum_initial_payment_percent": "20.00",
+      "maximum_loan_term_years": null
+    },
+    {
+      "bank": "Банк Уралсиб",
+      "program": "Семейная ипотека",
+      "interest_rate": "2.00",
+      "minimum_initial_payment_percent": "20.01",
+      "maximum_loan_term_years": 15
+    },
+    {
+      "bank": "МТС Банк",
+      "program": "Семейная ипотека",
+      "interest_rate": "2.00",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": null
+    },
+    {
+      "bank": "Азиатско-Тихоокеанский Банк",
+      "program": "Рыночная ипотека",
+      "interest_rate": "17.00",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": 30
+    },
+    {
+      "bank": "Банк Аверс",
+      "program": "Вторичное жилье",
+      "interest_rate": "20.00",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": 25
+    },
+    {
+      "bank": "Банк Аверс",
+      "program": "Рыночная ипотека",
+      "interest_rate": "20.00",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": 25
+    },
+    {
+      "bank": "Абсолют Банк",
+      "program": "Вторичное жилье",
+      "interest_rate": "18.60",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": null
+    },
+    {
+      "bank": "Абсолют Банк",
+      "program": "Рыночная ипотека",
+      "interest_rate": "17.59",
+      "minimum_initial_payment_percent": "20.01",
+      "maximum_loan_term_years": null
+    },
+    {
+      "bank": "Абсолют Банк",
+      "program": "Семейная ипотека",
+      "interest_rate": "2.00",
+      "minimum_initial_payment_percent": "20.10",
+      "maximum_loan_term_years": null
+    }
+  ]
+}

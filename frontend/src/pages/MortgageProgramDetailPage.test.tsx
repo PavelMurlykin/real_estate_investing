@@ -25,13 +25,6 @@ const program: MortgageProgramDetail = {
     creditLimit: '15000000.00',
     isActive: true,
   }],
-  aliases: [{
-    id: 8,
-    sourceName: 'Семейная программа',
-    normalizedName: 'семейная программа',
-    source: 'Домклик',
-    isActive: true,
-  }],
   legacyEditUrl: '/bank/?model=mortgage_program&edit=5',
   legacyCatalogUrl: '/bank/?model=mortgage_program',
 }
@@ -59,13 +52,11 @@ function renderDetail(session?: Session) {
 }
 
 describe('MortgageProgramDetailPage', () => {
-  it('renders regional limits, aliases and the preserved Django link', () => {
+  it('renders regional limits and the preserved Django link', () => {
     renderDetail()
 
     expect(screen.getAllByText('Семейная ипотека').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Москва').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Семейная программа').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Домклик').length).toBeGreaterThan(0)
     expect(screen.getByRole('link', { name: 'Открыть Django-форму' }))
       .toHaveAttribute('href', "/bank/?model=mortgage_program&edit=5&legacy=1")
     expect(screen.queryByRole('link', { name: 'Редактировать' }))

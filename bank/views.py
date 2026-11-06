@@ -26,6 +26,7 @@ from users.roles import (
     can_sync_external_data,
 )
 
+from .catalog_import import CatalogImportError, import_catalog, read_catalog_file
 from .forms import (
     BankForm,
     BankProgramFormSet,
@@ -37,17 +38,12 @@ from .developer_mortgage_program_importer import (
     import_developer_mortgage_programs,
 )
 from .key_rate_sync import KeyRateSyncError, sync_key_rates
-from .mortgage_offer_sync import (
-    BankMortgageSyncError,
-    sync_bank_mortgage_offers,
-)
 from .models import (
     Bank,
     BankProgram,
     DeveloperMortgageProgram,
     KeyRate,
     MortgageProgram,
-    MortgageProgramAlias,
     MortgageProgramRegionalCreditLimit,
 )
 
@@ -94,19 +90,6 @@ class BankCatalogView(BaseCatalogView):
             table_fields=('mortgage_program', 'region', 'credit_limit'),
             order_by=('mortgage_program__name', 'region__name'),
             select_related=('mortgage_program', 'region'),
-        ),
-        CatalogModelConfig(
-            key='mortgage_program_alias',
-            model=MortgageProgramAlias,
-            form_fields=('mortgage_program', 'source_name', 'source'),
-            table_fields=(
-                'mortgage_program',
-                'source_name',
-                'normalized_name',
-                'source',
-            ),
-            order_by=('mortgage_program__name', 'source_name'),
-            select_related=('mortgage_program',),
         ),
         CatalogModelConfig(
             key='bank_program',
@@ -162,17 +145,8 @@ class BankCatalogView(BaseCatalogView):
         """Handle bank catalog updates and regular catalog actions."""
         config = self.get_config()
         action = request.POST.get('action', 'save')
-        if config.key == 'bank' and action == 'sync_bank_mortgage_offers':
-            if not can_sync_external_data(request.user):
-                raise PermissionDenied
-            return self.handle_bank_mortgage_sync()
-        if (
-            config.key == 'bank'
-            and action == 'sync_existing_bank_mortgage_offers'
-        ):
-            if not can_sync_external_data(request.user):
-                raise PermissionDenied
-            return self.handle_bank_mortgage_sync(update_bank_registry=False)
+        if action == 'import_catalog' and config.key in {'bank', 'mortgage_program'}:
+            return self.handle_catalog_import(config.key)
         if not can_manage_catalogs(request.user):
             raise PermissionDenied
         if config.key == 'bank' and action == 'save':
@@ -180,45 +154,22 @@ class BankCatalogView(BaseCatalogView):
 
         return super().post(request, *args, **kwargs)
 
-    def handle_bank_mortgage_sync(self, update_bank_registry=True):
-        """Synchronize bank mortgage offer data from the external source."""
-        sync_label = (
-            'данные банков'
-            if update_bank_registry
-            else 'ипотечные программы банков'
-        )
+    def handle_catalog_import(self, section):
+        """Import the JSON upload for the active catalog tab."""
+        if not can_sync_external_data(self.request.user):
+            raise PermissionDenied
         try:
-            result = sync_bank_mortgage_offers(
-                update_bank_registry=update_bank_registry
-            )
-        except BankMortgageSyncError as error:
-            messages.error(
-                self.request,
-                f'Не удалось обновить {sync_label}: {error}',
-            )
+            payload = read_catalog_file(self.request.FILES.get('file'))
+            result = import_catalog(payload, section)
+        except CatalogImportError as error:
+            messages.error(self.request, str(error))
         else:
-            success_label = (
-                'Обновление данных банков'
-                if update_bank_registry
-                else 'Обновление ипотечных программ банков'
-            )
             messages.success(
                 self.request,
-                (
-                    f'{success_label} завершено: '
-                    f'создано={result["created"]}, '
-                    f'обновлено={result["updated"]}, '
-                    f'обработано={result["processed"]}, '
-                    'эталонных программ='
-                    f'{result.get("reference_programs_processed", 0)}, '
-                    'алиасов программ='
-                    f'{result.get("reference_program_aliases_created", 0)}.'
-                ),
+                f'Импорт завершён. Создано: {result["created"]}, '
+                f'обновлено: {result["updated"]}, без изменений: {result["unchanged"]}.',
             )
-            for warning in result.get('warnings', []):
-                messages.warning(self.request, warning)
-
-        return redirect(self.get_model_url('bank'))
+        return redirect(f'{self.get_model_url(section)}&legacy=1')
 
     def _safe_decimal(self, value):
         """Parse decimal filter values without raising validation errors."""

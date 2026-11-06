@@ -48,7 +48,13 @@ The bank list updates as you type a name in the search field. The “Прогр�
 
 ## Updating bank data
 
-Administrators have two actions on the bank page. “Обновить данные банков” updates the bank registry and offers; “Обновить ипотечные программы” updates offers for existing banks without updating the registry. Catalog moderators and ordinary users do not have these actions. Both buttons are disabled during synchronization. Completion shows created, updated and processed counts, program statistics and provider warnings; catalogs and calculator conditions refresh in the interface. A failed operation shows an error and can be retried.
+Expand “Ипотечные программы” under the bank name to see its programs, rates, minimum down payment, and published maximum term directly in the table.
+
+Administrators can expand “Импорт банков из JSON” on the Banks tab or “Импорт ипотечных программ из JSON” on the Mortgage Programs tab. Select a UTF-8 JSON file of up to 1 MB and click “Импортировать”. The result shows how many rows were created, updated, or left unchanged. Validation errors prevent any changes for the selected section.
+
+To populate the catalogs, use the [Russian bank snapshot](../data/bank-catalog-ru-2026-11.json). Upload the same file on the Banks tab first, then on the Mortgage Programs tab. The first upload adds banks by canonical name and updates logo URLs. The second updates the program directory and offer terms for existing banks. Existing links absent from the file are preserved. The file's `metadata` field lists its sources and coverage.
+
+Version 1 uses `version`, `banks`, `programs`, and `offers`. A bank has `name` and `logo_url`. A program has `name`, `condition`, `is_preferential`, and an optional `credit_limit`. An offer uses canonical names in `bank` and `program` and contains `interest_rate`, `minimum_initial_payment_percent`, and `maximum_loan_term_years`. Specify rate and down payment in percent and term in years or `null`.
 
 ## Bank of Russia key rate
 
@@ -58,7 +64,7 @@ Administrators can click “Обновить из ЦБ РФ” to refresh the da
 
 ## Mortgage programs
 
-The list updates as you type a name, description or alias in the search field. The program type filter is to the left of search and moves above it on narrow screens. Select preferential or market programs. The “Сбросить” button sits beside the search field and restores the full list. The table has separate name and description columns, and long descriptions wrap onto multiple lines.
+The list updates as you type a name or description in the search field. The program type filter is to the left of search and moves above it on narrow screens. Select preferential or market programs. The “Сбросить” button sits beside the search field and restores the full list. The table has separate name and description columns, and long descriptions wrap onto multiple lines.
 
 ## Working with tables
 
