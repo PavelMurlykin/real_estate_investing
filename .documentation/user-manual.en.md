@@ -46,7 +46,7 @@ Administrators have two actions on the bank page. “Обновить данны
 
 ## Bank of Russia key rate
 
-The step chart of the full key-rate history spans the available page width. Horizontal axis labels are spaced at least one year apart. The interval increases on narrower screens to prevent labels from overlapping. Hover over a point to enlarge it and see its date and rate. The minimum, maximum and latest entry are highlighted. The table below the chart can be sorted by date, rate or change in percentage points.
+The line chart of the full key-rate history spans the available page width. Straight segments connect consecutive points. Horizontal axis labels are spaced at least one year apart. The interval increases on narrower screens to prevent labels from overlapping. Hover over a point to enlarge it and see its date and rate. The minimum, maximum and latest entry are highlighted. The table below the chart can be sorted by date, rate or change in percentage points.
 
 Administrators can click “Обновить из ЦБ РФ” to refresh the data. When the rate changes, the table uses the effective date. When the Bank of Russia retains the rate, the table uses the date of the published decision and shows a change of 0 percentage points. New entries appear in the chart and table after a refresh. Repeated updates do not create duplicates.
 

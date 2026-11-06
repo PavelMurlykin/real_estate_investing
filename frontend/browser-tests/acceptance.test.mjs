@@ -209,6 +209,11 @@ test('key rate chart stays wide and compact, spaces years and enlarges points on
   }
 
   const circles = graph.locator('circle')
+  const linePoints = await graph.locator('polyline').evaluate((line) =>
+    Array.from(line.points, ({ x, y }) => [x, y]))
+  const markerPoints = await circles.evaluateAll((markers) =>
+    markers.map((marker) => [marker.cx.baseVal.value, marker.cy.baseVal.value]))
+  assert.deepEqual(linePoints, markerPoints)
   for (const date of ['28.02.2022', '23.10.2026']) {
     const point = circles.filter({ hasText: date })
     const original = await point.boundingBox()

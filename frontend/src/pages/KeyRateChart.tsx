@@ -46,7 +46,7 @@ export function KeyRateChart({ history }: { history: KeyRateChartPoint[] }) {
     ? left + ((time - first.time) / timeSpan) * plotWidth
     : (left + right) / 2
   const y = (rate: number) => bottom - ((rate - lowerRate) / rateSpan) * (bottom - top)
-  const path = points.slice(1).map((point) => `H ${x(point.time)} V ${y(point.rate)}`).join(' ')
+  const linePoints = points.map((point) => `${x(point.time)},${y(point.rate)}`).join(' ')
   const firstYear = Number(first.date.slice(0, 4))
   const latestYear = Number(latest.date.slice(0, 4))
   const yearsSpanned = timeSpan / shortestYearInMilliseconds
@@ -75,8 +75,8 @@ export function KeyRateChart({ history }: { history: KeyRateChartPoint[] }) {
         aria-describedby={descriptionId}
       >
         <desc id={descriptionId}>
-          Ключевая ставка в процентах годовых. Ступени показывают даты изменения ставки,
-          точки отмечают записи в истории. Значения приведены в таблице ниже.
+          Ключевая ставка в процентах годовых. Точки отмечают записи в истории и соединены
+          прямыми отрезками. Значения приведены в таблице ниже.
         </desc>
         {ticks.map((rate) => (
           <g key={rate}>
@@ -102,7 +102,7 @@ export function KeyRateChart({ history }: { history: KeyRateChartPoint[] }) {
             {latestYear}
           </text>
         ) : null}
-        <path className="key-rate-chart__line" d={`M ${x(first.time)} ${y(first.rate)} ${path}`} />
+        <polyline className="key-rate-chart__line" points={linePoints} />
         {points.map((point) => {
           const kind = highlightKinds.get(point.date)
           const markerClasses = kind ? ` key-rate-chart__marker key-rate-chart__marker--${kind}` : ''
