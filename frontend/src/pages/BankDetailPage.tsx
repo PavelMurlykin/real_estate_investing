@@ -1,4 +1,3 @@
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { InteractiveTable } from '@/shared/ui/InteractiveTable'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
@@ -183,13 +182,6 @@ export function BankDetailPage() {
         <span>Создано: {formatDateTime(bank.createdAt)}</span>
         <span>Обновлено: {formatDateTime(bank.updatedAt)}</span>
       </section>
-      <p className="legacy-fallback">
-        Нужен прежний экран?{' '}
-        <LegacyLink className="text-link" href={bank.legacyDetailUrl}>
-          Открыть Django-версию
-        </LegacyLink>
-      </p>
-
       {isDeleteDialogOpen ? (
         <div
           className="confirmation-dialog-backdrop"
