@@ -4703,13 +4703,36 @@ textarea:focus-visible {
 }
 
 .bank-table {
-  min-width: 760px;
+  table-layout: fixed;
+}
+
+.bank-table__numeric {
+  width: 20%;
+}
+
+.bank-table__actions {
+  width: 100px;
+}
+
+.bank-table th,
+.bank-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.bank-table .sortable-header {
+  gap: 0.25rem;
 }
 
 .bank-identity {
   display: flex;
   align-items: center;
   gap: 11px;
+}
+
+.bank-identity .text-link {
+  min-width: 0;
+  margin-top: 0;
 }
 
 .bank-logo {
@@ -4878,6 +4901,28 @@ textarea:focus-visible {
 }
 
 @media (max-width: 500px) {
+  .bank-table__actions {
+    width: 42px;
+  }
+
+  .bank-table th,
+  .bank-table td {
+    padding-inline: 5px;
+  }
+
+  .bank-table .row-actions {
+    flex-direction: column;
+  }
+
+  .bank-identity {
+    gap: 6px;
+  }
+
+  .bank-logo {
+    width: 28px;
+    height: 28px;
+  }
+
   .bank-summary-card {
     grid-template-columns: 1fr;
   }

@@ -351,6 +351,53 @@ test('bank search updates live and reset follows the program filter on the same 
     && document.querySelector('#bank-program-scope')?.value === 'all')
 })
 
+test('bank table fits narrow screens with long names and catalog actions', async (context) => {
+  const page = await createPage(context, { width: 1280, height: 900 })
+  const names = [
+    'Межрегиональный банк жилищного финансирования и долгосрочного развития',
+    'ДлинноеНазваниеБезПробелов'.repeat(7),
+  ]
+  await page.route('**/api/v1/auth/session/', (route) => route.fulfill({ json: {
+    isAuthenticated: true,
+    user: { id: 1, displayName: 'Модератор', email: 'manager@example.com', agencyName: '' },
+    capabilities: {
+      manageCatalogs: true, syncExternalData: false, viewPrivateRecords: true, viewAllPrivateRecords: false,
+    },
+  } }))
+  await page.route('**/api/v1/banks/', (route) => route.fulfill({ json: {
+    page: 1, pageSize: 20, totalCount: names.length, totalPages: 1,
+    results: names.map((name, index) => ({
+      id: index + 1, name, logoUrl: '', programCount: 20,
+      minimumInterestRate: '12.75', isActive: true, updatedAt: '2026-01-11T10:00:00Z',
+      detailUrl: `/banks/${index + 1}`, legacyDetailUrl: `/bank/banks/${index + 1}/`,
+    })),
+  } }))
+  await page.goto(new URL('/app/banks', baseUrl).href)
+  const table = page.getByRole('table', { name: 'Список банков' })
+  await table.getByRole('columnheader', { name: 'Действия' }).waitFor()
+  for (const width of [1280, 600, 360, 320]) {
+    await page.setViewportSize({ width, height: 900 })
+    assert(await table.evaluate((element) => element.parentElement.scrollWidth <= element.parentElement.clientWidth))
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+    for (const name of names) {
+      const layout = await table.getByRole('link', { name, exact: true }).evaluate((link) => {
+        const range = document.createRange()
+        range.selectNodeContents(link)
+        const lines = [...range.getClientRects()]
+        const cell = link.closest('td').getBoundingClientRect()
+        return {
+          lineCount: lines.length,
+          insideCell: lines.every((line) => line.left >= cell.left && line.right <= cell.right),
+        }
+      })
+      assert(layout.insideCell, `bank name overflows at ${width}px`)
+      if (width <= 360) assert(layout.lineCount > 1, `bank name did not wrap at ${width}px`)
+      assert(await table.getByRole('link', { name: `Редактировать: ${name}`, exact: true }).isVisible())
+      assert(await table.getByRole('button', { name: `Удалить: ${name}`, exact: true }).isVisible())
+    }
+  }
+})
+
 test('wide tables keep accessible action labels and scrolling inside the card', async (context) => {
   const page = await createPage(context, { width: 1280, height: 900 })
   // A populated fixture ensures this regression is tested even on an empty database.

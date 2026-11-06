@@ -44,7 +44,7 @@ In “Жилые комплексы по городам”, select an active cit
 
 ## Bank list
 
-The bank list updates as you type a name in the search field. The “Программы” filter lets you select banks with or without mortgage programs. The “Сбросить” button sits to the right of that filter on the same row and restores the full list.
+The bank list updates as you type a name in the search field. The “Программы” filter lets you select banks with or without mortgage programs. The “Сбросить” button sits to the right of that filter on the same row and restores the full list. On narrow screens, the table fits the available width and long bank names wrap onto multiple lines.
 
 ## Updating bank data
 

@@ -210,8 +210,14 @@ export function BankListPage() {
       ) : (
         <>
           <div className="table-card property-table-wrapper">
-            <table className="property-table catalog-table bank-table">
+            <table className="property-table bank-table">
               <caption className="visually-hidden">Список банков</caption>
+              <colgroup>
+                <col />
+                <col className="bank-table__numeric" />
+                <col className="bank-table__numeric" />
+                {canManageCatalogs ? <col className="bank-table__actions" /> : null}
+              </colgroup>
               <thead>
                 <tr>
                   <SortableHeader field="name" defaultOrdering="name">Банк</SortableHeader>
