@@ -224,6 +224,50 @@ test('key rate chart stays wide and compact, spaces years and enlarges points on
   }
 })
 
+test('mortgage program descriptions wrap and reset stays beside search', async (context) => {
+  const page = await createPage(context, { width: 1280, height: 900 })
+  const description = `Длинное описание ипотечной программы. ${'СловоБезПробелов'.repeat(16)}`
+  await page.route('**/api/v1/auth/session/', (route) => route.fulfill({ json: {
+    isAuthenticated: true,
+    user: { id: 1, displayName: 'Модератор', email: 'manager@example.com', agencyName: '' },
+    capabilities: {
+      manageCatalogs: true, syncExternalData: false, viewPrivateRecords: true, viewAllPrivateRecords: false,
+    },
+  } }))
+  await page.route('**/api/v1/mortgage-programs/', (route) => route.fulfill({ json: {
+    page: 1, pageSize: 20, totalCount: 1, totalPages: 1,
+    results: [{
+      id: 5, name: 'Семейная ипотека', condition: description, isPreferential: true,
+      creditLimit: '12000000.00', bankCount: 2, developerProgramCount: 1, regionalLimitCount: 1,
+      aliasCount: 2, isActive: true, updatedAt: '2026-01-11T10:00:00Z',
+      detailUrl: '/mortgage-programs/5', legacyEditUrl: '/bank/?model=mortgage_program&edit=5',
+    }],
+  } }))
+  await page.goto(new URL('/app/mortgage-programs', baseUrl).href)
+  const table = page.getByRole('table', { name: 'Список ипотечных программ' })
+  const descriptionCell = table.getByRole('cell', { name: description })
+  await table.getByRole('columnheader', { name: 'Действия' }).waitFor()
+
+  for (const width of [1280, 360]) {
+    await page.setViewportSize({ width, height: 900 })
+    const search = await page.getByRole('searchbox', { name: 'Поиск' }).boundingBox()
+    const reset = await page.getByRole('button', { name: 'Сбросить' }).boundingBox()
+    assert(reset.x >= search.x + search.width)
+    assert(Math.abs(reset.y - search.y) < 1)
+    assert(await table.evaluate((element) => element.parentElement.scrollWidth <= element.parentElement.clientWidth))
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+
+    const wrapsInsideCell = await descriptionCell.evaluate((cell) => {
+      const range = document.createRange()
+      range.selectNodeContents(cell)
+      const lines = [...range.getClientRects()]
+      const bounds = cell.getBoundingClientRect()
+      return lines.length > 1 && lines.every((line) => line.left >= bounds.left && line.right <= bounds.right)
+    })
+    assert(wrapsInsideCell, `description overflows at ${width}px`)
+  }
+})
+
 test('wide tables keep accessible action labels and scrolling inside the card', async (context) => {
   const page = await createPage(context, { width: 1280, height: 900 })
   // A populated fixture ensures this regression is tested even on an empty database.

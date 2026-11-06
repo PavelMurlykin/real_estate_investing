@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -52,13 +52,41 @@ describe('MortgageProgramListPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Ипотечные программы' }))
       .toBeInTheDocument()
-    expect(screen.getByRole('table')).toHaveAccessibleName(
-      'Список ипотечных программ',
-    )
-    expect(screen.getAllByRole('link', { name: 'Семейная ипотека' })[0])
+    const table = within(screen.getByRole('table', { name: 'Список ипотечных программ' }))
+    expect(table.getAllByRole('columnheader')).toHaveLength(4)
+    for (const name of ['Программа', 'Описание', 'Тип', 'Кредитный лимит']) {
+      expect(table.getByRole('columnheader', { name })).toBeInTheDocument()
+    }
+    expect(table.getByRole('link', { name: 'Семейная ипотека' }))
       .toHaveAttribute('href', '/mortgage-programs/5')
+    expect(table.getByRole('cell', { name: 'Для семей с детьми' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Добавить программу' }))
       .not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Прежняя версия' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Найти' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Статус')).not.toBeInTheDocument()
+  })
+
+  it('searches while typing and resets search and type together', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn(async () => Response.json(directory))
+    vi.stubGlobal('fetch', fetchMock)
+    renderWithProviders(<MortgageProgramListPage />, {
+      initialRoute: '/mortgage-programs?status=inactive',
+      queryClient: queryClient(),
+    })
+
+    await user.type(screen.getByRole('searchbox', { name: 'Поиск' }), 'дети')
+    const query = new URLSearchParams({ q: 'дети' })
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      `/api/v1/mortgage-programs/?${query}`,
+      expect.objectContaining({ credentials: 'same-origin' }),
+    ))
+    await user.selectOptions(screen.getByLabelText('Тип программы'), 'market')
+    await user.click(within(screen.getByRole('search')).getByRole('button', { name: 'Сбросить' }))
+
+    expect(screen.getByRole('searchbox', { name: 'Поиск' })).toHaveValue('')
+    expect(screen.getByLabelText('Тип программы')).toHaveValue('all')
   })
 
   it('stores the selected type in the URL and reloads the directory', async () => {

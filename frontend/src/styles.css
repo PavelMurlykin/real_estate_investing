@@ -2391,23 +2391,63 @@ textarea:focus-visible {
   }
 }
 
-.mortgage-program-filter-panel {
-  grid-template-columns: minmax(240px, 1.5fr) repeat(3, minmax(150px, 1fr));
-}
-
-.mortgage-program-filter-panel .search-form {
+.mortgage-program-list-page {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.mortgage-program-filter-panel {
+  grid-template-columns: minmax(0, 1fr) minmax(145px, 0.35fr);
+  align-items: end;
+}
+
+.mortgage-program-filter-panel .filter-actions {
+  grid-column: auto;
+}
+
+.mortgage-program-filter-panel .filter-actions .button {
+  min-height: 48px;
+}
+
 .mortgage-program-table {
-  min-width: 1050px;
+  table-layout: fixed;
 }
 
-.mortgage-program-name-cell {
-  min-width: 210px;
+.mortgage-program-table__name {
+  width: 25%;
 }
 
-.mortgage-program-name-cell small,
+.mortgage-program-table__type {
+  width: 13%;
+}
+
+.mortgage-program-table__limit {
+  width: 18%;
+}
+
+.mortgage-program-table__actions {
+  width: 100px;
+}
+
+.mortgage-program-table th,
+.mortgage-program-table td {
+  vertical-align: top;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.mortgage-program-table .sortable-header {
+  gap: 0.25rem;
+}
+
+.mortgage-program-table .text-link {
+  margin-top: 0;
+}
+
+.mortgage-program-table .mortgage-program-description {
+  white-space: pre-line;
+  line-height: 1.5;
+}
+
 .mortgage-program-mobile-condition {
   display: block;
   margin-top: 5px;
@@ -2526,13 +2566,8 @@ textarea:focus-visible {
 }
 
 @media (max-width: 1180px) {
-  .mortgage-program-filter-panel,
   .mortgage-program-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .mortgage-program-filter-panel .search-form {
-    grid-column: 1 / -1;
   }
 }
 
@@ -2541,10 +2576,6 @@ textarea:focus-visible {
   .mortgage-program-facts,
   .nested-editor-fields {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .mortgage-program-filter-panel .search-form {
-    grid-column: auto;
   }
 
   .mortgage-program-summary-card__heading {
@@ -2558,6 +2589,29 @@ textarea:focus-visible {
 
   .nested-editor-card {
     padding: 16px;
+  }
+}
+
+@media (max-width: 520px) {
+  .mortgage-program-table__type {
+    width: 19%;
+  }
+
+  .mortgage-program-table__limit {
+    width: 21%;
+  }
+
+  .mortgage-program-table__actions {
+    width: 42px;
+  }
+
+  .mortgage-program-table th,
+  .mortgage-program-table td {
+    padding-inline: 5px;
+  }
+
+  .mortgage-program-table .row-actions {
+    flex-direction: column;
   }
 }
 

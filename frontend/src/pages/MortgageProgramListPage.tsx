@@ -1,10 +1,8 @@
 import { ResetFilters } from '@/shared/ui/ResetFilters'
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
@@ -18,15 +16,6 @@ import type { MortgageProgramListItem } from '@/api/schemas'
 import { formatCurrency, formatInteger } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
-
-function usageLabel(mortgageProgram: MortgageProgramListItem) {
-  const usageCount = (
-    mortgageProgram.bankCount + mortgageProgram.developerProgramCount
-  )
-  return usageCount
-    ? `${formatInteger(usageCount)} связей`
-    : 'Не используется'
-}
 
 export function MortgageProgramListPage() {
   useDocumentTitle('Ипотечные программы')
@@ -75,15 +64,6 @@ export function MortgageProgramListPage() {
     setSearchParameters(nextParameters)
   }
 
-  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const searchInput = event.currentTarget.elements.namedItem('q')
-    const searchValue = searchInput instanceof HTMLInputElement
-      ? searchInput.value.trim()
-      : ''
-    updateParameters({ q: searchValue || null, page: null })
-  }
-
   const openDeleteDialog = (
     mortgageProgram: MortgageProgramListItem,
     trigger: HTMLButtonElement,
@@ -115,27 +95,18 @@ export function MortgageProgramListPage() {
         <div>
           <span className="eyebrow">Финансовые справочники</span>
           <h1>Ипотечные программы</h1>
-          <p>
-            Единые названия программ, федеральные и региональные лимиты,
-            а также алиасы для сопоставления импортируемых данных.
-          </p>
+          <p>Справочник ипотечных программ, их условий и кредитных лимитов.</p>
         </div>
-        <div className="page-header__actions">
-          <LegacyLink
-            className="button button--secondary"
-            href="/bank/?model=mortgage_program"
-          >
-            Прежняя версия
-          </LegacyLink>
-          {canManageCatalogs ? (
+        {canManageCatalogs ? (
+          <div className="page-header__actions">
             <Link
               className="button button--primary"
               to="/mortgage-programs/new"
             >
               Добавить программу
             </Link>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </header>
 
       <nav className="dictionary-tabs" aria-label="Разделы банков">
@@ -151,12 +122,10 @@ export function MortgageProgramListPage() {
         className="filter-panel mortgage-program-filter-panel"
         aria-label="Фильтры ипотечных программ"
       >
-        <form className="search-form" role="search" onSubmit={handleSearch}>
-          <div className="live-search-control">
-            <LiveFilterInput label="Поиск" id="mortgage-program-search" parameter="q" placeholder="Название, условие или алиас" />
-            <button className="button button--dark" type="submit">Найти</button>
-          </div>
-        </form>
+        <div className="live-search-control" role="search">
+          <LiveFilterInput label="Поиск" id="mortgage-program-search" parameter="q" placeholder="Название, описание или алиас" />
+          <ResetFilters />
+        </div>
         <div className="sort-control">
           <label htmlFor="mortgage-program-type">Тип программы</label>
           <select
@@ -172,22 +141,6 @@ export function MortgageProgramListPage() {
             <option value="market">Рыночные</option>
           </select>
         </div>
-        <div className="sort-control">
-          <label htmlFor="mortgage-program-status">Статус</label>
-          <select
-            id="mortgage-program-status"
-            value={searchParameters.get('status') ?? 'all'}
-            onChange={(event) => updateParameters({
-              status: event.target.value,
-              page: null,
-            })}
-          >
-            <option value="all">Все</option>
-            <option value="active">Активные</option>
-            <option value="inactive">Неактивные</option>
-          </select>
-        </div>
-        <ResetFilters />
       </section>
 
       <div className="results-heading" aria-live="polite">
@@ -209,148 +162,78 @@ export function MortgageProgramListPage() {
           ) : undefined}
         />
       ) : (
-        <>
-          <div className="table-card property-table-wrapper">
-            <table className="property-table catalog-table mortgage-program-table">
-              <caption className="visually-hidden">
-                Список ипотечных программ
-              </caption>
-              <thead>
-                <tr>
-                  <SortableHeader field="name" defaultOrdering="name">Программа</SortableHeader>
-                  <SortableHeader field="isPreferential" defaultOrdering="name">Тип</SortableHeader>
-                  <SortableHeader field="creditLimit" defaultOrdering="name">Кредитный лимит</SortableHeader>
-                  <SortableHeader field="bankCount" defaultOrdering="name">Использование</SortableHeader>
-                  <SortableHeader field="regionalLimitCount" defaultOrdering="name">Лимиты / алиасы</SortableHeader>
-
+        <div className="table-card property-table-wrapper">
+          <table className="property-table mortgage-program-table">
+            <caption className="visually-hidden">
+              Список ипотечных программ
+            </caption>
+            <colgroup>
+              <col className="mortgage-program-table__name" />
+              <col />
+              <col className="mortgage-program-table__type" />
+              <col className="mortgage-program-table__limit" />
+              {canManageCatalogs ? <col className="mortgage-program-table__actions" /> : null}
+            </colgroup>
+            <thead>
+              <tr>
+                <SortableHeader field="name" defaultOrdering="name">Программа</SortableHeader>
+                <th scope="col">Описание</th>
+                <SortableHeader field="isPreferential" defaultOrdering="name">Тип</SortableHeader>
+                <SortableHeader field="creditLimit" defaultOrdering="name">Кредитный лимит</SortableHeader>
+                {canManageCatalogs ? (
+                  <th scope="col"><span className="visually-hidden">Действия</span></th>
+                ) : null}
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((mortgageProgram) => (
+                <tr key={mortgageProgram.id}>
+                  <td>
+                    <Link
+                      className="text-link"
+                      to={`/mortgage-programs/${mortgageProgram.id}`}
+                    >
+                      {mortgageProgram.name}
+                    </Link>
+                  </td>
+                  <td className="mortgage-program-description">{mortgageProgram.condition || '—'}</td>
+                  <td>
+                    {mortgageProgram.isPreferential ? 'Льготная' : 'Рыночная'}
+                  </td>
+                  <td>
+                    {mortgageProgram.creditLimit
+                      ? formatCurrency(mortgageProgram.creditLimit)
+                      : '—'}
+                  </td>
                   {canManageCatalogs ? (
-                    <th scope="col"><span className="visually-hidden">Действия</span></th>
+                    <td>
+                      <div className="row-actions">
+                        <Link
+                          className="row-action"
+                          to={`/mortgage-programs/${mortgageProgram.id}/edit`}
+                          aria-label={`Редактировать: ${mortgageProgram.name}`}
+                        >
+                          ✎
+                        </Link>
+                        <button
+                          className="row-action row-action--danger"
+                          type="button"
+                          aria-label={`Удалить: ${mortgageProgram.name}`}
+                          onClick={(event) => openDeleteDialog(
+                            mortgageProgram,
+                            event.currentTarget,
+                          )}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </td>
                   ) : null}
                 </tr>
-              </thead>
-              <tbody>
-                {results.map((mortgageProgram) => (
-                  <tr key={mortgageProgram.id}>
-                    <td className="mortgage-program-name-cell">
-                      <Link
-                        className="text-link"
-                        to={`/mortgage-programs/${mortgageProgram.id}`}
-                      >
-                        {mortgageProgram.name}
-                      </Link>
-                      <small>{mortgageProgram.condition}</small>
-                    </td>
-                    <td>
-                      {mortgageProgram.isPreferential ? 'Льготная' : 'Рыночная'}
-                    </td>
-                    <td>
-                      {mortgageProgram.creditLimit
-                        ? formatCurrency(mortgageProgram.creditLimit)
-                        : '—'}
-                    </td>
-                    <td>{usageLabel(mortgageProgram)}</td>
-                    <td>
-                      {formatInteger(mortgageProgram.regionalLimitCount)} /{' '}
-                      {formatInteger(mortgageProgram.aliasCount)}
-                    </td>
-
-                    {canManageCatalogs ? (
-                      <td>
-                        <div className="row-actions">
-                          <Link
-                            className="row-action"
-                            to={`/mortgage-programs/${mortgageProgram.id}/edit`}
-                            aria-label={`Редактировать: ${mortgageProgram.name}`}
-                          >
-                            ✎
-                          </Link>
-                          <button
-                            className="row-action row-action--danger"
-                            type="button"
-                            aria-label={`Удалить: ${mortgageProgram.name}`}
-                            onClick={(event) => openDeleteDialog(
-                              mortgageProgram,
-                              event.currentTarget,
-                            )}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      </td>
-                    ) : null}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="property-mobile-list">
-            {results.map((mortgageProgram) => (
-              <article className="property-mobile-card" key={mortgageProgram.id}>
-                <div className="property-mobile-card__heading">
-                  <div>
-                    <span>
-                      {mortgageProgram.isPreferential ? 'Льготная' : 'Рыночная'}
-                    </span>
-                    <h2>
-                      <Link
-                        className="text-link"
-                        to={`/mortgage-programs/${mortgageProgram.id}`}
-                      >
-                        {mortgageProgram.name}
-                      </Link>
-                    </h2>
-                  </div>
-
-                </div>
-                <p className="mortgage-program-mobile-condition">
-                  {mortgageProgram.condition}
-                </p>
-                <dl>
-                  <div>
-                    <dt>Кредитный лимит</dt>
-                    <dd>{mortgageProgram.creditLimit
-                      ? formatCurrency(mortgageProgram.creditLimit)
-                      : '—'}</dd>
-                  </div>
-                  <div><dt>Использование</dt><dd>{usageLabel(mortgageProgram)}</dd></div>
-                  <div>
-                    <dt>Региональных лимитов</dt>
-                    <dd>{formatInteger(mortgageProgram.regionalLimitCount)}</dd>
-                  </div>
-                  <div><dt>Алиасов</dt><dd>{formatInteger(mortgageProgram.aliasCount)}</dd></div>
-                </dl>
-                <div className="property-mobile-card__actions">
-                  <Link
-                    className="text-link"
-                    to={`/mortgage-programs/${mortgageProgram.id}`}
-                  >
-                    Открыть
-                  </Link>
-                  {canManageCatalogs ? (
-                    <>
-                      <Link
-                        className="text-link"
-                        to={`/mortgage-programs/${mortgageProgram.id}/edit`}
-                      >
-                        Редактировать
-                      </Link>
-                      <button
-                        className="text-button text-button--danger"
-                        type="button"
-                        onClick={(event) => openDeleteDialog(
-                          mortgageProgram,
-                          event.currentTarget,
-                        )}
-                      >
-                        Удалить
-                      </button>
-                    </>
-                  ) : null}
-                </div>
-              </article>
-            ))}
-          </div>
-        </>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {totalPages > 1 ? (

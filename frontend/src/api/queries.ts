@@ -257,7 +257,6 @@ export function mortgageProgramListQueryOptions(
   for (const fieldName of [
     'q',
     'programType',
-    'status',
     'ordering',
     'page',
     'pageSize',
