@@ -1,12 +1,11 @@
 import { ResetFilters } from '@/shared/ui/ResetFilters'
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
+import { useTableSearchParams } from '@/shared/lib/useTableSearchParams'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 import { ApiError } from '@/api/client'
 import {
@@ -42,7 +41,7 @@ function BankIdentity({ bank }: { bank: BankListItem }) {
 
 export function BankListPage() {
   useDocumentTitle('Банки и программы')
-  const [searchParameters, setSearchParameters] = useSearchParams()
+  const [searchParameters, updateSearchParameters] = useTableSearchParams()
   const tableParameters = useTableParameters(searchParameters)
   const bankQuery = useQuery(bankListQueryOptions(tableParameters))
   const sessionQuery = useQuery(sessionQueryOptions)
@@ -83,21 +82,12 @@ export function BankListPage() {
   }, [deleteMutation.isPending, selectedBank])
 
   const updateParameters = (updates: Record<string, string | null>) => {
-    const nextParameters = new URLSearchParams(searchParameters)
-    Object.entries(updates).forEach(([fieldName, value]) => {
-      if (!value || value === 'all') nextParameters.delete(fieldName)
-      else nextParameters.set(fieldName, value)
+    updateSearchParameters((nextParameters) => {
+      for (const [fieldName, value] of Object.entries(updates)) {
+        if (!value || value === 'all') nextParameters.delete(fieldName)
+        else nextParameters.set(fieldName, value)
+      }
     })
-    setSearchParameters(nextParameters)
-  }
-
-  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const searchInput = event.currentTarget.elements.namedItem('q')
-    const searchValue = searchInput instanceof HTMLInputElement
-      ? searchInput.value.trim()
-      : ''
-    updateParameters({ q: searchValue || null, page: null })
   }
 
   const openDeleteDialog = (
@@ -141,20 +131,19 @@ export function BankListPage() {
             предельный срок кредита.
           </p>
         </div>
-        <div className="page-header__actions">
-          <LegacyLink className="button button--secondary" href="/bank/">
-            Прежняя версия
-          </LegacyLink>
-          {canManageCatalogs ? (
-            <Link className="button button--primary" to="/banks/new">
-              Добавить банк
-            </Link>
-          ) : null}
-          {canSynchronize ? <>
-            <button type="button" className="button button--secondary" disabled={syncMutation.isPending} onClick={() => syncMutation.mutate(true)}>Обновить данные банков</button>
-            <button type="button" className="button button--secondary" disabled={syncMutation.isPending} onClick={() => syncMutation.mutate(false)}>Обновить ипотечные программы</button>
-          </> : null}
-        </div>
+        {canManageCatalogs || canSynchronize ? (
+          <div className="page-header__actions">
+            {canManageCatalogs ? (
+              <Link className="button button--primary" to="/banks/new">
+                Добавить банк
+              </Link>
+            ) : null}
+            {canSynchronize ? <>
+              <button type="button" className="button button--secondary" disabled={syncMutation.isPending} onClick={() => syncMutation.mutate(true)}>Обновить данные банков</button>
+              <button type="button" className="button button--secondary" disabled={syncMutation.isPending} onClick={() => syncMutation.mutate(false)}>Обновить ипотечные программы</button>
+            </> : null}
+          </div>
+        ) : null}
       </header>
 
       {syncMutation.isPending ? <p className="status-notice" role="status">Обновляем данные из внешних источников…</p> : null}
@@ -180,43 +169,27 @@ export function BankListPage() {
         className="filter-panel bank-filter-panel"
         aria-label="Фильтры банков"
       >
-        <form className="search-form" role="search" onSubmit={handleSearch}>
-          <div className="live-search-control">
-            <LiveFilterInput label="Поиск" id="bank-search" parameter="q" placeholder="Название банка" />
-            <button className="button button--dark" type="submit">Найти</button>
+        <div role="search">
+          <LiveFilterInput label="Поиск" id="bank-search" parameter="q" placeholder="Название банка" />
+        </div>
+        <div className="live-search-control">
+          <div className="sort-control">
+            <label htmlFor="bank-program-scope">Программы</label>
+            <select
+              id="bank-program-scope"
+              value={searchParameters.get('scope') ?? 'all'}
+              onChange={(event) => updateParameters({
+                scope: event.target.value,
+                page: null,
+              })}
+            >
+              <option value="all">Все банки</option>
+              <option value="withPrograms">С программами</option>
+              <option value="withoutPrograms">Без программ</option>
+            </select>
           </div>
-        </form>
-        <div className="sort-control">
-          <label htmlFor="bank-program-scope">Программы</label>
-          <select
-            id="bank-program-scope"
-            value={searchParameters.get('scope') ?? 'all'}
-            onChange={(event) => updateParameters({
-              scope: event.target.value,
-              page: null,
-            })}
-          >
-            <option value="all">Все банки</option>
-            <option value="withPrograms">С программами</option>
-            <option value="withoutPrograms">Без программ</option>
-          </select>
+          <ResetFilters />
         </div>
-        <div className="sort-control">
-          <label htmlFor="bank-status">Статус</label>
-          <select
-            id="bank-status"
-            value={searchParameters.get('status') ?? 'all'}
-            onChange={(event) => updateParameters({
-              status: event.target.value,
-              page: null,
-            })}
-          >
-            <option value="all">Все</option>
-            <option value="active">Активные</option>
-            <option value="inactive">Неактивные</option>
-          </select>
-        </div>
-        <ResetFilters />
       </section>
 
       <div className="results-heading" aria-live="polite">

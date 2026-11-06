@@ -317,6 +317,40 @@ test('developer programs search as you type and keep reset after the filters on 
   await page.waitForFunction(() => document.querySelector('#developer-program-search')?.value === '')
 })
 
+test('bank search updates live and reset follows the program filter on the same row', async (context) => {
+  const page = await openPage(context, { width: 1280, height: 900 }, '/app/banks')
+  const search = page.getByRole('searchbox', { name: 'Поиск' })
+  const scope = page.getByRole('combobox', { name: 'Программы', exact: true })
+  const reset = page.getByRole('button', { name: 'Сбросить', exact: true })
+  assert.equal(await page.getByRole('link', { name: 'Прежняя версия' }).count(), 0)
+  assert.equal(await page.getByRole('button', { name: 'Найти' }).count(), 0)
+  assert.equal(await page.getByRole('combobox', { name: 'Статус', exact: true }).count(), 0)
+
+  for (const width of [1280, 360]) {
+    await page.setViewportSize({ width, height: 900 })
+    const filterBox = await scope.boundingBox()
+    const resetBox = await reset.boundingBox()
+    assert(resetBox.x >= filterBox.x + filterBox.width)
+    assert(Math.abs(resetBox.y + resetBox.height - filterBox.y - filterBox.height) < 1)
+  }
+
+  const searchText = 'zz-no-bank-827'
+  await scope.selectOption('withPrograms')
+  const results = page.waitForResponse((response) => {
+    const url = new URL(response.url())
+    return url.pathname === '/api/v1/banks/'
+      && url.searchParams.get('q') === searchText
+      && url.searchParams.get('scope') === 'withPrograms'
+  })
+  await search.fill(searchText)
+  assert.equal((await results).status(), 200)
+  await page.getByRole('heading', { name: 'Банки не найдены' }).waitFor()
+  await reset.click()
+  await page.waitForURL((url) => url.search === '')
+  await page.waitForFunction(() => document.querySelector('#bank-search')?.value === ''
+    && document.querySelector('#bank-program-scope')?.value === 'all')
+})
+
 test('wide tables keep accessible action labels and scrolling inside the card', async (context) => {
   const page = await createPage(context, { width: 1280, height: 900 })
   // A populated fixture ensures this regression is tested even on an empty database.

@@ -42,6 +42,10 @@ In “Жилые комплексы по городам”, select an active cit
 
 “Списком” and “На карте” switch views; the city and view remain in the URL. The first 50 complexes load immediately; “Показать ещё ЖК” loads more. The counter shows total and loaded counts; the map contains loaded complexes. Coordinates come from the map link or are resolved by complex name and city. When the map provider is unavailable or coordinates cannot be found, cards and direct links remain available; use “Повторить загрузку карты” to retry.
 
+## Bank list
+
+The bank list updates as you type a name in the search field. The “Программы” filter lets you select banks with or without mortgage programs. The “Сбросить” button sits to the right of that filter on the same row and restores the full list.
+
 ## Updating bank data
 
 Administrators have two actions on the bank page. “Обновить данные банков” updates the bank registry and offers; “Обновить ипотечные программы” updates offers for existing banks without updating the registry. Catalog moderators and ordinary users do not have these actions. Both buttons are disabled during synchronization. Completion shows created, updated and processed counts, program statistics and provider warnings; catalogs and calculator conditions refresh in the interface. A failed operation shows an error and can be retried.

@@ -183,7 +183,6 @@ export function bankListQueryOptions(searchParameters: URLSearchParams) {
   for (const fieldName of [
     'q',
     'scope',
-    'status',
     'ordering',
     'page',
     'pageSize',

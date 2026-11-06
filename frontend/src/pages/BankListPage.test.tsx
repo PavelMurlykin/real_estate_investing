@@ -111,27 +111,34 @@ describe('BankListPage', () => {
     ).toHaveAttribute('href', '/banks/7')
     expect(screen.queryByRole('link', { name: 'Добавить банк' }))
       .not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Прежняя версия' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Найти' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Статус')).not.toBeInTheDocument()
   })
 
-  it('stores program filters in the URL and requests filtered rows', async () => {
+  it('combines live search with the program filter and resets both', async () => {
     const user = userEvent.setup()
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(bankDirectory), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
+    const fetchMock = vi.fn(async () => Response.json(bankDirectory))
     vi.stubGlobal('fetch', fetchMock)
     renderWithProviders(<BankListPage />, {
+      initialRoute: '/banks?status=inactive',
       queryClient: createDirectoryQueryClient(),
     })
 
-    await user.selectOptions(screen.getByLabelText('Программы'), 'withPrograms')
+    const search = screen.getByRole('searchbox', { name: 'Поиск' })
+    const scope = screen.getByRole('combobox', { name: 'Программы' })
+    await user.type(search, 'Северный')
+    await user.selectOptions(scope, 'withPrograms')
+    const parameters = new URLSearchParams({ q: 'Северный', scope: 'withPrograms' })
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-      '/api/v1/banks/?scope=withPrograms',
+      `/api/v1/banks/?${parameters}`,
       expect.objectContaining({ credentials: 'same-origin' }),
     ))
+
+    await user.click(screen.getByRole('button', { name: 'Сбросить' }))
+    expect(search).toHaveValue('')
+    expect(scope).toHaveValue('all')
   })
 
   it('shows React create and edit routes to catalog managers', () => {

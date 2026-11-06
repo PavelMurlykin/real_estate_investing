@@ -4698,7 +4698,7 @@ textarea:focus-visible {
 }
 
 .bank-filter-panel {
-  grid-template-columns: minmax(260px, 1.5fr) repeat(3, minmax(160px, 0.6fr));
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.75fr);
   align-items: end;
 }
 
@@ -4841,14 +4841,6 @@ textarea:focus-visible {
 }
 
 @media (max-width: 1180px) {
-  .bank-filter-panel {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .bank-filter-panel .search-form {
-    grid-column: 1 / -1;
-  }
-
   .bank-programs-section {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -4864,7 +4856,6 @@ textarea:focus-visible {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .bank-filter-panel .search-form,
   .bank-program-fields .form-field--wide {
     grid-column: auto;
   }
