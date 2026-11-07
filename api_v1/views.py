@@ -87,6 +87,9 @@ from mortgage.word import (
     export_trench_mortgage_word,
 )
 from property.forms import DeveloperRegistryImportForm
+from core.json_import import JsonImportError, read_json_upload
+from property.complex_import import import_complex_catalog, MAX_COMPLEX_IMPORT_BYTES
+from property.complex_photos import add_complex_photos, select_primary_complex_photo
 from property.models import (
     ApartmentDecoration,
     ApartmentLayout,
@@ -96,6 +99,7 @@ from property.models import (
     RealEstateClass,
     RealEstateComplex,
     RealEstateComplexBuilding,
+    RealEstateComplexPhoto,
     RealEstateComplexMetroAvailability,
     RealEstateType,
     TransportAccessibilityType,
@@ -2851,6 +2855,7 @@ def _real_estate_complex_detail_queryset():
             queryset=metro_availability,
             to_attr='api_metro_availability',
         ),
+        Prefetch('photos', queryset=RealEstateComplexPhoto.objects.order_by('pk'), to_attr='api_photos'),
     )
 
 
@@ -2989,6 +2994,42 @@ class RealEstateComplexDetailAPIView(RetrieveUpdateDestroyAPIView):
                 status=status.HTTP_409_CONFLICT,
             )
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class RealEstateComplexImportAPIView(APIView):
+    """Accept a portable JSON file and pass decoded data to the import service."""
+
+    permission_classes = (IsAuthenticated, CanSyncExternalData)
+    parser_classes = (MultiPartParser,)
+
+    def post(self, request):
+        """Return an all-or-nothing catalog import summary."""
+        try:
+            payload = read_json_upload(request.FILES.get('file'), MAX_COMPLEX_IMPORT_BYTES)
+            result = import_complex_catalog(payload)
+        except JsonImportError as error:
+            return Response({'detail': str(error)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(result)
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class RealEstateComplexPhotoAPIView(APIView):
+    """Let catalog managers upload photos or select the homepage image."""
+
+    permission_classes = (IsAuthenticated, CanManageCatalogs)
+    parser_classes = (MultiPartParser,)
+
+    def post(self, request, pk, photo_id=None):
+        """Apply an owned gallery mutation and return the refreshed card."""
+        complex_object = get_object_or_404(RealEstateComplex, pk=pk)
+        if photo_id is None:
+            add_complex_photos(complex_object, request.FILES.getlist('files'))
+        else:
+            get_object_or_404(RealEstateComplexPhoto, pk=photo_id, real_estate_complex=complex_object)
+            select_primary_complex_photo(complex_object, photo_id)
+        refreshed = _real_estate_complex_detail_queryset().get(pk=pk)
+        return Response(RealEstateComplexDetailSerializer(refreshed).data)
 
 
 class RealEstateComplexOptionsAPIView(APIView):

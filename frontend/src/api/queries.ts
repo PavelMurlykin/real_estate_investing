@@ -6,6 +6,7 @@ import {
   bankListResponseSchema,
   bankOptionsSchema,
   bankCatalogImportResultSchema,
+  complexImportResultSchema,
   companyGroupListResponseSchema,
   companyGroupSchema,
   customerCalculationLinkResponseSchema,
@@ -1306,4 +1307,24 @@ export function deleteProperty(propertyIdentifier: number) {
     `/api/v1/properties/${propertyIdentifier}/`,
     { method: 'DELETE' },
   )
+}
+
+export function uploadComplexPhotos(complexId: number, files: File[]) {
+  const body = new FormData()
+  files.forEach((file) => body.append('files', file))
+  return requestJson('/api/v1/complexes/' + complexId + '/photos/', realEstateComplexDetailSchema, {
+    method: 'POST', body,
+  })
+}
+
+export function selectComplexPrimaryPhoto(complexId: number, photoId: number) {
+  return requestJson('/api/v1/complexes/' + complexId + '/photos/' + photoId + '/primary/', realEstateComplexDetailSchema, {
+    method: 'POST',
+  })
+}
+
+export function importComplexCatalog(file: File) {
+  const body = new FormData()
+  body.append('file', file)
+  return requestJson('/api/v1/complexes/import/', complexImportResultSchema, { method: 'POST', body })
 }

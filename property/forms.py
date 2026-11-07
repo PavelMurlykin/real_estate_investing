@@ -7,6 +7,7 @@ from .form_fields import (
     DeveloperModelChoiceField,
     get_developers_with_company_groups_queryset,
 )
+from .complex_photos import sync_legacy_complex_photo
 from .models import (
     CompanyGroup,
     Developer,
@@ -429,6 +430,7 @@ class RealEstateComplexForm(forms.ModelForm):
 
         if commit:
             instance.save()
+            sync_legacy_complex_photo(instance)
             self.delete_saved_photo(photo_name_to_delete, instance)
 
         return instance
@@ -441,6 +443,7 @@ class RealEstateComplexForm(forms.ModelForm):
         if instance.photo and instance.photo.name == photo_name_to_delete:
             return
 
+        instance.photos.filter(image=photo_name_to_delete).delete()
         storage = instance._meta.get_field('photo').storage
         if storage.exists(photo_name_to_delete):
             storage.delete(photo_name_to_delete)

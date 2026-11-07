@@ -148,3 +148,16 @@ export async function requestFile(
     filename: getResponseFilename(response, fallbackFilename),
   }
 }
+
+export function apiErrorMessage(value: unknown): string | null {
+  if (value instanceof ApiError) return apiErrorMessage(value.details) ?? value.message
+  if (value instanceof Error) return null
+  if (typeof value === 'string') return value
+  if (value && typeof value === 'object') {
+    for (const item of Object.values(value)) {
+      const message = apiErrorMessage(item)
+      if (message) return message
+    }
+  }
+  return null
+}

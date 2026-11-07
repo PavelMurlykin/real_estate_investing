@@ -5099,3 +5099,20 @@ textarea:focus-visible {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.complex-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 1rem;
+}
+.complex-gallery figure { margin: 0; min-width: 0; }
+.complex-gallery img { width: 100%; height: 180px; object-fit: cover; border-radius: .5rem; }
+.complex-gallery figcaption { margin-top: .5rem; }
+.complex-gallery label { display: flex; align-items: center; gap: .5rem; }
+.complex-photo-form { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; margin-top: 1rem; }
+.complex-photo-form label { display: grid; gap: .5rem; max-width: 100%; }
+.complex-photo-form input { max-width: 100%; }
+.complex-photo-form small { flex-basis: 100%; }
+.complex-metro-summary { display: grid; gap: .4rem; }
+.complex-metro-summary > span { display: flex; align-items: center; gap: .4rem; }
+.transport-icon { display: inline-flex; vertical-align: middle; flex-shrink: 0; }

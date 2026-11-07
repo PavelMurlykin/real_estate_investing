@@ -1,4 +1,5 @@
-import { LegacyLink } from '@/shared/ui/LegacyLink'
+import { ComplexPhotos } from '@/features/realEstateComplex/ComplexPhotos'
+import { TransportIcon } from '@/features/realEstateComplex/MetroAccess'
 import { InteractiveTable } from '@/shared/ui/InteractiveTable'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
@@ -185,8 +186,16 @@ export function RealEstateComplexDetailPage() {
               <dd>{formatInteger(realEstateComplex.buildings.length)}</dd>
             </div>
             <div>
-              <dt>Станций метро</dt>
-              <dd>{formatInteger(realEstateComplex.metroAvailability.length)}</dd>
+              <dt>Доступность метро</dt>
+              <dd className="complex-metro-summary">
+                {realEstateComplex.metroAvailability.filter((row) => row.isActive).map((row) => (
+                  <span key={row.id}>
+                    <TransportIcon mode={row.transportAccessibilityType} />
+                    {row.station} ({row.line}) · {row.walkingTimeMinutes} мин.
+                  </span>
+                ))}
+                {realEstateComplex.metroAvailability.length === 0 ? 'Не заполнена' : null}
+              </dd>
             </div>
           </dl>
           {realEstateComplex.mapUrl || realEstateComplex.presentationUrl ? (
@@ -209,6 +218,8 @@ export function RealEstateComplexDetailPage() {
           ) : null}
         </div>
       </section>
+
+      <ComplexPhotos complex={realEstateComplex} canManage={canManageCatalogs} />
 
       <div className="complex-description-grid">
         <section className="saved-property-card">
@@ -270,7 +281,7 @@ export function RealEstateComplexDetailPage() {
                         aria-hidden="true"
                       /><strong>{availability.station}</strong></> },
                 { id: 'column1', label: "Линия", value: (availability) => availability.line, render: (availability) => <>{availability.line}</> },
-                { id: 'column2', label: "Способ", value: (availability) => availability.transportAccessibilityType, render: (availability) => <>{availability.transportAccessibilityType}</> },
+                { id: 'column2', label: "Способ", value: (availability) => availability.transportAccessibilityType, render: (availability) => <TransportIcon mode={availability.transportAccessibilityType} /> },
                 { id: 'column3', label: "Время", value: (availability) => availability.walkingTimeMinutes, render: (availability) => <>{availability.walkingTimeMinutes}мин.</> },
               ]} />
           </div>
@@ -281,12 +292,6 @@ export function RealEstateComplexDetailPage() {
         <span>Создано: {formatDateTime(realEstateComplex.createdAt)}</span>
         <span>Обновлено: {formatDateTime(realEstateComplex.updatedAt)}</span>
       </section>
-      <p className="legacy-fallback">
-        Нужен прежний экран?{' '}
-        <LegacyLink className="text-link" href={realEstateComplex.legacyDetailUrl}>
-          Открыть Django-версию
-        </LegacyLink>
-      </p>
 
       {isPhotoOpen && realEstateComplex.photoUrl ? (
         <div

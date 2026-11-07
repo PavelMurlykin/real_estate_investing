@@ -48,6 +48,8 @@ from .views import (
     RealEstateComplexDetailAPIView,
     RealEstateComplexListCreateAPIView,
     RealEstateComplexOptionsAPIView,
+    RealEstateComplexPhotoAPIView,
+    RealEstateComplexImportAPIView,
     PropertyDetailAPIView,
     PropertyFormOptionsAPIView,
     PropertyListAPIView,
@@ -236,6 +238,9 @@ urlpatterns = [
         RealEstateComplexListCreateAPIView.as_view(),
         name='real_estate_complex_list',
     ),
+    path('complexes/import/', RealEstateComplexImportAPIView.as_view(), name='complex_import'),
+    path('complexes/<int:pk>/photos/', RealEstateComplexPhotoAPIView.as_view(), name='complex_photo_upload'),
+    path('complexes/<int:pk>/photos/<int:photo_id>/primary/', RealEstateComplexPhotoAPIView.as_view(), name='complex_photo_primary'),
     path(
         'complexes/options/',
         RealEstateComplexOptionsAPIView.as_view(),

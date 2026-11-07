@@ -658,6 +658,11 @@ export const realEstateComplexDetailSchema = z.object({
   presentationUrl: z.string().nullable(),
   investmentPotential: z.string().nullable(),
   photoUrl: z.string().nullable(),
+  photos: z.array(z.object({
+    id: z.number().int().positive(),
+    url: z.string(),
+    isPrimary: z.boolean(),
+  })).optional(),
   buildings: z.array(realEstateComplexBuildingSchema).max(100),
   metroAvailability: z.array(
     realEstateComplexMetroAvailabilitySchema,
@@ -1372,3 +1377,11 @@ export type RealEstateComplexMetroWriteRequest = {
   walkingTimeMinutes: number
   isActive: boolean
 }
+
+export const complexImportResultSchema = z.object({
+  created: z.number().int().nonnegative(),
+  updated: z.number().int().nonnegative(),
+  photos: z.number().int().nonnegative(),
+  buildings: z.number().int().nonnegative(),
+  metro: z.number().int().nonnegative(),
+})

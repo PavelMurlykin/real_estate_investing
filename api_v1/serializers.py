@@ -19,6 +19,7 @@ from bank.models import (
 )
 from customer.models import Customer
 from location.models import City, District, Metro, MetroLine, Region
+from property.complex_photos import sync_legacy_complex_photo
 from property.models import (
     ApartmentDecoration,
     ApartmentLayout,
@@ -28,6 +29,7 @@ from property.models import (
     RealEstateClass,
     RealEstateComplex,
     RealEstateComplexBuilding,
+    RealEstateComplexPhoto,
     RealEstateComplexMetroAvailability,
     RealEstateType,
     TransportAccessibilityType,
@@ -2572,6 +2574,23 @@ class RealEstateComplexMetroAvailabilitySerializer(serializers.ModelSerializer):
         )
 
 
+class RealEstateComplexPhotoSerializer(serializers.ModelSerializer):
+    """Describe a gallery image and its main-photo selection."""
+
+    url = serializers.ImageField(source='image', read_only=True)
+    isPrimary = serializers.SerializerMethodField()
+
+    class Meta:
+        """Expose stable photo identifiers and public media URLs."""
+
+        model = RealEstateComplexPhoto
+        fields = ('id', 'url', 'isPrimary')
+
+    def get_isPrimary(self, photo):
+        """Compare against the single primary image stored on the complex."""
+        return photo.image.name == self.context['primary_photo']
+
+
 class RealEstateComplexDetailSerializer(serializers.ModelSerializer):
     """Serialize the complete public residential-complex card."""
 
@@ -2607,6 +2626,7 @@ class RealEstateComplexDetailSerializer(serializers.ModelSerializer):
         source='investment_potential', allow_null=True, read_only=True
     )
     photoUrl = serializers.SerializerMethodField(method_name='get_photo_url')
+    photos = serializers.SerializerMethodField()
     buildings = serializers.SerializerMethodField()
     metroAvailability = serializers.SerializerMethodField(
         method_name='get_metro_availability'
@@ -2633,7 +2653,7 @@ class RealEstateComplexDetailSerializer(serializers.ModelSerializer):
             'regionId', 'region', 'cityId', 'city', 'districtId', 'district',
             'realEstateClassId', 'realEstateClass', 'realEstateTypeId',
             'realEstateType', 'mapUrl', 'presentationUrl',
-            'investmentPotential', 'photoUrl', 'buildings',
+            'investmentPotential', 'photoUrl', 'photos', 'buildings',
             'metroAvailability', 'isActive', 'createdAt', 'updatedAt',
             'legacyDetailUrl', 'legacyEditUrl', 'legacyDeleteUrl',
         )
@@ -2658,6 +2678,13 @@ class RealEstateComplexDetailSerializer(serializers.ModelSerializer):
     def get_photo_url(self, real_estate_complex):
         """Return the optional complex photo URL."""
         return real_estate_complex.photo.url if real_estate_complex.photo else None
+
+    def get_photos(self, real_estate_complex):
+        """Return prefetched photos without issuing per-image queries."""
+        return RealEstateComplexPhotoSerializer(
+            real_estate_complex.api_photos, many=True,
+            context={'primary_photo': real_estate_complex.photo.name},
+        ).data
 
     def get_buildings(self, real_estate_complex):
         """Serialize prefetched buildings without per-row database access."""
@@ -3004,6 +3031,7 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
         validated_data.pop('clearPhoto', None)
         with transaction.atomic():
             real_estate_complex = super().create(validated_data)
+            sync_legacy_complex_photo(real_estate_complex)
             self._sync_buildings(real_estate_complex, buildings)
             self._sync_metro_availability(
                 real_estate_complex, metro_availability
@@ -3030,6 +3058,7 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
                 self._sync_metro_availability(
                     real_estate_complex, metro_availability
                 )
+            sync_legacy_complex_photo(real_estate_complex)
             if previous_photo and (
                 not real_estate_complex.photo
                 or real_estate_complex.photo.name != previous_photo.name
@@ -3157,6 +3186,7 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
             and real_estate_complex.photo.name == photo_name
         ):
             return
+        real_estate_complex.photos.filter(image=photo_name).delete()
         if storage.exists(photo_name):
             storage.delete(photo_name)
 

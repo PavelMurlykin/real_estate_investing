@@ -98,6 +98,8 @@ describe('RealEstateComplexListPage', () => {
       .toHaveAttribute('href', '/complexes/7')
     expect(screen.queryByRole('link', { name: 'Добавить ЖК' }))
       .not.toBeInTheDocument()
+    expect(screen.queryByText('Импорт жилых комплексов из JSON'))
+      .not.toBeInTheDocument()
   })
 
   it('keeps filters in URL state and requests the selected city', async () => {
@@ -155,5 +157,30 @@ describe('RealEstateComplexListPage', () => {
       '/api/v1/complexes/7/',
       expect.objectContaining({ method: 'DELETE' }),
     )
+  })
+
+  it('imports the administrator file and displays the processed counts', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn<typeof fetch>((input) => Promise.resolve(
+      new Response(JSON.stringify(String(input).includes('/import/')
+        ? { created: 2, updated: 20, photos: 28, buildings: 30, metro: 22 }
+        : directory), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    ))
+    vi.stubGlobal('fetch', fetchMock)
+    renderWithProviders(<RealEstateComplexListPage />, {
+      queryClient: createDirectoryQueryClient({
+        ...managerSession,
+        capabilities: { ...managerSession.capabilities, syncExternalData: true },
+      }),
+    })
+    await user.click(screen.getByText('Импорт жилых комплексов из JSON'))
+    const file = new File(['{}'], 'complexes.json', { type: 'application/json' })
+    await user.upload(screen.getByLabelText('Файл JSON'), file)
+    await user.click(screen.getByRole('button', { name: 'Импортировать' }))
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Создано ЖК 2, обновлено 20, добавлено фото 28',
+    )
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/complexes/import/',
+      expect.objectContaining({ method: 'POST', body: expect.any(FormData) }))
   })
 })

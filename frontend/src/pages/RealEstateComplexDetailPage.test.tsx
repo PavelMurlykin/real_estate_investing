@@ -32,6 +32,10 @@ const complexDetail: RealEstateComplexDetail = {
   presentationUrl: null,
   investmentPotential: 'Стабильный спрос',
   photoUrl: '/media/property/complexes/photo.webp',
+  photos: [
+    { id: 1, url: '/media/property/complexes/photo.webp', isPrimary: true },
+    { id: 2, url: '/media/property/complexes/second.webp', isPrimary: false },
+  ],
   buildings: [{
     id: 8,
     number: '1',
@@ -102,7 +106,10 @@ describe('RealEstateComplexDetailPage', () => {
     expect(screen.getByRole('heading', { name: 'Белые ночи' }))
       .toBeInTheDocument()
     expect(screen.getByText('Парковая улица, 1')).toBeInTheDocument()
-    expect(screen.getByText('Петроградская')).toBeInTheDocument()
+    expect(screen.getByText('Доступность метро', { selector: 'dt' })).toBeInTheDocument()
+    expect(screen.getByText('Петроградская (Синяя) · 12 мин.')).toBeInTheDocument()
+    expect(screen.queryByText('Станций метро')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Открыть Django-версию' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Удалить' }))
       .not.toBeInTheDocument()
 
@@ -114,6 +121,20 @@ describe('RealEstateComplexDetailPage', () => {
     expect(within(dialog).getByRole('button', {
       name: 'Закрыть изображение',
     })).toHaveFocus()
+  })
+
+  it('changes the main gallery photo through the owned photo endpoint', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn(async () => Response.json({
+      ...complexDetail,
+      photoUrl: '/media/property/complexes/second.webp',
+      photos: complexDetail.photos?.map((photo) => ({ ...photo, isPrimary: photo.id === 2 })),
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+    renderDetail(managerSession)
+    await user.click(screen.getByRole('radio', { name: 'Главное фото 2' }))
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/complexes/7/photos/2/primary/', expect.objectContaining({ method: 'POST' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Фотографии сохранены.')
   })
 
   it('shows management actions and a linked-object conflict', async () => {

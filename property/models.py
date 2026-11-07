@@ -196,6 +196,10 @@ class RealEstateComplex(BaseModel):
     Справочник ЖК.
     """
 
+    source_key = models.CharField(
+        max_length=255, null=True, blank=True, unique=True, editable=False,
+        verbose_name='Ключ источника',
+    )
     name = models.CharField(max_length=255, verbose_name='ЖК')
     description = models.TextField(
         blank=True, null=True, verbose_name='Описание'
@@ -259,6 +263,35 @@ class RealEstateComplex(BaseModel):
     def __str__(self):
         """Возвращает название ЖК."""
         return self.name
+
+
+class RealEstateComplexPhoto(BaseModel):
+    """One gallery photograph, with the main photo selected on the complex."""
+
+    real_estate_complex = models.ForeignKey(
+        RealEstateComplex, on_delete=models.CASCADE, related_name='photos',
+        verbose_name='ЖК',
+    )
+    image = models.ImageField(
+        upload_to='property/complexes/gallery/',
+        validators=[validate_property_image_upload], verbose_name='Фотография',
+    )
+    checksum = models.CharField(max_length=64, null=True, blank=True)
+
+    class Meta(BaseModel.Meta):
+        """Keep each uploaded image once within a complex."""
+
+        ordering = ['pk']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['real_estate_complex', 'checksum'],
+                name='unique_complex_photo_checksum',
+            ),
+        ]
+
+    def __str__(self):
+        """Describe the complex and image filename."""
+        return f'{self.real_estate_complex}: {self.image.name}'
 
 
 class TransportAccessibilityType(BaseModel):

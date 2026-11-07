@@ -1,11 +1,10 @@
+import { ComplexImport } from '@/features/realEstateComplex/ComplexImport'
 import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
@@ -74,15 +73,6 @@ export function RealEstateComplexListPage() {
     setSearchParameters(nextParameters)
   }
 
-  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const searchInput = event.currentTarget.elements.namedItem('search')
-    const search = searchInput instanceof HTMLInputElement
-      ? searchInput.value.trim()
-      : ''
-    updateParameters({ search: search || null, page: null })
-  }
-
   const openDeleteDialog = (
     realEstateComplex: RealEstateComplexListItem,
     trigger: HTMLButtonElement,
@@ -121,9 +111,6 @@ export function RealEstateComplexListPage() {
           </p>
         </div>
         <div className="page-header__actions">
-          <LegacyLink className="button button--secondary" href="/property/complexes/">
-            Прежняя версия
-          </LegacyLink>
           {canManageCatalogs ? (
             <Link className="button button--primary" to="/complexes/new">
               Добавить ЖК
@@ -132,14 +119,15 @@ export function RealEstateComplexListPage() {
         </div>
       </header>
 
+      {sessionQuery.data?.capabilities.syncExternalData ? <ComplexImport /> : null}
+
       <section
         className="filter-panel complex-filter-panel"
         aria-label="Фильтры жилых комплексов"
       >
-        <form className="search-form" role="search" onSubmit={handleSearch}>
+        <form className="search-form" role="search" onSubmit={(event) => event.preventDefault()}>
           <div className="live-search-control">
             <LiveFilterInput label="Поиск" id="complex-search" parameter="search" placeholder="ЖК, застройщик или город" />
-            <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
         <RemoteSelect filter dictionary="developers" label="Застройщик" value={searchParameters.get('developerId') ?? ''}
@@ -166,21 +154,6 @@ export function RealEstateComplexListPage() {
               realEstateTypeId: value || null,
               page: null,
             })} />
-        <div className="sort-control">
-          <label htmlFor="complex-status">Статус</label>
-          <select
-            id="complex-status"
-            value={searchParameters.get('status') ?? 'all'}
-            onChange={(event) => updateParameters({
-              status: event.target.value,
-              page: null,
-            })}
-          >
-            <option value="all">Все</option>
-            <option value="active">Активные</option>
-            <option value="inactive">Неактивные</option>
-          </select>
-        </div>
         <ResetFilters />
       </section>
 

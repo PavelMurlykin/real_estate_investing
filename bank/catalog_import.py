@@ -1,10 +1,9 @@
 """Validate and apply the shared bank catalog exchange format."""
 
-import json
-from decimal import Decimal
-
 from django.db import connection, transaction
 from rest_framework import serializers
+
+from core.json_import import JsonImportError as CatalogImportError, read_json_upload
 
 from .models import Bank, BankProgram, MortgageProgram
 
@@ -12,42 +11,9 @@ from .models import Bank, BankProgram, MortgageProgram
 MAX_CATALOG_BYTES = 1024 * 1024
 
 
-class CatalogImportError(ValueError):
-    """An invalid catalog file or a reference that cannot be resolved."""
-
-
-def _unique_json_object(pairs):
-    """Reject repeated JSON properties rather than silently dropping values."""
-    result = {}
-    for name, value in pairs:
-        if name in result:
-            raise CatalogImportError(f'Повторяющееся поле JSON: {name[:80]}.')
-        result[name] = value
-    return result
-
-
-def _invalid_json_constant(value):
-    """Reject numeric tokens outside the JSON specification."""
-    raise CatalogImportError(f'Недопустимое число JSON: {value}.')
-
-
 def read_catalog_file(upload):
-    """Read one bounded UTF-8 upload into the source-independent payload."""
-    if not upload or not upload.name.lower().endswith('.json'):
-        raise CatalogImportError('Выберите файл с расширением .json.')
-    if upload.size > MAX_CATALOG_BYTES:
-        raise CatalogImportError('Размер файла должен быть не больше 1 МБ.')
-    try:
-        return json.loads(
-            upload.read().decode('utf-8-sig'),
-            object_pairs_hook=_unique_json_object,
-            parse_float=Decimal,
-            parse_constant=_invalid_json_constant,
-        )
-    except CatalogImportError:
-        raise
-    except (ValueError, RecursionError) as error:
-        raise CatalogImportError('Загрузите корректный JSON в кодировке UTF-8.') from error
+    """Read the bank catalog using the common bounded JSON reader."""
+    return read_json_upload(upload, max_bytes=MAX_CATALOG_BYTES)
 
 
 class CatalogNameField(serializers.CharField):

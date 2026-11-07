@@ -143,7 +143,7 @@ def test_complex_detail_api_returns_safe_links_and_related_rows(
 ):
     """Return a complete public card through three bounded queries."""
     real_estate_complex = complex_catalog['complex']
-    with django_assert_num_queries(3):
+    with django_assert_num_queries(4):
         response = client.get(
             reverse(
                 'api_v1:real_estate_complex_detail',

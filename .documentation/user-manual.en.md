@@ -34,7 +34,7 @@ Selecting a property and bank program applies active developer conditions: a spe
 
 ## Current migration limitations
 
-Implementation and verification results are tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. “Django-форма”/“Прежняя версия” fallback links open the legacy screen directly even when redirects are enabled. Bank updates and the map depend on external provider availability.
+Implementation and verification results are tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. “Django-форма”/“Прежняя версия” fallback links open the legacy screen directly even when redirects are enabled. The map depends on the mapping provider.
 
 ## Homepage and complex map
 
@@ -91,3 +91,15 @@ Numeric filters apply while typing with a 250 ms delay and reset pagination. Bou
 In property, complex, customer, developer, bank/developer program, regional limit and location forms, use “Поиск: …” above a selector. Typing searches the entire relevant dictionary within the selected parent; “Показать ещё варианты” loads additional choices. Selected values load separately and remain available outside the first page. This also covers multiple developer regions, customer layouts and preferential programs, and property window views. Changing a region, city or complex clears dependent fields; review them before saving. If loading fails, use “Повторить загрузку справочника”.
 
 For roles and operation see `role_model.md`, `application_initial_setup.md` and `manual_deployment.md`.
+
+## Residential complex catalog and photos
+
+The Residential Complexes page searches while typing. Filters cover developer, city, class and property type, with a reset control. The project name opens its detail page. The main information block lists metro stations, lines and travel times. The walking icon indicates access on foot, the vehicle icon indicates transport, and the train icon indicates suburban rail.
+
+Catalog moderators can upload several images in the “Фотографии ЖК” section, with up to 30 photos per gallery. Select “Главное фото” under an image to use it on the complex card and homepage. Uploading the same file again reuses the existing photo.
+
+Administrators can expand “Импорт жилых комплексов из JSON” on the catalog page and select a UTF-8 JSON file of up to 16 MB. Use the [prepared selection](../data/complexes-moscow-spb-2026-11.json). Images are embedded, and each record links to its source materials.
+
+Version 1 contains a complexes list. Each record includes a stable key, name, region, city, district, developer, class, property type, description, buildings, metro, and one to three photos. Each photo has a filename and base64 data. The zero-based primary_photo index selects the main image. Use match_name to normalize an existing project name, and match_city when correcting its city.
+
+The import resolves a stable source key or normalized name within a city and rejects ambiguous matches. Buildings and metro rows are merged by natural keys, preserving rows omitted from the file. Correcting a city replaces metro access with entries for the new city. A failed import rolls back all database changes and removes files created by that attempt. Repeated imports update data without duplicating complexes, buildings or photos. Sources and coverage for dates and travel times are recorded in sources, notes, and metadata.
