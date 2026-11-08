@@ -149,6 +149,71 @@ def _existing_buildings(complex_object):
     return buildings
 
 
+def _merged_import_buildings(existing, supplied_buildings, complex_name):
+    """Rename explicitly matched buildings without moving their properties."""
+    buildings = _existing_buildings(existing)
+    supplied_numbers = [
+        normalized_name(building.get('number', ''))
+        for building in supplied_buildings
+    ]
+    if len(set(supplied_numbers)) != len(supplied_numbers):
+        raise JsonImportError(f'Повторяющиеся корпуса в ЖК «{complex_name}».')
+    matched_identifiers = set()
+    matched_numbers = set()
+    replacements = []
+    for supplied in supplied_buildings:
+        if 'id' in supplied:
+            raise JsonImportError(
+                'В импорте используются номера корпусов, без ID базы.',
+            )
+        building = dict(supplied)
+        number = normalized_name(building.get('number', ''))
+        previous_number = building.pop('match_number', None)
+        previous = None
+        if 'match_number' in supplied:
+            if (
+                not isinstance(previous_number, str)
+                or not previous_number.strip()
+                or len(previous_number) > 100
+                or not normalized_name(previous_number)
+            ):
+                raise JsonImportError(
+                    'match_number должен содержать прежний номер корпуса.',
+                )
+            previous_number = normalized_name(previous_number)
+            if previous_number in matched_numbers:
+                raise JsonImportError(
+                    'Прежний номер корпуса использован несколько раз.',
+                )
+            matched_numbers.add(previous_number)
+            previous = buildings.get(previous_number)
+        current = buildings.get(number)
+        if current and previous and current['id'] != previous['id']:
+            raise JsonImportError(
+                f'Старый и новый номера корпуса в ЖК «{complex_name}» '
+                'относятся к разным записям.',
+            )
+        matched = current or previous
+        if existing and 'match_number' in supplied and matched is None:
+            raise JsonImportError(
+                f'Корпус для переименования в ЖК «{complex_name}» не найден.',
+            )
+        if matched:
+            if matched['id'] in matched_identifiers:
+                raise JsonImportError(
+                    'Один корпус сопоставлен нескольким записям файла.',
+                )
+            matched_identifiers.add(matched['id'])
+        replacements.append((number, {**(matched or {}), **building}))
+
+    buildings = {
+        number: building for number, building in buildings.items()
+        if building['id'] not in matched_identifiers
+    }
+    buildings.update(replacements)
+    return list(buildings.values())
+
+
 def import_complex_catalog(payload):
     """Validate a catalog and apply all records atomically with file cleanup."""
     serializer = ComplexImportSerializer(data=payload)
@@ -217,18 +282,7 @@ def _import_complex(row, summary, saved_files):
     if estate_class is None:
         raise JsonImportError(f'Класс ЖК отсутствует: {row["real_estate_class"]}.')
     estate_type = _resolve(RealEstateType, 'name', row['real_estate_type'])
-    buildings = _existing_buildings(existing)
-    supplied_numbers = [
-        normalized_name(building.get('number', ''))
-        for building in row['buildings']
-    ]
-    if len(set(supplied_numbers)) != len(supplied_numbers):
-        raise JsonImportError(f'Повторяющиеся корпуса в ЖК «{row["name"]}».')
-    for building in row['buildings']:
-        if 'id' in building:
-            raise JsonImportError('В импорте используются номера корпусов, без ID базы.')
-        key = normalized_name(building.get('number', ''))
-        buildings[key] = {**buildings.get(key, {}), **building}
+    buildings = _merged_import_buildings(existing, row['buildings'], row['name'])
 
     metro_rows = {}
     if existing and existing.district.city_id == city.pk:
@@ -261,7 +315,7 @@ def _import_complex(row, summary, saved_files):
         'name': row['name'], 'developerId': developer.pk,
         'districtId': district.pk, 'realEstateClassId': estate_class.pk,
         'realEstateTypeId': estate_type.pk, 'description': row['description'],
-        'buildings': list(buildings.values()),
+        'buildings': buildings,
         'metroAvailability': list(metro_rows.values()),
     }
     for source, target in [

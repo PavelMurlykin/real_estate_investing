@@ -1,5 +1,6 @@
 import base64
 import json
+from decimal import Decimal
 from io import BytesIO
 from pathlib import Path
 
@@ -11,8 +12,12 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.contrib.auth.models import Group
 
+from core.json_import import JsonImportError
 from property.complex_import import import_complex_catalog
-from property.models import RealEstateComplex, RealEstateComplexPhoto
+from property.models import (
+    ApartmentDecoration, ApartmentLayout, Property, RealEstateComplex,
+    RealEstateComplexBuilding, RealEstateComplexPhoto,
+)
 from users.roles import APPLICATION_ADMINISTRATOR_GROUP_NAME
 from .test_real_estate_complexes import complex_catalog, create_catalog_manager
 
@@ -63,6 +68,76 @@ def test_import_matches_and_preserves_related_ids(import_payload, complex_catalo
     assert complex_object.metro_availability.get().pk == original_metro
     assert complex_object.metro_availability.get().walking_time_minutes == 9
     assert complex_object.photo.name == complex_object.photos.get().image.name
+
+
+@pytest.mark.django_db
+def test_import_renames_building_and_preserves_properties_on_rerun(
+    import_payload, complex_catalog, settings, tmp_path,
+):
+    """Replace a placeholder number while keeping properties and omitted rows."""
+    settings.MEDIA_ROOT = tmp_path
+    building = complex_catalog['building']
+    omitted = RealEstateComplexBuilding.objects.create(
+        number='2', real_estate_complex=complex_catalog['complex'],
+    )
+    property_object = Property.objects.create(
+        apartment_number='7', building=building,
+        decoration=ApartmentDecoration.objects.create(name='Без отделки'),
+        layout=ApartmentLayout.objects.create(name='Студия'),
+        area=Decimal('32.60'), floor=5, property_cost=Decimal('1000000.00'),
+    )
+    original_property = Property.objects.values().get(pk=property_object.pk)
+    import_payload['complexes'][0]['buildings'][0].update(
+        number='3', match_number='1',
+    )
+    first = import_complex_catalog(import_payload)
+    second = import_complex_catalog(import_payload)
+
+    building.refresh_from_db()
+    assert building.number == '3'
+    assert building.address == 'Обновлённая улица, 1'
+    assert building.commissioning_year == 2028
+    assert RealEstateComplexBuilding.objects.count() == 2
+    assert RealEstateComplexBuilding.objects.filter(
+        pk=omitted.pk, number='2',
+    ).exists()
+    assert Property.objects.values().get(pk=property_object.pk) == original_property
+    assert first['created'] == second['created'] == second['photos'] == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('buildings', [
+    [{'number': '2', 'match_number': '1'}],
+    [{'number': '3', 'match_number': '404'}],
+    [{'number': '3', 'match_number': '1'}, {'number': '4', 'match_number': '1'}],
+    [{'number': '3', 'match_number': '1'}, {'number': '1'}],
+])
+def test_import_rejects_ambiguous_building_renames(
+    import_payload, complex_catalog, buildings, settings, tmp_path,
+):
+    """Reject merges and reused aliases atomically instead of creating copies."""
+    settings.MEDIA_ROOT = tmp_path
+    RealEstateComplexBuilding.objects.create(
+        number='2', real_estate_complex=complex_catalog['complex'],
+    )
+    original = list(RealEstateComplexBuilding.objects.order_by('pk').values())
+    import_payload['complexes'][0]['buildings'] = buildings
+    with pytest.raises(JsonImportError):
+        import_complex_catalog(import_payload)
+    assert list(RealEstateComplexBuilding.objects.order_by('pk').values()) == original
+    assert not RealEstateComplexPhoto.objects.exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('previous_number', [None, '', ' ', '---', 1, '1' * 101])
+def test_import_rejects_invalid_previous_building_number(
+    import_payload, previous_number, settings, tmp_path,
+):
+    """Require an explicit nonempty previous number for a rename."""
+    settings.MEDIA_ROOT = tmp_path
+    import_payload['complexes'][0]['buildings'][0]['match_number'] = previous_number
+    with pytest.raises(JsonImportError):
+        import_complex_catalog(import_payload)
 
 
 @pytest.mark.django_db
@@ -171,6 +246,9 @@ def test_prepared_complex_snapshot_is_portable(settings, tmp_path):
     assert second['created'] == 0
     assert second['photos'] == 0
     assert RealEstateComplex.objects.count() == len(payload['complexes'])
+    assert RealEstateComplexBuilding.objects.count() == sum(
+        len(row['buildings']) for row in payload['complexes']
+    )
     assert RealEstateComplexPhoto.objects.count() == sum(
         len(row['photos']) for row in payload['complexes']
     )
