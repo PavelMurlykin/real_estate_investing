@@ -23,6 +23,7 @@ from property.complex_photos import (
     MAX_COMPLEX_PHOTOS,
     add_complex_photos,
     complex_photo_transaction,
+    remove_complex_photos,
     select_primary_complex_photo,
     sync_legacy_complex_photo,
 )
@@ -2863,6 +2864,7 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
     primaryPhotoIndex = serializers.IntegerField(
         write_only=True, required=False, min_value=0,
     )
+    removedPhotoIds = serializers.JSONField(required=False, write_only=True)
     buildings = serializers.JSONField(required=False, write_only=True)
     metroAvailability = serializers.JSONField(required=False, write_only=True)
     isActive = serializers.BooleanField(source='is_active', required=False)
@@ -2875,7 +2877,7 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
             'name', 'description', 'developerId', 'districtId',
             'realEstateClassId', 'realEstateTypeId', 'mapLink',
             'presentationLink', 'investmentPotential', 'photo', 'clearPhoto',
-            'photos', 'primaryPhotoId', 'primaryPhotoIndex',
+            'photos', 'primaryPhotoId', 'primaryPhotoIndex', 'removedPhotoIds',
             'buildings', 'metroAvailability', 'isActive',
         )
         extra_kwargs = {
@@ -2999,6 +3001,26 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
         """Validate gallery ownership and an uploaded image's primary index."""
         primary_identifier = attributes.get('primaryPhotoId')
         primary_index = attributes.get('primaryPhotoIndex')
+        removed_identifiers = attributes.get('removedPhotoIds', [])
+        if removed_identifiers and (
+            self.instance is None
+            or self.instance.photos.filter(
+                pk__in=removed_identifiers,
+            ).count() != len(removed_identifiers)
+        ):
+            raise serializers.ValidationError({
+                'removedPhotoIds': 'Фото не относится к редактируемому ЖК.',
+            })
+        if primary_identifier in removed_identifiers or (
+            primary_identifier is not None and attributes.get('clearPhoto')
+            and self.instance is not None
+            and self.instance.photos.filter(
+                pk=primary_identifier, image=self.instance.photo.name,
+            ).exists()
+        ):
+            raise serializers.ValidationError({
+                'primaryPhotoId': 'Удаляемое фото нельзя выбрать главным.',
+            })
         if primary_identifier is not None and primary_index is not None:
             raise serializers.ValidationError({
                 'primaryPhotoId': 'Выберите только одно главное фото.',
@@ -3017,11 +3039,19 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
                 'primaryPhotoId': 'Фото не относится к редактируемому ЖК.',
             })
         if any(field in attributes for field in (
-            'photos', 'primaryPhotoId', 'primaryPhotoIndex',
-        )) and (attributes.get('photo') or attributes.get('clearPhoto')):
+            'photos', 'primaryPhotoId', 'primaryPhotoIndex', 'removedPhotoIds',
+        )) and attributes.get('photo'):
             raise serializers.ValidationError({
                 'photos': 'Передайте фотографии через один вариант загрузки.',
             })
+
+    def validate_removedPhotoIds(self, value):
+        """Accept a bounded JSON list of unique positive gallery identifiers."""
+        field = serializers.ListField(
+            child=serializers.IntegerField(min_value=1),
+            max_length=MAX_COMPLEX_PHOTOS,
+        )
+        return sorted(set(field.run_validation(value)))
 
     @staticmethod
     def _pop_gallery_data(validated_data):
@@ -3030,11 +3060,16 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
             'files': validated_data.pop('photos', []),
             'primary_identifier': validated_data.pop('primaryPhotoId', None),
             'primary_index': validated_data.pop('primaryPhotoIndex', None),
+            'removed_identifiers': validated_data.pop('removedPhotoIds', []),
         }
 
     @staticmethod
     def _save_gallery(real_estate_complex, gallery, saved_files):
-        """Append validated files and preserve every existing gallery image."""
+        """Apply gallery removals and uploads within the surrounding form save."""
+        remove_complex_photos(
+            real_estate_complex, gallery['removed_identifiers'],
+            main_photo_name=gallery.get('removed_main_name'),
+        )
         if gallery['files']:
             try:
                 add_complex_photos(
@@ -3043,11 +3078,18 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
                     saved_files=saved_files,
                 )
             except serializers.ValidationError as error:
-                raise serializers.ValidationError({'photos': error.detail}) from error
+                raise serializers.ValidationError({
+                    'photos': error.detail,
+                }) from error
         if gallery['primary_identifier'] is not None:
-            select_primary_complex_photo(
-                real_estate_complex, gallery['primary_identifier'],
-            )
+            try:
+                select_primary_complex_photo(
+                    real_estate_complex, gallery['primary_identifier'],
+                )
+            except RealEstateComplexPhoto.DoesNotExist as error:
+                raise serializers.ValidationError({
+                    'primaryPhotoId': 'Фото уже удалено. Выберите другое главное фото.',
+                }) from error
         real_estate_complex.refresh_from_db(fields=['photo'])
 
     def _validate_related_identifiers(self, attributes):
@@ -3125,10 +3167,16 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
         )
         clear_photo = validated_data.pop('clearPhoto', False)
         previous_photo = instance.photo if instance.photo else None
+        removed_main_name = (
+            previous_photo.name
+            if clear_photo and previous_photo and not validated_data.get('photo')
+            else None
+        )
         if clear_photo and 'photo' not in validated_data:
             validated_data['photo'] = None
-        legacy_photo_changed = 'photo' in validated_data
+        legacy_photo_changed = 'photo' in validated_data and not removed_main_name
         gallery = self._pop_gallery_data(validated_data)
+        gallery['removed_main_name'] = removed_main_name
 
         with complex_photo_transaction() as saved_files:
             real_estate_complex = super().update(instance, validated_data)

@@ -100,6 +100,8 @@ All photos on the complex detail page appear in one carousel in the main block. 
 
 Catalog moderators upload multiple images in the “Фотографии ЖК” section on the create or edit page. New files have previews, and “Главное фото” selects either a new or an existing image as the main photo. The main photo appears first on the detail page and on the homepage. Photos and the main selection are saved with the form using “Создать ЖК” or “Сохранить изменения”; an error leaves no partial changes. Each gallery supports up to 30 photos. Uploading the same file again reuses the existing photo.
 
+On the edit page, each saved image has an “Удалить фото” button. It marks the photo for deletion, which can be undone before saving. Removing the main image automatically selects the next remaining photo in gallery order, including newly selected files. If all images are removed, the detail page shows a placeholder. Deletions take effect with “Сохранить изменения”; cancelling the form keeps the photos. A failed save retains all photos in the database.
+
 Administrators can expand “Импорт жилых комплексов из JSON” on the catalog page and select a UTF-8 JSON file of up to 16 MB. Use the [prepared selection](../data/complexes-moscow-spb-2026-11.json). Images are embedded, and each record links to its source materials.
 
 Version 1 contains a complexes list. Each record includes a stable key, name, region, city, district, developer, class, property type, description, buildings, metro, and one to three photos. Each photo has a filename and base64 data. The zero-based primary_photo index selects the main image. Use match_name to normalize an existing project name, and match_city when correcting its city.

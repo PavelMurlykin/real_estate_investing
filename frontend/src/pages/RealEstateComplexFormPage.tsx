@@ -170,6 +170,7 @@ export function RealEstateComplexFormPage() {
   const [metroRows, setMetroRows] = useState<MetroAvailabilityFormRow[]>([])
   const [photos, setPhotos] = useState<File[]>([])
   const [primarySelection, setPrimarySelection] = useState('')
+  const [removedPhotoKeys, setRemovedPhotoKeys] = useState<string[]>([])
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const hasInitialized = useRef(false)
   const selectedRegionIdentifier = selectedIdentifier(formState.regionId)
@@ -268,6 +269,10 @@ export function RealEstateComplexFormPage() {
       isActive: row.isActive,
     }))))
     photos.forEach((photo) => formData.append('photos', photo))
+    const removedPhotoIds = removedPhotoKeys.filter((key) => key !== 'existing:legacy')
+      .map((key) => Number(key.slice(9)))
+    if (removedPhotoIds.length) formData.append('removedPhotoIds', JSON.stringify(removedPhotoIds))
+    if (removedPhotoKeys.includes('existing:legacy')) formData.append('clearPhoto', 'true')
     if (primarySelection.startsWith('new:')) {
       formData.append('primaryPhotoIndex', primarySelection.slice(4))
     } else if (primarySelection.startsWith('existing:') && primarySelection !== 'existing:legacy') {
@@ -491,9 +496,13 @@ export function RealEstateComplexFormPage() {
               />
             </label>
             <ComplexPhotoEditor complex={complexQuery.data} files={photos}
+              removedPhotoKeys={removedPhotoKeys} onRemovalChange={(keys) => {
+                setRemovedPhotoKeys(keys)
+                setFieldErrors((current) => ({ ...current, removedPhotoIds: '', primaryPhotoId: '', photos: '' }))
+              }}
               primarySelection={primarySelection} onPrimaryChange={setPrimarySelection}
               disabled={mutation.isPending}
-              error={fieldErrors.photos || fieldErrors.primaryPhotoId || fieldErrors.primaryPhotoIndex || fieldErrors.photo}
+              error={fieldErrors.photos || fieldErrors.removedPhotoIds || fieldErrors.primaryPhotoId || fieldErrors.primaryPhotoIndex || fieldErrors.photo}
               onFilesChange={(files) => {
                 setPhotos(files)
                 setFieldErrors((current) => ({ ...current, photos: '', primaryPhotoId: '', primaryPhotoIndex: '' }))

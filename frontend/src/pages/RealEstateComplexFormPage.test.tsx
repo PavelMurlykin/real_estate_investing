@@ -143,6 +143,20 @@ function mockPhotoPreviews() {
   })
 }
 
+function renderEditForm() {
+  const queryClient = createManagerQueryClient()
+  queryClient.setQueryData(['real-estate-complex', 99], {
+    ...savedComplex, photoUrl: '/media/first.jpg', photos: [
+      { id: 31, url: '/media/first.jpg', isPrimary: true },
+      { id: 32, url: '/media/second.jpg', isPrimary: false },
+    ],
+  })
+  return renderWithProviders(<Routes>
+    <Route path="/complexes/:complexId/edit" element={<RealEstateComplexFormPage />} />
+    <Route path="/complexes/:complexId" element={<h1>ЖК сохранён</h1>} />
+  </Routes>, { initialRoute: '/complexes/99/edit', queryClient })
+}
+
 async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Название ЖК *'), 'Новый квартал')
   await user.selectOptions(screen.getByLabelText('Застройщик *'), '4')
@@ -159,6 +173,69 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('RealEstateComplexFormPage', () => {
+  it('defers deletion until save and selects the next remaining photo as main', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockResolvedValue(Response.json(savedComplex))
+    vi.stubGlobal('fetch', fetchMock)
+    renderEditForm()
+    await user.click(screen.getByRole('button', { name: 'Удалить фото 1' }))
+    expect(screen.getByRole('radio', { name: 'Главное фото 1' })).toBeDisabled()
+    expect(screen.getByRole('radio', { name: 'Главное фото 2' })).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Восстановить фото 1' })).toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }))
+    expect(await screen.findByRole('heading', { name: 'ЖК сохранён' })).toBeInTheDocument()
+    const body = fetchMock.mock.calls[0][1].body as FormData
+    expect(JSON.parse(String(body.get('removedPhotoIds')))).toEqual([31])
+    expect(body.get('primaryPhotoId')).toBe('32')
+  })
+
+  it('allows deleting all photos and undoing a removal before saving', async () => {
+    const user = userEvent.setup()
+    renderEditForm()
+    await user.click(screen.getByRole('button', { name: 'Удалить фото 2' }))
+    expect(screen.getByRole('radio', { name: 'Главное фото 1' })).toBeChecked()
+    await user.click(screen.getByRole('button', { name: 'Удалить фото 1' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Фотографий не останется.')
+    expect(screen.getAllByRole('radio').every((radio) => !(radio as HTMLInputElement).checked)).toBe(true)
+    await user.click(screen.getByRole('button', { name: 'Восстановить фото 1' }))
+    expect(screen.getByRole('radio', { name: 'Главное фото 1' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Главное фото 1' })).toBeEnabled()
+    expect(screen.getByRole('status')).toHaveTextContent('Будет удалено фото: 1.')
+  })
+
+  it('selects a queued upload when all existing photos are removed', async () => {
+    const user = userEvent.setup()
+    mockPhotoPreviews()
+    const fetchMock = vi.fn().mockResolvedValue(Response.json(savedComplex))
+    vi.stubGlobal('fetch', fetchMock)
+    renderEditForm()
+    const file = new File(['new'], 'new.jpg', { type: 'image/jpeg' })
+    await user.upload(screen.getByLabelText('Добавить фотографии'), file)
+    await user.click(screen.getByRole('button', { name: 'Удалить фото 1' }))
+    await user.click(screen.getByRole('button', { name: 'Удалить фото 2' }))
+    expect(screen.getByRole('radio', { name: 'Главное фото 3' })).toBeChecked()
+    await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }))
+    expect(await screen.findByRole('heading', { name: 'ЖК сохранён' })).toBeInTheDocument()
+    const body = fetchMock.mock.calls[0][1].body as FormData
+    expect(JSON.parse(String(body.get('removedPhotoIds')))).toEqual([31, 32])
+    expect(body.get('primaryPhotoIndex')).toBe('0')
+    expect(body.getAll('photos')).toEqual([file])
+  })
+
+  it('preserves pending deletions after an API error and allows undo', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ removedPhotoIds: ['Фотография недоступна.'] }, { status: 400 })))
+    renderEditForm()
+    await user.click(screen.getByRole('button', { name: 'Удалить фото 1' }))
+    await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Фотография недоступна.')
+    expect(screen.getByRole('radio', { name: 'Главное фото 2' })).toBeChecked()
+    await user.click(screen.getByRole('button', { name: 'Восстановить фото 1' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Удалить фото 1' })).toBeInTheDocument()
+  })
+
   it('previews multiple photos and creates the complex with the chosen main image in one request', async () => {
     const user = userEvent.setup()
     mockPhotoPreviews()

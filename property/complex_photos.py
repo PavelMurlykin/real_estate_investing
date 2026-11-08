@@ -2,6 +2,7 @@
 
 import hashlib
 from contextlib import contextmanager
+from functools import partial
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
@@ -46,6 +47,47 @@ def sync_legacy_complex_photo(complex_object):
             real_estate_complex=complex_object,
             image=complex_object.photo.name,
         )
+
+
+def _delete_unreferenced_complex_image(name):
+    """Remove a committed gallery file only when no complex still uses it."""
+    if (
+        RealEstateComplex.objects.filter(photo=name).exists()
+        or RealEstateComplexPhoto.objects.filter(image=name).exists()
+    ):
+        return
+    storage = RealEstateComplexPhoto._meta.get_field('image').storage
+    storage.delete(name)
+
+
+@transaction.atomic
+def remove_complex_photos(complex_object, identifiers, main_photo_name=None):
+    """Remove owned photos, choose the next main image and defer file deletion."""
+    if not identifiers and not main_photo_name:
+        return
+    complex_object = RealEstateComplex.objects.select_for_update().get(
+        pk=complex_object.pk,
+    )
+    photos = list(complex_object.photos.order_by('pk'))
+    owned_identifiers = {photo.pk for photo in photos}
+    if not set(identifiers).issubset(owned_identifiers):
+        raise serializers.ValidationError({
+            'removedPhotoIds': 'Фото не относится к редактируемому ЖК.',
+        })
+    removed = [
+        photo for photo in photos
+        if photo.pk in identifiers or photo.image.name == main_photo_name
+    ]
+    removed_names = {photo.image.name for photo in removed}
+    if main_photo_name:
+        removed_names.add(main_photo_name)
+    remaining = [photo for photo in photos if photo not in removed]
+    if not complex_object.photo or complex_object.photo.name in removed_names:
+        complex_object.photo = remaining[0].image.name if remaining else None
+        complex_object.save(update_fields=['photo', 'updated_at'])
+    complex_object.photos.filter(pk__in=[photo.pk for photo in removed]).delete()
+    for name in removed_names:
+        transaction.on_commit(partial(_delete_unreferenced_complex_image, name))
 
 
 def add_complex_photos(complex_object, files, primary_index=None, saved_files=None):
