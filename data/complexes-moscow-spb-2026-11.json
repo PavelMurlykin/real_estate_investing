@@ -8,8 +8,1357 @@
       "Изображения взяты из публичных материалов проектов и включают архитектурные визуализации. URL исходного изображения указан у каждого фото.",
       "Время до станции ориентировочное, зависит от маршрута и трафика. Планируемые станции не заменяют действующие.",
       "Архивные существующие ЖК включены для обогащения. Новые записи и строящиеся очереди соответствуют периоду после 2024 года.",
-      "Для существующих корпусов сроки без независимого подтверждения сохранены как данные прежнего каталога; они не являются повторно проверенным прогнозом. Адреса нормализованы до подтверждённой площадки ЖК."
-    ]
+      "Сроки сверены 07.11.2026 по опубликованным официальным декларациям, разрешениям, карточкам ЕИСЖС и API застройщика. Доступность ограничивает свежесть отдельных источников; подробности и идентификация корпусов указаны в schedule_verification.",
+      "Дата ввода с status=actual — дата разрешения. Выдача ключей — плановый крайний срок передачи квартиры, а не подтверждение фактического вручения ключей. Квартал не преобразуется в вымышленный день.",
+      "Неподтверждённые даты и даты с неразрешённым противоречием очищены явными null. Сами ЖК, корпуса, фотографии и связанные объекты сохраняются."
+    ],
+    "schedule_verification": {
+      "checked_on": "2026-11-07",
+      "report": ".documentation/complex-schedule-audit-2026-11-07.md",
+      "commissioning_status_counts": {
+        "actual": 15,
+        "planned": 17,
+        "unresolved_identity": 3
+      },
+      "handover_status_counts": {
+        "planned": 31,
+        "unresolved_identity": 3,
+        "conflicting": 1
+      },
+      "buildings": [
+        {
+          "complex_key": "ru:complex:idpark",
+          "complex": "iD Park Pobedy",
+          "building": "1",
+          "old": {
+            "commissioningDate": "2024-01-01",
+            "keyHandoverDate": "2024-04-01"
+          },
+          "commissioning": {
+            "status": "actual",
+            "sources": [
+              {
+                "url": "https://www.novostroy-spb.ru/docs/presets/spb/novos/docs/3f99a0333c55a7d183e0be1d0af07193.pdf",
+                "retrieved_at": "2026-11-07T15:25:21.874053+00:00",
+                "sha256": "a280856fed7686ade6151e7d1a76c121d0b269a38111f74941b973da69e5a15e",
+                "title": "РВЭ 78-11-01-2024 от 24.01.2024 (копия документа органа надзора)",
+                "section": "1.1, 1.2, 3.1: первый этап, корпуса 1–5"
+              }
+            ],
+            "date": "2024-01-24",
+            "precision": "day"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/54388",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 54388",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2024-06-30",
+            "precision": "day"
+          },
+          "identity_note": "РВЭ прямо охватывает корпуса 1–5; отдельный корпус 6 не используется."
+        },
+        {
+          "complex_key": "ru:complex:idpark",
+          "complex": "iD Park Pobedy",
+          "building": "2",
+          "old": {
+            "commissioningDate": "2024-01-01",
+            "keyHandoverDate": "2024-04-01"
+          },
+          "commissioning": {
+            "status": "actual",
+            "sources": [
+              {
+                "url": "https://www.novostroy-spb.ru/docs/presets/spb/novos/docs/3f99a0333c55a7d183e0be1d0af07193.pdf",
+                "retrieved_at": "2026-11-07T15:25:21.874053+00:00",
+                "sha256": "a280856fed7686ade6151e7d1a76c121d0b269a38111f74941b973da69e5a15e",
+                "title": "РВЭ 78-11-01-2024 от 24.01.2024 (копия документа органа надзора)",
+                "section": "1.1, 1.2, 3.1: первый этап, корпуса 1–5"
+              }
+            ],
+            "date": "2024-01-24",
+            "precision": "day"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/54388",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 54388",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2024-06-30",
+            "precision": "day"
+          },
+          "identity_note": "РВЭ прямо охватывает корпуса 1–5; отдельный корпус 6 не используется."
+        },
+        {
+          "complex_key": "ru:complex:astra",
+          "complex": "Астра Континенталь",
+          "building": "5.1",
+          "old": {
+            "commissioningYear": 2029,
+            "commissioningQuarter": 4,
+            "keyHandoverDate": "2030-06-30"
+          },
+          "commissioning": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://setlgroup.ru/api/v1/cases/6511",
+                "retrieved_at": "2026-11-07T15:06:11.042288+00:00",
+                "sha256": "8f81172d68745e38086deb174ea9690539d5ad59664300156b628c6322587416",
+                "title": "Setl Group, корпус 5.1",
+                "section": "data.termOfDeliveryDate"
+              }
+            ],
+            "year": 2029,
+            "quarter": 4,
+            "precision": "quarter"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://setlgroup.ru/api/v1/cases/6511",
+                "retrieved_at": "2026-11-07T15:06:11.042288+00:00",
+                "sha256": "8f81172d68745e38086deb174ea9690539d5ad59664300156b628c6322587416",
+                "title": "Setl Group, корпус 5.1",
+                "section": "data.dateKeys и data.dateKeysDop"
+              }
+            ],
+            "date": "2030-06-30",
+            "precision": "day"
+          },
+          "identity_note": ""
+        },
+        {
+          "complex_key": "ru:complex:astra",
+          "complex": "Астра Континенталь",
+          "building": "2",
+          "old": {
+            "commissioningYear": 2026,
+            "commissioningQuarter": 3
+          },
+          "commissioning": {
+            "status": "actual",
+            "sources": [
+              {
+                "url": "https://www.novostroy-spb.ru/docs/presets/spb/novos/docs/6f92308a7e3920828c3880f056bb1614.pdf",
+                "retrieved_at": "2026-11-07T15:27:43.629320+00:00",
+                "sha256": "b8c59509a6aa5c810ef6eb357c4c990c006543ba4fcc1f8a16d92a47a6a237ea",
+                "title": "РВЭ 78-12-13-2026 от 09.10.2026 (копия)",
+                "section": "1.1, 3.1, 6.1: строительный номер и почтовый адрес"
+              }
+            ],
+            "date": "2026-10-09",
+            "precision": "day"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/56887",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 56887",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              },
+              {
+                "url": "https://setlgroup.ru/api/v1/cases/5050",
+                "retrieved_at": "2026-11-07T15:06:11.089406+00:00",
+                "sha256": "a7925e2153c5c171bb6bd8e919b7d6458297e87e32bbcda7f923eb28606414a9",
+                "title": "Setl Group, корпус 2",
+                "section": "data.dateKeys, часовой пояс Europe/Moscow"
+              }
+            ],
+            "date": "2027-03-31",
+            "precision": "day",
+            "note": "В dateKeysDop указано 30.03.2027; структурированное dateKeys и ЕИСЖС совпадают: 31.03.2027. Дата передачи — план, не факт вручения ключей."
+          },
+          "identity_note": "Номер корпуса и почтовый адрес в РВЭ совпадают с API Setl; дата новости 13.10.2026 не использована как дата ввода."
+        },
+        {
+          "complex_key": "ru:complex:astra",
+          "complex": "Астра Континенталь",
+          "building": "3",
+          "old": {
+            "commissioningYear": 2026,
+            "commissioningQuarter": 3
+          },
+          "commissioning": {
+            "status": "actual",
+            "sources": [
+              {
+                "url": "https://www.novostroy-spb.ru/docs/presets/spb/novos/docs/a3c9b8d3f41d165d527c700786ddd6ce.pdf",
+                "retrieved_at": "2026-11-07T15:27:43.348010+00:00",
+                "sha256": "2a6c16bb99e48e96511bcd136254ee4c0f27751451b0e64a16ca3e97a33c18cf",
+                "title": "РВЭ 78-12-15-2026 от 09.10.2026 (копия)",
+                "section": "1.1, 3.1, 6.1: строительный номер и почтовый адрес"
+              }
+            ],
+            "date": "2026-10-09",
+            "precision": "day"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/56840",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 56840",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              },
+              {
+                "url": "https://setlgroup.ru/api/v1/cases/5051",
+                "retrieved_at": "2026-11-07T15:06:11.096716+00:00",
+                "sha256": "04350988943ea4f4ec1baa04f930c23c83d48f7b78314f13743cc88fd441ac8b",
+                "title": "Setl Group, корпус 3",
+                "section": "data.dateKeys, часовой пояс Europe/Moscow"
+              }
+            ],
+            "date": "2027-03-31",
+            "precision": "day",
+            "note": "В dateKeysDop указано 30.03.2027; структурированное dateKeys и ЕИСЖС совпадают: 31.03.2027. Дата передачи — план, не факт вручения ключей."
+          },
+          "identity_note": "Номер корпуса и почтовый адрес в РВЭ совпадают с API Setl; дата новости 13.10.2026 не использована как дата ввода."
+        },
+        {
+          "complex_key": "ru:complex:bashni",
+          "complex": "Башни Элемент",
+          "building": "1-КАРБОН",
+          "old": {
+            "commissioningYear": 2028,
+            "commissioningQuarter": 2,
+            "keyHandoverYear": 2028,
+            "keyHandoverQuarter": 4
+          },
+          "commissioning": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://bashni-element.ru/wp-content/uploads/2024/10/919269.pdf",
+                "sha256": "d3e5a5a8794d238dcd4b1190202423039f3da6b5b202fc67397cb8fc2d7fc7f9",
+                "title": "ПД 78-002092 от 27.09.2024, первый этап",
+                "section": "стр. 87, 17.1(5)"
+              }
+            ],
+            "year": 2028,
+            "quarter": 2,
+            "precision": "quarter"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://bashni-element.ru/wp-content/uploads/2024/10/919269.pdf",
+                "sha256": "d3e5a5a8794d238dcd4b1190202423039f3da6b5b202fc67397cb8fc2d7fc7f9",
+                "title": "ПД 78-002092 от 27.09.2024",
+                "section": "стр. 87, 17.2.2"
+              }
+            ],
+            "date": "2028-12-31",
+            "precision": "day"
+          },
+          "identity_note": ""
+        },
+        {
+          "complex_key": "ru:complex:vitebskiy",
+          "complex": "Витебский Парк",
+          "building": "1",
+          "old": {
+            "commissioningDate": "2026-01-01",
+            "keyHandoverDate": "2026-04-01"
+          },
+          "commissioning": {
+            "status": "unresolved_identity",
+            "sources": [
+              {
+                "url": "https://www.pik.ru/vitpark",
+                "title": "Официальный сайт проекта / застройщика"
+              }
+            ],
+            "note": "В каталоге только условный номер «1», без строительного этапа или точного адреса. Доступные первичные документы относятся к корпусам 3, 5, 6, 7, 9; другие сайты повторно используют номер 1. Надёжного соответствия не найдено."
+          },
+          "handover": {
+            "status": "unresolved_identity",
+            "sources": [
+              {
+                "url": "https://www.pik.ru/vitpark",
+                "title": "Официальный сайт проекта / застройщика"
+              }
+            ],
+            "note": "В каталоге только условный номер «1», без строительного этапа или точного адреса. Доступные первичные документы относятся к корпусам 3, 5, 6, 7, 9; другие сайты повторно используют номер 1. Надёжного соответствия не найдено."
+          },
+          "identity_note": "В каталоге только условный номер «1», без строительного этапа или точного адреса. Доступные первичные документы относятся к корпусам 3, 5, 6, 7, 9; другие сайты повторно используют номер 1. Надёжного соответствия не найдено."
+        },
+        {
+          "complex_key": "ru:complex:galaktika",
+          "complex": "Галактика",
+          "building": "1",
+          "old": {
+            "commissioningDate": "2024-01-01",
+            "keyHandoverDate": "2024-04-01"
+          },
+          "commissioning": {
+            "status": "unresolved_identity",
+            "sources": [
+              {
+                "url": "https://etalongroup.ru/",
+                "title": "Официальный сайт проекта / застройщика"
+              }
+            ],
+            "note": "У исходной записи нет надёжного адреса и очереди. Нельзя однозначно сопоставить «корпус 1» с несколькими очередями Галактики. Требуется строительный номер, очередь или почтовый адрес."
+          },
+          "handover": {
+            "status": "unresolved_identity",
+            "sources": [
+              {
+                "url": "https://etalongroup.ru/",
+                "title": "Официальный сайт проекта / застройщика"
+              }
+            ],
+            "note": "У исходной записи нет надёжного адреса и очереди. Нельзя однозначно сопоставить «корпус 1» с несколькими очередями Галактики. Требуется строительный номер, очередь или почтовый адрес."
+          },
+          "identity_note": "У исходной записи нет надёжного адреса и очереди. Нельзя однозначно сопоставить «корпус 1» с несколькими очередями Галактики. Требуется строительный номер, очередь или почтовый адрес."
+        },
+        {
+          "complex_key": "ru:complex:gavan",
+          "complex": "Галерная гавань",
+          "building": "3",
+          "old": {
+            "commissioningYear": 2028,
+            "commissioningQuarter": 3,
+            "keyHandoverYear": 2028,
+            "keyHandoverQuarter": 3
+          },
+          "commissioning": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://storage.yandexcloud.net/psk-media/media/documents/file/%D0%9F%D1%80%D0%BE%D0%B5%D0%BA%D1%82%D0%BD%D0%B0%D1%8F_%D0%B4%D0%B5%D0%BA%D0%BB%D0%B0%D1%80%D0%B0%D1%86%D0%B8%D1%8F_78-002158_%D0%96%D0%9A_%D0%93%D0%B0%D0%BB%D0%B5%D1%80%D0%BD%D0%B0%D1%8F_%D0%B3%D0%B0%D0%B2%D0%B0%D0%BD%D1%8C_1_%D1%8D%D1%82%D0%B0%D0%BF_%D1%81%D1%82%D1%80%D0%BE%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D1%81%D1%82%D0%B2%D0%B0_04.06.2026.pdf",
+                "retrieved_at": "2026-11-07T15:00:34.707716+00:00",
+                "sha256": "bb0fd15016a91fa7c1e2866164c7ac8f074b6d71961a19cf90a0846be544e5bc",
+                "title": "ПД 78-002158 от 04.06.2026",
+                "section": "17.1(5)"
+              }
+            ],
+            "year": 2028,
+            "quarter": 3,
+            "precision": "quarter"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://storage.yandexcloud.net/psk-media/media/documents/file/%D0%9F%D1%80%D0%BE%D0%B5%D0%BA%D1%82%D0%BD%D0%B0%D1%8F_%D0%B4%D0%B5%D0%BA%D0%BB%D0%B0%D1%80%D0%B0%D1%86%D0%B8%D1%8F_78-002158_%D0%96%D0%9A_%D0%93%D0%B0%D0%BB%D0%B5%D1%80%D0%BD%D0%B0%D1%8F_%D0%B3%D0%B0%D0%B2%D0%B0%D0%BD%D1%8C_1_%D1%8D%D1%82%D0%B0%D0%BF_%D1%81%D1%82%D1%80%D0%BE%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D1%81%D1%82%D0%B2%D0%B0_04.06.2026.pdf",
+                "retrieved_at": "2026-11-07T15:00:34.707716+00:00",
+                "sha256": "bb0fd15016a91fa7c1e2866164c7ac8f074b6d71961a19cf90a0846be544e5bc",
+                "title": "ПД 78-002158 от 04.06.2026",
+                "section": "17.2.2"
+              }
+            ],
+            "date": "2028-12-31",
+            "precision": "day"
+          },
+          "identity_note": ""
+        },
+        {
+          "complex_key": "ru:complex:yuzhny",
+          "complex": "Город-спутник Южный",
+          "building": "1.1",
+          "old": {
+            "commissioningYear": 2027,
+            "commissioningQuarter": 1,
+            "keyHandoverDate": "2028-03-31"
+          },
+          "commissioning": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://zastroyspb.ru/s/media/sites/documents/ebb582b6a2d44e44aedad801b720bbf6.pdf",
+                "retrieved_at": "2026-11-07T15:06:29.626853+00:00",
+                "sha256": "d20da3e6a3afe9df962da0697daea98523e94ff0532a1517b07af5ead42c6d62",
+                "title": "ПД 78-002128 от 10.06.2026",
+                "section": "17.1(5), 17.2.2 каждого объекта"
+              }
+            ],
+            "year": 2027,
+            "quarter": 1,
+            "precision": "quarter"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://zastroyspb.ru/s/media/sites/documents/ebb582b6a2d44e44aedad801b720bbf6.pdf",
+                "retrieved_at": "2026-11-07T15:06:29.626853+00:00",
+                "sha256": "d20da3e6a3afe9df962da0697daea98523e94ff0532a1517b07af5ead42c6d62",
+                "title": "ПД 78-002128 от 10.06.2026",
+                "section": "17.1(5), 17.2.2 каждого объекта"
+              }
+            ],
+            "date": "2028-03-31",
+            "precision": "day"
+          },
+          "identity_note": "Первая цифра номера каталога — участок, вторая — корпус на нём; первый этап. Новая декларация второго этапа не подменяет эти корпуса."
+        },
+        {
+          "complex_key": "ru:complex:yuzhny",
+          "complex": "Город-спутник Южный",
+          "building": "1.2",
+          "old": {
+            "commissioningYear": 2027,
+            "commissioningQuarter": 1,
+            "keyHandoverDate": "2028-03-31"
+          },
+          "commissioning": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://zastroyspb.ru/s/media/sites/documents/ebb582b6a2d44e44aedad801b720bbf6.pdf",
+                "retrieved_at": "2026-11-07T15:06:29.626853+00:00",
+                "sha256": "d20da3e6a3afe9df962da0697daea98523e94ff0532a1517b07af5ead42c6d62",
+                "title": "ПД 78-002128 от 10.06.2026",
+                "section": "17.1(5), 17.2.2 каждого объекта"
+              }
+            ],
+            "year": 2027,
+            "quarter": 1,
+            "precision": "quarter"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://zastroyspb.ru/s/media/sites/documents/ebb582b6a2d44e44aedad801b720bbf6.pdf",
+                "retrieved_at": "2026-11-07T15:06:29.626853+00:00",
+                "sha256": "d20da3e6a3afe9df962da0697daea98523e94ff0532a1517b07af5ead42c6d62",
+                "title": "ПД 78-002128 от 10.06.2026",
+                "section": "17.1(5), 17.2.2 каждого объекта"
+              }
+            ],
+            "date": "2028-03-31",
+            "precision": "day"
+          },
+          "identity_note": "Первая цифра номера каталога — участок, вторая — корпус на нём; первый этап. Новая декларация второго этапа не подменяет эти корпуса."
+        },
+        {
+          "complex_key": "ru:complex:yuzhny",
+          "complex": "Город-спутник Южный",
+          "building": "1.3",
+          "old": {
+            "commissioningYear": 2027,
+            "commissioningQuarter": 1,
+            "keyHandoverDate": "2028-03-31"
+          },
+          "commissioning": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://zastroyspb.ru/s/media/sites/documents/ebb582b6a2d44e44aedad801b720bbf6.pdf",
+                "retrieved_at": "2026-11-07T15:06:29.626853+00:00",
+                "sha256": "d20da3e6a3afe9df962da0697daea98523e94ff0532a1517b07af5ead42c6d62",
+                "title": "ПД 78-002128 от 10.06.2026",
+                "section": "17.1(5), 17.2.2 каждого объекта"
+              }
+            ],
+            "year": 2027,
+            "quarter": 1,
+            "precision": "quarter"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://zastroyspb.ru/s/media/sites/documents/ebb582b6a2d44e44aedad801b720bbf6.pdf",
+                "retrieved_at": "2026-11-07T15:06:29.626853+00:00",
+                "sha256": "d20da3e6a3afe9df962da0697daea98523e94ff0532a1517b07af5ead42c6d62",
+                "title": "ПД 78-002128 от 10.06.2026",
+                "section": "17.1(5), 17.2.2 каждого объекта"
+              }
+            ],
+            "date": "2028-03-31",
+            "precision": "day"
+          },
+          "identity_note": "Первая цифра номера каталога — участок, вторая — корпус на нём; первый этап. Новая декларация второго этапа не подменяет эти корпуса."
+        },
+        {
+          "complex_key": "ru:complex:yuzhny",
+          "complex": "Город-спутник Южный",
+          "building": "1.4",
+          "old": {
+            "commissioningYear": 2027,
+            "commissioningQuarter": 1,
+            "keyHandoverDate": "2028-03-31"
+          },
+          "commissioning": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://zastroyspb.ru/s/media/sites/documents/ebb582b6a2d44e44aedad801b720bbf6.pdf",
+                "retrieved_at": "2026-11-07T15:06:29.626853+00:00",
+                "sha256": "d20da3e6a3afe9df962da0697daea98523e94ff0532a1517b07af5ead42c6d62",
+                "title": "ПД 78-002128 от 10.06.2026",
+                "section": "17.1(5), 17.2.2 каждого объекта"
+              }
+            ],
+            "year": 2027,
+            "quarter": 1,
+            "precision": "quarter"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://zastroyspb.ru/s/media/sites/documents/ebb582b6a2d44e44aedad801b720bbf6.pdf",
+                "retrieved_at": "2026-11-07T15:06:29.626853+00:00",
+                "sha256": "d20da3e6a3afe9df962da0697daea98523e94ff0532a1517b07af5ead42c6d62",
+                "title": "ПД 78-002128 от 10.06.2026",
+                "section": "17.1(5), 17.2.2 каждого объекта"
+              }
+            ],
+            "date": "2028-03-31",
+            "precision": "day"
+          },
+          "identity_note": "Первая цифра номера каталога — участок, вторая — корпус на нём; первый этап. Новая декларация второго этапа не подменяет эти корпуса."
+        },
+        {
+          "complex_key": "ru:complex:yuzhny",
+          "complex": "Город-спутник Южный",
+          "building": "2.1",
+          "old": {
+            "commissioningYear": 2027,
+            "commissioningQuarter": 1,
+            "keyHandoverDate": "2028-03-31"
+          },
+          "commissioning": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://zastroyspb.ru/s/media/sites/documents/64e19db402b64452a0730913ece76da3.pdf",
+                "retrieved_at": "2026-11-07T15:06:29.644017+00:00",
+                "sha256": "ed5df76305dcbfebca60c80c919df9997e6a59fad69053ffe7f7a4725da8af00",
+                "title": "ПД 78-002129 от 10.06.2026",
+                "section": "17.1(5), 17.2.2 каждого объекта"
+              }
+            ],
+            "year": 2027,
+            "quarter": 1,
+            "precision": "quarter"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://zastroyspb.ru/s/media/sites/documents/64e19db402b64452a0730913ece76da3.pdf",
+                "retrieved_at": "2026-11-07T15:06:29.644017+00:00",
+                "sha256": "ed5df76305dcbfebca60c80c919df9997e6a59fad69053ffe7f7a4725da8af00",
+                "title": "ПД 78-002129 от 10.06.2026",
+                "section": "17.1(5), 17.2.2 каждого объекта"
+              }
+            ],
+            "date": "2028-03-31",
+            "precision": "day"
+          },
+          "identity_note": "Первая цифра номера каталога — участок, вторая — корпус на нём; первый этап. Новая декларация второго этапа не подменяет эти корпуса."
+        },
+        {
+          "complex_key": "ru:complex:dybenko",
+          "complex": "Дыбенко Парк",
+          "building": "1",
+          "old": {
+            "commissioningYear": 2027,
+            "commissioningQuarter": 4,
+            "keyHandoverDate": "2028-12-31"
+          },
+          "commissioning": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/64822",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 64822",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "year": 2027,
+            "quarter": 4,
+            "precision": "quarter"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/64822",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 64822",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2028-12-31",
+            "precision": "day"
+          },
+          "identity_note": ""
+        },
+        {
+          "complex_key": "ru:complex:zilart",
+          "complex": "ЗИЛАРТ",
+          "building": "1",
+          "old": {
+            "commissioningYear": 2027,
+            "commissioningQuarter": 4,
+            "keyHandoverYear": 2028,
+            "keyHandoverQuarter": 2
+          },
+          "commissioning": {
+            "status": "unresolved_identity",
+            "sources": [
+              {
+                "url": "https://zilart.ru/",
+                "title": "Официальный сайт проекта / застройщика"
+              }
+            ],
+            "note": "Исходный адрес «Спартак» не позволяет подтвердить, что это ЗИЛАРТ СПАРК, а не иной лот ЗИЛАРТа. Требуется уточнение лота или адреса. Объект СПАРК 59756 не присвоен предположительно."
+          },
+          "handover": {
+            "status": "unresolved_identity",
+            "sources": [
+              {
+                "url": "https://zilart.ru/",
+                "title": "Официальный сайт проекта / застройщика"
+              }
+            ],
+            "note": "Исходный адрес «Спартак» не позволяет подтвердить, что это ЗИЛАРТ СПАРК, а не иной лот ЗИЛАРТа. Требуется уточнение лота или адреса. Объект СПАРК 59756 не присвоен предположительно."
+          },
+          "identity_note": "Исходный адрес «Спартак» не позволяет подтвердить, что это ЗИЛАРТ СПАРК, а не иной лот ЗИЛАРТа. Требуется уточнение лота или адреса. Объект СПАРК 59756 не присвоен предположительно."
+        },
+        {
+          "complex_key": "ru:complex:lermontov",
+          "complex": "Лермонтовский 54",
+          "building": "1",
+          "old": {},
+          "commissioning": {
+            "status": "actual",
+            "sources": [
+              {
+                "url": "https://www.novostroy-spb.ru/docs/presets/spb/novos/docs/6e1b83dc6c677fc62fd80f41a57e5c6a.pdf",
+                "retrieved_at": "2026-11-07T15:27:44.458957+00:00",
+                "sha256": "b571d0be1d5c627952d008988d1785144d294236b81f7f9d6ccb9903af7bd44d",
+                "title": "Разрешение на ввод объекта в эксплуатацию (копия)",
+                "section": "1.1, 3.1: строительные номера корпусов"
+              }
+            ],
+            "date": "2025-04-08",
+            "precision": "day"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/45215",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 45215",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2025-05-30",
+            "precision": "day"
+          },
+          "identity_note": "РВЭ первого этапа прямо называет корпус 1; РВЭ второго этапа прямо называет корпуса 2.1 и 2.2."
+        },
+        {
+          "complex_key": "ru:complex:lermontov",
+          "complex": "Лермонтовский 54",
+          "building": "2.1",
+          "old": {},
+          "commissioning": {
+            "status": "actual",
+            "sources": [
+              {
+                "url": "https://www.novostroy-spb.ru/docs/presets/spb/novos/docs/57ca54d2f7c6fe6108be6adf5a197e43.pdf",
+                "retrieved_at": "2026-11-07T15:27:44.487503+00:00",
+                "sha256": "49b023b09b2a1df765cdd78ce0efcaf653e02283160d6a1cde87e13a59152e31",
+                "title": "Разрешение на ввод объекта в эксплуатацию (копия)",
+                "section": "1.1, 3.1: строительные номера корпусов"
+              }
+            ],
+            "date": "2026-03-11",
+            "precision": "day"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/45216",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 45216",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2026-03-31",
+            "precision": "day"
+          },
+          "identity_note": "РВЭ первого этапа прямо называет корпус 1; РВЭ второго этапа прямо называет корпуса 2.1 и 2.2."
+        },
+        {
+          "complex_key": "ru:complex:lermontov",
+          "complex": "Лермонтовский 54",
+          "building": "2.2",
+          "old": {},
+          "commissioning": {
+            "status": "actual",
+            "sources": [
+              {
+                "url": "https://www.novostroy-spb.ru/docs/presets/spb/novos/docs/57ca54d2f7c6fe6108be6adf5a197e43.pdf",
+                "retrieved_at": "2026-11-07T15:27:44.487503+00:00",
+                "sha256": "49b023b09b2a1df765cdd78ce0efcaf653e02283160d6a1cde87e13a59152e31",
+                "title": "Разрешение на ввод объекта в эксплуатацию (копия)",
+                "section": "1.1, 3.1: строительные номера корпусов"
+              }
+            ],
+            "date": "2026-03-11",
+            "precision": "day"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/45216",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 45216",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2026-03-31",
+            "precision": "day"
+          },
+          "identity_note": "РВЭ первого этапа прямо называет корпус 1; РВЭ второго этапа прямо называет корпуса 2.1 и 2.2."
+        },
+        {
+          "complex_key": "ru:complex:loft",
+          "complex": "Сэтл Лофт",
+          "building": "1",
+          "old": {
+            "commissioningDate": null,
+            "keyHandoverDate": null,
+            "commissioningYear": 2027,
+            "commissioningQuarter": 4
+          },
+          "commissioning": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://setlgroup.ru/api/v1/cases/5882",
+                "retrieved_at": "2026-11-07T15:06:11.271687+00:00",
+                "sha256": "c7b93a09b663a60cbfc18d7d1dc2710e64b480cf2a65988104b37eea4b8dfe12",
+                "title": "Setl Group, Сэтл Лофт, корпус 1",
+                "section": "data.termOfDeliveryDate"
+              }
+            ],
+            "year": 2027,
+            "quarter": 4,
+            "precision": "quarter"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://setlgroup.ru/api/v1/cases/5882",
+                "retrieved_at": "2026-11-07T15:06:11.271687+00:00",
+                "sha256": "c7b93a09b663a60cbfc18d7d1dc2710e64b480cf2a65988104b37eea4b8dfe12",
+                "title": "Setl Group, Сэтл Лофт, корпус 1",
+                "section": "data.dateKeys и data.dateKeysDop: квартиры, не паркинг"
+              }
+            ],
+            "date": "2028-06-30",
+            "precision": "day"
+          },
+          "identity_note": ""
+        },
+        {
+          "complex_key": "ru:complex:mys",
+          "complex": "Мыс",
+          "building": "1",
+          "old": {
+            "commissioningYear": 2028,
+            "commissioningQuarter": 3,
+            "keyHandoverYear": 2028,
+            "keyHandoverQuarter": 4
+          },
+          "commissioning": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://www.novostroy-m.ru/docs/presets/msk/novos/docs/0a0a0734a4562b6536fa515f4710d337.pdf",
+                "retrieved_at": "2026-11-07T15:27:43.464008+00:00",
+                "sha256": "8165ff59511163798c610f19794a95b68832e49067eaf7d17c24e2c6e02235f9",
+                "title": "ПД 50-004154 от 22.04.2025 (копия)",
+                "section": "17.1(5)"
+              },
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/65525",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 65525",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "year": 2028,
+            "quarter": 3,
+            "precision": "quarter"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://www.novostroy-m.ru/docs/presets/msk/novos/docs/0a0a0734a4562b6536fa515f4710d337.pdf",
+                "retrieved_at": "2026-11-07T15:27:43.464008+00:00",
+                "sha256": "8165ff59511163798c610f19794a95b68832e49067eaf7d17c24e2c6e02235f9",
+                "title": "ПД 50-004154 от 22.04.2025 (копия)",
+                "section": "17.2.2"
+              },
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/65525",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 65525",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2028-12-31",
+            "precision": "day"
+          },
+          "identity_note": "Существующая запись до обогащения называлась «Волга». Строительный корпус 1, стр. 2, ПД 50-004154; номер 1 и связи в каталоге сохранены. UI building-1 сайта проекта относится к клубным домам и не используется для сопоставления."
+        },
+        {
+          "complex_key": "ru:complex:nazare",
+          "complex": "НАЗАРÉ",
+          "building": "5",
+          "old": {
+            "commissioningYear": 2028,
+            "commissioningQuarter": 2,
+            "keyHandoverYear": 2028,
+            "keyHandoverQuarter": 4
+          },
+          "commissioning": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/63962",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 63962",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "year": 2028,
+            "quarter": 2,
+            "precision": "quarter"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/63962",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 63962",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2028-12-31",
+            "precision": "day"
+          },
+          "identity_note": "Официальный сайт НАЗАРÉ ссылается на объект 63962; срок относится к единому юридическому объекту проекта."
+        },
+        {
+          "complex_key": "ru:complex:nglst",
+          "complex": "Нигилист",
+          "building": "1",
+          "old": {
+            "commissioningDate": "2025-01-01",
+            "keyHandoverDate": "2025-04-01"
+          },
+          "commissioning": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/62121",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 62121",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "year": 2028,
+            "quarter": 1,
+            "precision": "quarter"
+          },
+          "handover": {
+            "status": "conflicting",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/62121",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 62121",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              },
+              {
+                "url": "https://наш.дом.рф/проверка-новостроек/жк-нигилист-62121/",
+                "title": "ЕИСЖС, результат проверки от 03.10.2026"
+              }
+            ],
+            "note": "В шапке 31.12.2028, в блоке проверки срока 31.03.2029. Более поздняя первичная декларация целиком недоступна. Прежняя дата 01.04.2025 снята; однозначный срок не заявляется."
+          },
+          "identity_note": ""
+        },
+        {
+          "complex_key": "ru:complex:parus",
+          "complex": "Парусная 1",
+          "building": "1",
+          "old": {
+            "commissioningDate": "2025-01-01",
+            "keyHandoverDate": "2025-04-01"
+          },
+          "commissioning": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/54153",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 54153",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "year": 2026,
+            "quarter": 4,
+            "precision": "quarter"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/54153",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 54153",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2027-09-30",
+            "precision": "day"
+          },
+          "identity_note": "Официальная страница проекта ссылается на 54153; срок общего объекта первой очереди. Маркетинговые секции 1.1/1.2 не создаются отдельными дублями."
+        },
+        {
+          "complex_key": "ru:complex:portland",
+          "complex": "Портленд",
+          "building": "1",
+          "old": {
+            "commissioningYear": 2028,
+            "commissioningQuarter": 1,
+            "keyHandoverYear": 2028,
+            "keyHandoverQuarter": 3
+          },
+          "commissioning": {
+            "status": "actual",
+            "sources": [
+              {
+                "url": "https://admin-forma.forma.ru/static/output/documents/Portland/160/1770112535616-RVE_ot_03.02.2026_PORTLAND.pdf",
+                "retrieved_at": "2026-11-07T15:00:29.073244+00:00",
+                "sha256": "4e2d2ed329927788ea411d803c11604580c5d573ccc27a970a349adc72133d90",
+                "title": "РВЭ 77-04-013030-2026 от 03.02.2026",
+                "section": "1.1, 3.1: первый этап, корпуса 1–4"
+              }
+            ],
+            "date": "2026-02-03",
+            "precision": "day"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://admin-forma.forma.ru/static/output/documents/Portland/48/1758042048703-proektnaya-deklaraciya-ot-16.04.2024.pdf",
+                "retrieved_at": "2026-11-07T15:00:37.847043+00:00",
+                "sha256": "2e3e650ed55beb9d7b05613216051a1e075eb9959525b0f065ef446cc096d2ca",
+                "title": "ПД первого этапа от 17.04.2024",
+                "section": "17.2.2"
+              }
+            ],
+            "date": "2026-06-30",
+            "precision": "day"
+          },
+          "identity_note": "Корпус 1 относится к первому этапу; сроки второго этапа 2028 года удалены."
+        },
+        {
+          "complex_key": "ru:complex:pave",
+          "complex": "Пейв",
+          "building": "1",
+          "old": {
+            "commissioningYear": 2028,
+            "commissioningQuarter": 4,
+            "keyHandoverYear": 2029,
+            "keyHandoverQuarter": 1
+          },
+          "commissioning": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://storage.yandexcloud.net/forma/pave/documents/proektnaja%20deklaracija%201%20jetap.pdf",
+                "retrieved_at": "2026-11-07T15:00:30.190765+00:00",
+                "sha256": "9595fa8afb30fa59c6b2c8fcda54eb84e0d6954e09e1f55afd4951268186124e",
+                "title": "ПД 77-003160 от 22.01.2025, этап 1",
+                "section": "17.1(5)"
+              }
+            ],
+            "year": 2028,
+            "quarter": 4,
+            "precision": "quarter"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://storage.yandexcloud.net/forma/pave/documents/proektnaja%20deklaracija%201%20jetap.pdf",
+                "retrieved_at": "2026-11-07T15:00:30.190765+00:00",
+                "sha256": "9595fa8afb30fa59c6b2c8fcda54eb84e0d6954e09e1f55afd4951268186124e",
+                "title": "ПД 77-003160 от 22.01.2025, этап 1",
+                "section": "17.2.2"
+              }
+            ],
+            "date": "2029-02-28",
+            "precision": "day"
+          },
+          "identity_note": ""
+        },
+        {
+          "complex_key": "ru:complex:cityzen",
+          "complex": "Ситидзен",
+          "building": "2",
+          "old": {
+            "commissioningYear": 2027,
+            "commissioningQuarter": 3,
+            "keyHandoverYear": 2028,
+            "keyHandoverQuarter": 3
+          },
+          "commissioning": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/57752",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 57752",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              },
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/67615",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 67615",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "year": 2027,
+            "quarter": 3,
+            "precision": "quarter"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/57752",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 57752",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              },
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/67615",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 67615",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2028-06-30",
+            "precision": "day"
+          },
+          "identity_note": "Объекты застройщика СЗ С-ДЕВЕЛОПМЕНТ в ЕИСЖС обозначены СИТИ.ДЗЕН; у обеих опубликованных частей очереди одинаковые сроки. Прямой сайт MR Group возвращает 403."
+        },
+        {
+          "complex_key": "ru:complex:rivera",
+          "complex": "Сэтл Ривьера",
+          "building": "1.2",
+          "old": {
+            "commissioningDate": "2028-03-31"
+          },
+          "commissioning": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://setlgroup.ru/api/v1/cases/5725",
+                "retrieved_at": "2026-11-07T15:06:11.042332+00:00",
+                "sha256": "467a3ca79afec0d754f183caa49bee05582006e6035e64a41f986469af2f6385",
+                "title": "Setl Group, Сэтл Ривьера, корпус 1.2",
+                "section": "data.termOfDeliveryDate"
+              }
+            ],
+            "year": 2028,
+            "quarter": 1,
+            "precision": "quarter"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://setlgroup.ru/api/v1/cases/5725",
+                "retrieved_at": "2026-11-07T15:06:11.042332+00:00",
+                "sha256": "467a3ca79afec0d754f183caa49bee05582006e6035e64a41f986469af2f6385",
+                "title": "Setl Group, Сэтл Ривьера, корпус 1.2",
+                "section": "data.dateKeys и data.dateKeysDop: квартиры"
+              }
+            ],
+            "date": "2028-09-30",
+            "precision": "day"
+          },
+          "identity_note": ""
+        },
+        {
+          "complex_key": "ru:complex:shkiperskiy",
+          "complex": "Шкиперский 19",
+          "building": "1",
+          "old": {
+            "commissioningDate": "2026-01-01",
+            "keyHandoverDate": "2026-04-01"
+          },
+          "commissioning": {
+            "status": "actual",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/47389",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 47389",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2025-06-26",
+            "precision": "day"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/47389",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 47389",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2025-07-01",
+            "precision": "day"
+          },
+          "identity_note": "Первый корпус: ПД 78-001913, РВЭ 78-02-09-2025. Новый объект 61394 с ПД 78-002083 и сроком 2027 года не подменяет существующий первый корпус."
+        },
+        {
+          "complex_key": "ru:complex:shagal",
+          "complex": "Шагал",
+          "building": "4.1",
+          "old": {
+            "commissioningYear": 2026,
+            "commissioningQuarter": 1,
+            "keyHandoverYear": 2026,
+            "keyHandoverQuarter": 2
+          },
+          "commissioning": {
+            "status": "actual",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/51376",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 51376",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2026-02-18",
+            "precision": "day"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/51376",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 51376",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2026-06-30",
+            "precision": "day"
+          },
+          "identity_note": "Группа корпусов 4.1–7.1 связана с ПД 77-002843 / объектом 51376 (проверено по списку документов и номерам корпусов). РВЭ 77-05-013041-2026. Объект 45414 с РВЭ от 27.02.2026 относится к другим корпусам и не используется."
+        },
+        {
+          "complex_key": "ru:complex:shagal",
+          "complex": "Шагал",
+          "building": "5.1",
+          "old": {
+            "commissioningYear": 2026,
+            "commissioningQuarter": 1,
+            "keyHandoverYear": 2026,
+            "keyHandoverQuarter": 2
+          },
+          "commissioning": {
+            "status": "actual",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/51376",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 51376",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2026-02-18",
+            "precision": "day"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/51376",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 51376",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2026-06-30",
+            "precision": "day"
+          },
+          "identity_note": "Группа корпусов 4.1–7.1 связана с ПД 77-002843 / объектом 51376 (проверено по списку документов и номерам корпусов). РВЭ 77-05-013041-2026. Объект 45414 с РВЭ от 27.02.2026 относится к другим корпусам и не используется."
+        },
+        {
+          "complex_key": "ru:complex:shagal",
+          "complex": "Шагал",
+          "building": "6.1",
+          "old": {
+            "commissioningYear": 2026,
+            "commissioningQuarter": 1,
+            "keyHandoverYear": 2026,
+            "keyHandoverQuarter": 2
+          },
+          "commissioning": {
+            "status": "actual",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/51376",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 51376",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2026-02-18",
+            "precision": "day"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/51376",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 51376",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2026-06-30",
+            "precision": "day"
+          },
+          "identity_note": "Группа корпусов 4.1–7.1 связана с ПД 77-002843 / объектом 51376 (проверено по списку документов и номерам корпусов). РВЭ 77-05-013041-2026. Объект 45414 с РВЭ от 27.02.2026 относится к другим корпусам и не используется."
+        },
+        {
+          "complex_key": "ru:complex:shagal",
+          "complex": "Шагал",
+          "building": "7.1",
+          "old": {
+            "commissioningYear": 2026,
+            "commissioningQuarter": 1,
+            "keyHandoverYear": 2026,
+            "keyHandoverQuarter": 2
+          },
+          "commissioning": {
+            "status": "actual",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/51376",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 51376",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2026-02-18",
+            "precision": "day"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/51376",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 51376",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2026-06-30",
+            "precision": "day"
+          },
+          "identity_note": "Группа корпусов 4.1–7.1 связана с ПД 77-002843 / объектом 51376 (проверено по списку документов и номерам корпусов). РВЭ 77-05-013041-2026. Объект 45414 с РВЭ от 27.02.2026 относится к другим корпусам и не используется."
+        },
+        {
+          "complex_key": "ru:complex:senat",
+          "complex": "Сенат",
+          "building": "1.1",
+          "old": {},
+          "commissioning": {
+            "status": "actual",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/47439",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 47439",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2025-10-06",
+            "precision": "day"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/47439",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 47439",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              },
+              {
+                "url": "https://setlgroup.ru/api/v1/cases/4291",
+                "retrieved_at": "2026-11-07T15:06:11.238266+00:00",
+                "sha256": "3dcfe1e5d2192da6848dc5a32dd4ffb88950b2574ce7dce9c422c109674f3d3c",
+                "title": "Setl Group, Сенат 1.1",
+                "section": "data.dateKeys: Europe/Moscow"
+              }
+            ],
+            "date": "2026-03-31",
+            "precision": "day",
+            "note": "Реестр и структурированное dateKeys совпадают; свободный текст dateKeysDop содержит 01.04.2026. Это плановая дата передачи, не дата фактического вручения ключей."
+          },
+          "identity_note": "caseAdditional.idDomrph в официальном API напрямую связывает корпус с объектом ЕИСЖС 47439; РВЭ 78-11-13-2025."
+        },
+        {
+          "complex_key": "ru:complex:senat",
+          "complex": "Сенат",
+          "building": "1.2",
+          "old": {},
+          "commissioning": {
+            "status": "actual",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/47440",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 47440",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              }
+            ],
+            "date": "2025-10-06",
+            "precision": "day"
+          },
+          "handover": {
+            "status": "planned",
+            "sources": [
+              {
+                "url": "https://наш.дом.рф/сервисы/каталог-новостроек/объект/47440",
+                "title": "ЕИСЖС НАШ.ДОМ.РФ, объект 47440",
+                "access": "Содержимое официальной карточки в поисковом индексе; прямая загрузка ограничена сайтом."
+              },
+              {
+                "url": "https://setlgroup.ru/api/v1/cases/4292",
+                "retrieved_at": "2026-11-07T15:06:11.341617+00:00",
+                "sha256": "829f1c44cfe5fd19edfa39fa07765166e336fae047566b2099edbc41cfe09800",
+                "title": "Setl Group, Сенат 1.2",
+                "section": "data.dateKeys: Europe/Moscow"
+              }
+            ],
+            "date": "2026-03-31",
+            "precision": "day",
+            "note": "Реестр и структурированное dateKeys совпадают; свободный текст dateKeysDop содержит 01.04.2026. Это плановая дата передачи, не дата фактического вручения ключей."
+          },
+          "identity_note": "caseAdditional.idDomrph в официальном API напрямую связывает корпус с объектом ЕИСЖС 47440; РВЭ 78-11-13-2025."
+        }
+      ]
+    }
   },
   "complexes": [
     {
@@ -28,14 +1377,22 @@
         {
           "number": "1",
           "address": "Санкт-Петербург, Московский район, Благодатная улица, ЖК «iD Park Pobedy», корпус 1",
-          "commissioningDate": "2024-01-01",
-          "keyHandoverDate": "2024-04-01"
+          "commissioningDate": "2024-01-24",
+          "keyHandoverDate": "2024-06-30",
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         },
         {
           "number": "2",
           "address": "Санкт-Петербург, Московский район, Благодатная улица, ЖК «iD Park Pobedy», корпус 2",
-          "commissioningDate": "2024-01-01",
-          "keyHandoverDate": "2024-04-01"
+          "commissioningDate": "2024-01-24",
+          "keyHandoverDate": "2024-06-30",
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         }
       ],
       "metro": [
@@ -59,7 +1416,7 @@
         "https://eid.spb.ru/park_pobedy",
         "https://sk-gorod.com/objects/id-park-pobedy/"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения.",
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок.",
       "map_link": "https://yandex.com/maps/-/CPujFTIJ"
     },
     {
@@ -80,19 +1437,30 @@
           "address": "Санкт-Петербург, Невский район, проспект Большой Смоленский, ЖК «Астра Континенталь», корпус 5.1",
           "commissioningYear": 2029,
           "commissioningQuarter": 4,
-          "keyHandoverDate": "2030-06-30"
+          "keyHandoverDate": "2030-06-30",
+          "commissioningDate": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         },
         {
           "number": "2",
-          "commissioningYear": 2026,
-          "commissioningQuarter": 3,
-          "address": "Санкт-Петербург, Невский район, проспект Большой Смоленский, ЖК «Астра Континенталь», корпус 2"
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "address": "Санкт-Петербург, Невский район, проспект Большой Смоленский, ЖК «Астра Континенталь», корпус 2",
+          "commissioningDate": "2026-10-09",
+          "keyHandoverDate": "2027-03-31",
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         },
         {
           "number": "3",
-          "commissioningYear": 2026,
-          "commissioningQuarter": 3,
-          "address": "Санкт-Петербург, Невский район, проспект Большой Смоленский, ЖК «Астра Континенталь», корпус 3"
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "address": "Санкт-Петербург, Невский район, проспект Большой Смоленский, ЖК «Астра Континенталь», корпус 3",
+          "commissioningDate": "2026-10-09",
+          "keyHandoverDate": "2027-03-31",
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         }
       ],
       "metro": [
@@ -121,7 +1489,7 @@
         "https://www.setlgroup.ru/projects/astra-kontinental",
         "https://www.setlgroup.ru/news/2959"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения.",
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок.",
       "map_link": "https://yandex.com/maps/-/CPujJNkr"
     },
     {
@@ -142,8 +1510,10 @@
           "address": "Санкт-Петербург, Василеостровский район, ЖК «Башни Элемент», корпус 1-КАРБОН",
           "commissioningYear": 2028,
           "commissioningQuarter": 2,
-          "keyHandoverYear": 2028,
-          "keyHandoverQuarter": 4
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null,
+          "commissioningDate": null,
+          "keyHandoverDate": "2028-12-31"
         }
       ],
       "metro": [
@@ -166,7 +1536,7 @@
       "sources": [
         "https://bashni-element.ru/"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения.",
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок.",
       "map_link": "https://yandex.ru/maps/?um=constructor%3A1542a7cd7124e85f8d1231c99717460d08f6d7bb90d8e3a90e2253adc8a49efe&source=constructorLink"
     },
     {
@@ -185,8 +1555,12 @@
         {
           "number": "1",
           "address": "Санкт-Петербург, Фрунзенский район, Лиговский проспект, 242, ЖК «Витебский Парк», корпус 1",
-          "commissioningDate": "2026-01-01",
-          "keyHandoverDate": "2026-04-01"
+          "commissioningDate": null,
+          "keyHandoverDate": null,
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         }
       ],
       "metro": [
@@ -209,7 +1583,7 @@
       "sources": [
         "https://vitebskij-park.novopoisk.spb.ru/"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения.",
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок.",
       "map_link": "https://yandex.com/maps/-/CPujV0jL"
     },
     {
@@ -228,8 +1602,12 @@
         {
           "number": "1",
           "address": "Санкт-Петербург, Адмиралтейский район, ЖК «Галактика», корпус 1",
-          "commissioningDate": "2024-01-01",
-          "keyHandoverDate": "2024-04-01"
+          "commissioningDate": null,
+          "keyHandoverDate": null,
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         }
       ],
       "metro": [
@@ -252,7 +1630,7 @@
       "sources": [
         "https://etalongroup.ru/spb/object/kvartal-galaktika/"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Завершён до 2025 года, включён исключительно для обогащения имеющегося ЖК. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения.",
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Завершён до 2025 года, включён исключительно для обогащения имеющегося ЖК. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок.",
       "map_link": "https://yandex.com/maps/-/CPujZM3Q"
     },
     {
@@ -273,8 +1651,10 @@
           "address": "Санкт-Петербург, Василеостровский район, Шкиперский проток, ЖК «Галерная гавань», корпус 3",
           "commissioningYear": 2028,
           "commissioningQuarter": 3,
-          "keyHandoverYear": 2028,
-          "keyHandoverQuarter": 3
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null,
+          "commissioningDate": null,
+          "keyHandoverDate": "2028-12-31"
         }
       ],
       "metro": [
@@ -297,7 +1677,7 @@
       "sources": [
         "https://psk-info.ru/projects/galernaya-gavan"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения.",
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок.",
       "map_link": "https://yandex.ru/maps/?um=constructor%3Ad377f98edbc17aa8d328031806cb15a7e658c2b5f981de4209e315b883c66c58&source=constructorLink"
     },
     {
@@ -318,35 +1698,50 @@
           "address": "Санкт-Петербург, Пушкинский район, ЖК «Город-спутник Южный», корпус 1.1",
           "commissioningYear": 2027,
           "commissioningQuarter": 1,
-          "keyHandoverDate": "2028-03-31"
+          "keyHandoverDate": "2028-03-31",
+          "commissioningDate": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         },
         {
           "number": "1.2",
           "address": "Санкт-Петербург, Пушкинский район, ЖК «Город-спутник Южный», корпус 1.2",
           "commissioningYear": 2027,
           "commissioningQuarter": 1,
-          "keyHandoverDate": "2028-03-31"
+          "keyHandoverDate": "2028-03-31",
+          "commissioningDate": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         },
         {
           "number": "1.3",
           "address": "Санкт-Петербург, Пушкинский район, ЖК «Город-спутник Южный», корпус 1.3",
           "commissioningYear": 2027,
           "commissioningQuarter": 1,
-          "keyHandoverDate": "2028-03-31"
+          "keyHandoverDate": "2028-03-31",
+          "commissioningDate": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         },
         {
           "number": "1.4",
           "address": "Санкт-Петербург, Пушкинский район, ЖК «Город-спутник Южный», корпус 1.4",
           "commissioningYear": 2027,
           "commissioningQuarter": 1,
-          "keyHandoverDate": "2028-03-31"
+          "keyHandoverDate": "2028-03-31",
+          "commissioningDate": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         },
         {
           "number": "2.1",
           "address": "Санкт-Петербург, Пушкинский район, ЖК «Город-спутник Южный», корпус 2.1",
           "commissioningYear": 2027,
           "commissioningQuarter": 1,
-          "keyHandoverDate": "2028-03-31"
+          "keyHandoverDate": "2028-03-31",
+          "commissioningDate": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         }
       ],
       "metro": [
@@ -369,7 +1764,7 @@
       "sources": [
         "https://zastroyspb.ru/"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения.",
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок.",
       "map_link": "https://yandex.ru/maps/?um=constructor%3A58eebbdb23ed1f144b011d2771dc9d553e79e46f04b5f2e6ed1d43fec2c76f6a&source=constructorLink"
     },
     {
@@ -390,7 +1785,10 @@
           "address": "Санкт-Петербург, Невский район, ЖК «Дыбенко Парк», корпус 1",
           "commissioningYear": 2027,
           "commissioningQuarter": 4,
-          "keyHandoverDate": "2028-12-31"
+          "keyHandoverDate": "2028-12-31",
+          "commissioningDate": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         }
       ],
       "metro": [
@@ -413,7 +1811,7 @@
       "sources": [
         "https://www.novostroy-spb.ru/baza/dybenko_park"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения."
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок."
     },
     {
       "key": "ru:complex:zilart",
@@ -431,10 +1829,12 @@
         {
           "number": "1",
           "address": "Москва, Даниловский район, ЖК «ЗИЛАРТ», корпус 1",
-          "commissioningYear": 2027,
-          "commissioningQuarter": 4,
-          "keyHandoverYear": 2028,
-          "keyHandoverQuarter": 2
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null,
+          "commissioningDate": null,
+          "keyHandoverDate": null
         }
       ],
       "metro": [
@@ -457,7 +1857,7 @@
       "sources": [
         "https://zil-art.ru/"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения."
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок."
     },
     {
       "key": "ru:complex:lermontov",
@@ -474,15 +1874,33 @@
       "buildings": [
         {
           "number": "1",
-          "address": "Санкт-Петербург, Адмиралтейский район, Лермонтовский проспект, 54, ЖК «Лермонтовский 54», корпус 1"
+          "address": "Санкт-Петербург, Адмиралтейский район, Лермонтовский проспект, 54, ЖК «Лермонтовский 54», корпус 1",
+          "commissioningDate": "2025-04-08",
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "keyHandoverDate": "2025-05-30",
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         },
         {
           "number": "2.1",
-          "address": "Санкт-Петербург, Адмиралтейский район, Лермонтовский проспект, 54, ЖК «Лермонтовский 54», корпус 2.1"
+          "address": "Санкт-Петербург, Адмиралтейский район, Лермонтовский проспект, 54, ЖК «Лермонтовский 54», корпус 2.1",
+          "commissioningDate": "2026-03-11",
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "keyHandoverDate": "2026-03-31",
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         },
         {
           "number": "2.2",
-          "address": "Санкт-Петербург, Адмиралтейский район, Лермонтовский проспект, 54, ЖК «Лермонтовский 54», корпус 2.2"
+          "address": "Санкт-Петербург, Адмиралтейский район, Лермонтовский проспект, 54, ЖК «Лермонтовский 54», корпус 2.2",
+          "commissioningDate": "2026-03-11",
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "keyHandoverDate": "2026-03-31",
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         }
       ],
       "metro": [
@@ -505,7 +1923,7 @@
       "sources": [
         "https://www.novostroy-spb.ru/baza/lermontovskiy_54/hod-stroitelstva"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения."
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок."
     },
     {
       "key": "ru:complex:loft",
@@ -524,9 +1942,11 @@
           "number": "1",
           "address": "Санкт-Петербург, Московский район, улица Георгия Чернышёва, ЖК «Сэтл Лофт», корпус 1",
           "commissioningDate": null,
-          "keyHandoverDate": null,
+          "keyHandoverDate": "2028-06-30",
           "commissioningYear": 2027,
-          "commissioningQuarter": 4
+          "commissioningQuarter": 4,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         }
       ],
       "metro": [
@@ -549,7 +1969,7 @@
       "sources": [
         "https://setlgroup.ru/projects/setl-loft"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Срок корпуса 1 обновлён по текущей карточке застройщика: IV квартал 2027 года.",
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Срок корпуса 1 обновлён по текущей карточке застройщика: IV квартал 2027 года. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок.",
       "map_link": "https://yandex.com/maps/-/CPujNEnY"
     },
     {
@@ -570,8 +1990,10 @@
           "address": "Московская область, Одинцовский городской округ, ЖК «Мыс», корпус 1",
           "commissioningYear": 2028,
           "commissioningQuarter": 3,
-          "keyHandoverYear": 2028,
-          "keyHandoverQuarter": 4
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null,
+          "commissioningDate": null,
+          "keyHandoverDate": "2028-12-31"
         }
       ],
       "metro": [
@@ -599,7 +2021,7 @@
       "sources": [
         "https://mys.moscow/"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Исправлена привязка к Московской области. МЦД-4 указан как рельсовый транспорт. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения.",
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Исправлена привязка к Московской области. МЦД-4 указан как рельсовый транспорт. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок.",
       "match_city": "Москва"
     },
     {
@@ -620,8 +2042,10 @@
           "address": "Москва, Богородское, Открытое шоссе, ЖК «НАЗАРÉ», корпус 5",
           "commissioningYear": 2028,
           "commissioningQuarter": 2,
-          "keyHandoverYear": 2028,
-          "keyHandoverQuarter": 4
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null,
+          "commissioningDate": null,
+          "keyHandoverDate": "2028-12-31"
         }
       ],
       "metro": [
@@ -649,7 +2073,7 @@
       "sources": [
         "https://nazare.ru/"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения.",
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок.",
       "map_link": "https://yandex.ru/maps/?um=constructor%3A724bd1faf0b8f8c4d7aed98c0bc8c701f6735f447aa1ad8bd2a3780cc64073ec&source=constructorLink"
     },
     {
@@ -668,8 +2092,12 @@
         {
           "number": "1",
           "address": "Санкт-Петербург, Фрунзенский район, ЖК «Нигилист», корпус 1",
-          "commissioningDate": "2025-01-01",
-          "keyHandoverDate": "2025-04-01"
+          "commissioningDate": null,
+          "keyHandoverDate": null,
+          "commissioningYear": 2028,
+          "commissioningQuarter": 1,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         }
       ],
       "metro": [
@@ -692,7 +2120,7 @@
       "sources": [
         "https://nglst.ru/"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения.",
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок.",
       "map_link": "https://yandex.com/maps/-/CPujNB~r"
     },
     {
@@ -711,8 +2139,12 @@
         {
           "number": "1",
           "address": "Санкт-Петербург, Василеостровский район, Парусная улица, 1, ЖК «Парусная 1», корпус 1",
-          "commissioningDate": "2025-01-01",
-          "keyHandoverDate": "2025-04-01"
+          "commissioningDate": null,
+          "keyHandoverDate": "2027-09-30",
+          "commissioningYear": 2026,
+          "commissioningQuarter": 4,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         }
       ],
       "metro": [
@@ -735,7 +2167,7 @@
       "sources": [
         "https://trest-group.ru/projects/zhk-parusnaya/"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения.",
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок.",
       "map_link": "https://yandex.com/maps/-/CPujVOy2"
     },
     {
@@ -754,10 +2186,12 @@
         {
           "number": "1",
           "address": "Москва, Печатники, Южнопортовая улица, ЖК «Портленд», корпус 1",
-          "commissioningYear": 2028,
-          "commissioningQuarter": 1,
-          "keyHandoverYear": 2028,
-          "keyHandoverQuarter": 3
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null,
+          "commissioningDate": "2026-02-03",
+          "keyHandoverDate": "2026-06-30"
         }
       ],
       "metro": [
@@ -785,7 +2219,7 @@
       "sources": [
         "https://portland.forma.ru/"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения."
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок."
     },
     {
       "key": "ru:complex:pave",
@@ -805,8 +2239,10 @@
           "address": "Москва, Даниловский район, 2-й Павелецкий проезд, ЖК «Пейв», корпус 1",
           "commissioningYear": 2028,
           "commissioningQuarter": 4,
-          "keyHandoverYear": 2029,
-          "keyHandoverQuarter": 1
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null,
+          "commissioningDate": null,
+          "keyHandoverDate": "2029-02-28"
         }
       ],
       "metro": [
@@ -834,7 +2270,7 @@
       "sources": [
         "https://pave.forma.ru/"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения.",
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок.",
       "map_link": "https://yandex.ru/maps/?um=constructor%3A358f19ccc6235a362add99987a711d60697cde86ca553598cb6197008c7ebd7a&source=constructorLink"
     },
     {
@@ -855,8 +2291,10 @@
           "address": "Москва, Покровское-Стрешнево, Вишнёвая улица, ЖК «Ситидзен», корпус 2",
           "commissioningYear": 2027,
           "commissioningQuarter": 3,
-          "keyHandoverYear": 2028,
-          "keyHandoverQuarter": 3
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null,
+          "commissioningDate": null,
+          "keyHandoverDate": "2028-06-30"
         }
       ],
       "metro": [
@@ -879,7 +2317,7 @@
       "sources": [
         "https://msk.avroracity.ru/catalog/cityzen"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения."
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок."
     },
     {
       "key": "ru:complex:rivera",
@@ -897,7 +2335,12 @@
         {
           "number": "1.2",
           "address": "Санкт-Петербург, Невский район, Октябрьская набережная, ЖК «Сэтл Ривьера», корпус 1.2",
-          "commissioningDate": "2028-03-31"
+          "commissioningDate": null,
+          "commissioningYear": 2028,
+          "commissioningQuarter": 1,
+          "keyHandoverDate": "2028-09-30",
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         }
       ],
       "metro": [
@@ -925,7 +2368,7 @@
       "sources": [
         "https://www.setlgroup.ru/projects/setl-rivera"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения."
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок."
     },
     {
       "key": "ru:complex:shkiperskiy",
@@ -943,8 +2386,12 @@
         {
           "number": "1",
           "address": "Санкт-Петербург, Василеостровский район, Шкиперский проток, 19, ЖК «Шкиперский 19», корпус 1",
-          "commissioningDate": "2026-01-01",
-          "keyHandoverDate": "2026-04-01"
+          "commissioningDate": "2025-06-26",
+          "keyHandoverDate": "2025-07-01",
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         }
       ],
       "metro": [
@@ -967,7 +2414,7 @@
       "sources": [
         "https://shkiperskij-19.novopoisk.spb.ru/"
       ],
-      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта. Существующие сроки сохранены, если точный срок конкретного корпуса не подтверждён источником. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения.",
+      "notes": "Обогащение существующей записи. Перечень корпусов отражает доступные записи, без заявления о полноте проекта.  Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок.",
       "map_link": "https://yandex.com/maps/-/CPujV-94"
     },
     {
@@ -984,35 +2431,43 @@
       "buildings": [
         {
           "number": "4.1",
-          "commissioningYear": 2026,
-          "commissioningQuarter": 1,
-          "keyHandoverYear": 2026,
-          "keyHandoverQuarter": 2,
-          "address": "Москва, Даниловский район, набережная Марка Шагала, ЖК «Шагал», корпус 4.1"
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null,
+          "address": "Москва, Даниловский район, набережная Марка Шагала, ЖК «Шагал», корпус 4.1",
+          "commissioningDate": "2026-02-18",
+          "keyHandoverDate": "2026-06-30"
         },
         {
           "number": "5.1",
-          "commissioningYear": 2026,
-          "commissioningQuarter": 1,
-          "keyHandoverYear": 2026,
-          "keyHandoverQuarter": 2,
-          "address": "Москва, Даниловский район, набережная Марка Шагала, ЖК «Шагал», корпус 5.1"
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null,
+          "address": "Москва, Даниловский район, набережная Марка Шагала, ЖК «Шагал», корпус 5.1",
+          "commissioningDate": "2026-02-18",
+          "keyHandoverDate": "2026-06-30"
         },
         {
           "number": "6.1",
-          "commissioningYear": 2026,
-          "commissioningQuarter": 1,
-          "keyHandoverYear": 2026,
-          "keyHandoverQuarter": 2,
-          "address": "Москва, Даниловский район, набережная Марка Шагала, ЖК «Шагал», корпус 6.1"
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null,
+          "address": "Москва, Даниловский район, набережная Марка Шагала, ЖК «Шагал», корпус 6.1",
+          "commissioningDate": "2026-02-18",
+          "keyHandoverDate": "2026-06-30"
         },
         {
           "number": "7.1",
-          "commissioningYear": 2026,
-          "commissioningQuarter": 1,
-          "keyHandoverYear": 2026,
-          "keyHandoverQuarter": 2,
-          "address": "Москва, Даниловский район, набережная Марка Шагала, ЖК «Шагал», корпус 7.1"
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null,
+          "address": "Москва, Даниловский район, набережная Марка Шагала, ЖК «Шагал», корпус 7.1",
+          "commissioningDate": "2026-02-18",
+          "keyHandoverDate": "2026-06-30"
         }
       ],
       "metro": [
@@ -1035,7 +2490,7 @@
         "https://myshagal.ru/ocheredi",
         "https://shagalhome.ru/"
       ],
-      "notes": "Добавленная выборка корпусов второй очереди. Сроки по этапу опубликованы в карточке очередей. Адреса отражают площадку ЖК; почтовый адрес отдельного корпуса не заявляется без подтверждения."
+      "notes": "Выборка корпусов 4.1–7.1 второй очереди, первого этапа. Сроки относятся к ПД 77-002843 / объекту ЕИСЖС 51376. Строительные номера сохранены. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок."
     },
     {
       "key": "ru:complex:senat",
@@ -1051,11 +2506,23 @@
       "buildings": [
         {
           "number": "1.1",
-          "address": "Санкт-Петербург, Кубинская улица, ЖК «Сенат», корпус 1.1"
+          "address": "Санкт-Петербург, Кубинская улица, ЖК «Сенат», корпус 1.1",
+          "commissioningDate": "2025-10-06",
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "keyHandoverDate": "2026-03-31",
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         },
         {
           "number": "1.2",
-          "address": "Санкт-Петербург, Кубинская улица, ЖК «Сенат», корпус 1.2"
+          "address": "Санкт-Петербург, Кубинская улица, ЖК «Сенат», корпус 1.2",
+          "commissioningDate": "2025-10-06",
+          "commissioningYear": null,
+          "commissioningQuarter": null,
+          "keyHandoverDate": "2026-03-31",
+          "keyHandoverYear": null,
+          "keyHandoverQuarter": null
         }
       ],
       "metro": [
@@ -1078,7 +2545,7 @@
         "https://www.setlgroup.ru/projects/senat",
         "https://www.setlgroup.ru/news/2843"
       ],
-      "notes": "Застройщик сообщает о завершении комплекса в 2025 году. Точные даты ввода отдельных корпусов в этой подборке не заявляются. Время пешком взято из основной карточки проекта; 10 минут в описании расположения относится к поездке."
+      "notes": "Точные даты ввода подтверждены РВЭ и ЕИСЖС. Срок передачи квартир указан как плановый. Время пешком взято из основной карточки проекта; 10 минут в описании расположения относится к поездке. Сверка сроков от 07.11.2026: см. metadata.schedule_verification; null означает неподтверждённый срок."
     }
   ]
 }
