@@ -7,6 +7,57 @@ import { renderWithProviders } from '@/test/render'
 import { RemoteSelect } from './RemoteSelect'
 
 describe('RemoteSelect', () => {
+  it('filters complete form choices in one required input and exposes field errors', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn()
+    const changed = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    renderWithProviders(<RemoteSelect searchable dictionary="cities" label="Город" value="2"
+      required error="Выберите другой город." onChange={changed}
+      initialOptions={[{ id: 1, label: 'Москва' }, { id: 2, label: 'Санкт-Петербург' }]} />)
+    const input = screen.getByRole('combobox', { name: 'Город *' })
+    expect(input).toBeRequired()
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(input).toHaveAccessibleDescription('Выберите другой город.')
+    expect(input).toHaveValue('Санкт-Петербург')
+    expect(screen.queryByLabelText('Поиск: Город')).not.toBeInTheDocument()
+    await user.click(input)
+    await user.type(input, 'Моск')
+    expect(screen.queryByRole('option', { name: 'Санкт-Петербург' })).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    expect(input).toHaveValue('Санкт-Петербург')
+    await user.click(input)
+    await user.type(input, 'Моск')
+    await user.keyboard('{Enter}')
+    expect(changed).toHaveBeenCalledWith('1', expect.objectContaining({ label: 'Москва' }))
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('searches truncated form choices remotely with parent filters and selected IDs', async () => {
+    const user = userEvent.setup()
+    const changed = vi.fn()
+    const fetchMock = vi.fn().mockImplementation(async (path: string) => {
+      const query = new URL(path, 'http://localhost').searchParams.get('q')
+      return Response.json({ page: 1, nextPage: null, totalCount: 1,
+        results: [{ id: query ? 105 : 1, label: query ? 'Центр' : 'Первый город' }],
+        selected: [{ id: 99, label: 'Сохранённый город' }],
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderWithProviders(<RemoteSelect searchable dictionary="cities" label="Город" value="99"
+      required onChange={changed} initialOptions={[]} truncated filters={{ regionId: 3 }} />)
+    const input = screen.getByRole('combobox', { name: 'Город *' })
+    await waitFor(() => expect(input).toHaveValue('Сохранённый город'))
+    await user.click(input)
+    await user.type(input, 'Центр')
+    await user.click(await screen.findByRole('option', { name: 'Центр' }))
+    expect(changed).toHaveBeenCalledWith('105', expect.objectContaining({ label: 'Центр' }))
+    expect(fetchMock.mock.calls.some(([path]) => {
+      const parameters = new URL(path, 'http://localhost').searchParams
+      return parameters.get('q') === 'Центр' && parameters.get('regionId') === '3' && parameters.get('selectedIds') === '99'
+    })).toBe(true)
+  })
+
   it('preserves a selected value outside the page and searches on the server', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()

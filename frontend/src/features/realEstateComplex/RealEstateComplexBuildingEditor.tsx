@@ -1,3 +1,5 @@
+import { SearchableSelect } from '@/shared/ui/SearchableSelect'
+
 import type { BuildingFormRow } from './formTypes'
 
 type QuarterOption = {
@@ -130,26 +132,14 @@ export function RealEstateComplexBuildingEditor({
                       })}
                     />
                   </label>
-                  <label className="form-field" htmlFor={`${fieldPrefix}-commissioning-quarter`}>
-                    Квартал ввода
-                    <select
-                      id={`${fieldPrefix}-commissioning-quarter`}
-                      value={row.commissioningQuarter}
-                      onChange={(event) => onChange(index, {
-                        ...row,
-                        commissioningDate: event.target.value
-                          ? '' : row.commissioningDate,
-                        commissioningQuarter: event.target.value,
-                      })}
-                    >
-                      <option value="">Не указан</option>
-                      {quarters.map((quarter) => (
-                        <option key={quarter.value} value={quarter.value}>
-                          {quarter.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <SearchableSelect label="Квартал ввода" value={row.commissioningQuarter}
+                    emptyLabel="Не указан"
+                    options={quarters.map((quarter) => ({ value: String(quarter.value), label: quarter.label }))}
+                    onChange={(value) => onChange(index, {
+                      ...row,
+                      commissioningDate: value ? '' : row.commissioningDate,
+                      commissioningQuarter: value,
+                    })} />
                   <label className="form-field" htmlFor={`${fieldPrefix}-keys-date`}>
                     Дата выдачи ключей
                     <input
@@ -182,26 +172,14 @@ export function RealEstateComplexBuildingEditor({
                       })}
                     />
                   </label>
-                  <label className="form-field" htmlFor={`${fieldPrefix}-keys-quarter`}>
-                    Квартал выдачи ключей
-                    <select
-                      id={`${fieldPrefix}-keys-quarter`}
-                      value={row.keyHandoverQuarter}
-                      onChange={(event) => onChange(index, {
-                        ...row,
-                        keyHandoverDate: event.target.value
-                          ? '' : row.keyHandoverDate,
-                        keyHandoverQuarter: event.target.value,
-                      })}
-                    >
-                      <option value="">Не указан</option>
-                      {quarters.map((quarter) => (
-                        <option key={quarter.value} value={quarter.value}>
-                          {quarter.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <SearchableSelect label="Квартал выдачи ключей" value={row.keyHandoverQuarter}
+                    emptyLabel="Не указан"
+                    options={quarters.map((quarter) => ({ value: String(quarter.value), label: quarter.label }))}
+                    onChange={(value) => onChange(index, {
+                      ...row,
+                      keyHandoverDate: value ? '' : row.keyHandoverDate,
+                      keyHandoverQuarter: value,
+                    })} />
                 </div>
                 <label className="developer-active-field">
                   <input

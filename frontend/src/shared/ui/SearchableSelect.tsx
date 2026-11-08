@@ -9,6 +9,8 @@ type SearchableSelectProps = {
   onChange: (value: string) => void
   emptyLabel?: string
   disabled?: boolean
+  required?: boolean
+  validationError?: string | null
   loading?: boolean
   onSearch?: (query: string) => void
   hasMore?: boolean
@@ -17,9 +19,9 @@ type SearchableSelectProps = {
   onRetry?: () => void
 }
 
-/** One editable control for both searching and selecting a filter value. */
+/** One editable control for searching and selecting a dictionary value. */
 export function SearchableSelect({ label, value, options, onChange, emptyLabel = 'Все', disabled,
-  loading, onSearch, hasMore, onLoadMore, error, onRetry }: SearchableSelectProps) {
+  required, validationError, loading, onSearch, hasMore, onLoadMore, error, onRetry }: SearchableSelectProps) {
   const identifier = useId()
   const input = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
@@ -45,7 +47,9 @@ export function SearchableSelect({ label, value, options, onChange, emptyLabel =
         <input id={identifier} ref={input} role="combobox" type="text" autoComplete="off" maxLength={100}
           aria-autocomplete="list" aria-expanded={open} aria-controls={`${identifier}-list`}
           aria-activedescendant={open ? `${identifier}-option-${activeIndex}` : undefined}
-          aria-busy={loading || undefined} disabled={disabled}
+          aria-busy={loading || undefined} disabled={disabled} required={required}
+          aria-invalid={Boolean(validationError)}
+          aria-describedby={validationError ? `${identifier}-error` : undefined}
           value={open ? query : value ? selected?.label ?? 'Загрузка выбранного значения…' : ''}
           placeholder={open ? 'Введите значение' : emptyLabel}
           onFocus={() => setOpen(true)} onBlur={close}
@@ -65,6 +69,7 @@ export function SearchableSelect({ label, value, options, onChange, emptyLabel =
           }} />
         <span className="searchable-select__chevron" aria-hidden="true">⌄</span>
       </div>
+      {validationError ? <span className="field-error" id={`${identifier}-error`}>{validationError}</span> : null}
       {open ? <ul id={`${identifier}-list`} className="searchable-select__list" role="listbox" aria-label={`Варианты: ${label}`}
         onMouseDown={(event) => event.preventDefault()}
         onScroll={(event) => {

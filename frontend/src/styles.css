@@ -4167,7 +4167,8 @@ textarea:focus-visible {
 }
 
 .complex-form-section {
-  grid-template-columns: minmax(190px, 0.3fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
 }
 
 .complex-photo-upload {

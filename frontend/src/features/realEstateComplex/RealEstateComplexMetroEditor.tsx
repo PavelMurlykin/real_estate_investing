@@ -69,7 +69,7 @@ export function RealEstateComplexMetroEditor({
                   </button>
                 </div>
                 <div className="field-grid complex-editor-fields">
-                  <RemoteSelect
+                  <RemoteSelect searchable
                     dictionary="metro" label={`Станция метро ${rowNumber}`}
                     value={row.metroId} onChange={(value) => onChange(index, {
                         ...row,
@@ -78,9 +78,10 @@ export function RealEstateComplexMetroEditor({
                     initialOptions={(options.metroStations ?? []).map((option) => ({ id: option.id, label: `${option.station} · ${option.line}` }))}
                     truncated={options.truncated.metroStations}
                     filters={{ cityId }}
+                    disabled={!cityId}
                     required
                   />
-                  <RemoteSelect
+                  <RemoteSelect searchable
                     dictionary="transport-accessibility-types" label={"Способ"}
                     value={row.transportAccessibilityTypeId} onChange={(value) => onChange(index, {
                         ...row,

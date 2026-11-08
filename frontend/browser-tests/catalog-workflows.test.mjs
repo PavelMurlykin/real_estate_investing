@@ -34,6 +34,11 @@ async function submitRecord(page, apiPath, buttonName, method = 'POST') {
   return payload
 }
 
+async function selectComplexChoice(page, name, label) {
+  await page.getByRole('combobox', { name }).first().fill(label)
+  await page.getByRole('option', { name: label, exact: true }).click()
+}
+
 async function selectLocation(page) {
   await page.getByLabel(/^Регион \*/).selectOption({ label: 'E2E регион' })
   await page.getByLabel(/^Город \*/).selectOption({ label: 'E2E город' })
@@ -80,15 +85,17 @@ for (const width of [360, 1280]) {
 
     await openRoute(page, 'complexes/new')
     await page.getByLabel(/^Название ЖК/).fill(complexName)
-    await page.getByLabel(/^Застройщик \*/).selectOption({ label: developerName })
-    await page.getByLabel(/^Класс ЖК/).selectOption({ label: 'E2E комфорт' })
-    await page.getByLabel(/^Тип недвижимости/).selectOption({ label: 'E2E квартира' })
-    await selectLocation(page)
+    await selectComplexChoice(page, /^Застройщик \*/, developerName)
+    await selectComplexChoice(page, /^Класс ЖК/, 'E2E комфорт')
+    await selectComplexChoice(page, /^Тип недвижимости/, 'E2E квартира')
+    await selectComplexChoice(page, /^Регион \*/, 'E2E регион')
+    await selectComplexChoice(page, /^Город \*/, 'E2E город')
+    await selectComplexChoice(page, /^Район \*/, 'E2E район')
     await page.getByRole('button', { name: 'Добавить корпус' }).click()
     await page.getByLabel(/^Номер корпуса 1/).fill('E2E-1')
     await page.getByLabel(/^Номер корпуса 2/).fill('E2E-2')
     await page.getByLabel('Год ввода', { exact: true }).first().fill('2027')
-    await page.getByLabel(/^Квартал ввода/).first().selectOption('2')
+    await selectComplexChoice(page, /^Квартал ввода/, 'II кв.')
     const complex = await submitRecord(page, '/api/v1/complexes/', 'Создать ЖК')
     trackCleanup(`/api/v1/complexes/${complex.id}/`)
     await page.getByRole('heading', { name: complexName, level: 1, exact: true }).waitFor()

@@ -12,24 +12,32 @@ type RemoteSelectProps = CatalogChoicesProps & {
   required?: boolean
   error?: string | null
   filter?: boolean
+  searchable?: boolean
 }
 
 export function RemoteSelect({
   dictionary, label, value, onChange, filters = {}, initialOptions,
-  truncated = false, disabled = false, required = false, error, filter = false,
+  truncated = false, disabled = false, required = false, error, filter = false, searchable = false,
 }: RemoteSelectProps) {
   const identifier = useId()
   const { options, choicesQuery, search, setSearch, hasMore, loadMore, isSearching } = useCatalogOptions({
-    dictionary, filters, initialOptions, truncated, disabled, autoLoad: filter, values: value ? [value] : [],
+    dictionary, filters, initialOptions, truncated, disabled,
+    autoLoad: filter || (searchable && truncated), values: value ? [value] : [],
   })
   const matchingIdentifiers = new Set(choicesQuery.data?.pages.flatMap((page) => page.results.map((option) => option.id)))
-  if (filter) return (
-    <SearchableSelect label={label} value={value}
-      options={options.filter((option) => (!search.trim() || matchingIdentifiers.has(option.id))
+  const remoteSearch = filter || truncated || !initialOptions || Boolean(choicesQuery.data)
+    || Boolean(value && !initialOptions.some((option) => String(option.id) === value))
+  if (filter || searchable) return (
+    <SearchableSelect label={label + (required ? ' *' : '')} value={value}
+      emptyLabel={filter ? 'Все' : 'Не выбрано'} required={required} validationError={error}
+      options={options.filter((option) => (!remoteSearch || !search.trim() || matchingIdentifiers.has(option.id))
         && (choicesQuery.data || !choicesQuery.isFetching || String(option.id) === value))
         .map((option) => ({ value: String(option.id), label: option.label }))}
-      onChange={(next) => onChange(next, options.find((option) => String(option.id) === next))}
-      disabled={disabled} loading={isSearching} onSearch={setSearch} hasMore={hasMore} onLoadMore={loadMore}
+      onChange={(next) => {
+        if (searchable && next === value) return
+        onChange(next, options.find((option) => String(option.id) === next))
+      }}
+      disabled={disabled} loading={isSearching} onSearch={remoteSearch ? setSearch : undefined} hasMore={hasMore} onLoadMore={loadMore}
       error={choicesQuery.isError} onRetry={() => void choicesQuery.refetch()} />
   )
   return (

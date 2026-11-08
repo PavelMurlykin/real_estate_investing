@@ -157,22 +157,63 @@ function renderEditForm() {
   </Routes>, { initialRoute: '/complexes/99/edit', queryClient })
 }
 
+async function chooseOption(user: ReturnType<typeof userEvent.setup>, label: string, option: string) {
+  await user.click(screen.getByRole('combobox', { name: label }))
+  await user.click(screen.getByRole('option', { name: option }))
+}
+
 async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Название ЖК *'), 'Новый квартал')
-  await user.selectOptions(screen.getByLabelText('Застройщик *'), '4')
-  await user.selectOptions(screen.getByLabelText('Класс ЖК *'), '5')
-  await user.selectOptions(screen.getByLabelText('Тип недвижимости *'), '6')
-  await user.selectOptions(screen.getByLabelText('Регион *'), '1')
-  await user.selectOptions(screen.getByLabelText('Город *'), '2')
-  await user.selectOptions(screen.getByLabelText('Район *'), '3')
+  await chooseOption(user, 'Застройщик *', 'Северный девелопер')
+  await chooseOption(user, 'Класс ЖК *', 'Бизнес')
+  await chooseOption(user, 'Тип недвижимости *', 'Квартира')
+  await chooseOption(user, 'Регион *', 'Ленинградская область')
+  await chooseOption(user, 'Город *', 'Санкт-Петербург')
+  await chooseOption(user, 'Район *', 'Петроградский')
   await user.type(screen.getByLabelText('Номер корпуса 1 *'), '1')
   await user.click(screen.getByRole('button', { name: 'Добавить станцию' }))
-  await user.selectOptions(screen.getByLabelText('Станция метро 1 *'), '7')
-  await user.selectOptions(screen.getByLabelText('Способ *'), '8')
+  await chooseOption(user, 'Станция метро 1 *', 'Петроградская · Синяя')
+  await chooseOption(user, 'Способ *', 'Пешком')
   await user.type(screen.getByLabelText('Время, мин. *'), '10')
 }
 
 describe('RealEstateComplexFormPage', () => {
+  it('uses one searchable control per dictionary and clears dependent values on a region change', async () => {
+    const user = userEvent.setup()
+    renderEditForm()
+    expect(screen.queryByRole('link', { name: 'Django-форма' })).not.toBeInTheDocument()
+    expect(screen.queryAllByRole('searchbox')).toHaveLength(0)
+    expect(screen.getByRole('combobox', { name: 'Застройщик *' })).toHaveValue('Северный девелопер')
+    expect(screen.getByRole('combobox', { name: 'Станция метро 1 *' })).toHaveValue('Петроградская · Синяя')
+    expect(screen.getByRole('combobox', { name: 'Квартал ввода' })).toHaveAttribute('type', 'text')
+    await chooseOption(user, 'Регион *', 'Ленинградская область')
+    expect(screen.getByRole('combobox', { name: 'Город *' })).toHaveValue('Санкт-Петербург')
+    expect(screen.getByRole('combobox', { name: 'Станция метро 1 *' })).toHaveValue('Петроградская · Синяя')
+    await chooseOption(user, 'Регион *', 'Не выбрано')
+    expect(screen.getByRole('combobox', { name: 'Город *' })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: 'Город *' })).toHaveValue('')
+    expect(screen.getByRole('combobox', { name: 'Район *' })).toBeDisabled()
+    expect(screen.queryByRole('combobox', { name: 'Станция метро 1 *' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Добавить станцию' })).toBeDisabled()
+  })
+
+  it('filters and saves a quarter using the same editable dropdown', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockResolvedValue(Response.json(savedComplex))
+    vi.stubGlobal('fetch', fetchMock)
+    renderEditForm()
+    const quarter = screen.getByRole('combobox', { name: 'Квартал ввода' })
+    await user.click(quarter)
+    await user.type(quarter, 'II кв.')
+    await user.keyboard('{Enter}')
+    expect(quarter).toHaveValue('II кв.')
+    await user.type(screen.getByLabelText('Год ввода'), '2028')
+    await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }))
+    expect(await screen.findByRole('heading', { name: 'ЖК сохранён' })).toBeInTheDocument()
+    const body = fetchMock.mock.calls[0][1].body as FormData
+    expect(JSON.parse(String(body.get('buildings')))[0]).toEqual(expect.objectContaining({ commissioningYear: 2028, commissioningQuarter: 2 }))
+  })
+
   it('defers deletion until save and selects the next remaining photo as main', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn().mockResolvedValue(Response.json(savedComplex))

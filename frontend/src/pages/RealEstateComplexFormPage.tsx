@@ -1,4 +1,3 @@
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
@@ -323,14 +322,6 @@ export function RealEstateComplexFormPage() {
           <p>Основные сведения, локация, корпуса и доступность метро.</p>
         </div>
         <div className="page-header__actions">
-          {isEditing && complexQuery.data ? (
-            <LegacyLink
-              className="button button--secondary"
-              href={complexQuery.data.legacyEditUrl}
-            >
-              Django-форма
-            </LegacyLink>
-          ) : null}
           <Link className="button button--secondary" to="/complexes">
             Отмена
           </Link>
@@ -359,7 +350,7 @@ export function RealEstateComplexFormPage() {
               />
               <FieldError id="complex-name-error" message={fieldErrors.name} />
             </label>
-            <RemoteSelect
+            <RemoteSelect searchable
               dictionary="developers" label={"Застройщик"}
               value={formState.developerId} onChange={(value) => updateField('developerId', value)}
               initialOptions={(options.developers ?? []).map((option) => ({ id: option.id, label: option.label }))}
@@ -367,7 +358,7 @@ export function RealEstateComplexFormPage() {
               error={fieldErrors.developerId}
               required
             />
-            <RemoteSelect
+            <RemoteSelect searchable
               dictionary="real-estate-classes" label={"Класс ЖК"}
               value={formState.realEstateClassId} onChange={(value) => updateField('realEstateClassId', value)}
               initialOptions={(options.realEstateClasses ?? []).map((option) => ({ id: option.id, label: option.name }))}
@@ -375,7 +366,7 @@ export function RealEstateComplexFormPage() {
               error={fieldErrors.realEstateClassId}
               required
             />
-            <RemoteSelect
+            <RemoteSelect searchable
               dictionary="real-estate-types" label={"Тип недвижимости"}
               value={formState.realEstateTypeId} onChange={(value) => updateField('realEstateTypeId', value)}
               initialOptions={(options.realEstateTypes ?? []).map((option) => ({ id: option.id, label: option.name }))}
@@ -419,7 +410,7 @@ export function RealEstateComplexFormPage() {
             <div><h2>Локация и материалы</h2><p>Адресная и презентационная информация.</p></div>
           </div>
           <div className="field-grid customer-form-grid">
-            <RemoteSelect
+            <RemoteSelect searchable
               dictionary="regions" label={"Регион"}
               value={formState.regionId} onChange={(value) => {
                   setFormState((current) => ({
@@ -442,7 +433,7 @@ export function RealEstateComplexFormPage() {
               error={fieldErrors.regionId}
               required
             />
-            <RemoteSelect
+            <RemoteSelect searchable
               dictionary="cities" label={"Город"}
               value={formState.cityId} onChange={(value) => {
                   setFormState((current) => ({
@@ -465,7 +456,7 @@ export function RealEstateComplexFormPage() {
               error={fieldErrors.cityId}
               required
             />
-            <RemoteSelect
+            <RemoteSelect searchable
               dictionary="districts" label={"Район"}
               value={formState.districtId} onChange={(value) => updateField('districtId', value)}
               initialOptions={(options.districts ?? []).map((option) => ({ id: option.id, label: option.name }))}
@@ -544,7 +535,7 @@ export function RealEstateComplexFormPage() {
 
         {optionsTruncated ? (
           <p className="filter-panel__notice" role="status">
-            Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».
+            Введите текст в поле выбора для поиска по справочнику. Остальные варианты подгружаются при прокрутке списка.
           </p>
         ) : null}
         {fieldErrors.form ? (

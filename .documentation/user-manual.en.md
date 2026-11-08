@@ -94,6 +94,8 @@ For roles and operation see `role_model.md`, `application_initial_setup.md` and 
 
 ## Residential complex catalog and photos
 
+On the complex create and edit forms, each section's title and description sit above a field grid that spans the section's full width. Dictionaries and quarters use a single editable dropdown: type to filter, then choose with the mouse or arrow keys and Enter. Escape cancels the search and restores the selected value. Scrolling loads more choices for large dictionaries. Required fields have an asterisk, and errors appear below the field. Changing the region clears the city, district and metro stations; changing the city clears the district and stations. Choose the new dependent values before saving.
+
 The Residential Complexes page searches while typing. Filters cover developer, city, class and property type, with a reset control. The project name opens its detail page. The main information block lists metro stations and travel times. A stripe before each station name uses its line's color. The line name is available by hovering over the stripe and to screen readers. The walking icon indicates access on foot, the vehicle icon indicates transport, and the train icon indicates suburban rail.
 
 The lower metro accessibility table also shows a line-colored stripe before each station and has no separate Line column. Its search matches both station and line names.
