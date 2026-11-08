@@ -96,7 +96,9 @@ For roles and operation see `role_model.md`, `application_initial_setup.md` and 
 
 The Residential Complexes page searches while typing. Filters cover developer, city, class and property type, with a reset control. The project name opens its detail page. The main information block lists metro stations and travel times. A stripe before each station name uses its line's color. The line name is available by hovering over the stripe and to screen readers. The walking icon indicates access on foot, the vehicle icon indicates transport, and the train icon indicates suburban rail.
 
-All photos on the complex detail page appear in one carousel in the main block. Use the previous and next photo buttons or the arrow keys while focus is inside the carousel. Clicking a photo opens an enlarged view with the same navigation; Escape closes it.
+The lower metro accessibility table also shows a line-colored stripe before each station and has no separate Line column. Its search matches both station and line names.
+
+All photos on the complex detail page appear in one carousel in the main block. Its height is fixed at 400 pixels on wide screens and 300 on narrow screens. Images fill the frame without distortion; edges may be cropped. Use the previous and next photo buttons or the arrow keys while focus is inside the carousel. Clicking a photo opens the full image in an enlarged frame of constant height with the same navigation; Escape closes it.
 
 Catalog moderators upload multiple images in the “Фотографии ЖК” section on the create or edit page. New files have previews, and “Главное фото” selects either a new or an existing image as the main photo. The main photo appears first on the detail page and on the homepage. Photos and the main selection are saved with the form using “Создать ЖК” or “Сохранить изменения”; an error leaves no partial changes. Each gallery supports up to 30 photos. Uploading the same file again reuses the existing photo.
 

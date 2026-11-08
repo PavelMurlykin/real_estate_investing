@@ -4066,7 +4066,9 @@ textarea:focus-visible {
 .complex-photo-card {
   display: flex;
   flex-direction: column;
-  min-height: 300px;
+  height: 400px;
+  min-height: 0;
+  align-self: start;
   overflow: hidden;
   background: var(--surface-muted);
   border-radius: 16px;
@@ -4074,8 +4076,7 @@ textarea:focus-visible {
 
 .complex-photo-card > .complex-carousel__image {
   width: 100%;
-  height: 100%;
-  min-height: 300px;
+  min-height: 0;
   padding: 0;
   overflow: hidden;
   background: transparent;
@@ -4092,14 +4093,12 @@ textarea:focus-visible {
 .complex-carousel__image img {
   width: 100%;
   height: 100%;
-  min-height: 300px;
-  max-height: 460px;
   display: block;
   object-fit: cover;
 }
 
 .complex-photo-placeholder {
-  min-height: 300px;
+  height: 100%;
   display: grid;
   place-content: center;
   justify-items: center;
@@ -4144,6 +4143,10 @@ textarea:focus-visible {
 
 .complex-related-table {
   min-width: 760px;
+}
+
+.complex-metro-table {
+  min-width: 360px;
 }
 
 .complex-related-table td:first-child {
@@ -4277,11 +4280,8 @@ textarea:focus-visible {
     grid-template-columns: 1fr;
   }
 
-  .complex-photo-card,
-  .complex-photo-card > .complex-carousel__image,
-  .complex-carousel__image img,
-  .complex-photo-placeholder {
-    min-height: 230px;
+  .complex-photo-card {
+    height: 300px;
   }
 
   .complex-editor__toolbar {
@@ -5118,11 +5118,13 @@ textarea:focus-visible {
 .complex-photo-upload legend { padding: 0 .3rem; font-weight: 700; }
 .complex-photo-upload > .form-field { margin-top: 1rem; }
 .complex-photo-upload input[type="file"] { max-width: 100%; }
-.complex-carousel__navigation { display: flex; justify-content: center; align-items: center; gap: 1rem; padding: .65rem; background: var(--surface-muted); }
+.complex-carousel__navigation { display: flex; flex-shrink: 0; justify-content: center; align-items: center; gap: 1rem; padding: .65rem; background: var(--surface-muted); }
 .complex-carousel__navigation .icon-button { flex-shrink: 0; font-size: 1.5rem; }
-.complex-photo-card .property-image-modal__content > img { max-height: max(100px, calc(100dvh - 250px)); }
+.complex-photo-card .property-image-modal__content { height: calc(100dvh - 56px); display: flex; flex-direction: column; }
+.complex-photo-card .property-image-modal__header { flex-shrink: 0; }
+.complex-photo-card .property-image-modal__content > img { height: 0; min-height: 0; max-height: none; flex: 1; }
 .complex-metro-summary { display: grid; gap: .4rem; }
 .complex-metro-summary > span { display: flex; align-items: center; gap: .4rem; }
-.complex-metro-summary__station { display: inline-flex; align-items: center; gap: .4rem; min-width: 0; }
-.complex-metro-summary__line { width: 4px; min-height: 20px; align-self: stretch; flex-shrink: 0; border-radius: 2px; }
+.complex-metro-station { display: inline-flex; align-items: center; gap: .4rem; min-width: 0; }
+.metro-line-stripe { width: 4px; min-height: 20px; align-self: stretch; flex-shrink: 0; border-radius: 2px; }
 .transport-icon { display: inline-flex; vertical-align: middle; flex-shrink: 0; }

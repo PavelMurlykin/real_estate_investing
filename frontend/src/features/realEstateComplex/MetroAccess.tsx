@@ -1,3 +1,8 @@
+export function MetroLineStripe({ line, color }: { line: string; color: string }) {
+  return <span className="metro-line-stripe" role="img"
+    aria-label={`Линия ${line}`} title={line} style={{ backgroundColor: color }} />
+}
+
 export function TransportIcon({ mode }: { mode: string }) {
   const walking = /пеш/i.test(mode)
   const train = /электрич|поезд/i.test(mode)

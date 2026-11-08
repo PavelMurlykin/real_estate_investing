@@ -1,5 +1,5 @@
 import { ComplexPhotos } from '@/features/realEstateComplex/ComplexPhotos'
-import { TransportIcon } from '@/features/realEstateComplex/MetroAccess'
+import { MetroLineStripe, TransportIcon } from '@/features/realEstateComplex/MetroAccess'
 import { InteractiveTable } from '@/shared/ui/InteractiveTable'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
@@ -154,10 +154,8 @@ export function RealEstateComplexDetailPage() {
                 {realEstateComplex.metroAvailability.filter((row) => row.isActive).map((row) => (
                   <span key={row.id}>
                     <TransportIcon mode={row.transportAccessibilityType} />
-                    <span className="complex-metro-summary__station">
-                      <span className="complex-metro-summary__line" role="img"
-                        aria-label={`Линия ${row.line}`} title={row.line}
-                        style={{ backgroundColor: row.lineColor }} />
+                    <span className="complex-metro-station">
+                      <MetroLineStripe line={row.line} color={row.lineColor} />
                       <span>{row.station} · {row.walkingTimeMinutes} мин.</span>
                     </span>
                   </span>
@@ -239,14 +237,14 @@ export function RealEstateComplexDetailPage() {
         {realEstateComplex.metroAvailability.length ? (
           <div className="property-table-wrapper">
             <InteractiveTable rows={realEstateComplex.metroAvailability} getRowKey={(availability) => availability.id}
-              caption={`Метро рядом с жилым комплексом`} className="property-table complex-related-table"
+              caption={`Метро рядом с жилым комплексом`} className="property-table complex-related-table complex-metro-table"
               columns={[
-                { id: 'column0', label: "Станция", value: (availability) => availability.station, render: (availability) => <><span
-                        className="metro-dot"
-                        style={{ backgroundColor: availability.lineColor }}
-                        aria-hidden="true"
-                      /><strong>{availability.station}</strong></> },
-                { id: 'column1', label: "Линия", value: (availability) => availability.line, render: (availability) => <>{availability.line}</> },
+                { id: 'column0', label: 'Станция', value: (availability) => availability.station,
+                  searchValue: (availability) => `${availability.station} ${availability.line}`,
+                  render: (availability) => <span className="complex-metro-station">
+                    <MetroLineStripe line={availability.line} color={availability.lineColor} />
+                    <strong>{availability.station}</strong>
+                  </span> },
                 { id: 'column2', label: "Способ", value: (availability) => availability.transportAccessibilityType, render: (availability) => <TransportIcon mode={availability.transportAccessibilityType} /> },
                 { id: 'column3', label: "Время", value: (availability) => availability.walkingTimeMinutes, render: (availability) => <>{availability.walkingTimeMinutes}мин.</> },
               ]} />
