@@ -33,9 +33,6 @@ export function RealEstateComplexDetailPage() {
     enabled: hasValidIdentifier,
   })
   const sessionQuery = useQuery(sessionQueryOptions)
-  const [isPhotoOpen, setIsPhotoOpen] = useState(false)
-  const photoTriggerRef = useRef<HTMLButtonElement>(null)
-  const photoCloseButtonRef = useRef<HTMLButtonElement>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const deleteTriggerRef = useRef<HTMLButtonElement>(null)
   const deleteCancelButtonRef = useRef<HTMLButtonElement>(null)
@@ -53,21 +50,6 @@ export function RealEstateComplexDetailPage() {
     },
   })
   useDocumentTitle(complexQuery.data?.name ?? 'Карточка жилого комплекса')
-
-  const closePhoto = () => {
-    setIsPhotoOpen(false)
-    window.setTimeout(() => photoTriggerRef.current?.focus(), 0)
-  }
-
-  useEffect(() => {
-    if (!isPhotoOpen) return
-    photoCloseButtonRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closePhoto()
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isPhotoOpen])
 
   useEffect(() => {
     if (!isDeleteDialogOpen) return
@@ -150,26 +132,7 @@ export function RealEstateComplexDetailPage() {
       </header>
 
       <section className="complex-hero-card">
-        <div className="complex-photo-card">
-          {realEstateComplex.photoUrl ? (
-            <button
-              type="button"
-              ref={photoTriggerRef}
-              aria-label="Увеличить фото жилого комплекса"
-              onClick={() => setIsPhotoOpen(true)}
-            >
-              <img
-                src={realEstateComplex.photoUrl}
-                alt={`Жилой комплекс ${realEstateComplex.name}`}
-              />
-            </button>
-          ) : (
-            <div className="complex-photo-placeholder">
-              <span aria-hidden="true">⌂</span>
-              <p>Фото жилого комплекса не загружено</p>
-            </div>
-          )}
-        </div>
+        <ComplexPhotos key={realEstateComplex.id} complex={realEstateComplex} />
         <div className="complex-summary">
           <div className="property-highlight-card__tags">
             <span>{realEstateComplex.realEstateClass}</span>
@@ -218,8 +181,6 @@ export function RealEstateComplexDetailPage() {
           ) : null}
         </div>
       </section>
-
-      <ComplexPhotos complex={realEstateComplex} canManage={canManageCatalogs} />
 
       <div className="complex-description-grid">
         <section className="saved-property-card">
@@ -292,34 +253,6 @@ export function RealEstateComplexDetailPage() {
         <span>Создано: {formatDateTime(realEstateComplex.createdAt)}</span>
         <span>Обновлено: {formatDateTime(realEstateComplex.updatedAt)}</span>
       </section>
-
-      {isPhotoOpen && realEstateComplex.photoUrl ? (
-        <div
-          className="property-image-modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="complex-photo-modal-title"
-          onMouseDown={(event) => {
-            if (event.currentTarget === event.target) closePhoto()
-          }}
-        >
-          <div className="property-image-modal__content">
-            <div className="property-image-modal__header">
-              <h2 id="complex-photo-modal-title">Фото {realEstateComplex.name}</h2>
-              <button
-                className="icon-button"
-                type="button"
-                ref={photoCloseButtonRef}
-                aria-label="Закрыть изображение"
-                onClick={closePhoto}
-              >
-                ×
-              </button>
-            </div>
-            <img src={realEstateComplex.photoUrl} alt={realEstateComplex.name} />
-          </div>
-        </div>
-      ) : null}
 
       {isDeleteDialogOpen ? (
         <div className="confirmation-dialog-backdrop" role="presentation">

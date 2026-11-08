@@ -86,9 +86,9 @@ const managerSession: Session = {
   },
 }
 
-function renderDetail(session?: Session) {
+function renderDetail(session?: Session, detail = complexDetail) {
   const queryClient = createTestQueryClient()
-  queryClient.setQueryData(['real-estate-complex', 7], complexDetail)
+  queryClient.setQueryData(['real-estate-complex', 7], detail)
   if (session) queryClient.setQueryData(['session'], session)
   return renderWithProviders(
     <Routes>
@@ -123,18 +123,41 @@ describe('RealEstateComplexDetailPage', () => {
     })).toHaveFocus()
   })
 
-  it('changes the main gallery photo through the owned photo endpoint', async () => {
+  it('cycles all photos in the hero and dialog without management controls', async () => {
     const user = userEvent.setup()
-    const fetchMock = vi.fn(async () => Response.json({
-      ...complexDetail,
-      photoUrl: '/media/property/complexes/second.webp',
-      photos: complexDetail.photos?.map((photo) => ({ ...photo, isPrimary: photo.id === 2 })),
-    }))
-    vi.stubGlobal('fetch', fetchMock)
     renderDetail(managerSession)
-    await user.click(screen.getByRole('radio', { name: 'Главное фото 2' }))
-    expect(fetchMock).toHaveBeenCalledWith('/api/v1/complexes/7/photos/2/primary/', expect.objectContaining({ method: 'POST' }))
-    expect(await screen.findByRole('status')).toHaveTextContent('Фотографии сохранены.')
+    const carousel = screen.getByRole('region', { name: 'Фотографии ЖК' })
+    expect(within(carousel).getAllByRole('img')).toHaveLength(1)
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Добавить фотографии')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Следующее фото' }))
+    expect(within(carousel).getByRole('img')).toHaveAttribute('src', complexDetail.photos?.[1].url)
+    expect(screen.getByRole('status')).toHaveTextContent('Фото 2 из 2')
+    const trigger = screen.getByRole('button', { name: 'Увеличить фото жилого комплекса' })
+    await user.click(trigger)
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByRole('img')).toHaveAttribute('src', complexDetail.photos?.[1].url)
+    await user.keyboard('{ArrowRight}')
+    expect(within(dialog).getByRole('status')).toHaveTextContent('Фото 1 из 2')
+    await user.keyboard('{Shift>}{Tab}{/Shift}')
+    expect(within(dialog).getByRole('button', { name: 'Следующее фото' })).toHaveFocus()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+    await user.keyboard('{ArrowLeft}')
+    expect(screen.getByRole('status')).toHaveTextContent('Фото 2 из 2')
+  })
+
+  it('keeps a legacy main photo and avoids redundant navigation for one image', () => {
+    renderDetail(undefined, { ...complexDetail, photos: [] })
+    expect(within(screen.getByRole('region', { name: 'Фотографии ЖК' })).getByRole('img')).toHaveAttribute('src', complexDetail.photoUrl)
+    expect(screen.queryByRole('button', { name: 'Следующее фото' })).not.toBeInTheDocument()
+  })
+
+  it('shows a placeholder when the complex has no photos', () => {
+    renderDetail(undefined, { ...complexDetail, photoUrl: null, photos: [] })
+    expect(screen.getByText('Фото жилого комплекса не загружено')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Увеличить фото жилого комплекса' })).not.toBeInTheDocument()
   })
 
   it('shows management actions and a linked-object conflict', async () => {

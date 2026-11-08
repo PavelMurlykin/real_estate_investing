@@ -5,6 +5,7 @@ from io import BytesIO
 from pathlib import Path
 
 from rest_framework.exceptions import ValidationError
+from rest_framework.test import APIClient
 
 import pytest
 from PIL import Image
@@ -27,6 +28,116 @@ def image_content(color):
     output = BytesIO()
     Image.new('RGB', (8, 8), color).save(output, 'JPEG')
     return output.getvalue()
+
+
+@pytest.mark.django_db
+def test_complex_form_creates_multiple_photos_with_selected_primary(
+    client, complex_catalog, settings, tmp_path,
+):
+    """Create the complete gallery and homepage choice in one multipart save."""
+    settings.MEDIA_ROOT = tmp_path
+    client.force_login(create_catalog_manager())
+    payload = {
+        'name': 'Новый квартал',
+        'developerId': complex_catalog['developer'].pk,
+        'districtId': complex_catalog['district'].pk,
+        'realEstateClassId': complex_catalog['real_estate_class'].pk,
+        'realEstateTypeId': complex_catalog['real_estate_type'].pk,
+        'photos': [
+            SimpleUploadedFile('one.jpg', image_content('red'), 'image/jpeg'),
+            SimpleUploadedFile('two.jpg', image_content('blue'), 'image/jpeg'),
+        ],
+        'primaryPhotoIndex': '1',
+    }
+    url = reverse('api_v1:real_estate_complex_list')
+    response = client.post(url, payload)
+    assert response.status_code == 201, response.json()
+    result = response.json()
+    assert len(result['photos']) == 2
+    assert result['photoUrl'] == result['photos'][1]['url']
+    assert [photo['isPrimary'] for photo in result['photos']] == [False, True]
+
+
+@pytest.mark.django_db
+def test_complex_form_preserves_gallery_and_relations_when_changing_primary(
+    client, complex_catalog, settings, tmp_path, django_capture_on_commit_callbacks,
+):
+    """Select another existing image without deleting the previous main photo."""
+    from property.complex_photos import add_complex_photos
+
+    settings.MEDIA_ROOT = tmp_path
+    complex_object = complex_catalog['complex']
+    photos = add_complex_photos(complex_object, [
+        SimpleUploadedFile('one.jpg', image_content('red'), 'image/jpeg'),
+        SimpleUploadedFile('two.jpg', image_content('blue'), 'image/jpeg'),
+    ])
+    client.force_login(create_catalog_manager())
+    with django_capture_on_commit_callbacks(execute=True):
+        response = client.patch(
+            reverse('api_v1:real_estate_complex_detail', kwargs={'pk': complex_object.pk}),
+            json.dumps({'name': 'Обновлённый ЖК', 'primaryPhotoId': photos[1].pk}),
+            content_type='application/json',
+        )
+    assert response.status_code == 200, response.json()
+    assert response.json()['photoUrl'] == photos[1].image.url
+    assert list(complex_object.photos.values_list('pk', flat=True)) == [photo.pk for photo in photos]
+    assert all(photo.image.storage.exists(photo.image.name) for photo in photos)
+    assert complex_object.realestatecomplexbuilding_set.get().pk == complex_catalog['building'].pk
+    assert complex_object.metro_availability.get().pk == complex_catalog['availability'].pk
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('selection', [
+    {'primaryPhotoId': 999999},
+    {'primaryPhotoIndex': 2},
+    {'primaryPhotoIndex': 0, 'primaryPhotoId': 999999},
+])
+def test_complex_form_rejects_invalid_primary_without_partial_updates(
+    client, complex_catalog, selection,
+):
+    """Reject unowned images, missing uploads and conflicting main choices."""
+    complex_object = complex_catalog['complex']
+    original_name = complex_object.name
+    client.force_login(create_catalog_manager())
+    response = client.patch(
+        reverse('api_v1:real_estate_complex_detail', kwargs={'pk': complex_object.pk}),
+        json.dumps({'name': 'Не сохранять', **selection}),
+        content_type='application/json',
+    )
+    assert response.status_code == 400
+    complex_object.refresh_from_db()
+    assert complex_object.name == original_name
+
+
+@pytest.mark.django_db
+def test_complex_form_rolls_back_changes_and_files_on_gallery_overflow(
+    client, complex_catalog, settings, tmp_path, monkeypatch,
+):
+    """An overflow after writing one image rolls back the entire form save."""
+    from property.complex_photos import add_complex_photos
+
+    settings.MEDIA_ROOT = tmp_path
+    complex_object = complex_catalog['complex']
+    original_name = complex_object.name
+    original = add_complex_photos(complex_object, [
+        SimpleUploadedFile('old.jpg', image_content('red'), 'image/jpeg'),
+    ])[0]
+    monkeypatch.setattr('property.complex_photos.MAX_COMPLEX_PHOTOS', 2)
+    api_client = APIClient()
+    api_client.force_authenticate(create_catalog_manager())
+    response = api_client.patch(
+        reverse('api_v1:real_estate_complex_detail', kwargs={'pk': complex_object.pk}),
+        {'name': 'Не сохранять', 'photos': [
+            SimpleUploadedFile('new.jpg', image_content('blue'), 'image/jpeg'),
+            SimpleUploadedFile('excess.jpg', image_content('green'), 'image/jpeg'),
+        ]}, format='multipart',
+    )
+    assert response.status_code == 400, response.json()
+    complex_object.refresh_from_db()
+    assert complex_object.name == original_name
+    assert complex_object.photo.name == original.image.name
+    assert complex_object.photos.count() == 1
+    assert len(list(tmp_path.rglob('*.jpg'))) == 1
 
 
 @pytest.fixture

@@ -136,6 +136,13 @@ function renderCreateForm() {
   )
 }
 
+function mockPhotoPreviews() {
+  vi.stubGlobal('URL', class extends URL {
+    static createObjectURL = vi.fn(() => 'blob:test-photo')
+    static revokeObjectURL = vi.fn()
+  })
+}
+
 async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Название ЖК *'), 'Новый квартал')
   await user.selectOptions(screen.getByLabelText('Застройщик *'), '4')
@@ -152,6 +159,62 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('RealEstateComplexFormPage', () => {
+  it('previews multiple photos and creates the complex with the chosen main image in one request', async () => {
+    const user = userEvent.setup()
+    mockPhotoPreviews()
+    const fetchMock = vi.fn().mockResolvedValue(Response.json(savedComplex, { status: 201 }))
+    vi.stubGlobal('fetch', fetchMock)
+    renderCreateForm()
+    await fillRequiredFields(user)
+    const files = [new File(['first'], 'first.jpg', { type: 'image/jpeg' }), new File(['second'], 'second.jpg', { type: 'image/jpeg' })]
+    await user.upload(screen.getByLabelText('Добавить фотографии'), files)
+    expect(screen.getAllByRole('img')).toHaveLength(2)
+    await user.click(screen.getByRole('radio', { name: 'Главное фото 2' }))
+    await user.click(screen.getByRole('button', { name: 'Создать ЖК' }))
+    expect(await screen.findByRole('heading', { name: 'ЖК сохранён' })).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const body = fetchMock.mock.calls[0][1].body as FormData
+    expect(body.getAll('photos')).toEqual(files)
+    expect(body.get('primaryPhotoIndex')).toBe('1')
+    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(2)
+  })
+
+  it('selects an existing main photo in the edit form and saves it with other changes', async () => {
+    const user = userEvent.setup()
+    const queryClient = createManagerQueryClient()
+    queryClient.setQueryData(['real-estate-complex', 99], {
+      ...savedComplex, photoUrl: '/media/first.jpg', photos: [
+        { id: 31, url: '/media/first.jpg', isPrimary: true },
+        { id: 32, url: '/media/second.jpg', isPrimary: false },
+      ],
+    })
+    const fetchMock = vi.fn().mockResolvedValue(Response.json(savedComplex))
+    vi.stubGlobal('fetch', fetchMock)
+    renderWithProviders(<Routes>
+      <Route path="/complexes/:complexId/edit" element={<RealEstateComplexFormPage />} />
+      <Route path="/complexes/:complexId" element={<h1>ЖК сохранён</h1>} />
+    </Routes>, { initialRoute: '/complexes/99/edit', queryClient })
+    await user.click(screen.getByRole('radio', { name: 'Главное фото 2' }))
+    expect(fetchMock).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }))
+    expect(await screen.findByRole('heading', { name: 'ЖК сохранён' })).toBeInTheDocument()
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/complexes/99/')
+    expect((fetchMock.mock.calls[0][1].body as FormData).get('primaryPhotoId')).toBe('32')
+  })
+
+  it('retains selected files and the main choice when the server rejects an upload', async () => {
+    const user = userEvent.setup()
+    mockPhotoPreviews()
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ photos: ['Недопустимое изображение.'] }, { status: 400 })))
+    renderCreateForm()
+    await fillRequiredFields(user)
+    await user.upload(screen.getByLabelText('Добавить фотографии'), new File(['broken'], 'broken.jpg', { type: 'image/jpeg' }))
+    await user.click(screen.getByRole('button', { name: 'Создать ЖК' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Недопустимое изображение.')
+    expect(screen.getByRole('radio', { name: 'Главное фото 1' })).toBeChecked()
+    expect((screen.getByLabelText('Добавить фотографии') as HTMLInputElement).files).toHaveLength(1)
+  })
+
   it('does not expose mutations to users without catalog permissions', () => {
     renderWithProviders(
       <Routes>

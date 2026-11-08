@@ -1,69 +1,89 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
-import { apiErrorMessage } from '@/api/client'
-import { selectComplexPrimaryPhoto, uploadComplexPhotos } from '@/api/queries'
 import type { RealEstateComplexDetail } from '@/api/schemas'
 
-export function ComplexPhotos({ complex, canManage }: { complex: RealEstateComplexDetail; canManage: boolean }) {
-  const [files, setFiles] = useState<File[]>([])
-  const fileInput = useRef<HTMLInputElement>(null)
-  const queryClient = useQueryClient()
-  const mutation = useMutation({
-    mutationFn: (photoId: number | null) => photoId === null
-      ? uploadComplexPhotos(complex.id, files)
-      : selectComplexPrimaryPhoto(complex.id, photoId),
-    onSuccess: async (updated) => {
-      setFiles([])
-      if (fileInput.current) fileInput.current.value = ''
-      queryClient.setQueryData(['real-estate-complex', complex.id], updated)
-      await queryClient.invalidateQueries({ predicate: (query) => new Set([
-        'homepage-complexes', 'real-estate-complexes', 'real-estate-complex', 'homepage', 'overview',
-      ]).has(String(query.queryKey[0])) })
-    },
-  })
-  const photos = complex.photos ?? []
+import { complexPhotoItems } from './photoItems'
+
+export function ComplexPhotos({ complex }: { complex: RealEstateComplexDetail }) {
+  const photos = complexPhotoItems(complex)
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [isOpen, setIsOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const photo = photos[activeIndex % photos.length]
+  const move = (direction: number) => setActiveIndex((current) => (
+    (current + direction + photos.length) % photos.length
+  ))
+  const close = () => {
+    setIsOpen(false)
+    triggerRef.current?.focus()
+  }
+
+  useEffect(() => {
+    if (!isOpen) return
+    closeRef.current?.focus()
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previousOverflow }
+  }, [isOpen])
+
+  const navigation = photos.length > 1 ? (
+    <div className="complex-carousel__navigation">
+      <button type="button" className="icon-button" aria-label="Предыдущее фото" onClick={() => move(-1)}>‹</button>
+      <span role="status" aria-live="polite" aria-atomic="true">Фото {activeIndex % photos.length + 1} из {photos.length}</span>
+      <button type="button" className="icon-button" aria-label="Следующее фото" onClick={() => move(1)}>›</button>
+    </div>
+  ) : null
+
   return (
-    <section className="saved-property-card" aria-label="Фотографии ЖК">
-      <h2>Фотографии ЖК</h2>
-      <div className="complex-gallery">
-        {photos.map((photo, index) => (
-          <figure key={photo.id}>
-            <a href={photo.url} target="_blank" rel="noreferrer" aria-label={'Открыть фото ' + (index + 1)}>
-              <img src={photo.url} alt={complex.name + ' — фото ' + (index + 1)} loading="lazy" />
-            </a>
-            <figcaption>
-              {canManage ? <label>
-                <input type="radio" name="primary-complex-photo" checked={photo.isPrimary}
-                  disabled={mutation.isPending} onChange={() => mutation.mutate(photo.id)} />
-                Главное фото {index + 1}
-              </label> : photo.isPrimary ? 'Главное фото' : 'Фото ' + (index + 1)}
-            </figcaption>
-          </figure>
-        ))}
-      </div>
-      {canManage ? (
-        <form className="complex-photo-form" onSubmit={(event) => {
+    <section className="complex-photo-card" aria-label="Фотографии ЖК" aria-roledescription="карусель"
+      onKeyDown={(event) => {
+        if (photos.length < 2) return
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
           event.preventDefault()
-          if (files.length && !mutation.isPending) mutation.mutate(null)
-        }}>
-          <label>Добавить фотографии
-            <input ref={fileInput} type="file" multiple accept="image/jpeg,image/png,image/gif,image/webp"
-              disabled={mutation.isPending} onChange={(event) => {
-                setFiles(Array.from(event.target.files ?? []))
-                mutation.reset()
-              }} />
-          </label>
-          <button className="button button--secondary" type="submit" disabled={!files.length || mutation.isPending}>
-            {mutation.isPending ? 'Сохраняем…' : 'Загрузить фотографии'}
-          </button>
-          <small>Выберите несколько файлов. Главное фото отображается на главной странице.</small>
-        </form>
+          move(event.key === 'ArrowLeft' ? -1 : 1)
+        }
+      }}>
+      {photo ? <>
+        <button type="button" className="complex-carousel__image" ref={triggerRef}
+          aria-label="Увеличить фото жилого комплекса" onClick={() => setIsOpen(true)}>
+          <img src={photo.url} alt={`Жилой комплекс ${complex.name} — фото ${activeIndex % photos.length + 1}`} />
+        </button>
+        {isOpen ? null : navigation}
+      </> : (
+        <div className="complex-photo-placeholder">
+          <span aria-hidden="true">⌂</span><p>Фото жилого комплекса не загружено</p>
+        </div>
+      )}
+      {isOpen && photo ? (
+        <div className="property-image-modal" role="dialog" aria-modal="true"
+          aria-labelledby="complex-photo-modal-title"
+          onMouseDown={(event) => { if (event.currentTarget === event.target) close() }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') close()
+            if (event.key === 'Tab') {
+              const buttons = event.currentTarget.querySelectorAll<HTMLButtonElement>('button')
+              const first = buttons[0]
+              const last = buttons[buttons.length - 1]
+              if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault()
+                last?.focus()
+              } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault()
+                first?.focus()
+              }
+            }
+          }}>
+          <div className="property-image-modal__content">
+            <div className="property-image-modal__header">
+              <h2 id="complex-photo-modal-title">Фото {complex.name}</h2>
+              <button type="button" className="icon-button" ref={closeRef} aria-label="Закрыть изображение" onClick={close}>×</button>
+            </div>
+            <img src={photo.url} alt={`${complex.name} — фото ${activeIndex % photos.length + 1}`} />
+            {navigation}
+          </div>
+        </div>
       ) : null}
-      {mutation.isError ? <p role="alert" className="form-error">
-        {apiErrorMessage(mutation.error) ?? 'Не удалось сохранить фотографии.'}
-      </p> : null}
-      {mutation.isSuccess ? <p role="status">Фотографии сохранены.</p> : null}
     </section>
   )
 }

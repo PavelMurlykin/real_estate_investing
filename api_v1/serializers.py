@@ -19,7 +19,13 @@ from bank.models import (
 )
 from customer.models import Customer
 from location.models import City, District, Metro, MetroLine, Region
-from property.complex_photos import sync_legacy_complex_photo
+from property.complex_photos import (
+    MAX_COMPLEX_PHOTOS,
+    add_complex_photos,
+    complex_photo_transaction,
+    select_primary_complex_photo,
+    sync_legacy_complex_photo,
+)
 from property.models import (
     ApartmentDecoration,
     ApartmentLayout,
@@ -2844,6 +2850,19 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
     clearPhoto = serializers.BooleanField(
         write_only=True, required=False, default=False
     )
+    photos = serializers.ListField(
+        child=serializers.ImageField(
+            validators=(validate_property_image_upload,),
+        ),
+        write_only=True, required=False, allow_empty=False,
+        max_length=MAX_COMPLEX_PHOTOS,
+    )
+    primaryPhotoId = serializers.IntegerField(
+        write_only=True, required=False, min_value=1,
+    )
+    primaryPhotoIndex = serializers.IntegerField(
+        write_only=True, required=False, min_value=0,
+    )
     buildings = serializers.JSONField(required=False, write_only=True)
     metroAvailability = serializers.JSONField(required=False, write_only=True)
     isActive = serializers.BooleanField(source='is_active', required=False)
@@ -2856,6 +2875,7 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
             'name', 'description', 'developerId', 'districtId',
             'realEstateClassId', 'realEstateTypeId', 'mapLink',
             'presentationLink', 'investmentPotential', 'photo', 'clearPhoto',
+            'photos', 'primaryPhotoId', 'primaryPhotoIndex',
             'buildings', 'metroAvailability', 'isActive',
         )
         extra_kwargs = {
@@ -2972,7 +2992,63 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
                         }
                     )
         self._validate_related_identifiers(attributes)
+        self._validate_photo_selection(attributes)
         return attributes
+
+    def _validate_photo_selection(self, attributes):
+        """Validate gallery ownership and an uploaded image's primary index."""
+        primary_identifier = attributes.get('primaryPhotoId')
+        primary_index = attributes.get('primaryPhotoIndex')
+        if primary_identifier is not None and primary_index is not None:
+            raise serializers.ValidationError({
+                'primaryPhotoId': 'Выберите только одно главное фото.',
+            })
+        if primary_index is not None and primary_index >= len(
+            attributes.get('photos', [])
+        ):
+            raise serializers.ValidationError({
+                'primaryPhotoIndex': 'Выберите главное фото из новых файлов.',
+            })
+        if primary_identifier is not None and (
+            self.instance is None
+            or not self.instance.photos.filter(pk=primary_identifier).exists()
+        ):
+            raise serializers.ValidationError({
+                'primaryPhotoId': 'Фото не относится к редактируемому ЖК.',
+            })
+        if any(field in attributes for field in (
+            'photos', 'primaryPhotoId', 'primaryPhotoIndex',
+        )) and (attributes.get('photo') or attributes.get('clearPhoto')):
+            raise serializers.ValidationError({
+                'photos': 'Передайте фотографии через один вариант загрузки.',
+            })
+
+    @staticmethod
+    def _pop_gallery_data(validated_data):
+        """Separate gallery controls from model fields before persistence."""
+        return {
+            'files': validated_data.pop('photos', []),
+            'primary_identifier': validated_data.pop('primaryPhotoId', None),
+            'primary_index': validated_data.pop('primaryPhotoIndex', None),
+        }
+
+    @staticmethod
+    def _save_gallery(real_estate_complex, gallery, saved_files):
+        """Append validated files and preserve every existing gallery image."""
+        if gallery['files']:
+            try:
+                add_complex_photos(
+                    real_estate_complex, gallery['files'],
+                    primary_index=gallery['primary_index'],
+                    saved_files=saved_files,
+                )
+            except serializers.ValidationError as error:
+                raise serializers.ValidationError({'photos': error.detail}) from error
+        if gallery['primary_identifier'] is not None:
+            select_primary_complex_photo(
+                real_estate_complex, gallery['primary_identifier'],
+            )
+        real_estate_complex.refresh_from_db(fields=['photo'])
 
     def _validate_related_identifiers(self, attributes):
         """Reject child identifiers outside the edited complex."""
@@ -3029,13 +3105,15 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
         buildings = validated_data.pop('buildings', [])
         metro_availability = validated_data.pop('metroAvailability', [])
         validated_data.pop('clearPhoto', None)
-        with transaction.atomic():
+        gallery = self._pop_gallery_data(validated_data)
+        with complex_photo_transaction() as saved_files:
             real_estate_complex = super().create(validated_data)
             sync_legacy_complex_photo(real_estate_complex)
             self._sync_buildings(real_estate_complex, buildings)
             self._sync_metro_availability(
                 real_estate_complex, metro_availability
             )
+            self._save_gallery(real_estate_complex, gallery, saved_files)
         return real_estate_complex
 
     def update(self, instance, validated_data):
@@ -3049,8 +3127,10 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
         previous_photo = instance.photo if instance.photo else None
         if clear_photo and 'photo' not in validated_data:
             validated_data['photo'] = None
+        legacy_photo_changed = 'photo' in validated_data
+        gallery = self._pop_gallery_data(validated_data)
 
-        with transaction.atomic():
+        with complex_photo_transaction() as saved_files:
             real_estate_complex = super().update(instance, validated_data)
             if buildings is not missing_related_rows:
                 self._sync_buildings(real_estate_complex, buildings)
@@ -3059,7 +3139,8 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
                     real_estate_complex, metro_availability
                 )
             sync_legacy_complex_photo(real_estate_complex)
-            if previous_photo and (
+            self._save_gallery(real_estate_complex, gallery, saved_files)
+            if legacy_photo_changed and previous_photo and (
                 not real_estate_complex.photo
                 or real_estate_complex.photo.name != previous_photo.name
             ):

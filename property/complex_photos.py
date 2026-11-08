@@ -1,6 +1,7 @@
 """Gallery operations shared by uploads, imports and legacy forms."""
 
 import hashlib
+from contextlib import contextmanager
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
@@ -11,6 +12,20 @@ from .validators import validate_property_image_upload
 
 
 MAX_COMPLEX_PHOTOS = 30
+
+
+@contextmanager
+def complex_photo_transaction():
+    """Roll back database changes and new gallery files as one form save."""
+    saved_files = []
+    try:
+        with transaction.atomic():
+            yield saved_files
+    except Exception:
+        storage = RealEstateComplexPhoto._meta.get_field('image').storage
+        for name in saved_files:
+            storage.delete(name)
+        raise
 
 
 def validate_complex_photos(files):

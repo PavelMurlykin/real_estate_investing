@@ -14,6 +14,7 @@ import {
   updateRealEstateComplex,
 } from '@/api/queries'
 import { RealEstateComplexBuildingEditor } from '@/features/realEstateComplex/RealEstateComplexBuildingEditor'
+import { ComplexPhotoEditor } from '@/features/realEstateComplex/ComplexPhotoEditor'
 import { RealEstateComplexMetroEditor } from '@/features/realEstateComplex/RealEstateComplexMetroEditor'
 import {
   createBuildingRowsFromDetail,
@@ -167,8 +168,8 @@ export function RealEstateComplexFormPage() {
     createEmptyBuildingRow(),
   ])
   const [metroRows, setMetroRows] = useState<MetroAvailabilityFormRow[]>([])
-  const [photo, setPhoto] = useState<File | null>(null)
-  const [clearPhoto, setClearPhoto] = useState(false)
+  const [photos, setPhotos] = useState<File[]>([])
+  const [primarySelection, setPrimarySelection] = useState('')
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const hasInitialized = useRef(false)
   const selectedRegionIdentifier = selectedIdentifier(formState.regionId)
@@ -186,6 +187,7 @@ export function RealEstateComplexFormPage() {
         queryKey: ['real-estate-complexes'],
       })
       await queryClient.invalidateQueries({ queryKey: ['overview'] })
+      await queryClient.invalidateQueries({ queryKey: ['homepage-complexes'] })
       queryClient.setQueryData(
         ['real-estate-complex', savedComplex.id],
         savedComplex,
@@ -228,6 +230,7 @@ export function RealEstateComplexFormPage() {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (mutation.isPending) return
     const errors = validateForm(formState, buildingRows, metroRows)
     setFieldErrors(errors)
     if (Object.keys(errors).length) return
@@ -264,8 +267,12 @@ export function RealEstateComplexFormPage() {
       walkingTimeMinutes: Number(row.walkingTimeMinutes),
       isActive: row.isActive,
     }))))
-    if (photo) formData.append('photo', photo)
-    if (clearPhoto) formData.append('clearPhoto', 'true')
+    photos.forEach((photo) => formData.append('photos', photo))
+    if (primarySelection.startsWith('new:')) {
+      formData.append('primaryPhotoIndex', primarySelection.slice(4))
+    } else if (primarySelection.startsWith('existing:') && primarySelection !== 'existing:legacy') {
+      formData.append('primaryPhotoId', primarySelection.slice(9))
+    }
     mutation.mutate(formData)
   }
 
@@ -300,7 +307,6 @@ export function RealEstateComplexFormPage() {
   if (optionsQuery.isLoading || !optionsQuery.data) return <PageLoadingState />
 
   const options = optionsQuery.data
-  const existingPhotoUrl = complexQuery.data?.photoUrl ?? null
   const optionsTruncated = Object.values(options.truncated).some(Boolean)
 
   return (
@@ -484,34 +490,14 @@ export function RealEstateComplexFormPage() {
                 onChange={(event) => updateField('presentationLink', event.target.value)}
               />
             </label>
-            <div className="property-upload-card complex-photo-upload form-field--wide">
-              <h3>Фото ЖК</h3>
-              {existingPhotoUrl && !clearPhoto ? (
-                <div className="property-upload-current">
-                  <img src={existingPhotoUrl} alt="Текущее фото ЖК" />
-                  <button
-                    className="text-button text-button--danger"
-                    type="button"
-                    onClick={() => setClearPhoto(true)}
-                  >
-                    Удалить текущее
-                  </button>
-                </div>
-              ) : null}
-              <label className="form-field" htmlFor="complex-photo-field">
-                Новый файл
-                <input
-                  id="complex-photo-field"
-                  type="file"
-                  accept="image/jpeg,image/png,image/gif,image/webp"
-                  onChange={(event) => {
-                    setPhoto(event.target.files?.[0] ?? null)
-                    if (event.target.files?.[0]) setClearPhoto(false)
-                  }}
-                />
-              </label>
-              <FieldError id="complex-photo-error" message={fieldErrors.photo} />
-            </div>
+            <ComplexPhotoEditor complex={complexQuery.data} files={photos}
+              primarySelection={primarySelection} onPrimaryChange={setPrimarySelection}
+              disabled={mutation.isPending}
+              error={fieldErrors.photos || fieldErrors.primaryPhotoId || fieldErrors.primaryPhotoIndex || fieldErrors.photo}
+              onFilesChange={(files) => {
+                setPhotos(files)
+                setFieldErrors((current) => ({ ...current, photos: '', primaryPhotoId: '', primaryPhotoIndex: '' }))
+              }} />
           </div>
         </section>
 
