@@ -154,7 +154,12 @@ export function RealEstateComplexDetailPage() {
                 {realEstateComplex.metroAvailability.filter((row) => row.isActive).map((row) => (
                   <span key={row.id}>
                     <TransportIcon mode={row.transportAccessibilityType} />
-                    {row.station} ({row.line}) · {row.walkingTimeMinutes} мин.
+                    <span className="complex-metro-summary__station">
+                      <span className="complex-metro-summary__line" role="img"
+                        aria-label={`Линия ${row.line}`} title={row.line}
+                        style={{ backgroundColor: row.lineColor }} />
+                      <span>{row.station} · {row.walkingTimeMinutes} мин.</span>
+                    </span>
                   </span>
                 ))}
                 {realEstateComplex.metroAvailability.length === 0 ? 'Не заполнена' : null}

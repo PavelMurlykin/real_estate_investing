@@ -5123,4 +5123,6 @@ textarea:focus-visible {
 .complex-photo-card .property-image-modal__content > img { max-height: max(100px, calc(100dvh - 250px)); }
 .complex-metro-summary { display: grid; gap: .4rem; }
 .complex-metro-summary > span { display: flex; align-items: center; gap: .4rem; }
+.complex-metro-summary__station { display: inline-flex; align-items: center; gap: .4rem; min-width: 0; }
+.complex-metro-summary__line { width: 4px; min-height: 20px; align-self: stretch; flex-shrink: 0; border-radius: 2px; }
 .transport-icon { display: inline-flex; vertical-align: middle; flex-shrink: 0; }

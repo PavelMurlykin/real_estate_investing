@@ -94,7 +94,7 @@ For roles and operation see `role_model.md`, `application_initial_setup.md` and 
 
 ## Residential complex catalog and photos
 
-The Residential Complexes page searches while typing. Filters cover developer, city, class and property type, with a reset control. The project name opens its detail page. The main information block lists metro stations, lines and travel times. The walking icon indicates access on foot, the vehicle icon indicates transport, and the train icon indicates suburban rail.
+The Residential Complexes page searches while typing. Filters cover developer, city, class and property type, with a reset control. The project name opens its detail page. The main information block lists metro stations and travel times. A stripe before each station name uses its line's color. The line name is available by hovering over the stripe and to screen readers. The walking icon indicates access on foot, the vehicle icon indicates transport, and the train icon indicates suburban rail.
 
 All photos on the complex detail page appear in one carousel in the main block. Use the previous and next photo buttons or the arrow keys while focus is inside the carousel. Clicking a photo opens an enlarged view with the same navigation; Escape closes it.
 
