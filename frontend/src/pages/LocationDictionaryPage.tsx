@@ -257,7 +257,8 @@ function LocationDictionaryEditor({
   }
 
   const requiresRegion = dictionaryKey !== 'regions'
-  const requiresCity = dictionaryKey === 'districts' || dictionaryKey === 'metro'
+  const isMetro = dictionaryKey === 'metro'
+  const requiresCity = dictionaryKey === 'districts' || isMetro
 
   return (
     <aside
@@ -310,6 +311,7 @@ function LocationDictionaryEditor({
 
         {requiresRegion ? (
           <RemoteSelect
+            searchable={isMetro}
             dictionary="regions" label={"Регион"}
             value={formState.regionId} onChange={(value) => updateRegion(value)}
             initialOptions={(optionsQuery.data?.regions ?? []).map((option) => ({ id: option.id, label: option.name }))}
@@ -322,6 +324,7 @@ function LocationDictionaryEditor({
 
         {requiresCity ? (
           <RemoteSelect
+            searchable={isMetro}
             dictionary="cities" label={"Город"}
             value={formState.cityId} onChange={(value) => updateCity(value)}
             initialOptions={(optionsQuery.data?.cities ?? []).map((option) => ({ id: option.id, label: option.name }))}
@@ -333,8 +336,8 @@ function LocationDictionaryEditor({
           />
         ) : null}
 
-        {dictionaryKey === 'metro' ? (
-          <RemoteSelect
+        {isMetro ? (
+          <RemoteSelect searchable
             dictionary="metro-lines" label={"Линия метро"}
             value={formState.metroLineId} onChange={(value) => updateFormField(
                 'metroLineId',
@@ -353,7 +356,9 @@ function LocationDictionaryEditor({
           Boolean,
         ) ? (
           <p className="field-hint">
-            Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».
+            {isMetro
+              ? 'Введите текст в поле выбора. Остальные варианты подгружаются при прокрутке списка.'
+              : 'Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».'}
           </p>
         ) : null}
 
@@ -387,9 +392,11 @@ function LocationDictionaryEditor({
               >
                 Отмена
               </Link>
-              <LegacyLink className="text-link" href={entry.legacyEditUrl}>
-                Django-форма
-              </LegacyLink>
+              {!isMetro ? (
+                <LegacyLink className="text-link" href={entry.legacyEditUrl}>
+                  Django-форма
+                </LegacyLink>
+              ) : null}
             </>
           ) : null}
         </div>
@@ -591,6 +598,7 @@ export function LocationDictionaryPage() {
   const showRegion = dictionaryKey !== 'regions'
   const showCity = dictionaryKey === 'districts' || dictionaryKey === 'metro'
   const showMetroLine = dictionaryKey === 'metro'
+  const showRegionColumn = showRegion && !showMetroLine
   const legacyCatalogUrl = `/locations/?model=${configuration.legacyKey}`
 
   return (
@@ -601,11 +609,13 @@ export function LocationDictionaryPage() {
           <h1>Локации</h1>
           <p>{configuration.description}</p>
         </div>
-        <div className="page-header__actions">
-          <LegacyLink className="button button--secondary" href={legacyCatalogUrl}>
-            Прежняя версия
-          </LegacyLink>
-        </div>
+        {!showMetroLine ? (
+          <div className="page-header__actions">
+            <LegacyLink className="button button--secondary" href={legacyCatalogUrl}>
+              Прежняя версия
+            </LegacyLink>
+          </div>
+        ) : null}
       </header>
 
       <nav className="dictionary-tabs" aria-label="Справочники локаций">
@@ -698,10 +708,10 @@ export function LocationDictionaryPage() {
                       {dictionaryKey === 'regions'
                         ? <SortableHeader field="code" defaultOrdering="default">Код</SortableHeader>
                         : null}
-                      {showRegion ? <SortableHeader field="region" defaultOrdering="default">Регион</SortableHeader> : null}
+                      {showRegionColumn ? <SortableHeader field="region" defaultOrdering="default">Регион</SortableHeader> : null}
                       {showCity ? <SortableHeader field="city" defaultOrdering="default">Город</SortableHeader> : null}
                       {showMetroLine ? <SortableHeader field="metroLine" defaultOrdering="default">Линия</SortableHeader> : null}
-                      <SortableHeader field="usageCount" defaultOrdering="default">Используется</SortableHeader>
+                      {!showMetroLine ? <SortableHeader field="usageCount" defaultOrdering="default">Используется</SortableHeader> : null}
 
                       {canManageCatalogs ? (
                         <th scope="col">
@@ -717,7 +727,7 @@ export function LocationDictionaryPage() {
                         {dictionaryKey === 'regions'
                           ? <td>{entry.code ?? '—'}</td>
                           : null}
-                        {showRegion
+                        {showRegionColumn
                           ? <td>{entry.region?.name ?? '—'}</td>
                           : null}
                         {showCity
@@ -726,7 +736,7 @@ export function LocationDictionaryPage() {
                         {showMetroLine
                           ? <td><MetroLineLabel entry={entry} /></td>
                           : null}
-                        <td>{formatInteger(entry.usageCount)}</td>
+                        {!showMetroLine ? <td>{formatInteger(entry.usageCount)}</td> : null}
 
                         {canManageCatalogs ? (
                           <td>
@@ -774,7 +784,7 @@ export function LocationDictionaryPage() {
                       {entry.code ? (
                         <div><dt>Код</dt><dd>{entry.code}</dd></div>
                       ) : null}
-                      {entry.region ? (
+                      {showRegionColumn && entry.region ? (
                         <div><dt>Регион</dt><dd>{entry.region.name}</dd></div>
                       ) : null}
                       {entry.city ? (
@@ -786,10 +796,12 @@ export function LocationDictionaryPage() {
                           <dd><MetroLineLabel entry={entry} /></dd>
                         </div>
                       ) : null}
-                      <div>
-                        <dt>Используется</dt>
-                        <dd>{formatInteger(entry.usageCount)}</dd>
-                      </div>
+                      {!showMetroLine ? (
+                        <div>
+                          <dt>Используется</dt>
+                          <dd>{formatInteger(entry.usageCount)}</dd>
+                        </div>
+                      ) : null}
                     </dl>
                     {canManageCatalogs ? (
                       <div className="row-actions">

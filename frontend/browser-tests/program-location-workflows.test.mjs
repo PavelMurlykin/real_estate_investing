@@ -195,11 +195,16 @@ for (const width of [360, 1280]) {
     await openRoute(page, 'locations/metro')
     const station = await saveLocation(page, 'metro', async () => {
       await page.getByLabel(/^Название станции/).fill(stationName)
-      await page.getByLabel(/^Регион \*/).selectOption({ label: 'E2E регион' })
-      await page.getByLabel(/^Город \*/).selectOption({ label: 'E2E город' })
-      await page.getByLabel('Линия метро *', { exact: true }).selectOption(
-        String(fixtureManifest.metroLineId),
-      )
+      for (const [name, choice] of [
+        ['Регион *', 'E2E регион'],
+        ['Город *', 'E2E город'],
+        ['Линия метро *', 'E2E линия'],
+      ]) {
+        const field = page.getByRole('combobox', { name, exact: true })
+        await field.click()
+        await field.fill(choice)
+        await page.getByRole('option', { name: choice, exact: true }).click()
+      }
     })
     trackCleanup(`/api/v1/location-dictionaries/metro/${station.id}/`)
     await openRoute(page, `locations/metro/${station.id}/edit`)

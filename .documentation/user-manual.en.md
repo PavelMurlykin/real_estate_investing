@@ -12,6 +12,8 @@ After updating the Docker build, reload the browser page to load the updated int
 
 The catalog contains properties, developers, company groups and residential complexes. Property details show attributes, images and a link to the mortgage calculator. Catalog moderators manage property and location dictionaries. Banks, mortgage programs, developer programs and the key rate have separate sections. Imports and external updates require the appropriate permissions.
 
+The Metro dictionary lists each station, its city and its line. The list can be filtered by region. When adding or editing a station, type in the region, city or line field and choose a match from its dropdown. Changing the region clears the city and line. Changing the city clears the line.
+
 The customer section requires authentication. A customer profile contains contacts, preferences, budget and linked market/tranche calculations. Financial capacity is an initial estimate. Select linked calculations for a combined Word report or unlink them; deleting a customer does not delete the calculations themselves.
 
 ## Mortgage calculations

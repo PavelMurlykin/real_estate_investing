@@ -68,6 +68,11 @@ const options: LocationDictionaryOptions = {
     name: 'Сокольническая',
     color: '#D92B2B',
     cityId: 2,
+  }, {
+    id: 7,
+    name: 'Арбатско-Покровская',
+    color: '#0078BF',
+    cityId: 2,
   }],
   truncated: {
     regions: false,
@@ -134,6 +139,13 @@ function renderLocationPage(
     listResponse(entry),
   )
   queryClient.setQueryData(['location-dictionary-options', ''], rootOptions)
+  if (dictionaryKey === 'metro') {
+    queryClient.setQueryData(['location-dictionary-options', 'regionId=1'], {
+      ...options, metroLines: [],
+    })
+    queryClient.setQueryData(['location-dictionary-options', 'regionId=1&cityId=2'], options)
+    queryClient.setQueryData(['location-dictionary', dictionaryKey, entry.id], entry)
+  }
   return renderWithProviders(
     <Routes>
       <Route
@@ -188,7 +200,12 @@ describe('LocationDictionaryPage', () => {
       'href',
       '/locations/districts',
     )
-    expect(screen.getByRole('table')).toHaveAccessibleName('Метро')
+    const table = within(screen.getByRole('table', { name: 'Метро' }))
+    expect(table.getAllByRole('columnheader')).toHaveLength(3)
+    expect(table.getByRole('columnheader', { name: 'Город' })).toBeInTheDocument()
+    expect(table.queryByRole('columnheader', { name: 'Регион' })).not.toBeInTheDocument()
+    expect(table.queryByRole('columnheader', { name: 'Используется' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Прежняя версия' })).not.toBeInTheDocument()
     expect(screen.getAllByText('Охотный Ряд').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Сокольническая').length).toBeGreaterThan(0)
     expect(screen.getByLabelText('Регион')).toHaveValue('Москва')
@@ -196,6 +213,66 @@ describe('LocationDictionaryPage', () => {
     expect(screen.getByLabelText('Линия метро')).toHaveValue('Сокольническая')
     expect(screen.queryByRole('button', { name: 'Сохранить' }))
       .not.toBeInTheDocument()
+  })
+
+  it.each(['POST', 'PATCH'])('selects a station line through a searchable editor and saves with %s', async (method) => {
+    const user = userEvent.setup()
+    const isEditing = method === 'PATCH'
+    const line = options.metroLines[1]
+    const fetchMock = vi.fn<typeof fetch>(async (input, requestOptions) => {
+      if (requestOptions?.method === method) {
+        return Response.json({ ...metroEntry, metroLine: line, name: 'Тестовая станция' }, {
+          status: isEditing ? 200 : 201,
+        })
+      }
+      const path = String(input)
+      if (path.includes('/catalog-options/')) {
+        const choices = path.includes('/regions/') ? options.regions
+          : path.includes('/cities/') ? options.cities : options.metroLines
+        return Response.json({ page: 1, nextPage: null, totalCount: choices.length,
+          selected: [], results: choices.map((choice) => ({ id: choice.id, label: choice.name })),
+        })
+      }
+      return Response.json(listResponse(metroEntry))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderLocationPage('metro', metroEntry, managerSession, isEditing ? '/locations/metro/5/edit' : '/locations/metro')
+
+    const editor = within(screen.getByRole('complementary', {
+      name: isEditing ? 'Редактирование записи' : 'Добавить станцию',
+    }))
+    const region = editor.getByRole('combobox', { name: 'Регион *' })
+    const city = editor.getByRole('combobox', { name: 'Город *' })
+    const metroLine = editor.getByRole('combobox', { name: 'Линия метро *' })
+    expect(editor.queryByRole('searchbox')).not.toBeInTheDocument()
+    expect(editor.queryByRole('link', { name: 'Django-форма' })).not.toBeInTheDocument()
+    if (isEditing) {
+      expect(metroLine).toHaveValue('Сокольническая')
+    } else {
+      expect(city).toBeDisabled()
+      expect(metroLine).toBeDisabled()
+    }
+    await user.click(region)
+    await user.click(editor.getByRole('option', { name: 'Москва' }))
+    await user.click(city)
+    await user.click(editor.getByRole('option', { name: 'Москва' }))
+    if (isEditing) expect(metroLine).toHaveValue('Сокольническая')
+    await user.click(metroLine)
+    await user.type(metroLine, 'Арбат')
+    expect(editor.queryByRole('option', { name: 'Сокольническая' })).not.toBeInTheDocument()
+    await user.keyboard('{Enter}')
+    expect(metroLine).toHaveValue(line.name)
+    const name = editor.getByLabelText('Название станции *')
+    await user.clear(name)
+    await user.type(name, 'Тестовая станция')
+    await user.click(editor.getByRole('button', { name: 'Сохранить' }))
+
+    const path = isEditing ? '/api/v1/location-dictionaries/metro/5/' : '/api/v1/location-dictionaries/metro/'
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(path, expect.objectContaining({ method })))
+    const saveCall = fetchMock.mock.calls.find((call) => call[1]?.method === method)
+    expect(JSON.parse(saveCall?.[1]?.body as string)).toEqual({
+      name: 'Тестовая станция', isActive: true, metroLineId: line.id,
+    })
   })
 
   it('creates a normalized region through the authoritative API', async () => {
