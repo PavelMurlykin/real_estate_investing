@@ -28,6 +28,14 @@ const regionEntry: LocationDictionaryEntry = {
   legacyEditUrl: '/locations/?model=region&edit=1',
 }
 
+const cityEntry: LocationDictionaryEntry = {
+  ...regionEntry,
+  id: 2,
+  code: null,
+  region: { id: 1, name: 'Москва' },
+  legacyEditUrl: '/locations/?model=city&edit=2',
+}
+
 const districtEntry: LocationDictionaryEntry = {
   id: 4,
   name: 'Центральный',
@@ -139,13 +147,15 @@ function renderLocationPage(
     listResponse(entry),
   )
   queryClient.setQueryData(['location-dictionary-options', ''], rootOptions)
-  if (dictionaryKey === 'metro') {
+  if (entry.region) {
     queryClient.setQueryData(['location-dictionary-options', 'regionId=1'], {
       ...options, metroLines: [],
     })
-    queryClient.setQueryData(['location-dictionary-options', 'regionId=1&cityId=2'], options)
-    queryClient.setQueryData(['location-dictionary', dictionaryKey, entry.id], entry)
   }
+  if (entry.city) {
+    queryClient.setQueryData(['location-dictionary-options', 'regionId=1&cityId=2'], options)
+  }
+  queryClient.setQueryData(['location-dictionary', dictionaryKey, entry.id], entry)
   return renderWithProviders(
     <Routes>
       <Route
@@ -301,6 +311,8 @@ describe('LocationDictionaryPage', () => {
     vi.stubGlobal('fetch', fetchMock)
     renderLocationPage('regions', regionEntry, managerSession)
 
+    expect(screen.queryByText('Используется', { exact: true })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Прежняя версия' })).not.toBeInTheDocument()
     await user.type(
       screen.getByLabelText('Название региона *'),
       '  Тверская область  ',
@@ -324,78 +336,60 @@ describe('LocationDictionaryPage', () => {
     })
   })
 
-  it('prefills and updates a nested district with the Django fallback', async () => {
+  it.each([
+    { dictionaryKey: 'cities', entry: cityEntry, nameLabel: 'Название города *', parent: { regionId: 1 } },
+    { dictionaryKey: 'districts', entry: districtEntry, nameLabel: 'Название района *', parent: { cityId: 2 } },
+  ] as const)('prefills and updates $dictionaryKey through searchable fields', async ({
+    dictionaryKey, entry, nameLabel, parent,
+  }) => {
     const user = userEvent.setup()
-    const queryClient = createTestQueryClient()
-    queryClient.setQueryData(['session'], managerSession)
-    queryClient.setQueryData(
-      ['location-dictionaries', 'districts', ''],
-      listResponse(districtEntry),
-    )
-    queryClient.setQueryData(['location-dictionary-options', ''], rootOptions)
-    queryClient.setQueryData(
-      ['location-dictionary-options', 'regionId=1&cityId=2'],
-      options,
-    )
-    queryClient.setQueryData(
-      ['location-dictionary', 'districts', 4],
-      districtEntry,
-    )
-    const fetchMock = vi.fn<typeof fetch>((_input, requestOptions) => {
+    const updatedName = `${entry.name} тест`
+    const fetchMock = vi.fn<typeof fetch>(async (input, requestOptions) => {
       if (requestOptions?.method === 'PATCH') {
-        return Promise.resolve(new Response(JSON.stringify({
-          ...districtEntry,
-          name: 'Центральный округ',
-        }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }))
+        return Response.json({ ...entry, name: updatedName })
       }
-      return Promise.resolve(new Response(JSON.stringify(
-        listResponse(districtEntry),
-      ), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }))
+      const path = String(input)
+      if (path.includes('/catalog-options/')) {
+        const choices = path.includes('/regions/') ? options.regions : options.cities
+        return Response.json({ page: 1, nextPage: null, totalCount: choices.length,
+          selected: [], results: choices.map(({ id, name }) => ({ id, label: name })),
+        })
+      }
+      return Response.json(listResponse(entry))
     })
     vi.stubGlobal('fetch', fetchMock)
-    renderWithProviders(
-      <Routes>
-        <Route
-          path="/locations/:dictionaryKey"
-          element={<LocationDictionaryPage />}
-        />
-        <Route
-          path="/locations/:dictionaryKey/:entryId/edit"
-          element={<LocationDictionaryPage />}
-        />
-      </Routes>,
-      {
-        initialRoute: '/locations/districts/4/edit',
-        queryClient,
-      },
-    )
+    renderLocationPage(dictionaryKey, entry, managerSession, `/locations/${dictionaryKey}/${entry.id}/edit`)
 
-    const nameInput = await screen.findByLabelText('Название района *')
-    expect(nameInput).toHaveValue('Центральный')
-    expect(screen.getByLabelText('Регион *')).toHaveValue('1')
-    expect(screen.getByLabelText('Город *')).toHaveValue('2')
-    expect(screen.getByRole('link', { name: 'Django-форма' }))
-      .toHaveAttribute('href', `${districtEntry.legacyEditUrl}&legacy=1`)
+    const editor = within(screen.getByRole('complementary', { name: 'Редактирование записи' }))
+    const region = editor.getByRole('combobox', { name: 'Регион *' })
+    expect(region).toHaveValue('Москва')
+    expect(editor.queryByRole('searchbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Прежняя версия' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Django-форма' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Используется', { exact: true })).not.toBeInTheDocument()
+    await user.click(region)
+    await user.clear(region)
+    await user.type(region, 'Моск')
+    await user.click(editor.getByRole('option', { name: 'Москва' }))
+    if (dictionaryKey === 'districts') {
+      expect(editor.getByRole('combobox', { name: 'Город *' })).toHaveValue('Москва')
+    }
+    const nameInput = editor.getByLabelText(nameLabel)
+    expect(nameInput).toHaveValue(entry.name)
     await user.clear(nameInput)
-    await user.type(nameInput, 'Центральный округ')
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await user.type(nameInput, updatedName)
+    await user.click(editor.getByRole('button', { name: 'Сохранить' }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-      '/api/v1/location-dictionaries/districts/4/',
+      `/api/v1/location-dictionaries/${dictionaryKey}/${entry.id}/`,
       expect.objectContaining({ method: 'PATCH' }),
     ))
     const patchCall = fetchMock.mock.calls.find(
       (call) => call[1]?.method === 'PATCH',
     )
     expect(JSON.parse(patchCall?.[1]?.body as string)).toMatchObject({
-      name: 'Центральный округ',
-      cityId: 2,
+      name: updatedName,
+      ...parent,
     })
   })
 

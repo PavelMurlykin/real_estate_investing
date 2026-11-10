@@ -1,5 +1,4 @@
 import { ResetFilters } from '@/shared/ui/ResetFilters'
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
@@ -31,7 +30,6 @@ import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState
 
 type LocationDictionaryConfiguration = {
   key: LocationDictionaryKey
-  legacyKey: string
   title: string
   singular: string
   nameLabel: string
@@ -52,7 +50,6 @@ type FieldErrors = Record<string, string>
 const locationDictionaryConfigurations: LocationDictionaryConfiguration[] = [
   {
     key: 'regions',
-    legacyKey: 'region',
     title: 'Регионы',
     singular: 'регион',
     nameLabel: 'Название региона',
@@ -60,7 +57,6 @@ const locationDictionaryConfigurations: LocationDictionaryConfiguration[] = [
   },
   {
     key: 'cities',
-    legacyKey: 'city',
     title: 'Города',
     singular: 'город',
     nameLabel: 'Название города',
@@ -68,7 +64,6 @@ const locationDictionaryConfigurations: LocationDictionaryConfiguration[] = [
   },
   {
     key: 'districts',
-    legacyKey: 'district',
     title: 'Районы',
     singular: 'район',
     nameLabel: 'Название района',
@@ -76,7 +71,6 @@ const locationDictionaryConfigurations: LocationDictionaryConfiguration[] = [
   },
   {
     key: 'metro',
-    legacyKey: 'metro',
     title: 'Метро',
     singular: 'станцию',
     nameLabel: 'Название станции',
@@ -311,7 +305,7 @@ function LocationDictionaryEditor({
 
         {requiresRegion ? (
           <RemoteSelect
-            searchable={isMetro}
+            searchable
             dictionary="regions" label={"Регион"}
             value={formState.regionId} onChange={(value) => updateRegion(value)}
             initialOptions={(optionsQuery.data?.regions ?? []).map((option) => ({ id: option.id, label: option.name }))}
@@ -324,7 +318,7 @@ function LocationDictionaryEditor({
 
         {requiresCity ? (
           <RemoteSelect
-            searchable={isMetro}
+            searchable
             dictionary="cities" label={"Город"}
             value={formState.cityId} onChange={(value) => updateCity(value)}
             initialOptions={(optionsQuery.data?.cities ?? []).map((option) => ({ id: option.id, label: option.name }))}
@@ -356,9 +350,7 @@ function LocationDictionaryEditor({
           Boolean,
         ) ? (
           <p className="field-hint">
-            {isMetro
-              ? 'Введите текст в поле выбора. Остальные варианты подгружаются при прокрутке списка.'
-              : 'Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».'}
+            Введите текст в поле выбора. Остальные варианты подгружаются при прокрутке списка.
           </p>
         ) : null}
 
@@ -385,19 +377,12 @@ function LocationDictionaryEditor({
             {saveMutation.isPending ? 'Сохраняем…' : 'Сохранить'}
           </button>
           {isEditing ? (
-            <>
-              <Link
-                className="button button--secondary"
-                to={`/locations/${dictionaryKey}`}
-              >
-                Отмена
-              </Link>
-              {!isMetro ? (
-                <LegacyLink className="text-link" href={entry.legacyEditUrl}>
-                  Django-форма
-                </LegacyLink>
-              ) : null}
-            </>
+            <Link
+              className="button button--secondary"
+              to={`/locations/${dictionaryKey}`}
+            >
+              Отмена
+            </Link>
           ) : null}
         </div>
       </form>
@@ -599,7 +584,6 @@ export function LocationDictionaryPage() {
   const showCity = dictionaryKey === 'districts' || dictionaryKey === 'metro'
   const showMetroLine = dictionaryKey === 'metro'
   const showRegionColumn = showRegion && !showMetroLine
-  const legacyCatalogUrl = `/locations/?model=${configuration.legacyKey}`
 
   return (
     <div className="page-stack location-dictionary-page">
@@ -609,13 +593,6 @@ export function LocationDictionaryPage() {
           <h1>Локации</h1>
           <p>{configuration.description}</p>
         </div>
-        {!showMetroLine ? (
-          <div className="page-header__actions">
-            <LegacyLink className="button button--secondary" href={legacyCatalogUrl}>
-              Прежняя версия
-            </LegacyLink>
-          </div>
-        ) : null}
       </header>
 
       <nav className="dictionary-tabs" aria-label="Справочники локаций">
@@ -711,7 +688,6 @@ export function LocationDictionaryPage() {
                       {showRegionColumn ? <SortableHeader field="region" defaultOrdering="default">Регион</SortableHeader> : null}
                       {showCity ? <SortableHeader field="city" defaultOrdering="default">Город</SortableHeader> : null}
                       {showMetroLine ? <SortableHeader field="metroLine" defaultOrdering="default">Линия</SortableHeader> : null}
-                      {!showMetroLine ? <SortableHeader field="usageCount" defaultOrdering="default">Используется</SortableHeader> : null}
 
                       {canManageCatalogs ? (
                         <th scope="col">
@@ -736,7 +712,6 @@ export function LocationDictionaryPage() {
                         {showMetroLine
                           ? <td><MetroLineLabel entry={entry} /></td>
                           : null}
-                        {!showMetroLine ? <td>{formatInteger(entry.usageCount)}</td> : null}
 
                         {canManageCatalogs ? (
                           <td>
@@ -794,12 +769,6 @@ export function LocationDictionaryPage() {
                         <div>
                           <dt>Линия</dt>
                           <dd><MetroLineLabel entry={entry} /></dd>
-                        </div>
-                      ) : null}
-                      {!showMetroLine ? (
-                        <div>
-                          <dt>Используется</dt>
-                          <dd>{formatInteger(entry.usageCount)}</dd>
                         </div>
                       ) : null}
                     </dl>

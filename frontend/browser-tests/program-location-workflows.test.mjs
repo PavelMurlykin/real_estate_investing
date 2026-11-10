@@ -45,6 +45,13 @@ async function deleteDetailRecord(page, apiPath, listHeading) {
   await page.getByRole('heading', { name: listHeading, level: 1 }).waitFor()
 }
 
+async function selectLocationChoice(page, name, choice) {
+  const field = page.getByRole('combobox', { name, exact: true })
+  await field.click()
+  await field.fill(choice)
+  await page.getByRole('option', { name: choice, exact: true }).click()
+}
+
 async function saveLocation(page, dictionaryKey, fields, identifier = null) {
   const apiPath = identifier
     ? `/api/v1/location-dictionaries/${dictionaryKey}/${identifier}/`
@@ -179,15 +186,15 @@ for (const width of [360, 1280]) {
     await openRoute(page, 'locations/cities')
     const city = await saveLocation(page, 'cities', async () => {
       await page.getByLabel(/^Название города/).fill(cityName)
-      await page.getByLabel(/^Регион \*/).selectOption(String(region.id))
+      await selectLocationChoice(page, 'Регион *', regionName)
     })
     trackCleanup(`/api/v1/location-dictionaries/cities/${city.id}/`)
 
     await openRoute(page, 'locations/districts')
     const district = await saveLocation(page, 'districts', async () => {
       await page.getByLabel(/^Название района/).fill(districtName)
-      await page.getByLabel(/^Регион \*/).selectOption(String(region.id))
-      await page.getByLabel(/^Город \*/).selectOption(String(city.id))
+      await selectLocationChoice(page, 'Регион *', regionName)
+      await selectLocationChoice(page, 'Город *', cityName)
     })
     trackCleanup(`/api/v1/location-dictionaries/districts/${district.id}/`)
     assert.equal(district.city.id, city.id)
@@ -200,10 +207,7 @@ for (const width of [360, 1280]) {
         ['Город *', 'E2E город'],
         ['Линия метро *', 'E2E линия'],
       ]) {
-        const field = page.getByRole('combobox', { name, exact: true })
-        await field.click()
-        await field.fill(choice)
-        await page.getByRole('option', { name: choice, exact: true }).click()
+        await selectLocationChoice(page, name, choice)
       }
     })
     trackCleanup(`/api/v1/location-dictionaries/metro/${station.id}/`)
