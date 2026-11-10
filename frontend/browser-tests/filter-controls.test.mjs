@@ -3,6 +3,36 @@ import { test } from 'node:test'
 import { baseUrl, createPage, screenshot } from './helpers.mjs'
 
 for (const width of [360, 1280]) {
+  test(`a failed dictionary can be retried with the keyboard at ${width}px`, async (context) => {
+    const page = await createPage(context, { width, height: 900 })
+    const cityOptions = '**/api/v1/catalog-options/cities/**'
+    const payload = {
+      page: 1, nextPage: null, totalCount: 1,
+      results: [{ id: 1, label: 'Тестовый город' }], selected: [],
+    }
+    let recovered = false
+    await page.route(cityOptions, (route) => recovered
+      ? route.fulfill({ status: 200, json: payload })
+      : route.fulfill({ status: 503, json: { detail: 'Тестовая ошибка' } }))
+
+    await page.goto(new URL('/app/properties', baseUrl).href)
+    const city = page.getByRole('combobox', { name: 'Город', exact: true })
+    await city.focus()
+    const retry = page.getByRole('button', { name: 'Повторить загрузку справочника', exact: true })
+    await retry.waitFor()
+    await page.keyboard.press('Tab')
+    assert.equal(await retry.and(page.locator(':focus')).count(), 1)
+    await screenshot(page, `dictionary-retry-${width}.png`)
+    recovered = true
+    await page.keyboard.press('Enter')
+    const list = page.getByRole('listbox', { name: 'Варианты: Город' })
+    await list.getByRole('option', { name: 'Тестовый город', exact: true }).waitFor()
+    assert.equal(await city.and(page.locator(':focus')).count(), 1)
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('Enter')
+    await page.waitForURL((url) => url.searchParams.get('city') === '1')
+  })
+
   test(`reference filters combine search and choice, clear independently and reset at ${width}px`, async (context) => {
     const page = await createPage(context, { width, height: 1000 })
     const calls = new Set()

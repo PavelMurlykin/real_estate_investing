@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { RealEstateComplexDetail, Session } from '@/api/schemas'
 import { createTestQueryClient, renderWithProviders } from '@/test/render'
@@ -99,6 +99,20 @@ function renderDetail(session?: Session, detail = complexDetail) {
 }
 
 describe('RealEstateComplexDetailPage', () => {
+  beforeEach(() => {
+    // The browser tests exercise native modality and Escape handling.
+    Object.defineProperties(HTMLDialogElement.prototype, {
+      showModal: {
+        configurable: true,
+        value(this: HTMLDialogElement) { this.setAttribute('open', '') },
+      },
+      close: {
+        configurable: true,
+        value(this: HTMLDialogElement) { this.removeAttribute('open') },
+      },
+    })
+  })
+
   it('shows the public card, related rows, and accessible photo dialog', async () => {
     const user = userEvent.setup()
     renderDetail()
@@ -171,26 +185,39 @@ describe('RealEstateComplexDetailPage', () => {
     expect(screen.queryByRole('button', { name: 'Увеличить фото жилого комплекса' })).not.toBeInTheDocument()
   })
 
-  it('shows management actions and a linked-object conflict', async () => {
+  it('keeps focus inside the deletion dialog during a request and recovers from a conflict', async () => {
     const user = userEvent.setup()
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ detail: 'Связаны объекты.' }), {
-        status: 409,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    ))
+    let resolveDeletion: (response: Response) => void = () => undefined
+    const response = new Promise<Response>((resolve) => { resolveDeletion = resolve })
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(response))
     renderDetail(managerSession)
 
     expect(screen.getByRole('link', { name: 'Редактировать' }))
       .toHaveAttribute('href', '/complexes/7/edit')
-    await user.click(screen.getByRole('button', { name: 'Удалить' }))
-    await user.click(within(screen.getByRole('alertdialog')).getByRole(
-      'button',
-      { name: 'Удалить' },
-    ))
+    const trigger = screen.getByRole('button', { name: 'Удалить' })
+    await user.click(trigger)
+    const dialog = within(screen.getByRole('alertdialog'))
+    const cancel = dialog.getByRole('button', { name: 'Отмена' })
+    expect(cancel).toHaveFocus()
+    await user.tab({ shift: true })
+    expect(dialog.getByRole('button', { name: 'Удалить' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    const heading = dialog.getByRole('heading')
+    expect(heading).toHaveFocus()
+    await user.tab()
+    expect(heading).toHaveFocus()
+    resolveDeletion(new Response(JSON.stringify({ detail: 'Связаны объекты.' }), {
+      status: 409,
+      headers: { 'Content-Type': 'application/json' },
+    }))
 
     expect(await screen.findByText(
       'ЖК нельзя удалить, пока с его корпусами связаны объекты.',
     )).toBeInTheDocument()
+    await user.tab()
+    expect(cancel).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
   })
 })

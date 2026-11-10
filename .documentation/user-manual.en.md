@@ -20,6 +20,8 @@ The customer section requires authentication. A customer profile contains contac
 
 Select a property and enter its price, discount/markup, down payment, date, term and rate. Percentages and rubles synchronize using the most recently edited value. Market mortgages support a grace period; tranche mortgages support one to five tranches, with the last receiving the remaining amount. A button expands the schedule beyond the first 12 payments.
 
+When you open the calculator from a property link, calculation becomes available after the property loads. If loading fails, use “Повторить загрузку объекта”, select another property, or enter it manually.
+
 Authenticated users can save calculations for a selected or manually entered property. “Заполнить объект вручную” opens city, district, developer, complex, building, layout and decoration selectors, plus apartment number, area and floor fields. Dictionaries support search while typing and loading more choices; selecting a complex fills its location and developer. Existing apartments are identified by building and apartment number; creating a new apartment when saving requires catalog moderator permissions. Changing the property or conditions after calculating requires recalculation before saving: the previous result remains available for comparison and is marked as outdated. Saved histories provide details, Excel/Word exports, a new calculation based on a sample and deletion with confirmation.
 
 Property search covers the entire catalog; previous/next buttons navigate choice pages. The selected property remains available while searching for alternatives. Excel and Word buttons beside the result export the current market or tranche calculation without saving or signing in, including manual properties or financial parameters alone. Exports create no catalog or history records.
@@ -90,6 +92,8 @@ Numeric filters apply while typing with a 250 ms delay and reset pagination. Bou
 
 ## Large form dictionaries
 
+If an editable dropdown fails to load its choices, press Tab from the field to reach “Повторить загрузку справочника”, then press Enter. Focus returns to the search field when the retry starts.
+
 In property, complex, customer, developer, bank/developer program, regional limit and location forms, use “Поиск: …” above a selector. Typing searches the entire relevant dictionary within the selected parent; “Показать ещё варианты” loads additional choices. Selected values load separately and remain available outside the first page. This also covers multiple developer regions, customer layouts and preferential programs, and property window views. Changing a region, city or complex clears dependent fields; review them before saving. If loading fails, use “Повторить загрузку справочника”.
 
 For roles and operation see `role_model.md`, `application_initial_setup.md` and `manual_deployment.md`.
@@ -101,6 +105,8 @@ On the complex create and edit forms, each section's title and description sit a
 The Residential Complexes page searches while typing. Filters cover developer, city, class and property type, with a reset control. The project name opens its detail page. The main information block lists metro stations and travel times. A stripe before each station name uses its line's color. The line name is available by hovering over the stripe and to screen readers. The walking icon indicates access on foot, the vehicle icon indicates transport, and the train icon indicates suburban rail.
 
 The lower metro accessibility table also shows a line-colored stripe before each station and has no separate Line column. Its search matches both station and line names.
+
+When confirming deletion of a residential complex, focus starts on “Отмена”. Tab and Shift+Tab move between the buttons inside the dialog. Escape or “Отмена” closes the dialog and returns focus to “Удалить” on the detail page.
 
 All photos on the complex detail page appear in one carousel in the main block. Its height is fixed at 400 pixels on wide screens and 300 on narrow screens. Images fit fully inside the frame without cropping or distorting their proportions; unused space retains the frame background. Use the previous and next photo buttons or the arrow keys while focus is inside the carousel. Clicking a photo opens the full image in an enlarged frame of constant height with the same navigation; Escape closes it.
 

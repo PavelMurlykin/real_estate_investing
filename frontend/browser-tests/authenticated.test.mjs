@@ -81,24 +81,53 @@ for (const width of [360, 1280]) {
   })
 }
 
-writeTest('owner saves a calculation and downloads both exports', async (context) => {
+writeTest('owner calculates after the selected property loads, saves and downloads both exports', async (context) => {
   const { page, trackCleanup } = await createAuthenticatedPage(
     context, 'owner', { width: 1280, height: 900 },
   )
-  await page.goto(new URL(
-    `/app/mortgage?propertyId=${fixtureManifest.propertyId}`,
-    isolatedBaseUrl,
-  ).href)
-  await page.getByLabel('Дата первоначального взноса').fill('2026-10-01')
-  await page.getByLabel('Срок ипотеки, месяцев').fill('12')
-  await page.getByRole('button', { name: 'Рассчитать ипотеку' }).click()
+  const propertyResponseGate = Promise.withResolvers()
+  const selectedPropertyCost = '6300000.00'
+  await page.route(
+    /\/api\/v1\/properties\/(?:\d+\/)?(?:\?.*)?$/,
+    async (route) => {
+      await propertyResponseGate.promise
+      const response = await route.fetch()
+      if (!response.ok()) {
+        await route.fulfill({ response })
+        return
+      }
+      const payload = await response.json()
+      const property = payload.results?.find((entry) => entry.id === fixtureManifest.propertyId) ?? payload
+      if (property.id === fixtureManifest.propertyId) property.propertyCost = selectedPropertyCost
+      await route.fulfill({ response, json: payload })
+    },
+  )
+  const calculate = page.getByRole('button', { name: 'Рассчитать ипотеку' })
+  try {
+    await page.goto(new URL(
+      `/app/mortgage?propertyId=${fixtureManifest.propertyId}`,
+      isolatedBaseUrl,
+    ).href)
+    await page.getByText('Загружаем данные объекта…', { exact: true }).waitFor()
+    assert.equal(await calculate.isDisabled(), true)
+    await page.getByLabel('Дата первоначального взноса').fill('2026-10-01')
+    await page.getByLabel('Срок ипотеки, месяцев').fill('12')
+  } finally {
+    propertyResponseGate.resolve()
+  }
+  await calculate.click()
   await page.getByRole('heading', { name: 'Сохранить этот сценарий' }).waitFor()
+  assert.equal(await page.getByText('Данные изменены. Повторите расчёт перед сохранением.').count(), 0)
   const saveResponsePromise = page.waitForResponse((response) => (
     response.request().method() === 'POST'
     && new URL(response.url()).pathname === '/api/v1/mortgage/calculations/'
   ))
   await page.getByRole('button', { name: 'Сохранить расчёт' }).click()
-  const saved = await saveResponsePromise.then((response) => response.json())
+  const saveResponse = await saveResponsePromise
+  assert.equal(saveResponse.status(), 201)
+  const saved = await saveResponse.json()
+  assert.equal(saved.property.id, fixtureManifest.propertyId)
+  assert.equal(saved.calculation.assumptions.basePropertyCost, selectedPropertyCost)
   trackCleanup(`/api/v1/mortgage/calculations/${saved.id}/`)
   await page.getByRole('link', { name: 'Открыть сохранённый расчёт' }).click()
   await page.getByRole('heading', { name: /Расчёт от/ }).waitFor()

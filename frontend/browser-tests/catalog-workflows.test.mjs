@@ -58,6 +58,31 @@ async function deleteDetailRecord(page, apiPath, status = 204) {
 }
 
 for (const width of [360, 1280]) {
+  writeTest(`complex deletion keeps keyboard focus inside the dialog at ${width}px`, async (context) => {
+    const { page } = await createAuthenticatedPage(context, 'moderator', { width, height: 900 })
+    await openRoute(page, `complexes/${fixtureManifest.complexId}`)
+    const trigger = page.getByRole('button', { name: 'Удалить', exact: true })
+    await trigger.click()
+    const dialog = page.getByRole('alertdialog', { name: 'Удалить жилой комплекс?' })
+    const cancel = dialog.getByRole('button', { name: 'Отмена', exact: true })
+    const confirm = dialog.getByRole('button', { name: 'Удалить', exact: true })
+    const focused = page.locator(':focus')
+    await cancel.and(focused).waitFor()
+    await page.keyboard.press('Shift+Tab')
+    await confirm.and(focused).waitFor()
+    await page.keyboard.press('Tab')
+    await cancel.and(focused).waitFor()
+    await page.keyboard.press('Escape')
+    await dialog.waitFor({ state: 'hidden' })
+    await trigger.and(focused).waitFor()
+
+    await trigger.press('Enter')
+    await cancel.and(focused).waitFor()
+    await cancel.press('Enter')
+    await dialog.waitFor({ state: 'hidden' })
+    await trigger.and(focused).waitFor()
+  })
+
   writeTest(`developer, complex and property lifecycle at ${width}px`, async (context) => {
     const { page, trackCleanup } = await createAuthenticatedPage(
       context, 'moderator', { width, height: 900 },

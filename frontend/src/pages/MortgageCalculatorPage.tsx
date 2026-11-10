@@ -88,19 +88,6 @@ type MortgageFormState = {
 
 type FieldErrors = Record<string, string>
 
-const EMPTY_PROPERTY_DATA: PropertyDataState = {
-  city: '',
-  district: '',
-  developer: '',
-  realEstateComplex: '',
-  building: '',
-  apartmentNumber: '',
-  area: '',
-  layout: '',
-  floor: '',
-  decoration: '',
-}
-
 function getLocalDateInputValue() {
   const currentDate = new Date()
   const timezoneOffset = currentDate.getTimezoneOffset() * 60_000
@@ -287,25 +274,10 @@ function FieldError({ fieldName, errors }: { fieldName: string; errors: FieldErr
   return <span className="field-error" id={`${fieldName}-error`}>{message}</span>
 }
 
-function propertyDataFromListItem(property: PropertyListItem): PropertyDataState {
+function propertyDataFromProperty(property: PropertyListItem | PropertyDetail): PropertyDataState {
   return {
     city: property.city,
     district: property.district ?? '',
-    developer: property.developer,
-    realEstateComplex: property.realEstateComplex,
-    building: property.building,
-    apartmentNumber: property.apartmentNumber,
-    area: property.area,
-    layout: property.layout,
-    floor: String(property.floor),
-    decoration: property.decoration,
-  }
-}
-
-function propertyDataFromDetail(property: PropertyDetail): PropertyDataState {
-  return {
-    city: property.city,
-    district: property.district,
     developer: property.developer,
     realEstateComplex: property.realEstateComplex,
     building: property.building,
@@ -484,23 +456,19 @@ export function MortgageCalculatorPage({
   const [selectedPropertyIdentifier, setSelectedPropertyIdentifier] = useState<
     number | null
   >(directPropertyIdentifier)
+  const listedProperty = propertyItems.find((property) => property.id === selectedPropertyIdentifier)
   const selectedPropertyQuery = useQuery({
     ...propertyDetailQueryOptions(selectedPropertyIdentifier ?? 0),
-    enabled: selectedPropertyIdentifier !== null
-      && !propertyItems.some(
-        (property) => property.id === selectedPropertyIdentifier,
-      ),
+    enabled: selectedPropertyIdentifier !== null && !listedProperty,
   })
-  const [propertyData, setPropertyData] = useState<PropertyDataState>(
-    EMPTY_PROPERTY_DATA,
-  )
+  const [propertyData, setPropertyData] = useState<PropertyDataState | null>(null)
   const [manualProperty, setManualProperty] = useState<ManualPropertyState | null>(null)
   const [selectedPropertySummary, setSelectedPropertySummary] = useState<PropertyListItem | PropertyDetail | null>(null)
-  const selectedProperty = propertyItems.find(
-    (property) => property.id === selectedPropertyIdentifier,
-  ) ?? selectedPropertyQuery.data ?? (
+  const resolvedProperty = listedProperty ?? selectedPropertyQuery.data
+  const selectedProperty = resolvedProperty ?? (
     selectedPropertySummary?.id === selectedPropertyIdentifier ? selectedPropertySummary : undefined
   )
+  const isSelectedPropertyUnresolved = selectedPropertyIdentifier !== null && propertyData === null
   const developerIdentifier = selectedProperty?.developerId || Number(manualProperty?.developerId) || null
   const complexIdentifier = selectedProperty?.realEstateComplexId || Number(manualProperty?.realEstateComplexId) || null
   const regionIdentifier = selectedProperty?.regionId || Number(manualProperty?.regionId) || null
@@ -551,6 +519,9 @@ export function MortgageCalculatorPage({
   const activeCalculationMutation = calculationType === 'market'
     ? marketCalculationMutation
     : trenchCalculationMutation
+  const isCalculationDisabled = isSelectedPropertyUnresolved || activeCalculationMutation.isPending
+    || Boolean(formState.bankProgramId && developerIdentifier !== null
+      && (developerOptionsQuery.isFetching || developerOptionsQuery.isError))
   const activeSaveMutation = calculationType === 'market'
     ? marketSaveMutation
     : trenchSaveMutation
@@ -663,35 +634,17 @@ export function MortgageCalculatorPage({
     selectedBankProgram, selectedDeveloperProgram])
 
   useEffect(() => {
-    if (!selectedPropertyIdentifier) return
-    const property = propertyItems.find(
-      (item) => item.id === selectedPropertyIdentifier,
-    )
-    if (!property || appliedPropertyIdentifierRef.current === property.id) return
-    setSelectedPropertySummary(property)
-    setPropertyData(propertyDataFromListItem(property))
+    if (!resolvedProperty || appliedPropertyIdentifierRef.current === resolvedProperty.id) return
+    appliedPropertyIdentifierRef.current = resolvedProperty.id
+    setSelectedPropertySummary(resolvedProperty)
+    setPropertyData(propertyDataFromProperty(resolvedProperty))
     setFormState((current) => synchronizeMoneyFields({
       ...current,
       propertyCost: searchParameters.has('propertyCost')
         ? current.propertyCost
-        : property.propertyCost,
+        : resolvedProperty.propertyCost,
     }))
-    appliedPropertyIdentifierRef.current = property.id
-  }, [propertyItems, searchParameters, selectedPropertyIdentifier])
-
-  useEffect(() => {
-    const property = selectedPropertyQuery.data
-    if (!property || appliedPropertyIdentifierRef.current === property.id) return
-    setSelectedPropertySummary(property)
-    setPropertyData(propertyDataFromDetail(property))
-    setFormState((current) => synchronizeMoneyFields({
-      ...current,
-      propertyCost: searchParameters.has('propertyCost')
-        ? current.propertyCost
-        : property.propertyCost,
-    }))
-    appliedPropertyIdentifierRef.current = property.id
-  }, [searchParameters, selectedPropertyQuery.data])
+  }, [resolvedProperty, searchParameters])
 
   useEffect(() => {
     if (calculationType !== 'market' || !marketSampleQuery.data) return
@@ -833,15 +786,16 @@ export function MortgageCalculatorPage({
     const identifier = Number(propertyIdentifier)
     if (!Number.isInteger(identifier) || identifier <= 0) {
       setSelectedPropertyIdentifier(null)
-      setPropertyData(EMPTY_PROPERTY_DATA)
+      appliedPropertyIdentifierRef.current = null
+      setPropertyData(null)
       return
     }
     const property = propertyItems.find((item) => item.id === identifier)
     setSelectedPropertyIdentifier(identifier)
     setSelectedPropertySummary(property ?? null)
     appliedPropertyIdentifierRef.current = property ? identifier : null
+    setPropertyData(property ? propertyDataFromProperty(property) : null)
     if (!property) return
-    setPropertyData(propertyDataFromListItem(property))
     setFormState((current) => synchronizeMoneyFields({
       ...current,
       propertyCost: property.propertyCost,
@@ -1001,6 +955,7 @@ export function MortgageCalculatorPage({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (isCalculationDisabled) return
     activeSaveMutation.reset()
     setCalculatedScenarioKey(currentScenarioKey)
     if (calculationType === 'market') {
@@ -1181,7 +1136,7 @@ export function MortgageCalculatorPage({
                 type="button"
                 onClick={() => {
                   setSelectedPropertyIdentifier(null)
-                  setPropertyData(EMPTY_PROPERTY_DATA)
+                  setPropertyData(null)
                   setManualProperty(null)
                   appliedPropertyIdentifierRef.current = null
                 }}
@@ -1237,7 +1192,7 @@ export function MortgageCalculatorPage({
                   <input
                     type={fieldName === 'area' || fieldName === 'floor' ? 'number' : 'text'}
                     step={fieldName === 'area' ? '0.01' : undefined}
-                    value={propertyData[fieldName]}
+                    value={propertyData?.[fieldName] ?? ''}
                     readOnly
                   />
                 </label>
@@ -1249,6 +1204,16 @@ export function MortgageCalculatorPage({
                 <span>{propertyPage} / {propertyListQuery.data.totalPages}</span>
                 <button type="button" disabled={propertyPage >= propertyListQuery.data.totalPages} onClick={() => setPropertyPage((page) => page + 1)}>Далее</button>
               </nav>
+            ) : null}
+            {isSelectedPropertyUnresolved ? (
+              selectedPropertyQuery.isError && !selectedPropertyQuery.isFetching ? (
+                <div className="form-error" role="alert">
+                  <p>Не удалось загрузить выбранный объект.</p>
+                  <button className="text-button" type="button" onClick={() => void selectedPropertyQuery.refetch()}>
+                    Повторить загрузку объекта
+                  </button>
+                </div>
+              ) : <p role="status">Загружаем данные объекта…</p>
             ) : null}
             {!manualProperty ? (
               <button className="text-button" type="button" onClick={() => {
@@ -1710,10 +1675,7 @@ export function MortgageCalculatorPage({
           <button
             className="button button--primary calculator-submit"
             type="submit"
-            disabled={activeCalculationMutation.isPending || Boolean(
-              formState.bankProgramId && developerIdentifier !== null
-              && (developerOptionsQuery.isFetching || developerOptionsQuery.isError),
-            )}
+            disabled={isCalculationDisabled}
           >
             {activeCalculationMutation.isPending
               ? 'Рассчитываем…'

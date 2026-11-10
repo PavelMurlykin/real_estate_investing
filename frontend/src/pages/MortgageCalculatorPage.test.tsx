@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -163,17 +163,19 @@ function renderCalculator({
   initialRoute?: string
   savedSample?: SavedMortgageCalculationDetail
   session?: Session
-  properties?: PropertyListResponse
+  properties?: PropertyListResponse | null
   developerOptions?: MortgageOptions
   initialCalculationType?: 'market' | 'trench'
   options?: MortgageOptions
 } = {}) {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['mortgage-options'], options)
-  queryClient.setQueryData(
-    ['properties', 'pageSize=100&ordering=realEstateComplex'],
-    properties,
-  )
+  if (properties) {
+    queryClient.setQueryData(
+      ['properties', 'pageSize=100&ordering=realEstateComplex'],
+      properties,
+    )
+  }
   if (session) queryClient.setQueryData(['session'], session)
   if (developerOptions) {
     queryClient.setQueryData(['mortgage-developer-options', 9], developerOptions)
@@ -195,6 +197,59 @@ afterEach(() => {
 })
 
 describe('MortgageCalculatorPage', () => {
+  it('uses the selected property on the first calculation even when its catalog data arrives late', async () => {
+    const user = userEvent.setup()
+    let resolveCatalog: (response: Response) => void = () => undefined
+    const catalog = new Promise<Response>((resolve) => { resolveCatalog = resolve })
+    const fetchMock = vi.fn((path: string) => {
+      if (path.startsWith('/api/v1/properties/?')) return catalog
+      if (path === '/api/v1/properties/3/') return new Promise<Response>(() => {})
+      return Promise.resolve(new Response(JSON.stringify(mortgageResult), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderCalculator({ initialRoute: '/?propertyId=3', properties: null, session: authenticatedSession })
+
+    const calculate = screen.getByRole('button', { name: 'Рассчитать ипотеку' })
+    expect(calculate).toBeDisabled()
+    expect(screen.getByText('Загружаем данные объекта…')).toBeInTheDocument()
+    fireEvent.submit(calculate.closest('form') as HTMLFormElement)
+    expect(fetchMock.mock.calls.some(([path]) => path === '/api/v1/mortgage/calculate/')).toBe(false)
+
+    resolveCatalog(new Response(JSON.stringify({
+      ...propertyList,
+      results: [{ ...propertyList.results[0], propertyCost: '6300000.00' }],
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    await waitFor(() => expect(calculate).toBeEnabled())
+    await user.click(calculate)
+    const save = await screen.findByRole('button', { name: 'Сохранить расчёт' })
+    expect(save).toBeEnabled()
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/mortgage/calculate/', expect.objectContaining({
+      body: expect.stringContaining('"propertyCost":"6300000.00"'),
+    }))
+  })
+
+  it('can retry an unavailable property or switch to manual entry', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 503 })))
+    vi.stubGlobal('fetch', fetchMock)
+    renderCalculator({
+      initialRoute: '/?propertyId=3',
+      properties: { ...propertyList, totalCount: 0, results: [] },
+      session: authenticatedSession,
+    })
+
+    const calculate = screen.getByRole('button', { name: 'Рассчитать ипотеку' })
+    const retry = await screen.findByRole('button', { name: 'Повторить загрузку объекта' })
+    expect(calculate).toBeDisabled()
+    await user.click(retry)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    await screen.findByRole('button', { name: 'Повторить загрузку объекта' })
+    await user.click(screen.getByRole('button', { name: 'Заполнить объект вручную' }))
+    expect(calculate).toBeEnabled()
+  })
+
   it('submits manual object identifiers and allows a moderator to save the scenario', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn().mockImplementation(async (path: string) => {

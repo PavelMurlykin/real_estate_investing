@@ -41,7 +41,9 @@ export function SearchableSelect({ label, value, options, onChange, emptyLabel =
     document.getElementById(`${identifier}-option-${next}`)?.scrollIntoView?.({ block: 'nearest' })
   }
   return (
-    <div className="form-field searchable-select">
+    <div className="form-field searchable-select" onBlur={(event) => {
+      if (!event.currentTarget.contains(event.relatedTarget)) close()
+    }}>
       <label htmlFor={identifier}>{label}</label>
       <div className="searchable-select__control">
         <input id={identifier} ref={input} role="combobox" type="text" autoComplete="off" maxLength={100}
@@ -52,7 +54,7 @@ export function SearchableSelect({ label, value, options, onChange, emptyLabel =
           aria-describedby={validationError ? `${identifier}-error` : undefined}
           value={open ? query : value ? selected?.label ?? 'Загрузка выбранного значения…' : ''}
           placeholder={open ? 'Введите значение' : emptyLabel}
-          onFocus={() => setOpen(true)} onBlur={close}
+          onFocus={() => setOpen(true)}
           onClick={() => setOpen(true)}
           onChange={(event) => { setQuery(event.target.value); onSearch?.(event.target.value); setActive(null); setOpen(true) }}
           onKeyDown={(event) => {
@@ -70,19 +72,40 @@ export function SearchableSelect({ label, value, options, onChange, emptyLabel =
         <span className="searchable-select__chevron" aria-hidden="true">⌄</span>
       </div>
       {validationError ? <span className="field-error" id={`${identifier}-error`}>{validationError}</span> : null}
-      {open ? <ul id={`${identifier}-list`} className="searchable-select__list" role="listbox" aria-label={`Варианты: ${label}`}
-        onMouseDown={(event) => event.preventDefault()}
-        onScroll={(event) => {
-          const element = event.currentTarget
-          if (hasMore && !loading && element.scrollHeight - element.scrollTop - element.clientHeight < 48) onLoadMore?.()
-        }}>
-        {choices.map((option, index) => <li id={`${identifier}-option-${index}`} key={option.value} role="option"
-          aria-selected={option.value === value} className={index === activeIndex ? 'is-highlighted' : undefined}
-          onMouseMove={() => setActive(index)} onClick={() => choose(option)}>{option.label}</li>)}
-        {loading ? <li role="presentation" className="searchable-select__notice">Загрузка…</li> : null}
-        {!loading && choices.length === 1 ? <li role="presentation" className="searchable-select__notice">Нет подходящих вариантов</li> : null}
-        {error ? <li role="presentation"><button type="button" className="text-button" onClick={onRetry}>Повторить загрузку справочника</button></li> : null}
-      </ul> : null}
+      {open ? (
+        <div className="searchable-select__popup">
+          <ul id={`${identifier}-list`} className="searchable-select__list" role="listbox" aria-label={`Варианты: ${label}`} tabIndex={-1}
+            onMouseDown={(event) => event.preventDefault()}
+            onScroll={(event) => {
+              const element = event.currentTarget
+              if (hasMore && !loading && element.scrollHeight - element.scrollTop - element.clientHeight < 48) onLoadMore?.()
+            }}>
+            {choices.map((option, index) => <li id={`${identifier}-option-${index}`} key={option.value} role="option"
+              aria-selected={option.value === value} className={index === activeIndex ? 'is-highlighted' : undefined}
+              onMouseMove={() => setActive(index)} onClick={() => choose(option)}>{option.label}</li>)}
+            {loading ? <li role="presentation" className="searchable-select__notice">Загрузка…</li> : null}
+            {!loading && !error && choices.length === 1 ? (
+              <li role="presentation" className="searchable-select__notice">Нет подходящих вариантов</li>
+            ) : null}
+          </ul>
+          {error && onRetry ? (
+            <button
+              type="button"
+              className="text-button searchable-select__retry"
+              onClick={() => { input.current?.focus(); onRetry() }}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  event.preventDefault()
+                  input.current?.focus()
+                  close()
+                }
+              }}
+            >
+              Повторить загрузку справочника
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }

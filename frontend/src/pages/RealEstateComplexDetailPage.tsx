@@ -35,7 +35,10 @@ export function RealEstateComplexDetailPage() {
   const sessionQuery = useQuery(sessionQueryOptions)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const deleteTriggerRef = useRef<HTMLButtonElement>(null)
+  const deleteDialogRef = useRef<HTMLDialogElement>(null)
+  const deleteTitleRef = useRef<HTMLHeadingElement>(null)
   const deleteCancelButtonRef = useRef<HTMLButtonElement>(null)
+  const deleteConfirmButtonRef = useRef<HTMLButtonElement>(null)
   const deleteMutation = useMutation({
     mutationFn: () => deleteRealEstateComplex(complexIdentifier),
     onSuccess: async () => {
@@ -52,17 +55,24 @@ export function RealEstateComplexDetailPage() {
   useDocumentTitle(complexQuery.data?.name ?? 'Карточка жилого комплекса')
 
   useEffect(() => {
-    if (!isDeleteDialogOpen) return
+    const dialog = deleteDialogRef.current
+    if (!isDeleteDialogOpen || !dialog) return
+    const previousOverflow = document.body.style.overflow
+    dialog.showModal()
+    document.body.style.overflow = 'hidden'
     deleteCancelButtonRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !deleteMutation.isPending) {
-        setIsDeleteDialogOpen(false)
-        window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
-      }
+    return () => {
+      if (dialog.open) dialog.close()
+      document.body.style.overflow = previousOverflow
     }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [deleteMutation.isPending, isDeleteDialogOpen])
+  }, [isDeleteDialogOpen])
+
+  const closeDeleteDialog = () => {
+    if (deleteMutation.isPending) return
+    deleteDialogRef.current?.close()
+    setIsDeleteDialogOpen(false)
+    deleteTriggerRef.current?.focus()
+  }
 
   if (!hasValidIdentifier) {
     return (
@@ -258,49 +268,70 @@ export function RealEstateComplexDetailPage() {
       </section>
 
       {isDeleteDialogOpen ? (
-        <div className="confirmation-dialog-backdrop" role="presentation">
-          <section
-            className="confirmation-dialog"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="complex-detail-delete-title"
-            aria-describedby="complex-detail-delete-description"
-          >
-            <span className="eyebrow">Подтверждение</span>
-            <h2 id="complex-detail-delete-title">Удалить жилой комплекс?</h2>
-            <p id="complex-detail-delete-description">
-              «{realEstateComplex.name}» будет удалён без возможности
-              восстановления.
+        <dialog
+          ref={deleteDialogRef}
+          className="confirmation-dialog"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="complex-detail-delete-title"
+          aria-describedby="complex-detail-delete-description"
+          onCancel={(event) => {
+            event.preventDefault()
+            closeDeleteDialog()
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Tab') return
+            if (deleteMutation.isPending) {
+              event.preventDefault()
+            } else if (event.shiftKey && document.activeElement !== deleteConfirmButtonRef.current) {
+              event.preventDefault()
+              deleteConfirmButtonRef.current?.focus()
+            } else if (!event.shiftKey && document.activeElement === deleteConfirmButtonRef.current) {
+              event.preventDefault()
+              deleteCancelButtonRef.current?.focus()
+            }
+          }}
+        >
+          <span className="eyebrow">Подтверждение</span>
+          <h2 id="complex-detail-delete-title" ref={deleteTitleRef} tabIndex={-1}>
+            Удалить жилой комплекс?
+          </h2>
+          <p id="complex-detail-delete-description">
+            «{realEstateComplex.name}» будет удалён без возможности
+            восстановления.
+          </p>
+          {deleteMutation.isError ? (
+            <p className="form-error" role="alert">
+              {deleteMutation.error instanceof ApiError
+                && deleteMutation.error.status === 409
+                ? 'ЖК нельзя удалить, пока с его корпусами связаны объекты.'
+                : 'Не удалось удалить жилой комплекс. Повторите попытку.'}
             </p>
-            {deleteMutation.isError ? (
-              <p className="form-error" role="alert">
-                {deleteMutation.error instanceof ApiError
-                  && deleteMutation.error.status === 409
-                  ? 'ЖК нельзя удалить, пока с его корпусами связаны объекты.'
-                  : 'Не удалось удалить жилой комплекс. Повторите попытку.'}
-              </p>
-            ) : null}
-            <div className="confirmation-dialog__actions">
-              <button
-                className="button button--secondary"
-                type="button"
-                ref={deleteCancelButtonRef}
-                disabled={deleteMutation.isPending}
-                onClick={() => setIsDeleteDialogOpen(false)}
-              >
-                Отмена
-              </button>
-              <button
-                className="button button--danger"
-                type="button"
-                disabled={deleteMutation.isPending}
-                onClick={() => deleteMutation.mutate()}
-              >
-                {deleteMutation.isPending ? 'Удаляем…' : 'Удалить'}
-              </button>
-            </div>
-          </section>
-        </div>
+          ) : null}
+          <div className="confirmation-dialog__actions">
+            <button
+              className="button button--secondary"
+              type="button"
+              ref={deleteCancelButtonRef}
+              disabled={deleteMutation.isPending}
+              onClick={closeDeleteDialog}
+            >
+              Отмена
+            </button>
+            <button
+              className="button button--danger"
+              type="button"
+              ref={deleteConfirmButtonRef}
+              disabled={deleteMutation.isPending}
+              onClick={() => {
+                deleteTitleRef.current?.focus()
+                deleteMutation.mutate()
+              }}
+            >
+              {deleteMutation.isPending ? 'Удаляем…' : 'Удалить'}
+            </button>
+          </div>
+        </dialog>
       ) : null}
     </div>
   )

@@ -67,6 +67,41 @@ describe('SearchableSelect', () => {
     expect(input).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it('preserves the query and returns focus to the input when retrying by keyboard', async () => {
+    const user = userEvent.setup()
+    function RetryFilter() {
+      const [error, setError] = useState(true)
+      return (
+        <SearchableSelect
+          label="Город"
+          value=""
+          options={error ? [] : [{ value: '1', label: 'Москва' }]}
+          onChange={() => {}}
+          error={error}
+          onRetry={() => setError(false)}
+        />
+      )
+    }
+    renderWithProviders(<RetryFilter />)
+    const input = screen.getByRole('combobox', { name: 'Город' })
+    await user.tab()
+    await user.type(input, 'Мос')
+    const retry = screen.getByRole('button', { name: 'Повторить загрузку справочника' })
+    await user.tab()
+    expect(retry).toHaveFocus()
+    await user.keyboard('{Escape}')
+    expect(input).toHaveFocus()
+    expect(input).toHaveAttribute('aria-expanded', 'false')
+
+    await user.type(input, 'Мос')
+    await user.tab()
+    await user.keyboard('{Enter}')
+    expect(input).toHaveFocus()
+    expect(input).toHaveValue('Мос')
+    expect(screen.getByRole('option', { name: 'Москва' })).toBeInTheDocument()
+    expect(retry).not.toBeInTheDocument()
+  })
+
   it('automatically loads remote filter choices and loads another page on scrolling', async () => {
     const user = userEvent.setup()
     const changed = vi.fn()
