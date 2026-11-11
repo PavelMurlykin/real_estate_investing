@@ -197,6 +197,33 @@ afterEach(() => {
 })
 
 describe('MortgageCalculatorPage', () => {
+  it.each(['market', 'trench'] as const)('matches Django integer year fields in %s mode', async (mode) => {
+    const user = userEvent.setup()
+    renderCalculator({ initialCalculationType: mode })
+    const years = screen.getByLabelText('Срок ипотеки, лет')
+    const months = screen.getByLabelText('Срок ипотеки, месяцев')
+    fireEvent.change(years, { target: { value: '12.5' } })
+    expect(months).toHaveValue(144)
+    fireEvent.change(months, { target: { value: '25' } })
+    expect(years).toHaveValue(2)
+    if (mode === 'market') {
+      await user.click(screen.getByLabelText('Использовать льготный период'))
+      fireEvent.change(screen.getByLabelText('Льготный период, лет'), { target: { value: '1.5' } })
+      expect(screen.getByLabelText('Льготный период, месяцев')).toHaveValue(12)
+      fireEvent.change(screen.getByLabelText('Льготный период, месяцев'), { target: { value: '6' } })
+      expect(screen.getByLabelText('Льготный период, лет')).toHaveValue(0)
+    }
+  })
+
+  it('starts a quick tranche calculation with one residual tranche and a populated date', () => {
+    renderCalculator({ initialCalculationType: 'trench' })
+    expect(screen.getByLabelText('Количество траншей')).toHaveValue('1')
+    expect(screen.getAllByLabelText('Дата транша')).toHaveLength(1)
+    expect(screen.getByLabelText('Дата транша')).toHaveValue(mortgageOptions.defaultInitialPaymentDate)
+    expect(screen.getByLabelText('Сумма транша, %')).toHaveAttribute('readonly')
+    expect(screen.getByLabelText('Сумма транша, ₽')).toHaveAttribute('readonly')
+  })
+
   it('uses the selected property on the first calculation even when its catalog data arrives late', async () => {
     const user = userEvent.setup()
     let resolveCatalog: (response: Response) => void = () => undefined

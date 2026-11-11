@@ -40,6 +40,16 @@ MARKET_CASES = [
     pytest.param({'mortgageTermMonths': 600}, id='maximum-term'),
     pytest.param({'annualRate': '0'}, id='zero-interest'),
     pytest.param({
+        'annualRate': '100', 'mortgageTermMonths': 600,
+    }, id='maximum-rate-and-term'),
+    pytest.param({
+        'propertyCost': '9999999999999.99', 'annualRate': '0.01',
+    }, id='maximum-price-and-low-rate'),
+    pytest.param({
+        'propertyCost': '9999999999999.99', 'annualRate': '100',
+        'mortgageTermMonths': 600,
+    }, id='maximum-price-rate-and-term'),
+    pytest.param({
         'hasGracePeriod': True, 'gracePeriodTermMonths': 12,
         'gracePeriodRate': '0',
     }, id='zero-grace-interest'),

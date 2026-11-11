@@ -19,6 +19,10 @@ from bank.models import (
 )
 from customer.models import Customer
 from location.models import City, District, Metro, MetroLine, Region
+from mortgage.validators import (
+    MORTGAGE_DATE_RANGE_ERROR,
+    is_mortgage_end_date_supported,
+)
 from property.complex_photos import (
     MAX_COMPLEX_PHOTOS,
     add_complex_photos,
@@ -3994,6 +3998,12 @@ class MortgageCalculationRequestSerializer(serializers.Serializer):
 
     def validate(self, attributes):
         """Validate cross-field monetary and grace-period constraints."""
+        if not is_mortgage_end_date_supported(
+            attributes['initialPaymentDate'], attributes['mortgageTermMonths'],
+        ):
+            raise serializers.ValidationError({
+                'initialPaymentDate': MORTGAGE_DATE_RANGE_ERROR,
+            })
         property_cost = attributes['propertyCost']
         adjustment_value = attributes['priceAdjustmentValue']
         adjustment_unit = attributes['priceAdjustmentUnit']
@@ -4052,7 +4062,10 @@ class MortgageCalculationRequestSerializer(serializers.Serializer):
 class TrenchMortgageEntryRequestSerializer(serializers.Serializer):
     """Validate one dated tranche in the mortgage release schedule."""
 
-    date = serializers.DateField()
+    date = serializers.DateField(error_messages={
+        'required': 'Укажите дату транша.',
+        'invalid': 'Укажите дату транша в формате ГГГГ-ММ-ДД.',
+    })
     amountUnit = serializers.ChoiceField(
         choices=('percent', 'rubles'),
         default='percent',
@@ -4140,6 +4153,12 @@ class TrenchMortgageCalculationRequestSerializer(serializers.Serializer):
 
     def validate(self, attributes):
         """Validate financial values, tranche amounts, and date ordering."""
+        if not is_mortgage_end_date_supported(
+            attributes['initialPaymentDate'], attributes['mortgageTermMonths'],
+        ):
+            raise serializers.ValidationError({
+                'initialPaymentDate': MORTGAGE_DATE_RANGE_ERROR,
+            })
         property_cost = attributes['propertyCost']
         adjustment_value = attributes['priceAdjustmentValue']
         if attributes['priceAdjustmentUnit'] == 'percent':

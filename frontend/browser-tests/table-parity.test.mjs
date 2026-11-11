@@ -50,6 +50,7 @@ for (const type of ['market', 'trench']) {
     // Calculation is a side-effect-free POST; all other API writes remain blocked.
     await page.route(`**${path}`, (route) => route.continue())
     if (type === 'trench') {
+      await page.getByRole('combobox', { name: /^Количество траншей/ }).selectOption('2')
       const start = await page.getByLabel('Дата первоначального взноса', { exact: true }).inputValue()
       const next = new Date(`${start}T12:00:00Z`)
       next.setUTCMonth(next.getUTCMonth() + 6)

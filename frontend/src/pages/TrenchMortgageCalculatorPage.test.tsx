@@ -172,6 +172,7 @@ function renderPage({
 }
 
 async function fillTrenchDates(user: ReturnType<typeof userEvent.setup>) {
+  await user.selectOptions(screen.getByLabelText('Количество траншей'), '2')
   const dateInputs = screen.getAllByLabelText('Дата транша')
   await user.clear(dateInputs[0])
   await user.type(dateInputs[0], '2026-01-15')
@@ -187,8 +188,8 @@ describe('TrenchMortgageCalculatorPage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    expect(screen.getAllByLabelText('Дата транша')).toHaveLength(2)
-    expect(screen.getAllByRole('spinbutton', { name: 'Сумма транша, %' })[1]).toHaveAttribute(
+    expect(screen.getAllByLabelText('Дата транша')).toHaveLength(1)
+    expect(screen.getAllByRole('spinbutton', { name: 'Сумма транша, %' })[0]).toHaveAttribute(
       'readonly',
     )
 

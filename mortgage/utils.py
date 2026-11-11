@@ -280,10 +280,8 @@ def format_currency(value):
         return ''
 
     try:
-        # Преобразуем в число
-        num = float(value)
-        # Форматируем с разделителями тысяч и двумя знаками после запятой
-        return f'{num:,.2f}'.replace(',', ' ').replace('.', ',')
+        numeric_value = value if isinstance(value, Decimal) else float(value)
+        return f'{numeric_value:,.2f}'.replace(',', ' ').replace('.', ',')
     except (ValueError, TypeError):
         return str(value)
 

@@ -4,6 +4,10 @@ from datetime import date, datetime
 from django import forms
 
 from location.models import City, District
+from mortgage.validators import (
+    MORTGAGE_DATE_RANGE_ERROR,
+    is_mortgage_end_date_supported,
+)
 from property.form_fields import (
     DeveloperModelChoiceField,
     get_developers_with_company_groups_queryset,
@@ -477,6 +481,15 @@ class MortgageForm(forms.Form):
         elif mortgage_term_years is not None:
             cleaned_data['MORTGAGE_TERM'] = mortgage_term_years * 12
             mortgage_term = cleaned_data['MORTGAGE_TERM']
+
+        initial_payment_date = cleaned_data.get('INITIAL_PAYMENT_DATE')
+        if (
+            initial_payment_date and mortgage_term
+            and not is_mortgage_end_date_supported(
+                initial_payment_date, mortgage_term,
+            )
+        ):
+            self.add_error('INITIAL_PAYMENT_DATE', MORTGAGE_DATE_RANGE_ERROR)
 
         if grace_period_term is not None:
             cleaned_data['GRACE_PERIOD_TERM_YEARS'] = (

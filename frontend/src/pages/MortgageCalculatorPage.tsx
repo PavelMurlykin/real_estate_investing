@@ -227,7 +227,7 @@ function initialFormState(propertyCost: string): MortgageFormState {
     gracePeriodTermYears: '1',
     gracePeriodTermMonths: '12',
     gracePeriodRate: '6',
-    trenchCount: 2,
+    trenchCount: 1,
     trenches: buildInitialTrenches('15'),
   })
 }
@@ -593,7 +593,7 @@ export function MortgageCalculatorPage({
         initialPaymentSource: defaults.initialPaymentSource,
         initialPaymentPercent: defaults.initialPaymentPercent,
         initialPaymentRubles: defaults.initialPaymentRubles,
-        mortgageTermYears: formatCalculatedValue(Number(defaults.mortgageTermMonths) / 12),
+        mortgageTermYears: String(Math.floor(Number(defaults.mortgageTermMonths) / 12)),
         mortgageTermMonths: defaults.mortgageTermMonths,
         annualRate: defaults.annualRate,
         hasGracePeriod: defaults.hasGracePeriod,
@@ -620,7 +620,7 @@ export function MortgageCalculatorPage({
       return synchronizeMoneyFields({
         ...restored,
         ...conditions,
-        mortgageTermYears: formatCalculatedValue(Number(conditions.mortgageTermMonths) / 12),
+        mortgageTermYears: String(Math.floor(Number(conditions.mortgageTermMonths) / 12)),
         initialPaymentSource: 'percent',
         priceAdjustmentSource: conditions.priceAdjustmentPercent !== undefined
           ? 'percent' : restored.priceAdjustmentSource,
@@ -676,17 +676,13 @@ export function MortgageCalculatorPage({
       initialPaymentPercent: assumptions.initialPaymentPercent,
       initialPaymentRubles: assumptions.initialPaymentRubles,
       initialPaymentDate: assumptions.initialPaymentDate,
-      mortgageTermYears: formatCalculatedValue(
-        assumptions.mortgageTermMonths / 12,
-      ),
+      mortgageTermYears: String(Math.floor(assumptions.mortgageTermMonths / 12)),
       mortgageTermMonths: String(assumptions.mortgageTermMonths),
       annualRate: assumptions.annualRate,
       bankId: '',
       bankProgramId: '',
       hasGracePeriod: assumptions.hasGracePeriod,
-      gracePeriodTermYears: formatCalculatedValue(
-        assumptions.gracePeriodTermMonths / 12,
-      ),
+      gracePeriodTermYears: String(Math.floor(assumptions.gracePeriodTermMonths / 12)),
       gracePeriodTermMonths: String(
         assumptions.gracePeriodTermMonths || 12,
       ),
@@ -726,9 +722,7 @@ export function MortgageCalculatorPage({
       initialPaymentPercent: assumptions.initialPaymentPercent,
       initialPaymentRubles: assumptions.initialPaymentRubles,
       initialPaymentDate: assumptions.initialPaymentDate,
-      mortgageTermYears: formatCalculatedValue(
-        assumptions.mortgageTermMonths / 12,
-      ),
+      mortgageTermYears: String(Math.floor(assumptions.mortgageTermMonths / 12)),
       mortgageTermMonths: String(assumptions.mortgageTermMonths),
       annualRate: assumptions.annualRate,
       bankId: '',
@@ -838,8 +832,8 @@ export function MortgageCalculatorPage({
       ...current,
       mortgageTermYears: value,
       mortgageTermMonths: years === null
-        ? ''
-        : String(Math.round(years * 12)),
+        ? '0'
+        : String(Math.max(0, Math.floor(years)) * 12),
     }))
   }
 
@@ -849,8 +843,8 @@ export function MortgageCalculatorPage({
       ...current,
       mortgageTermMonths: value,
       mortgageTermYears: months === null
-        ? ''
-        : formatCalculatedValue(months / 12),
+        ? '0'
+        : String(Math.floor(Math.max(0, months) / 12)),
     }))
   }
 
@@ -860,8 +854,8 @@ export function MortgageCalculatorPage({
       ...current,
       gracePeriodTermYears: value,
       gracePeriodTermMonths: years === null
-        ? ''
-        : String(Math.round(years * 12)),
+        ? '0'
+        : String(Math.max(0, Math.floor(years)) * 12),
     }))
   }
 
@@ -871,8 +865,8 @@ export function MortgageCalculatorPage({
       ...current,
       gracePeriodTermMonths: value,
       gracePeriodTermYears: months === null
-        ? ''
-        : formatCalculatedValue(months / 12),
+        ? '0'
+        : String(Math.floor(Math.max(0, months) / 12)),
     }))
   }
 
@@ -1417,9 +1411,9 @@ export function MortgageCalculatorPage({
                 <span>Срок ипотеки, лет</span>
                 <input
                   type="number"
-                  min="0.01"
+                  min="0"
                   max="50"
-                  step="0.01"
+                  step="1"
                   required
                   value={formState.mortgageTermYears}
                   onChange={(event) => updateMortgageTermYears(event.target.value)}
@@ -1534,8 +1528,9 @@ export function MortgageCalculatorPage({
                       <span>Льготный период, лет</span>
                       <input
                         type="number"
-                        min="0.01"
-                        step="0.01"
+                        min="0"
+                        max="50"
+                        step="1"
                         required
                         value={formState.gracePeriodTermYears}
                         onChange={(event) => updateGracePeriodYears(event.target.value)}

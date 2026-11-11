@@ -20,6 +20,12 @@ The customer section requires authentication. A customer profile contains contac
 
 Select a property and enter its price, discount/markup, down payment, date, term and rate. Percentages and rubles synchronize using the most recently edited value. Market mortgages support a grace period; tranche mortgages support one to five tranches, with the last receiving the remaining amount. A button expands the schedule beyond the first 12 payments.
 
+The tranche calculator starts with one residual tranche and a populated date, so a quick calculation is available after entering the financial parameters. When adding tranches, enter the dates of the new releases.
+
+The years field uses whole years, matching the Django form. For example, entering 12.5 years sets 144 months. Use months for an exact term. Entering 25 months displays 2 in the years field while the calculation uses all 25 months. The grace period follows the same rule.
+
+Market mortgage schedule rows are rounded to kopecks. Each payment equals interest plus principal repaid, total overpayment is the sum of interest across the rows, and the final balance is zero. The down payment date is validated together with the term so that the maturity date fits within the supported calendar.
+
 When you open the calculator from a property link, calculation becomes available after the property loads. If loading fails, use “Повторить загрузку объекта”, select another property, or enter it manually.
 
 Authenticated users can save calculations for a selected or manually entered property. “Заполнить объект вручную” opens city, district, developer, complex, building, layout and decoration selectors, plus apartment number, area and floor fields. Dictionaries support search while typing and loading more choices; selecting a complex fills its location and developer. Existing apartments are identified by building and apartment number; creating a new apartment when saving requires catalog moderator permissions. Changing the property or conditions after calculating requires recalculation before saving: the previous result remains available for comparison and is marked as outdated. Saved histories provide details, Excel/Word exports, a new calculation based on a sample and deletion with confirmation.
