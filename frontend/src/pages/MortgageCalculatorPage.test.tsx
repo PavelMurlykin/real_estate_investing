@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -217,7 +217,65 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+async function chooseBankOrProgram(
+  user: ReturnType<typeof userEvent.setup>, label: string, choice: string | RegExp,
+) {
+  await user.click(screen.getByRole('combobox', { name: label }))
+  const list = screen.getByRole('listbox', { name: `Варианты: ${label}` })
+  await user.click(within(list).getByRole('option', { name: choice }))
+}
+
 describe('MortgageCalculatorPage', () => {
+  it.each(['market', 'trench'] as const)('searches bank and program by keyboard and resets dependent choices in %s mode', async (mode) => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn<typeof fetch>()
+    vi.stubGlobal('fetch', fetchMock)
+    renderCalculator({ initialCalculationType: mode, session: authenticatedSession, options: {
+      ...mortgageOptions,
+      banks: [...mortgageOptions.banks, { id: 2, name: 'Второй банк', logoUrl: '' }],
+      programs: [...mortgageOptions.programs, {
+        ...mortgageOptions.programs[0], id: 11, bankId: 2,
+        programName: 'Рыночная программа', interestRate: '9.00',
+        minimumInitialPaymentPercent: '30.00', maximumLoanTermYears: 15,
+      }],
+    } })
+    const bank = screen.getByRole('combobox', { name: 'Банк' })
+    const program = screen.getByRole('combobox', { name: 'Ипотечная программа' })
+    expect(bank.tagName).toBe('INPUT')
+    expect(program.tagName).toBe('INPUT')
+    expect(program).toBeDisabled()
+    await user.type(bank, 'НАДЁЖ')
+    expect(screen.getByRole('option', { name: 'Надёжный банк' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Второй банк' })).not.toBeInTheDocument()
+    await user.keyboard('{Enter}')
+    expect(bank).toHaveValue('Надёжный банк')
+    await user.type(program, 'СЕМЕЙ')
+    await user.keyboard('{Enter}')
+    expect(screen.getAllByLabelText('Годовая ставка, %')[0]).toHaveValue(6)
+    expect(screen.getByLabelText('Первоначальный взнос, %')).toHaveValue(25)
+    expect(screen.getByLabelText('Срок ипотеки, месяцев')).toHaveValue(240)
+    await chooseBankOrProgram(user, 'Банк', 'Надёжный банк')
+    expect((program as HTMLInputElement).value).toContain('Семейная ипотека')
+    await user.type(bank, 'второй')
+    await user.keyboard('{Enter}')
+    expect(program).toHaveValue('')
+    await user.click(program)
+    expect(screen.queryByRole('option', { name: /^Семейная ипотека —/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /^Рыночная программа —/ })).toBeInTheDocument()
+    await user.type(program, 'рыночная')
+    await user.keyboard('{Enter}')
+    expect(screen.getAllByLabelText('Годовая ставка, %')[0]).toHaveValue(9)
+    expect(screen.getByLabelText('Первоначальный взнос, %')).toHaveValue(30)
+    expect(screen.getByLabelText('Срок ипотеки, месяцев')).toHaveValue(180)
+    await chooseBankOrProgram(user, 'Ипотечная программа', 'Ручные параметры')
+    expect(program).toHaveValue('')
+    expect(bank).toHaveValue('Второй банк')
+    await chooseBankOrProgram(user, 'Банк', 'Без выбора')
+    expect(bank).toHaveValue('')
+    expect(program).toBeDisabled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it.each(['market', 'trench'] as const)('keeps one visible form and permits a quick %s calculation with partial property details', async (mode) => {
     const user = userEvent.setup()
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(Response.json(resultForMode(mode)))
@@ -492,8 +550,8 @@ describe('MortgageCalculatorPage', () => {
         }],
       },
     })
-    await user.selectOptions(screen.getByLabelText('Банк'), '1')
-    await user.selectOptions(screen.getByLabelText('Ипотечная программа'), '10')
+    await chooseBankOrProgram(user, 'Банк', 'Надёжный банк')
+    await chooseBankOrProgram(user, 'Ипотечная программа', /^Семейная ипотека —/)
     expect(screen.getAllByLabelText('Годовая ставка, %')[0]).toHaveValue(3)
     expect(screen.getByLabelText('Удорожание, %')).toHaveValue(8)
     expect(screen.getByLabelText('Первоначальный взнос, %')).toHaveValue(25)
@@ -519,7 +577,7 @@ describe('MortgageCalculatorPage', () => {
     expect(screen.getByLabelText('Скидка, %')).toHaveValue(2.5)
     expect(screen.getByLabelText('Первоначальный взнос, %')).toHaveValue(21)
     if (mode === 'market') expect(screen.getByLabelText('Использовать льготный период')).not.toBeChecked()
-    await user.selectOptions(screen.getByLabelText('Ипотечная программа'), '')
+    await chooseBankOrProgram(user, 'Ипотечная программа', 'Ручные параметры')
     expect(screen.getByLabelText('Скидка, %')).toHaveValue(0)
     expect(screen.getAllByLabelText('Годовая ставка, %')[0]).toHaveValue(6)
     expect(screen.getByLabelText('Первоначальный взнос, %')).toHaveValue(25)
@@ -536,8 +594,8 @@ describe('MortgageCalculatorPage', () => {
         programs: [{ ...mortgageOptions.programs[0], regionalCreditLimits: [{ regionId: 2, creditLimit: '2000000' }] }],
       },
     })
-    await user.selectOptions(screen.getByLabelText('Банк'), '1')
-    await user.selectOptions(screen.getByLabelText('Ипотечная программа'), '10')
+    await chooseBankOrProgram(user, 'Банк', 'Надёжный банк')
+    await chooseBankOrProgram(user, 'Ипотечная программа', /^Семейная ипотека —/)
     expect(screen.getByRole('heading', { name: 'Сумма кредита превышает лимит программы' })).toBeInTheDocument()
     expect(screen.getByText(/Лимит кредита:/)).toHaveTextContent(/2\s000\s000/)
     expect(screen.getByText(/Необходимый взнос:/)).toHaveTextContent(/3\s000\s000/)
@@ -638,8 +696,8 @@ describe('MortgageCalculatorPage', () => {
     const user = userEvent.setup()
     renderCalculator()
 
-    await user.selectOptions(screen.getByLabelText('Банк'), '1')
-    await user.selectOptions(screen.getByLabelText('Ипотечная программа'), '10')
+    await chooseBankOrProgram(user, 'Банк', 'Надёжный банк')
+    await chooseBankOrProgram(user, 'Ипотечная программа', /^Семейная ипотека —/)
 
     expect(screen.getByLabelText('Годовая ставка, %')).toHaveValue(6)
     expect(screen.getByLabelText('Первоначальный взнос, %')).toHaveValue(25)

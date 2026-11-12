@@ -3,6 +3,8 @@ from functools import lru_cache
 from pathlib import Path
 
 from django.conf import settings
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import TemplateView
 
 
@@ -39,8 +41,9 @@ def get_react_assets():
     }
 
 
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class ReactAppView(TemplateView):
-    """Serve the React application shell for every client-side route."""
+    """Serve the React shell with CSRF ready for initial client requests."""
 
     template_name = 'react_frontend/index.html'
 

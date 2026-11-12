@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 
 export type SelectChoice = { value: string; label: string }
 
@@ -25,10 +25,14 @@ export function SearchableSelect({ label, value, options, onChange, emptyLabel =
   required, validationError, loading, onSearch, hasMore, onLoadMore, error, onRetry }: SearchableSelectProps) {
   const identifier = useId()
   const input = useRef<HTMLInputElement>(null)
+  const popup = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState<number | null>(null)
   const [chosen, setChosen] = useState<SelectChoice | null>(null)
+  useEffect(() => {
+    if (open) popup.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+  }, [open])
   const selected = options.find((option) => option.value === value) ?? (chosen?.value === value ? chosen : undefined)
   const choices = [{ value: '', label: emptyLabel }, ...options.filter((option) => (
     !query || onSearch || option.label.toLocaleLowerCase('ru-RU').includes(query.toLocaleLowerCase('ru-RU'))
@@ -74,7 +78,7 @@ export function SearchableSelect({ label, value, options, onChange, emptyLabel =
       </div>
       {validationError ? <span className="field-error" id={`${identifier}-error`}>{validationError}</span> : null}
       {open ? (
-        <div className="searchable-select__popup">
+        <div className="searchable-select__popup" ref={popup}>
           <ul id={`${identifier}-list`} className="searchable-select__list" role="listbox" aria-label={`Варианты: ${label}`} tabIndex={-1}
             onMouseDown={(event) => event.preventDefault()}
             onScroll={(event) => {

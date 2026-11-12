@@ -28,6 +28,8 @@ Select a property and enter its price, discount/markup, down payment, date, term
 
 The “Объект недвижимости” field combines search and selection: start typing a city, complex, building or apartment and select a result with the mouse or arrow keys and Enter. Scrolling loads more choices. Selecting a property fills its details and price. Open calculation history with the button in the calculator header. These controls work the same way in market and tranche modes.
 
+Bank and mortgage program fields also support searching by name. Programs become available after selecting a bank and belong to that bank. Changing the bank resets the program; “Без выбора” clears the bank, and “Ручные параметры” clears the program. Selecting a program fills its rate, down payment and term, including applicable developer conditions.
+
 The tranche calculator starts with one residual tranche and a populated date, so a quick calculation is available after entering the financial parameters. When adding tranches, enter the dates of the new releases.
 
 The years field uses whole years, matching the Django form. For example, entering 12.5 years sets 144 months. Use months for an exact term. Entering 25 months displays 2 in the years field while the calculation uses all 25 months. The grace period follows the same rule.

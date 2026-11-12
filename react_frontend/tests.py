@@ -1,8 +1,38 @@
 import json
 
 import pytest
-from django.test import override_settings
+from django.test import Client, override_settings
 from django.urls import reverse
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ('shell_path', 'calculation_path'),
+    [
+        ('/app/mortgage/', '/api/v1/mortgage/calculate/'),
+        ('/app/mortgage/trench/', '/api/v1/mortgage/trench/calculate/'),
+    ],
+)
+def test_shell_initializes_csrf_before_the_session_request(
+    settings, shell_path, calculation_path,
+):
+    """Allow the first API request while retaining mandatory CSRF headers."""
+    protected_client = Client(enforce_csrf_checks=True)
+    response = protected_client.get(shell_path)
+    assert response.status_code == 200
+    cookie_name = settings.CSRF_COOKIE_NAME
+    assert cookie_name in response.cookies
+    token = protected_client.cookies[cookie_name].value
+    rejected = protected_client.post(
+        calculation_path, {}, content_type='application/json',
+    )
+    assert rejected.status_code == 403
+    validated = protected_client.post(
+        calculation_path, {}, content_type='application/json',
+        HTTP_X_CSRFTOKEN=token,
+    )
+    assert validated.status_code == 400
+    assert 'propertyCost' in validated.json()
 
 
 @pytest.mark.django_db

@@ -1305,38 +1305,32 @@ export function MortgageCalculatorPage({
               </div>
             </div>
             <div className="field-grid">
-              <label className="form-field">
-                <span>Банк</span>
-                <select
-                  value={formState.bankId}
-                  disabled={optionsQuery.isLoading || developerOptionsQuery.isFetching}
-                  onChange={(event) => setFormState((current) => ({
-                    ...current,
-                    bankId: event.target.value,
-                    bankProgramId: '',
-                  }))}
-                >
-                  <option value="">Без выбора</option>
-                  {availableBanks.map((bank) => (
-                    <option value={bank.id} key={bank.id}>{bank.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="form-field">
-                <span>Ипотечная программа</span>
-                <select
-                  value={formState.bankProgramId}
-                  disabled={!formState.bankId || developerOptionsQuery.isFetching}
-                  onChange={(event) => selectProgram(event.target.value)}
-                >
-                  <option value="">Ручные параметры</option>
-                  {availablePrograms.map((program) => (
-                    <option value={program.id} key={program.id}>
-                      {program.programName} — {formatPercent(program.interestRate)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <SearchableSelect
+                label="Банк"
+                value={formState.bankId}
+                emptyLabel="Без выбора"
+                placeholder="Найти банк…"
+                options={availableBanks.map((bank) => ({ value: String(bank.id), label: bank.name }))}
+                disabled={optionsQuery.isLoading || developerOptionsQuery.isFetching}
+                onChange={(bankId) => {
+                  if (bankId === formState.bankId) return
+                  setFormState((current) => ({ ...current, bankId, bankProgramId: '' }))
+                }}
+              />
+              <SearchableSelect
+                label="Ипотечная программа"
+                value={formState.bankProgramId}
+                emptyLabel="Ручные параметры"
+                placeholder="Найти ипотечную программу…"
+                options={availablePrograms.map((program) => ({
+                  value: String(program.id),
+                  label: `${program.programName} — ${formatPercent(program.interestRate)}`,
+                }))}
+                disabled={!formState.bankId || developerOptionsQuery.isFetching}
+                onChange={(value) => {
+                  if (value !== formState.bankProgramId) selectProgram(value)
+                }}
+              />
               <label className="form-field">
                 <span>Первоначальный взнос, %</span>
                 <input

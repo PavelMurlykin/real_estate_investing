@@ -12,6 +12,36 @@ const calculationTest = (name, callback) => test(name, {
   skip: isolatedWritesEnabled ? false : 'requires isolated acceptance stack',
 }, callback)
 
+for (const mode of ['market', 'trench']) {
+  calculationTest(mode + ' calculates immediately while the session request is delayed', async (context) => {
+    const prefix = '/api/v1/mortgage/' + (mode === 'trench' ? 'trench/' : '')
+    const page = await createIsolatedPage(context, { width: 360, height: 1000 }, {
+      allowedUnsafeRequests: ['POST ' + prefix + 'calculate/'],
+    })
+    const sessionPath = '/api/v1/auth/session/'
+    const gate = Promise.withResolvers()
+    await page.route('**' + sessionPath, async (route) => {
+      await gate.promise
+      await route.continue()
+    })
+    try {
+      await page.goto(new URL('/app/mortgage' + (mode === 'trench' ? '/trench' : ''), isolatedBaseUrl).href)
+      await page.getByRole('heading', { name: 'Ипотечный калькулятор', exact: true }).waitFor()
+      await page.getByLabel('Срок ипотеки, месяцев', { exact: true }).fill('24')
+      const [response] = await Promise.all([
+        page.waitForResponse((response) => new URL(response.url()).pathname === prefix + 'calculate/'),
+        page.getByRole('button', { name: mode === 'market' ? 'Рассчитать ипотеку' : 'Рассчитать траншевую ипотеку', exact: true }).click(),
+      ])
+      assert.equal(response.status(), 200)
+    } finally {
+      const sessionResponse = page.waitForResponse((response) => new URL(response.url()).pathname === sessionPath)
+      gate.resolve()
+      await sessionResponse
+      await page.unroute('**' + sessionPath)
+    }
+  })
+}
+
 for (const width of [360, 1280]) {
   for (const mode of ['market', 'trench']) {
     calculationTest(mode + ' quick form preserves Django field rules at ' + width + 'px', async (context) => {
