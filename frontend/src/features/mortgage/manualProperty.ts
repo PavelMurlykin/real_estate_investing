@@ -7,6 +7,11 @@ export const emptyManualProperty: ManualPropertyState = {
   buildingId: '', apartmentNumber: '', area: '', floor: '', layoutId: '', decorationId: '',
 }
 
+export function isManualPropertyComplete(value: ManualPropertyState | null): boolean {
+  return value !== null && Object.entries(value)
+    .every(([field, entry]) => field === 'regionId' || entry.trim() !== '')
+}
+
 export function manualPropertyFromSelected(property?: PropertyListItem | PropertyDetail): ManualPropertyState {
   if (!property) return { ...emptyManualProperty }
   return {

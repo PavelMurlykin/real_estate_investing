@@ -9,6 +9,7 @@ import type {
   TrenchMortgageCalculationResponse,
 } from '@/api/schemas'
 import { createTestQueryClient, renderWithProviders } from '@/test/render'
+import { mockMortgageCatalogs } from '@/test/mockMortgageCatalogs'
 
 import { TrenchMortgageCalculatorPage } from './TrenchMortgageCalculatorPage'
 
@@ -26,6 +27,9 @@ const propertyList = {
   totalPages: 1,
   results: [{
     id: 42,
+    regionId: 1, cityId: 1, districtId: 1, developerId: 1,
+    realEstateComplexId: 1, buildingId: 1, layoutId: 1, decorationId: 1,
+    district: 'Центральный',
     city: 'Казань',
     developer: 'Надёжный застройщик',
     realEstateComplex: 'Зелёный квартал',
@@ -151,6 +155,8 @@ function renderPage({
   route?: string
 } = {}) {
   const queryClient = createTestQueryClient()
+  mockMortgageCatalogs(propertyList.results)
+  queryClient.setQueryData(['mortgage-developer-options', 1], mortgageOptions)
   queryClient.setQueryData(['mortgage-options'], mortgageOptions)
   queryClient.setQueryData(
     ['properties', 'mortgage-options', ''],

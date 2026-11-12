@@ -55,7 +55,12 @@ for (const width of [360, 768, 1280]) {
       else await page.getByRole('combobox', { name: /^Количество траншей/ }).selectOption('3')
       await assertFormSpacing(page)
       await screenshot(page, `mortgage-${mode}-${width}.png`)
-      await page.getByRole('button', { name: 'Заполнить объект вручную' }).click()
+      assert.equal(await page.getByRole('button', { name: 'Заполнить объект вручную' }).count(), 0)
+      assert.equal(await page.locator('form').count(), 1)
+      assert.equal(await page.locator('[aria-label="Данные объекта недвижимости"] [role=combobox]').count(), 8)
+      assert.equal(await page.locator('[aria-label="Данные объекта недвижимости"] [type=search]').count(), 0)
+      await page.getByRole('button', { name: 'Очистить поля', exact: true }).click()
+      assert.equal(await page.getByLabel('Номер квартиры', { exact: true }).inputValue(), '')
       await assertFormSpacing(page)
     })
   }

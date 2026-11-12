@@ -10,6 +10,7 @@ import type {
   Session,
 } from '@/api/schemas'
 import { createTestQueryClient, renderWithProviders } from '@/test/render'
+import { mockMortgageCatalogs } from '@/test/mockMortgageCatalogs'
 import { downloadFile } from '@/shared/lib/downloadFile'
 
 import { MortgageCalculatorPage } from './MortgageCalculatorPage'
@@ -43,6 +44,9 @@ const propertyList = {
   totalPages: 1,
   results: [{
     id: 3,
+    regionId: 1, cityId: 1, districtId: 1, developerId: 1,
+    realEstateComplexId: 1, buildingId: 1, layoutId: 1, decorationId: 1,
+    district: 'Центральный',
     city: 'Казань',
     developer: 'Надёжный застройщик',
     realEstateComplex: 'Зелёный квартал',
@@ -93,6 +97,18 @@ const mortgageResult: MortgageCalculationResponse = {
       remainingDebt: '3999422.49',
     },
   ],
+}
+
+function resultForMode(mode: 'market' | 'trench') {
+  if (mode === 'market') return mortgageResult
+  return {
+    assumptions: { ...mortgageResult.assumptions, trenchCount: 1 },
+    summary: { ...mortgageResult.summary, maximumMonthlyPayment: mortgageResult.summary.mainMonthlyPayment },
+    schedule: mortgageResult.schedule,
+    trenches: [{ number: 1, date: '2026-01-15', percent: '100.00', amount: '4000000.00',
+      annualRate: '15.00', monthlyPayment: mortgageResult.summary.mainMonthlyPayment,
+      paymentsCount: 360, remainingDebt: '0.00', overpayment: mortgageResult.summary.overpayment }],
+  }
 }
 
 const authenticatedSession: Session = {
@@ -169,6 +185,11 @@ function renderCalculator({
   options?: MortgageOptions
 } = {}) {
   const queryClient = createTestQueryClient()
+  mockMortgageCatalogs(properties?.results.length ? properties.results : propertyList.results)
+  queryClient.setQueryData(['mortgage-developer-options', 1], options)
+  properties?.results.forEach((property) => {
+    if (property.developerId) queryClient.setQueryData(['mortgage-developer-options', property.developerId], options)
+  })
   queryClient.setQueryData(['mortgage-options'], options)
   if (properties) {
     queryClient.setQueryData(
@@ -197,6 +218,53 @@ afterEach(() => {
 })
 
 describe('MortgageCalculatorPage', () => {
+  it.each(['market', 'trench'] as const)('keeps one visible form and permits a quick %s calculation with partial property details', async (mode) => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(Response.json(resultForMode(mode)))
+    vi.stubGlobal('fetch', fetchMock)
+    const { container } = renderCalculator({ session: authenticatedSession, initialCalculationType: mode })
+    expect(container.querySelectorAll('form')).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: 'Заполнить объект вручную' })).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Город' })).toBeVisible()
+    expect(screen.getByLabelText('Номер квартиры')).not.toHaveAttribute('readonly')
+    await user.type(screen.getByLabelText('Номер квартиры'), 'PARTIAL-42')
+    await user.click(screen.getByRole('button', {
+      name: mode === 'market' ? 'Рассчитать ипотеку' : 'Рассчитать траншевую ипотеку',
+    }))
+    expect(await screen.findByRole('button', { name: 'Сохранить расчёт' })).toBeDisabled()
+    const request = fetchMock.mock.calls.find(([path]) => String(path).endsWith('/calculate/'))
+    expect(JSON.parse(request?.[1]?.body as string)).not.toHaveProperty('manualProperty')
+    expect(screen.getByLabelText('Номер квартиры')).toHaveValue('PARTIAL-42')
+  })
+
+  it.each(['market', 'trench'] as const)('detaches the old property and saves edited %s fields as a new snapshot', async (mode) => {
+    const user = userEvent.setup()
+    const response = resultForMode(mode)
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (path) => Response.json(
+      String(path).endsWith('/calculate/') ? response : { ...savedCalculation, calculation: response },
+      { status: String(path).endsWith('/calculate/') ? 200 : 201 },
+    ))
+    vi.stubGlobal('fetch', fetchMock)
+    renderCalculator({ initialRoute: '/?propertyId=3', session: authenticatedSession, initialCalculationType: mode })
+    const calculate = screen.getByRole('button', {
+      name: mode === 'market' ? 'Рассчитать ипотеку' : 'Рассчитать траншевую ипотеку',
+    })
+    await user.click(calculate)
+    expect(await screen.findByRole('button', { name: 'Сохранить расчёт' })).toBeEnabled()
+    await user.clear(screen.getByLabelText('Номер квартиры'))
+    await user.type(screen.getByLabelText('Номер квартиры'), 'NEW-42')
+    expect(screen.getByRole('combobox', { name: 'Объект недвижимости' })).toHaveValue('')
+    expect(screen.getByRole('button', { name: 'Сохранить расчёт' })).toBeDisabled()
+    await user.click(calculate)
+    await user.click(await screen.findByRole('button', { name: 'Сохранить расчёт' }))
+    const saved = fetchMock.mock.calls.find(([path]) => String(path).endsWith('/calculations/'))
+    const payload = JSON.parse(saved?.[1]?.body as string)
+    expect(payload).not.toHaveProperty('propertyId')
+    expect(payload.parameters.manualProperty).toMatchObject({
+      cityId: 1, buildingId: 1, apartmentNumber: 'NEW-42', area: '52.40',
+    })
+  })
+
   it.each(['market', 'trench'] as const)('searches and loads properties in one keyboard-accessible control in %s mode', async (mode) => {
     const user = userEvent.setup()
     const nextProperty = {
@@ -319,7 +387,7 @@ describe('MortgageCalculatorPage', () => {
     }))
   })
 
-  it('can retry an unavailable property or switch to manual entry', async () => {
+  it('can retry an unavailable property or edit the visible property fields', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 503 })))
     vi.stubGlobal('fetch', fetchMock)
@@ -335,7 +403,7 @@ describe('MortgageCalculatorPage', () => {
     await user.click(retry)
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
     await screen.findByRole('button', { name: 'Повторить загрузку объекта' })
-    await user.click(screen.getByRole('button', { name: 'Заполнить объект вручную' }))
+    await user.type(screen.getByLabelText('Номер квартиры'), 'NEW')
     expect(calculate).toBeEnabled()
   })
 
@@ -355,11 +423,13 @@ describe('MortgageCalculatorPage', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
     renderCalculator({ session: { ...authenticatedSession, capabilities: { ...authenticatedSession.capabilities, manageCatalogs: true } } })
-    await user.click(screen.getByRole('button', { name: 'Заполнить объект вручную' }))
-    await user.selectOptions(await screen.findByLabelText(/^Жилой комплекс/), '1')
-    await user.selectOptions(await screen.findByLabelText(/^Корпус/), '1')
-    await user.selectOptions(await screen.findByLabelText(/^Планировка/), '1')
-    await user.selectOptions(await screen.findByLabelText(/^Отделка/), '1')
+    for (const [label, choice] of [
+      ['Жилой комплекс', 'Зелёный квартал'], ['Корпус', '2'],
+      ['Планировка', 'Евродвушка'], ['Отделка', 'Чистовая'],
+    ]) {
+      await user.click(screen.getByRole('combobox', { name: label }))
+      await user.click(await screen.findByRole('option', { name: choice }))
+    }
     await user.type(screen.getByLabelText('Номер квартиры'), 'NEW-42')
     await user.type(screen.getByLabelText('Площадь, м²'), '51.25')
     await user.type(screen.getByLabelText('Этаж'), '9')
