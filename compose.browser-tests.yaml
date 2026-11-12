@@ -8,6 +8,8 @@ services:
       POSTGRES_DB: react_browser_acceptance
       POSTGRES_USER: react_browser_acceptance
       POSTGRES_PASSWORD: ${BROWSER_TEST_DATABASE_PASSWORD:?Generate a test database password}
+      # Builtin Unicode case mapping is consistent across host operating systems.
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale-provider=builtin --builtin-locale=C.UTF-8
     # Test data is deliberately ephemeral; no production database mounts or ports.
     tmpfs:
       - /var/lib/postgresql:size=512m

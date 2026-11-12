@@ -8,6 +8,12 @@ Configure `.env` using `.env.example`, then run `docker compose up -d --build` f
 
 After updating the Docker build, reload the browser page to load the updated interface. Its asset version updates automatically.
 
+## Verifying the installation
+
+Run the complete backend suite with `./scripts/run-backend-tests.ps1` from the project root while Docker is running. The script builds the application, starts separate PostgreSQL and Django services without publishing ports, and removes its temporary stack afterward. For one file, use `./scripts/run-backend-tests.ps1 -TestPath api_v1/test_catalog_case_insensitivity.py`. Startup or test failures make the script fail.
+
+Test PostgreSQL 18 uses the `C.UTF-8` Unicode locale with the `builtin` provider. This supports case-insensitive search and duplicate checks for Russian names. When initializing a new test cluster yourself, pass `--encoding=UTF8 --locale-provider=builtin --builtin-locale=C.UTF-8` to `initdb`. Using `--no-locale` alone selects the `C` locale, which does not map Cyrillic case.
+
 ## Main sections
 
 The catalog contains properties, developers, company groups and residential complexes. Property details show attributes, images and a link to the mortgage calculator. Catalog moderators manage property and location dictionaries. Banks, mortgage programs, developer programs and the key rate have separate sections. Imports and external updates require the appropriate permissions.
