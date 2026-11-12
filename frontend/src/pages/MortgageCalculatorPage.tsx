@@ -1,5 +1,4 @@
-import { LegacyLink } from '@/shared/ui/LegacyLink'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent, RefObject } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
@@ -12,7 +11,7 @@ import {
   mortgageOptionsQueryOptions,
   mortgageDeveloperOptionsQueryOptions,
   propertyDetailQueryOptions,
-  propertyListQueryOptions,
+  mortgagePropertyOptionsQueryOptions,
   saveMortgageCalculation,
   saveTrenchMortgageCalculation,
   savedMortgageCalculationDetailQueryOptions,
@@ -38,6 +37,7 @@ import { downloadFile } from '@/shared/lib/downloadFile'
 import { formatCurrency, formatPercent } from '@/shared/lib/formatters'
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
+import { SearchableSelect } from '@/shared/ui/SearchableSelect'
 
 type CalculationType = 'market' | 'trench'
 type ValueSource = 'percent' | 'rubles'
@@ -399,23 +399,13 @@ export function MortgageCalculatorPage({
   const sessionQuery = useQuery(sessionQueryOptions)
   const [propertySearch, setPropertySearch] = useState('')
   const debouncedPropertySearch = useDebouncedValue(propertySearch.trim())
-  const [propertyPage, setPropertyPage] = useState(1)
-  const propertyListParameters = useMemo(
-    () => {
-      const parameters = new URLSearchParams({ pageSize: '100', ordering: 'realEstateComplex' })
-      if (debouncedPropertySearch) parameters.set('search', debouncedPropertySearch)
-      if (propertyPage > 1) parameters.set('page', String(propertyPage))
-      return parameters
-    },
-    [debouncedPropertySearch, propertyPage],
+  const propertyListQuery = useInfiniteQuery(
+    mortgagePropertyOptionsQueryOptions(debouncedPropertySearch),
   )
-  const propertyListQuery = useQuery({
-    ...propertyListQueryOptions(propertyListParameters),
-    staleTime: 60_000,
-  })
   const propertyItems = useMemo(
-    () => propertyListQuery.data?.results ?? [],
-    [propertyListQuery.data?.results],
+    () => [...new Map(propertyListQuery.data?.pages.flatMap((page) => page.results)
+      .map((property) => [property.id, property]) ?? []).values()],
+    [propertyListQuery.data?.pages],
   )
   const marketResultHeadingRef = useRef<HTMLHeadingElement>(null)
   const trenchResultHeadingRef = useRef<HTMLHeadingElement>(null)
@@ -1085,7 +1075,6 @@ export function MortgageCalculatorPage({
     <div className="page-stack mortgage-page">
       <header className="page-header">
         <div>
-          <span className="eyebrow">Финансовая модель</span>
           <h1>Ипотечный калькулятор</h1>
           <p>
             Рыночная и траншевая ипотека в одной форме с общими данными
@@ -1093,9 +1082,10 @@ export function MortgageCalculatorPage({
           </p>
         </div>
         <div className="page-header__actions">
-          <LegacyLink className="button button--secondary" href="/mortgage/?legacy=1">
-            Django-версия
-          </LegacyLink>
+          <Link className="button button--secondary" to={calculationType === 'market'
+            ? '/mortgage/calculations' : '/mortgage/trench/calculations'}>
+            История расчётов
+          </Link>
         </div>
       </header>
 
@@ -1113,6 +1103,12 @@ export function MortgageCalculatorPage({
         <p className="form-error" role="alert">
           Сохранённый расчёт не найден или недоступен. Можно заполнить форму
           вручную.
+        </p>
+      ) : null}
+
+      {optionsQuery.isError ? (
+        <p className="status-notice" role="status">
+          Программы банков временно недоступны. Ручной расчёт продолжает работать.
         </p>
       ) : null}
 
@@ -1138,66 +1134,57 @@ export function MortgageCalculatorPage({
                 Очистить поля
               </button>
             </div>
-            <label className="form-field">
-              <span>Поиск объекта</span>
-              <input type="search" value={propertySearch}
-                onChange={(event) => { setPropertySearch(event.target.value); setPropertyPage(1) }}
-                onKeyDown={(event) => { if (event.key === 'Enter') event.preventDefault() }}
-                placeholder="Город, ЖК, корпус или квартира" />
-            </label>
-            <div className="field-grid property-data-grid">
-              <label className="form-field form-field--wide">
-                <span>Объект недвижимости</span>
-                <select
-                  value={selectedPropertyIdentifier ?? ''}
-                  disabled={propertyListQuery.isLoading}
-                  onChange={(event) => selectProperty(event.target.value)}
-                >
-                  <option value="">Не выбран — ручное заполнение</option>
-                  {selectedPropertyIdentifier && !propertyItems.some((property) => property.id === selectedPropertyIdentifier) ? (
-                    <option value={selectedPropertyIdentifier}>{selectedProperty
-                      ? `${selectedProperty.realEstateComplex}, кв. ${selectedProperty.apartmentNumber}`
-                      : 'Загрузка выбранного объекта…'}</option>
-                  ) : null}
-                  {propertyItems.map((property) => (
-                    <option value={property.id} key={property.id}>
-                      {property.city}, {property.realEstateComplex}, корпус {property.building}, кв. {property.apartmentNumber}
-                    </option>
-                  ))}
-                </select>
-                {propertyListQuery.isError ? (
-                  <small role="status">Каталог временно недоступен; поля можно заполнить вручную.</small>
-                ) : null}
-              </label>
-              {!manualProperty ? ([
-                ['city', 'Город'],
-                ['district', 'Район'],
-                ['developer', 'Застройщик'],
-                ['realEstateComplex', 'Жилой комплекс'],
-                ['building', 'Корпус'],
-                ['apartmentNumber', 'Номер квартиры'],
-                ['area', 'Площадь, м²'],
-                ['layout', 'Планировка'],
-                ['floor', 'Этаж'],
-                ['decoration', 'Отделка'],
-              ] as const).map(([fieldName, label]) => (
-                <label className="form-field" key={fieldName}>
-                  <span>{label}</span>
-                  <input
-                    type={fieldName === 'area' || fieldName === 'floor' ? 'number' : 'text'}
-                    step={fieldName === 'area' ? '0.01' : undefined}
-                    value={propertyData?.[fieldName] ?? ''}
-                    readOnly
-                  />
-                </label>
-              )) : null}
-            </div>
-            {propertyListQuery.data && propertyListQuery.data.totalPages > 1 ? (
-              <nav className="pagination" aria-label="Страницы выбора объекта">
-                <button type="button" disabled={propertyPage <= 1} onClick={() => setPropertyPage((page) => page - 1)}>Назад</button>
-                <span>{propertyPage} / {propertyListQuery.data.totalPages}</span>
-                <button type="button" disabled={propertyPage >= propertyListQuery.data.totalPages} onClick={() => setPropertyPage((page) => page + 1)}>Далее</button>
-              </nav>
+            <SearchableSelect
+              label="Объект недвижимости"
+              value={String(selectedPropertyIdentifier ?? '')}
+              emptyLabel="Не выбран — ручное заполнение"
+              placeholder="Город, ЖК, корпус или квартира…"
+              options={(propertySearch.trim() !== debouncedPropertySearch ? [] : [
+                ...propertyItems,
+                ...(!propertySearch.trim() && selectedProperty
+                  && !propertyItems.some((property) => property.id === selectedProperty.id)
+                  ? [selectedProperty] : []),
+              ]).map((property) => ({
+                value: String(property.id),
+                label: `${property.city}, ${property.realEstateComplex}, корпус ${property.building}, кв. ${property.apartmentNumber}`,
+              }))}
+              onChange={(value) => {
+                if (value !== String(selectedPropertyIdentifier ?? '')) selectProperty(value)
+              }}
+              onSearch={setPropertySearch}
+              loading={propertyListQuery.isFetching || propertySearch.trim() !== debouncedPropertySearch}
+              hasMore={propertyListQuery.hasNextPage}
+              onLoadMore={() => {
+                if (!propertyListQuery.isFetching) void propertyListQuery.fetchNextPage()
+              }}
+              error={propertyListQuery.isError}
+              onRetry={() => void propertyListQuery.refetch()}
+            />
+            {!manualProperty ? (
+              <div className="field-grid property-data-grid">
+                {([
+                  ['city', 'Город'],
+                  ['district', 'Район'],
+                  ['developer', 'Застройщик'],
+                  ['realEstateComplex', 'Жилой комплекс'],
+                  ['building', 'Корпус'],
+                  ['apartmentNumber', 'Номер квартиры'],
+                  ['area', 'Площадь, м²'],
+                  ['layout', 'Планировка'],
+                  ['floor', 'Этаж'],
+                  ['decoration', 'Отделка'],
+                ] as const).map(([fieldName, label]) => (
+                  <label className="form-field" key={fieldName}>
+                    <span>{label}</span>
+                    <input
+                      type={fieldName === 'area' || fieldName === 'floor' ? 'number' : 'text'}
+                      step={fieldName === 'area' ? '0.01' : undefined}
+                      value={propertyData?.[fieldName] ?? ''}
+                      readOnly
+                    />
+                  </label>
+                ))}
+              </div>
             ) : null}
             {isSelectedPropertyUnresolved ? (
               selectedPropertyQuery.isError && !selectedPropertyQuery.isFetching ? (
@@ -1680,21 +1667,6 @@ export function MortgageCalculatorPage({
           </button>
         </form>
 
-        <aside className="calculator-reference" aria-label="Справочная информация">
-          <span className="eyebrow">Ориентир</span>
-          <strong>{optionsQuery.data ? formatPercent(optionsQuery.data.keyRate) : '—'}</strong>
-          <p>Актуальная ключевая ставка из справочника приложения.</p>
-          {optionsQuery.isError ? (
-            <p className="reference-warning" role="status">
-              Программы банков временно недоступны. Ручной расчёт продолжает работать.
-            </p>
-          ) : null}
-          <Link to={calculationType === 'market'
-            ? '/mortgage/calculations'
-            : '/mortgage/trench/calculations'}>
-            История расчётов <span aria-hidden="true">→</span>
-          </Link>
-        </aside>
       </div>
 
       <div aria-live="polite">

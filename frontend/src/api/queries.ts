@@ -1,4 +1,4 @@
-import { queryOptions } from '@tanstack/react-query'
+import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query'
 
 import { requestFile, requestJson, requestWithoutResponse } from './client'
 import {
@@ -1233,6 +1233,22 @@ export function propertyListQueryOptions(searchParameters: URLSearchParams) {
         { signal },
       ),
     placeholderData: (previousData) => previousData,
+  })
+}
+
+export function mortgagePropertyOptionsQueryOptions(search: string) {
+  return infiniteQueryOptions({
+    queryKey: ['properties', 'mortgage-options', search],
+    initialPageParam: 1,
+    queryFn: ({ pageParam, signal }) => {
+      const parameters = new URLSearchParams({ pageSize: '100', ordering: 'realEstateComplex' })
+      if (search) parameters.set('search', search)
+      if (pageParam > 1) parameters.set('page', String(pageParam))
+      return requestJson(`/api/v1/properties/?${parameters}`, propertyListResponseSchema, { signal })
+    },
+    getNextPageParam: (lastPage) => lastPage.page < lastPage.totalPages
+      ? lastPage.page + 1 : undefined,
+    staleTime: 60_000,
   })
 }
 

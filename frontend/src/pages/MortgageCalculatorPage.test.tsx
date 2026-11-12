@@ -172,8 +172,8 @@ function renderCalculator({
   queryClient.setQueryData(['mortgage-options'], options)
   if (properties) {
     queryClient.setQueryData(
-      ['properties', 'pageSize=100&ordering=realEstateComplex'],
-      properties,
+      ['properties', 'mortgage-options', ''],
+      { pages: [properties], pageParams: [1] },
     )
   }
   if (session) queryClient.setQueryData(['session'], session)
@@ -197,6 +197,68 @@ afterEach(() => {
 })
 
 describe('MortgageCalculatorPage', () => {
+  it.each(['market', 'trench'] as const)('searches and loads properties in one keyboard-accessible control in %s mode', async (mode) => {
+    const user = userEvent.setup()
+    const nextProperty = {
+      ...propertyList.results[0], id: 4, apartmentNumber: '43',
+      realEstateComplex: 'Другой ЖК', propertyCost: '5432100.67',
+    }
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (path) => {
+      const parameters = new URL(String(path), 'http://localhost').searchParams
+      return new Response(JSON.stringify({
+        ...propertyList,
+        page: parameters.has('search') ? 1 : 2,
+        totalPages: parameters.has('search') ? 1 : 2,
+        results: [nextProperty],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderCalculator({
+      initialCalculationType: mode, session: authenticatedSession,
+      properties: { ...propertyList, totalPages: 2, totalCount: 101 },
+    })
+    expect(screen.queryByRole('link', { name: 'Django-версия' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Справочная информация' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Поиск объекта')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'История расчётов' })).toHaveAttribute(
+      'href', mode === 'market' ? '/mortgage/calculations' : '/mortgage/trench/calculations',
+    )
+    const control = screen.getByRole('combobox', { name: 'Объект недвижимости' })
+    await user.click(control)
+    const list = screen.getByRole('listbox', { name: 'Варианты: Объект недвижимости' })
+    fireEvent.scroll(list)
+    expect(await screen.findByRole('option', { name: /Другой ЖК.*кв\. 43$/ })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Зелёный квартал.*кв\. 42$/ })).toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([path]) => String(path).includes('page=2'))).toBe(true)
+    await user.type(control, 'Другой')
+    await waitFor(() => expect(control).not.toHaveAttribute('aria-busy', 'true'))
+    expect(await screen.findByRole('option', { name: /Другой ЖК.*кв\. 43$/ })).toBeInTheDocument()
+    await user.keyboard('{Enter}')
+    expect(control).toHaveValue('Казань, Другой ЖК, корпус 2, кв. 43')
+    expect(screen.getByLabelText('Базовая стоимость, ₽')).toHaveValue(5432100.67)
+    expect(screen.getByLabelText('Номер квартиры')).toHaveValue('43')
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([path]) => String(path).includes('search='))).toBe(true)
+    expect(fetchMock.mock.calls.every(([, options]) => !options?.method || options.method === 'GET')).toBe(true)
+  })
+
+  it('retries the property list with the keyboard after a loading error', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+      .mockResolvedValue(new Response(JSON.stringify(propertyList), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      })))
+    renderCalculator({ properties: null, session: authenticatedSession })
+    await user.click(screen.getByRole('combobox', { name: 'Объект недвижимости' }))
+    const retry = await screen.findByRole('button', { name: 'Повторить загрузку справочника' })
+    await user.tab()
+    expect(retry).toHaveFocus()
+    await user.keyboard('{Enter}')
+    await user.click(await screen.findByRole('option', { name: /кв\. 42$/ }))
+    expect(screen.getByLabelText('Номер квартиры')).toHaveValue('42')
+  })
+
   it.each(['market', 'trench'] as const)('matches Django integer year fields in %s mode', async (mode) => {
     const user = userEvent.setup()
     renderCalculator({ initialCalculationType: mode })
@@ -375,13 +437,14 @@ describe('MortgageCalculatorPage', () => {
     expect(screen.getByLabelText('Район')).toHaveValue('Центральный')
     const fetchMock = vi.fn().mockImplementation(() => new Promise(() => {}))
     vi.stubGlobal('fetch', fetchMock)
-    await user.type(screen.getByLabelText('Поиск объекта'), 'Другой ЖК')
+    await user.type(screen.getByRole('combobox', { name: 'Объект недвижимости' }), 'Другой ЖК')
     await waitFor(() => expect(fetchMock.mock.calls.some(([path]) => String(path).includes('search='))).toBe(true))
     expect(screen.getAllByLabelText('Годовая ставка, %')[0]).toHaveValue(3)
     expect(screen.getByLabelText('Удорожание, %')).toHaveValue(8)
-    await user.clear(screen.getByLabelText('Поиск объекта'))
+    await user.clear(screen.getByRole('combobox', { name: 'Объект недвижимости' }))
     await waitFor(() => expect(screen.getByLabelText('Объект недвижимости')).toBeEnabled())
-    await user.selectOptions(screen.getByLabelText('Объект недвижимости'), '4')
+    await user.click(screen.getByRole('combobox', { name: 'Объект недвижимости' }))
+    await user.click(await screen.findByRole('option', { name: /кв\. 43$/ }))
     expect(screen.getAllByLabelText('Годовая ставка, %')[0]).toHaveValue(5)
     expect(screen.getByLabelText('Скидка, %')).toHaveValue(2.5)
     expect(screen.getByLabelText('Первоначальный взнос, %')).toHaveValue(21)
@@ -436,7 +499,8 @@ describe('MortgageCalculatorPage', () => {
     })
     await user.click(screen.getByRole('button', { name: 'Рассчитать ипотеку' }))
     expect(await screen.findByRole('button', { name: 'Сохранить расчёт' })).toBeEnabled()
-    await user.selectOptions(screen.getByLabelText('Объект недвижимости'), '4')
+    await user.click(screen.getByRole('combobox', { name: 'Объект недвижимости' }))
+    await user.click(await screen.findByRole('option', { name: /кв\. 43$/ }))
     expect(screen.getByRole('button', { name: 'Сохранить расчёт' })).toBeDisabled()
     expect(screen.getByText('Данные изменены. Повторите расчёт перед сохранением.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Рассчитать ипотеку' }))
@@ -517,7 +581,8 @@ describe('MortgageCalculatorPage', () => {
     renderCalculator()
 
     expect(screen.getByRole('heading', { name: 'Данные объекта' })).toBeInTheDocument()
-    await user.selectOptions(screen.getByLabelText('Объект недвижимости'), '3')
+    await user.click(screen.getByRole('combobox', { name: 'Объект недвижимости' }))
+    await user.click(await screen.findByRole('option', { name: /кв\. 42$/ }))
 
     expect(screen.getByLabelText('Город')).toHaveValue('Казань')
     expect(screen.getByLabelText('Базовая стоимость, ₽')).toHaveValue(5000000)

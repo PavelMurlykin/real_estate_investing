@@ -1516,7 +1516,7 @@ textarea:focus-visible {
 
 .mortgage-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 24px;
 }
@@ -1528,6 +1528,9 @@ textarea:focus-visible {
 }
 
 .calculator-section {
+  min-width: 0;
+  display: grid;
+  gap: 24px;
   padding: 30px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1537,9 +1540,9 @@ textarea:focus-visible {
 
 .calculator-section__heading {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 13px;
-  margin-bottom: 24px;
+  margin: 0;
 }
 
 .calculator-section__heading > span {
@@ -1558,16 +1561,32 @@ textarea:focus-visible {
 .calculator-section__heading h2 {
   margin: 0;
   font-size: 18px;
+  line-height: 1.35;
 }
 
 .calculator-section__heading p {
   margin: 3px 0 0;
   color: var(--text-muted);
   font-size: 12px;
+  line-height: 1.6;
 }
 
-.calculator-section__heading--actions > div {
+.calculator-section__heading > div {
   min-width: 0;
+}
+
+.calculator-section__heading--actions {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+}
+
+.calculator-section > p,
+.calculator-section > .form-error {
+  margin: 0;
+}
+
+.calculator-section > .text-button {
+  justify-self: start;
 }
 
 .calculator-section__clear {
@@ -1584,6 +1603,7 @@ textarea:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap;
   padding: 16px 18px;
   color: var(--text-muted);
   background: var(--brand-soft);
@@ -1595,10 +1615,11 @@ textarea:focus-visible {
 .calculated-value strong {
   color: var(--text);
   font-size: 18px;
+  white-space: nowrap;
 }
 
 .calculation-type-field {
-  margin-bottom: 24px;
+  margin: 0;
 }
 
 .calculation-variant-fields {
@@ -1748,7 +1769,7 @@ textarea:focus-visible {
 }
 
 .grace-fields {
-  margin-top: 20px;
+  margin-top: 0;
 }
 
 .form-error {
@@ -1771,48 +1792,6 @@ textarea:focus-visible {
 .calculator-submit:disabled {
   cursor: wait;
   opacity: 0.7;
-}
-
-.calculator-reference {
-  position: sticky;
-  top: calc(var(--header-height) + 24px);
-  padding: 28px;
-  color: white;
-  background: #18372c;
-  border-radius: 20px;
-  box-shadow: var(--shadow-md);
-}
-
-.calculator-reference .eyebrow {
-  color: #bfcfc4;
-}
-
-.calculator-reference > strong {
-  display: block;
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 48px;
-  line-height: 1;
-}
-
-.calculator-reference > p {
-  margin: 14px 0 24px;
-  color: #bfcfc4;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.calculator-reference > a {
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.calculator-reference .reference-warning {
-  padding: 10px;
-  color: #fff0be;
-  background: rgb(255 255 255 / 8%);
-  border-radius: 9px;
 }
 
 .mortgage-result {
@@ -2079,19 +2058,6 @@ textarea:focus-visible {
     grid-template-columns: 1fr;
   }
 
-  .calculator-reference {
-    position: static;
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-    gap: 18px;
-  }
-
-  .calculator-reference .eyebrow,
-  .calculator-reference > p {
-    display: none;
-  }
-
   .saved-property-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2115,26 +2081,19 @@ textarea:focus-visible {
   }
 
   .calculator-section__heading--actions {
-    align-items: flex-start;
-    flex-wrap: wrap;
+    grid-template-columns: 38px minmax(0, 1fr);
   }
 
   .calculator-section__clear {
     width: auto;
-    margin-left: 51px;
+    grid-column: 2;
+    justify-self: start;
+    margin-left: 0;
     text-align: left;
   }
 
   .form-field--wide {
     grid-column: auto;
-  }
-
-  .calculator-reference {
-    grid-template-columns: 1fr;
-  }
-
-  .calculator-reference > strong {
-    font-size: 40px;
   }
 
   .calculator-submit {
@@ -2381,11 +2340,6 @@ textarea:focus-visible {
 @media (max-width: 500px) {
   .calculator-section {
     padding: 20px;
-  }
-
-  .calculator-submit {
-    width: calc(100% - 40px);
-    margin: 20px;
   }
 
   .form-error {
@@ -4631,7 +4585,7 @@ dialog.confirmation-dialog {
 
 .trench-count-field {
   max-width: 240px;
-  margin-bottom: 22px;
+  margin: 0;
 }
 
 .trench-input-list {

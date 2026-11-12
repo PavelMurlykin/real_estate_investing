@@ -153,8 +153,8 @@ function renderPage({
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['mortgage-options'], mortgageOptions)
   queryClient.setQueryData(
-    ['properties', 'pageSize=100&ordering=realEstateComplex'],
-    propertyList,
+    ['properties', 'mortgage-options', ''],
+    { pages: [propertyList], pageParams: [1] },
   )
   if (authenticated) {
     queryClient.setQueryData(['session'], authenticatedSession)

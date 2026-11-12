@@ -8,6 +8,7 @@ type SearchableSelectProps = {
   options: SelectChoice[]
   onChange: (value: string) => void
   emptyLabel?: string
+  placeholder?: string
   disabled?: boolean
   required?: boolean
   validationError?: string | null
@@ -20,7 +21,7 @@ type SearchableSelectProps = {
 }
 
 /** One editable control for searching and selecting a dictionary value. */
-export function SearchableSelect({ label, value, options, onChange, emptyLabel = 'Все', disabled,
+export function SearchableSelect({ label, value, options, onChange, emptyLabel = 'Все', placeholder, disabled,
   required, validationError, loading, onSearch, hasMore, onLoadMore, error, onRetry }: SearchableSelectProps) {
   const identifier = useId()
   const input = useRef<HTMLInputElement>(null)
@@ -53,7 +54,7 @@ export function SearchableSelect({ label, value, options, onChange, emptyLabel =
           aria-invalid={Boolean(validationError)}
           aria-describedby={validationError ? `${identifier}-error` : undefined}
           value={open ? query : value ? selected?.label ?? 'Загрузка выбранного значения…' : ''}
-          placeholder={open ? 'Введите значение' : emptyLabel}
+          placeholder={placeholder ?? (open ? 'Введите значение' : emptyLabel)}
           onFocus={() => setOpen(true)}
           onClick={() => setOpen(true)}
           onChange={(event) => { setQuery(event.target.value); onSearch?.(event.target.value); setActive(null); setOpen(true) }}
