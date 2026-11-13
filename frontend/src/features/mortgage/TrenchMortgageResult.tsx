@@ -27,7 +27,7 @@ export function TrenchMortgageResult({
   return (
     <div className="mortgage-result trench-mortgage-result">
       <section
-        className="mortgage-summary"
+        className="mortgage-summary detail-card detail-card--flush"
         aria-labelledby="trench-mortgage-result-title"
       >
         <div className="mortgage-summary__heading">
@@ -76,7 +76,7 @@ export function TrenchMortgageResult({
       </section>
 
       <section
-        className="schedule-panel trench-summary-panel"
+        className="schedule-panel trench-summary-panel detail-card"
         aria-labelledby="trench-summary-title"
       >
         <div className="section-heading">
@@ -104,7 +104,7 @@ export function TrenchMortgageResult({
 
       {summaryAction}
 
-      <section className="schedule-panel" aria-labelledby="trench-schedule-title">
+      <section className="schedule-panel detail-card" aria-labelledby="trench-schedule-title">
         <div className="section-heading section-heading--with-action">
           <div>
             <span className="eyebrow">Детализация</span>

@@ -195,7 +195,7 @@ export function CustomerCalculationsSection({
 
   if (calculationsQuery.isLoading) {
     return (
-      <section className="saved-property-card" aria-labelledby="customer-calculations-title">
+      <section className="saved-property-card detail-card" aria-labelledby="customer-calculations-title">
         <div className="section-heading">
           <div>
             <span className="eyebrow">Ипотека</span>
@@ -209,7 +209,7 @@ export function CustomerCalculationsSection({
 
   if (calculationsQuery.isError || !calculationsQuery.data) {
     return (
-      <section className="saved-property-card" aria-labelledby="customer-calculations-title">
+      <section className="saved-property-card detail-card" aria-labelledby="customer-calculations-title">
         <div className="section-heading">
           <div>
             <span className="eyebrow">Ипотека</span>
@@ -230,7 +230,7 @@ export function CustomerCalculationsSection({
 
 
   return (
-    <section className="saved-property-card customer-calculations" aria-labelledby="customer-calculations-title">
+    <section className="saved-property-card customer-calculations detail-card" aria-labelledby="customer-calculations-title">
       <div className="section-heading section-heading--with-action">
         <div>
           <span className="eyebrow">Ипотека</span>

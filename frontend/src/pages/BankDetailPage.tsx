@@ -1,6 +1,7 @@
+import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { InteractiveTable } from '@/shared/ui/InteractiveTable'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { ApiError } from '@/api/client'
@@ -39,19 +40,6 @@ export function BankDetailPage() {
   })
   useDocumentTitle(bankQuery.data?.name ?? 'Карточка банка')
 
-  useEffect(() => {
-    if (!isDeleteDialogOpen) return
-    cancelButtonRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !deleteMutation.isPending) {
-        setIsDeleteDialogOpen(false)
-        window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [deleteMutation.isPending, isDeleteDialogOpen])
-
   if (!hasValidIdentifier) {
     return (
       <EmptyState
@@ -81,7 +69,7 @@ export function BankDetailPage() {
   )
 
   return (
-    <div className="page-stack bank-detail-page">
+    <div className="page-stack bank-detail-page detail-page">
       <header className="page-header">
         <div>
           <span className="eyebrow">Карточка банка</span>
@@ -119,7 +107,7 @@ export function BankDetailPage() {
         </div>
       </header>
 
-      <section className="bank-summary-card">
+      <section className="bank-summary-card detail-card detail-card--accent">
         <div className="bank-summary-card__logo" aria-hidden="true">
           {bank.logoUrl ? (
             <img
@@ -145,7 +133,7 @@ export function BankDetailPage() {
       </section>
 
       <section
-        className="saved-property-card"
+        className="saved-property-card detail-card"
         aria-labelledby="bank-programs-title"
       >
         <div className="section-heading">
@@ -183,27 +171,9 @@ export function BankDetailPage() {
         <span>Обновлено: {formatDateTime(bank.updatedAt)}</span>
       </section>
       {isDeleteDialogOpen ? (
-        <div
-          className="confirmation-dialog-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (
-              event.currentTarget === event.target
-              && !deleteMutation.isPending
-            ) {
-              setIsDeleteDialogOpen(false)
-            }
-          }}
-        >
-          <section
-            className="confirmation-dialog"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="bank-detail-delete-title"
-            aria-describedby="bank-detail-delete-description"
-          >
+        <ModalDialog labelledBy="bank-detail-delete-title" describedBy="bank-detail-delete-description" pending={deleteMutation.isPending} onClose={() => setIsDeleteDialogOpen(false)}>
             <span className="eyebrow">Подтверждение</span>
-            <h2 id="bank-detail-delete-title">Удалить банк?</h2>
+            <h2 id="bank-detail-delete-title" tabIndex={-1}>Удалить банк?</h2>
             <p id="bank-detail-delete-description">
               «{bank.name}» и его банковские условия будут удалены.
             </p>
@@ -234,8 +204,7 @@ export function BankDetailPage() {
                 {deleteMutation.isPending ? 'Удаляем…' : 'Удалить'}
               </button>
             </div>
-          </section>
-        </div>
+          </ModalDialog>
       ) : null}
     </div>
   )

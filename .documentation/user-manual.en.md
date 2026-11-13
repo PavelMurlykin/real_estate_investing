@@ -68,7 +68,7 @@ In “Жилые комплексы по городам”, select an active cit
 
 ## Bank list
 
-The bank list updates as you type a name in the search field. The “Программы” filter lets you select banks with or without mortgage programs. The “Сбросить” button sits to the right of that filter on the same row and restores the full list. On narrow screens, the table fits the available width and long bank names wrap onto multiple lines.
+The bank list updates as you type a name in the search field. The “Программы” filter lets you select banks with or without mortgage programs. The “Сбросить” button sits to the right of that filter on the same row and restores the full list. On narrow screens, the table scrolls within its card and long bank names wrap onto multiple lines.
 
 ## Updating bank data
 
@@ -89,6 +89,12 @@ Administrators can click “Обновить из ЦБ РФ” to refresh the da
 ## Mortgage programs
 
 The list updates as you type a name or description in the search field. The program type filter is to the left of search and moves above it on narrow screens. Select preferential or market programs. The “Сбросить” button sits beside the search field and restores the full list. The table has separate name and description columns, and long descriptions wrap onto multiple lines.
+
+## Detail pages
+
+Property, residential complex, customer, bank, mortgage program, developer program and saved calculation detail pages share the same layout: a page title, an action bar below it and consistently spaced sections. On phones, buttons span the available width, facts use one column and long names wrap. Nested tables scroll within their section.
+
+Use Tab and Enter to operate buttons. Deletion dialogs initially focus “Отмена”; Tab and Shift+Tab move within the dialog. Escape or “Отмена” closes it and returns focus to “Удалить”. While a request is pending, dismissal and repeated confirmation are blocked. Enlarged images also close with Escape and return focus to the original image.
 
 ## Working with tables
 

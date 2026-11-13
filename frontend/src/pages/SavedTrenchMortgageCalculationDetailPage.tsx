@@ -1,5 +1,6 @@
+import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import {
@@ -57,18 +58,6 @@ export function SavedTrenchMortgageCalculationDetailPage() {
       : 'Детали траншевого расчёта',
   )
 
-  useEffect(() => {
-    if (!isDeleteConfirmationOpen) return
-    deleteConfirmRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      setIsDeleteConfirmationOpen(false)
-      window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isDeleteConfirmationOpen])
-
   const closeDeleteConfirmation = () => {
     setIsDeleteConfirmationOpen(false)
     deleteMutation.reset()
@@ -79,7 +68,7 @@ export function SavedTrenchMortgageCalculationDetailPage() {
 
   if (!sessionQuery.data?.isAuthenticated) {
     return (
-      <div className="page-stack">
+      <div className="page-stack detail-page">
         <header className="page-header">
           <div>
             <span className="eyebrow">Личный раздел</span>
@@ -134,7 +123,7 @@ export function SavedTrenchMortgageCalculationDetailPage() {
   const property = savedCalculation.property
 
   return (
-    <div className="page-stack saved-calculation-detail">
+    <div className="page-stack saved-calculation-detail detail-page">
       <header className="page-header">
         <div>
           <span className="eyebrow">Сохранённый сценарий</span>
@@ -188,14 +177,9 @@ export function SavedTrenchMortgageCalculationDetailPage() {
       </header>
 
       {isDeleteConfirmationOpen ? (
-        <section
-          className="delete-confirmation"
-          role="alertdialog"
-          aria-labelledby="delete-trench-calculation-title"
-          aria-describedby="delete-trench-calculation-description"
-        >
+        <ModalDialog labelledBy="delete-trench-calculation-title" describedBy="delete-trench-calculation-description" pending={deleteMutation.isPending} onClose={closeDeleteConfirmation}>
           <div>
-            <h2 id="delete-trench-calculation-title">
+            <h2 id="delete-trench-calculation-title" tabIndex={-1}>
               Удалить сохранённый траншевый расчёт?
             </h2>
             <p id="delete-trench-calculation-description">
@@ -227,11 +211,11 @@ export function SavedTrenchMortgageCalculationDetailPage() {
               {deleteMutation.isPending ? 'Удаляем…' : 'Удалить расчёт'}
             </button>
           </div>
-        </section>
+        </ModalDialog>
       ) : null}
 
       <section
-        className="saved-property-card"
+        className="saved-property-card detail-card"
         aria-labelledby="saved-trench-property-title"
       >
         <div className="section-heading section-heading--with-action">

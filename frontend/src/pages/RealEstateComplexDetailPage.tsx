@@ -103,7 +103,7 @@ export function RealEstateComplexDetailPage() {
   )
 
   return (
-    <div className="page-stack complex-detail-page">
+    <div className="page-stack complex-detail-page detail-page">
       <header className="page-header">
         <div>
           <span className="eyebrow">Карточка жилого комплекса</span>
@@ -141,7 +141,7 @@ export function RealEstateComplexDetailPage() {
         </div>
       </header>
 
-      <section className="complex-hero-card">
+      <section className="complex-hero-card detail-card">
         <ComplexPhotos key={realEstateComplex.id} complex={realEstateComplex} />
         <div className="complex-summary">
           <div className="property-highlight-card__tags">
@@ -196,7 +196,7 @@ export function RealEstateComplexDetailPage() {
       </section>
 
       <div className="complex-description-grid">
-        <section className="saved-property-card">
+        <section className="saved-property-card detail-card">
           <div className="section-heading">
             <div><span className="eyebrow">О проекте</span><h2>Описание</h2></div>
           </div>
@@ -204,7 +204,7 @@ export function RealEstateComplexDetailPage() {
             {realEstateComplex.description || 'Описание не заполнено.'}
           </p>
         </section>
-        <section className="saved-property-card">
+        <section className="saved-property-card detail-card">
           <div className="section-heading">
             <div><span className="eyebrow">Инвестиции</span><h2>Потенциал</h2></div>
           </div>
@@ -215,7 +215,7 @@ export function RealEstateComplexDetailPage() {
         </section>
       </div>
 
-      <section className="saved-property-card" aria-labelledby="complex-buildings-title">
+      <section className="saved-property-card detail-card" aria-labelledby="complex-buildings-title">
         <div className="section-heading">
           <div>
             <span className="eyebrow">Состав проекта</span>
@@ -237,7 +237,7 @@ export function RealEstateComplexDetailPage() {
         ) : <p className="complex-copy">Корпуса не добавлены.</p>}
       </section>
 
-      <section className="saved-property-card" aria-labelledby="complex-metro-title">
+      <section className="saved-property-card detail-card" aria-labelledby="complex-metro-title">
         <div className="section-heading">
           <div>
             <span className="eyebrow">Транспорт</span>

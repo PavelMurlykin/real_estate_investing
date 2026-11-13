@@ -1,5 +1,6 @@
+import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   Link,
   useNavigate,
@@ -84,29 +85,6 @@ export function PropertyDetailPage() {
     window.setTimeout(() => imageTriggerRef.current?.focus(), 0)
   }
 
-  useEffect(() => {
-    if (!selectedImage) return
-    imageCloseButtonRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeImage()
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedImage])
-
-  useEffect(() => {
-    if (!isDeleteDialogOpen) return
-    deleteCancelButtonRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !deleteMutation.isPending) {
-        setIsDeleteDialogOpen(false)
-        window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [deleteMutation.isPending, isDeleteDialogOpen])
-
   if (!hasValidIdentifier) {
     return (
       <EmptyState
@@ -138,7 +116,7 @@ export function PropertyDetailPage() {
   )
 
   return (
-    <div className="page-stack property-detail-page">
+    <div className="page-stack property-detail-page detail-page">
       <header className="page-header">
         <div>
           <span className="eyebrow">Карточка объекта</span>
@@ -180,7 +158,7 @@ export function PropertyDetailPage() {
       </header>
 
       <section
-        className="property-highlight-card"
+        className="property-highlight-card detail-card detail-card--accent"
         aria-labelledby="property-price-title"
       >
         <div>
@@ -206,7 +184,7 @@ export function PropertyDetailPage() {
 
       <div className="property-detail-sections">
         <section
-          className="saved-property-card"
+          className="saved-property-card detail-card"
           aria-labelledby="property-information-title"
         >
           <div className="section-heading">
@@ -251,7 +229,7 @@ export function PropertyDetailPage() {
         </section>
 
         <section
-          className="saved-property-card"
+          className="saved-property-card detail-card"
           aria-labelledby="complex-information-title"
         >
           <div className="section-heading">
@@ -333,17 +311,8 @@ export function PropertyDetailPage() {
         <span>Обновлено: {formatDateTime(property.updatedAt)}</span>
       </section>
 
-
       {selectedImage ? (
-        <div
-          className="property-image-modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="property-image-modal-title"
-          onMouseDown={(event) => {
-            if (event.currentTarget === event.target) closeImage()
-          }}
-        >
+        <ModalDialog className="property-image-dialog" role="dialog" labelledBy="property-image-modal-title" onClose={closeImage}>
           <div className="property-image-modal__content">
             <div className="property-image-modal__header">
               <h2 id="property-image-modal-title">{selectedImage.label}</h2>
@@ -367,32 +336,13 @@ export function PropertyDetailPage() {
               Открыть оригинал <span aria-hidden="true">↗</span>
             </a>
           </div>
-        </div>
+        </ModalDialog>
       ) : null}
 
       {isDeleteDialogOpen ? (
-        <div
-          className="confirmation-dialog-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (
-              event.currentTarget === event.target
-              && !deleteMutation.isPending
-            ) {
-              setIsDeleteDialogOpen(false)
-              window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
-            }
-          }}
-        >
-          <section
-            className="confirmation-dialog"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="property-delete-title"
-            aria-describedby="property-delete-description"
-          >
+        <ModalDialog labelledBy="property-delete-title" describedBy="property-delete-description" pending={deleteMutation.isPending} onClose={() => setIsDeleteDialogOpen(false)}>
             <span className="eyebrow">Подтверждение</span>
-            <h2 id="property-delete-title">Удалить объект?</h2>
+            <h2 id="property-delete-title" tabIndex={-1}>Удалить объект?</h2>
             <p id="property-delete-description">
               {property.realEstateComplex}, корпус {property.building},
               квартира {property.apartmentNumber}. Это действие нельзя отменить.
@@ -427,8 +377,7 @@ export function PropertyDetailPage() {
                 {deleteMutation.isPending ? 'Удаляем…' : 'Удалить'}
               </button>
             </div>
-          </section>
-        </div>
+          </ModalDialog>
       ) : null}
     </div>
   )

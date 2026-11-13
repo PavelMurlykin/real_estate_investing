@@ -29,7 +29,7 @@ export function MortgageResult({
 
   return (
     <div className="mortgage-result">
-      <section className="mortgage-summary" aria-labelledby="mortgage-result-title">
+      <section className="mortgage-summary detail-card detail-card--flush" aria-labelledby="mortgage-result-title">
         <div className="mortgage-summary__heading">
           <div>
             <span className="eyebrow">Результат расчёта</span>
@@ -87,7 +87,7 @@ export function MortgageResult({
 
       {summaryAction}
 
-      <section className="schedule-panel" aria-labelledby="schedule-title">
+      <section className="schedule-panel detail-card" aria-labelledby="schedule-title">
         <div className="section-heading section-heading--with-action">
           <div>
             <span className="eyebrow">Детализация</span>

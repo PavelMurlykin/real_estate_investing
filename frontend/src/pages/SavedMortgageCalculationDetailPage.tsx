@@ -1,5 +1,6 @@
+import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import {
@@ -50,18 +51,6 @@ export function SavedMortgageCalculationDetailPage() {
       : 'Детали расчёта ипотеки',
   )
 
-  useEffect(() => {
-    if (!isDeleteConfirmationOpen) return
-    deleteConfirmRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      setIsDeleteConfirmationOpen(false)
-      window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isDeleteConfirmationOpen])
-
   const closeDeleteConfirmation = () => {
     setIsDeleteConfirmationOpen(false)
     deleteMutation.reset()
@@ -72,7 +61,7 @@ export function SavedMortgageCalculationDetailPage() {
 
   if (!sessionQuery.data?.isAuthenticated) {
     return (
-      <div className="page-stack">
+      <div className="page-stack detail-page">
         <header className="page-header">
           <div>
             <span className="eyebrow">Личный раздел</span>
@@ -122,7 +111,7 @@ export function SavedMortgageCalculationDetailPage() {
   const property = savedCalculation.property
 
   return (
-    <div className="page-stack saved-calculation-detail">
+    <div className="page-stack saved-calculation-detail detail-page">
       <header className="page-header">
         <div>
           <span className="eyebrow">Сохранённый сценарий</span>
@@ -163,14 +152,9 @@ export function SavedMortgageCalculationDetailPage() {
       </header>
 
       {isDeleteConfirmationOpen ? (
-        <section
-          className="delete-confirmation"
-          role="alertdialog"
-          aria-labelledby="delete-calculation-title"
-          aria-describedby="delete-calculation-description"
-        >
+        <ModalDialog labelledBy="delete-calculation-title" describedBy="delete-calculation-description" pending={deleteMutation.isPending} onClose={closeDeleteConfirmation}>
           <div>
-            <h2 id="delete-calculation-title">Удалить сохранённый расчёт?</h2>
+            <h2 id="delete-calculation-title" tabIndex={-1}>Удалить сохранённый расчёт?</h2>
             <p id="delete-calculation-description">
               Запись и её параметры исчезнут из истории. Это действие нельзя
               отменить.
@@ -200,10 +184,10 @@ export function SavedMortgageCalculationDetailPage() {
               {deleteMutation.isPending ? 'Удаляем…' : 'Удалить расчёт'}
             </button>
           </div>
-        </section>
+        </ModalDialog>
       ) : null}
 
-      <section className="saved-property-card" aria-labelledby="saved-property-title">
+      <section className="saved-property-card detail-card" aria-labelledby="saved-property-title">
         <div className="section-heading section-heading--with-action">
           <div>
             <span className="eyebrow">Объект недвижимости</span>

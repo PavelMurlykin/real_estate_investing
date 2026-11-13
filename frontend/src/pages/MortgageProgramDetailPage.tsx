@@ -1,6 +1,7 @@
+import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { InteractiveTable } from '@/shared/ui/InteractiveTable'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { ApiError } from '@/api/client'
@@ -42,19 +43,6 @@ export function MortgageProgramDetailPage() {
   })
   useDocumentTitle(programQuery.data?.name ?? 'Ипотечная программа')
 
-  useEffect(() => {
-    if (!isDeleteDialogOpen) return
-    cancelButtonRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !deleteMutation.isPending) {
-        setIsDeleteDialogOpen(false)
-        window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [deleteMutation.isPending, isDeleteDialogOpen])
-
   if (!hasValidIdentifier) {
     return (
       <EmptyState
@@ -84,7 +72,7 @@ export function MortgageProgramDetailPage() {
   )
 
   return (
-    <div className="page-stack mortgage-program-detail-page">
+    <div className="page-stack mortgage-program-detail-page detail-page">
       <header className="page-header">
         <div>
           <span className="eyebrow">Карточка ипотечной программы</span>
@@ -119,7 +107,7 @@ export function MortgageProgramDetailPage() {
         </div>
       </header>
 
-      <section className="mortgage-program-summary-card">
+      <section className="mortgage-program-summary-card detail-card detail-card--accent">
         <div className="mortgage-program-summary-card__heading">
           <div>
             <span className={mortgageProgram.isActive
@@ -159,7 +147,7 @@ export function MortgageProgramDetailPage() {
       </section>
 
       <section
-        className="saved-property-card"
+        className="saved-property-card detail-card"
         aria-labelledby="regional-credit-limits-title"
       >
         <div className="section-heading">
@@ -194,27 +182,9 @@ export function MortgageProgramDetailPage() {
       </section>
 
       {isDeleteDialogOpen ? (
-        <div
-          className="confirmation-dialog-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (
-              event.currentTarget === event.target
-              && !deleteMutation.isPending
-            ) {
-              setIsDeleteDialogOpen(false)
-            }
-          }}
-        >
-          <section
-            className="confirmation-dialog"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="mortgage-program-detail-delete-title"
-            aria-describedby="mortgage-program-detail-delete-description"
-          >
+        <ModalDialog labelledBy="mortgage-program-detail-delete-title" describedBy="mortgage-program-detail-delete-description" pending={deleteMutation.isPending} onClose={() => setIsDeleteDialogOpen(false)}>
             <span className="eyebrow">Подтверждение</span>
-            <h2 id="mortgage-program-detail-delete-title">
+            <h2 id="mortgage-program-detail-delete-title" tabIndex={-1}>
               Удалить программу?
             </h2>
             <p id="mortgage-program-detail-delete-description">
@@ -247,8 +217,7 @@ export function MortgageProgramDetailPage() {
                 {deleteMutation.isPending ? 'Удаляем…' : 'Удалить'}
               </button>
             </div>
-          </section>
-        </div>
+          </ModalDialog>
       ) : null}
     </div>
   )

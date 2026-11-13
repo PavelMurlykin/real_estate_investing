@@ -1,5 +1,6 @@
+import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import {
@@ -58,19 +59,6 @@ export function CustomerDetailPage() {
       : 'Карточка клиента',
   )
 
-  useEffect(() => {
-    if (!isDeleteConfirmationOpen) return
-    deleteConfirmRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      setIsDeleteConfirmationOpen(false)
-      deleteMutation.reset()
-      window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [deleteMutation, isDeleteConfirmationOpen])
-
   const closeDeleteConfirmation = () => {
     setIsDeleteConfirmationOpen(false)
     deleteMutation.reset()
@@ -128,7 +116,7 @@ export function CustomerDetailPage() {
     : customer.birthYear?.toString() || '—'
 
   return (
-    <div className="page-stack customer-detail-page">
+    <div className="page-stack customer-detail-page detail-page">
       <header className="page-header">
         <div>
           <span className="eyebrow">Карточка клиента</span>
@@ -161,14 +149,9 @@ export function CustomerDetailPage() {
       </header>
 
       {isDeleteConfirmationOpen ? (
-        <section
-          className="delete-confirmation"
-          role="alertdialog"
-          aria-labelledby="delete-customer-title"
-          aria-describedby="delete-customer-description"
-        >
+        <ModalDialog labelledBy="delete-customer-title" describedBy="delete-customer-description" pending={deleteMutation.isPending} onClose={closeDeleteConfirmation}>
           <div>
-            <h2 id="delete-customer-title">Удалить клиента?</h2>
+            <h2 id="delete-customer-title" tabIndex={-1}>Удалить клиента?</h2>
             <p id="delete-customer-description">
               Карточка клиента будет удалена. Сохранённые ипотечные расчёты
               останутся в вашей истории.
@@ -198,11 +181,11 @@ export function CustomerDetailPage() {
               {deleteMutation.isPending ? 'Удаляем…' : 'Удалить клиента'}
             </button>
           </div>
-        </section>
+        </ModalDialog>
       ) : null}
 
       <section
-        className="customer-capacity-card"
+        className="customer-capacity-card detail-card detail-card--accent"
         aria-labelledby="customer-capacity-title"
       >
         <div>
@@ -239,7 +222,7 @@ export function CustomerDetailPage() {
 
       {customer.calculated.hasPreferentialProgram ? (
         <section
-          className="customer-preferential-card"
+          className="customer-preferential-card detail-card"
           aria-labelledby="customer-preferential-title"
         >
           <div>
@@ -274,7 +257,7 @@ export function CustomerDetailPage() {
 
       <div className="customer-detail-sections">
         <section
-          className="saved-property-card"
+          className="saved-property-card detail-card"
           aria-labelledby="customer-contacts-title"
         >
           <div className="section-heading">
@@ -316,7 +299,7 @@ export function CustomerDetailPage() {
         </section>
 
         <section
-          className="saved-property-card"
+          className="saved-property-card detail-card"
           aria-labelledby="customer-budget-title"
         >
           <div className="section-heading">
@@ -348,7 +331,7 @@ export function CustomerDetailPage() {
         </section>
 
         <section
-          className="saved-property-card customer-preferences-card"
+          className="saved-property-card customer-preferences-card detail-card"
           aria-labelledby="customer-preferences-title"
         >
           <div className="section-heading">

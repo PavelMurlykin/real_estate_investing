@@ -1,0 +1,442 @@
+{
+  "session": {
+    "isAuthenticated": true,
+    "user": {
+      "id": 1,
+      "displayName": "Модератор",
+      "email": "moderator@example.com",
+      "agencyName": ""
+    },
+    "capabilities": {
+      "manageCatalogs": true,
+      "syncExternalData": false,
+      "viewPrivateRecords": true,
+      "viewAllPrivateRecords": false
+    }
+  },
+  "bank": {
+    "id": 7,
+    "name": "Северный банк",
+    "logoUrl": "",
+    "isActive": true,
+    "createdAt": "2026-01-10T10:00:00Z",
+    "updatedAt": "2026-01-11T10:00:00Z",
+    "programs": [
+      {
+        "id": 12,
+        "mortgageProgramId": 3,
+        "mortgageProgramName": "Семейная ипотека",
+        "interestRate": "5.90",
+        "minimumInitialPaymentPercent": "20.10",
+        "maximumLoanTermYears": 30
+      }
+    ],
+    "legacyDetailUrl": "/bank/banks/7/",
+    "legacyEditUrl": "/bank/banks/7/edit/",
+    "legacyCatalogUrl": "/bank/?model=bank"
+  },
+  "program": {
+    "id": 5,
+    "name": "Семейная ипотека",
+    "condition": "Для семей с детьми",
+    "isPreferential": true,
+    "creditLimit": "12000000.00",
+    "bankCount": 2,
+    "developerProgramCount": 1,
+    "isActive": true,
+    "createdAt": "2026-01-10T10:00:00Z",
+    "updatedAt": "2026-01-11T10:00:00Z",
+    "regionalCreditLimits": [
+      {
+        "id": 7,
+        "regionId": 77,
+        "regionName": "Москва",
+        "creditLimit": "15000000.00",
+        "isActive": true
+      }
+    ],
+    "legacyEditUrl": "/bank/?model=mortgage_program&edit=5",
+    "legacyCatalogUrl": "/bank/?model=mortgage_program"
+  },
+  "developerProgram": {
+    "id": 9,
+    "companyGroupId": 4,
+    "companyGroupName": "Группа Север",
+    "realEstateComplexId": 7,
+    "realEstateComplexName": "ЖК Речной",
+    "complexDeveloperName": "Север Девелопмент",
+    "bankId": 2,
+    "bankName": "Тест Банк",
+    "mortgageProgramId": 5,
+    "mortgageProgramName": "Семейная ипотека",
+    "priceIncreasePercent": "-1.25",
+    "gracePeriodMonths": 24,
+    "gracePeriodInterestRate": "0.10",
+    "minimumInitialPaymentPercent": "20.10",
+    "interestRate": "4.30",
+    "maximumLoanTermYears": 30,
+    "maximumLoanAmount": "12000000.00",
+    "rateDiscountPercent": "0.50",
+    "isActive": true,
+    "createdAt": "2026-01-10T10:00:00Z",
+    "updatedAt": "2026-01-11T10:00:00Z",
+    "detailUrl": "/developer-programs/9",
+    "legacyEditUrl": "/bank/developer-programs/9/edit/",
+    "legacyCatalogUrl": "/bank/developer-programs/"
+  },
+  "property": {
+    "id": 1,
+    "apartmentNumber": "101",
+    "regionId": 1,
+    "cityId": 2,
+    "districtId": 3,
+    "developerId": 4,
+    "realEstateComplexId": 5,
+    "buildingId": 6,
+    "layoutId": 7,
+    "decorationId": 8,
+    "windowViewIds": [
+      9,
+      10
+    ],
+    "developer": "Северный девелопер (Группа Север)",
+    "realEstateComplex": "Белые ночи",
+    "realEstateClass": "Бизнес",
+    "realEstateType": "Квартира",
+    "district": "Петроградский",
+    "city": "Санкт-Петербург",
+    "region": "Ленинградская область",
+    "building": "1",
+    "buildingAddress": "Петровский проспект, 10",
+    "commissioning": "II кв. 2027",
+    "keyHandover": "2027-09-01",
+    "layout": "Евродвушка",
+    "layoutDescription": "Кухня-гостиная и отдельная спальня",
+    "decoration": "Чистовая",
+    "decorationDescription": null,
+    "windowViews": [
+      "Парк",
+      "Двор"
+    ],
+    "area": "42.50",
+    "floor": 10,
+    "propertyCost": "12500000.00",
+    "mapUrl": "https://maps.example.com/complex",
+    "presentationUrl": "https://files.example.com/presentation.pdf",
+    "images": [
+      {
+        "kind": "layout",
+        "label": "Планировка",
+        "url": "/media/property/layouts/layout.webp"
+      },
+      {
+        "kind": "floorPlan",
+        "label": "План этажа",
+        "url": null
+      },
+      {
+        "kind": "windowView",
+        "label": "Вид из окна",
+        "url": "/media/property/window_views/view.webp"
+      }
+    ],
+    "createdAt": "2026-09-01T10:00:00+03:00",
+    "updatedAt": "2026-09-09T12:30:00+03:00",
+    "legacyDetailUrl": "/property/1/",
+    "legacyEditUrl": "/property/1/update/",
+    "legacyDeleteUrl": "/property/1/delete/"
+  },
+  "complex": {
+    "id": 7,
+    "name": "Белые ночи",
+    "description": "Комплекс у парка",
+    "developerId": 4,
+    "developer": {
+      "id": 4,
+      "name": "Северный девелопер",
+      "label": "Северный девелопер (Группа Север)"
+    },
+    "regionId": 1,
+    "region": "Ленинградская область",
+    "cityId": 2,
+    "city": "Санкт-Петербург",
+    "districtId": 3,
+    "district": "Петроградский",
+    "realEstateClassId": 5,
+    "realEstateClass": "Бизнес",
+    "realEstateTypeId": 6,
+    "realEstateType": "Квартира",
+    "mapUrl": "https://maps.example.com/complex",
+    "presentationUrl": null,
+    "investmentPotential": "Стабильный спрос",
+    "photoUrl": "/media/property/complexes/photo.webp",
+    "photos": [
+      {
+        "id": 1,
+        "url": "/media/property/complexes/photo.webp",
+        "isPrimary": true
+      },
+      {
+        "id": 2,
+        "url": "/media/property/complexes/second.webp",
+        "isPrimary": false
+      }
+    ],
+    "buildings": [
+      {
+        "id": 8,
+        "number": "1",
+        "address": "Парковая улица, 1",
+        "commissioningDate": null,
+        "commissioningYear": 2028,
+        "commissioningQuarter": 2,
+        "commissioning": "II кв. 2028",
+        "keyHandoverDate": "2028-09-01",
+        "keyHandoverYear": null,
+        "keyHandoverQuarter": null,
+        "keyHandover": "2028-09-01",
+        "propertyCount": 3,
+        "isActive": true
+      }
+    ],
+    "metroAvailability": [
+      {
+        "id": 9,
+        "metroId": 10,
+        "station": "Петроградская",
+        "line": "Синяя",
+        "lineColor": "#0055aa",
+        "transportAccessibilityTypeId": 11,
+        "transportAccessibilityType": "Пешком",
+        "walkingTimeMinutes": 12,
+        "isActive": true
+      }
+    ],
+    "isActive": true,
+    "createdAt": "2026-09-01T10:00:00+03:00",
+    "updatedAt": "2026-09-10T12:00:00+03:00",
+    "legacyDetailUrl": "/property/complexes/7/",
+    "legacyEditUrl": "/property/complexes/7/update/",
+    "legacyDeleteUrl": "/property/complexes/7/delete/"
+  },
+  "customer": {
+    "id": 12,
+    "firstName": "Иван",
+    "lastName": "Петров",
+    "fullName": "Иван Петров",
+    "phone": "+79995554433",
+    "email": "ivan@example.com",
+    "age": 35,
+    "birthDate": "1991-02-10",
+    "birthYear": 1991,
+    "residenceCity": "Химки",
+    "residenceCityId": 1,
+    "initialPaymentAmount": "2000000.00",
+    "maximumMonthlyPayment": "150000.00",
+    "preferentialPrograms": [
+      {
+        "id": 3,
+        "name": "Семейная ипотека"
+      }
+    ],
+    "hasOwnedProperty": false,
+    "purchaseGoal": "investment",
+    "purchaseGoalLabel": "Для инвестиций",
+    "desiredCity": "Москва",
+    "desiredCityId": 2,
+    "desiredDistrict": "Хамовники",
+    "desiredDistrictId": 4,
+    "desiredLayouts": [
+      {
+        "id": 5,
+        "name": "Евро-3"
+      }
+    ],
+    "areaMinimum": "55.00",
+    "areaMaximum": "80.00",
+    "desiredFloor": "Не первый",
+    "cardinalDirections": "Юг, Восток",
+    "comment": "Нужен тихий двор",
+    "calculated": {
+      "maximumTermYears": 30,
+      "actualKeyRate": "16.00",
+      "annualRate": "18.00",
+      "maximumPropertyCost": "17500000.00",
+      "hasPreferentialProgram": true,
+      "preferentialAnnualRate": "6.00",
+      "preferentialMaximumPropertyCost": "14000000.00",
+      "preferentialCreditLimit": "12000000.00"
+    },
+    "isActive": true,
+    "createdAt": "2026-09-01T10:00:00+03:00",
+    "updatedAt": "2026-09-09T12:30:00+03:00",
+    "legacyDetailUrl": "/customers/12/",
+    "legacyEditUrl": "/customers/12/update/",
+    "legacyDeleteUrl": "/customers/12/delete/",
+    "legacyMortgageUrl": "/mortgage/?customer=12"
+  },
+  "customerCalculations": {
+    "page": 1,
+    "pageSize": 10,
+    "totalCount": 1,
+    "totalPages": 1,
+    "results": [
+      {
+        "linkId": 31,
+        "calculationId": 7,
+        "programType": "market",
+        "createdAt": "2026-09-09T10:30:00+03:00",
+        "property": {
+          "id": 3,
+          "city": "Казань",
+          "realEstateComplex": "Зелёный квартал",
+          "building": "2",
+          "apartmentNumber": "42"
+        },
+        "finalPropertyCost": "4500000.00",
+        "initialPaymentRubles": "900000.00",
+        "monthlyPayment": "319832.06",
+        "mortgageTermMonths": 12,
+        "annualRate": "12.00",
+        "trenchCount": 1
+      }
+    ]
+  },
+  "market": {
+    "id": 7,
+    "createdAt": "2026-09-09T10:30:00+03:00",
+    "property": {
+      "id": 3,
+      "layoutImageUrl": "/media/plan.png",
+      "city": "Казань",
+      "developer": "Надёжный застройщик",
+      "realEstateComplex": "Зелёный квартал",
+      "realEstateClass": "Комфорт",
+      "building": "2",
+      "apartmentNumber": "42",
+      "layout": "Евродвушка",
+      "decoration": "Чистовая",
+      "area": "52.40",
+      "floor": 8,
+      "detailUrl": "/property/3/"
+    },
+    "legacyDetailUrl": "/mortgage/calculations/7/",
+    "legacySampleUrl": "/mortgage/?sample=7",
+    "calculation": {
+      "assumptions": {
+        "basePropertyCost": "5000000.00",
+        "priceAdjustmentType": "discount",
+        "priceAdjustmentPercent": "10.00",
+        "priceAdjustmentRubles": "500000.00",
+        "finalPropertyCost": "4500000.00",
+        "initialPaymentPercent": "20.00",
+        "initialPaymentRubles": "900000.00",
+        "initialPaymentDate": "2026-09-09",
+        "mortgageTermMonths": 12,
+        "annualRate": "12.00",
+        "hasGracePeriod": true,
+        "gracePeriodTermMonths": 6,
+        "gracePeriodRate": "0.10"
+      },
+      "summary": {
+        "loanAmount": "3600000.00",
+        "gracePaymentsCount": 6,
+        "mainPaymentsCount": 6,
+        "loanAfterGrace": "1856789.45",
+        "mainMonthlyPayment": "319832.06",
+        "graceMonthlyPayment": null,
+        "overpayment": "237984.72",
+        "totalPayments": "3837984.72",
+        "paymentsCount": 12,
+        "mortgageEndDate": "2027-09-09",
+        "gracePeriodEndDate": null
+      },
+      "schedule": [
+        {
+          "paymentNumber": 1,
+          "paymentDate": "2026-09-09",
+          "paymentAmount": "319832.06",
+          "interestAmount": "36000.00",
+          "principalAmount": "283832.06",
+          "remainingDebt": "3316167.94"
+        }
+      ]
+    }
+  },
+  "trench": {
+    "id": 17,
+    "createdAt": "2026-09-10T10:30:00+03:00",
+    "property": {
+      "id": 3,
+      "city": "Казань",
+      "developer": "Надёжный застройщик",
+      "realEstateComplex": "Зелёный квартал",
+      "realEstateClass": "Комфорт",
+      "building": "2",
+      "apartmentNumber": "42",
+      "layout": "Евродвушка",
+      "decoration": "Чистовая",
+      "area": "52.40",
+      "floor": 8,
+      "detailUrl": "/property/3/"
+    },
+    "legacyDetailUrl": "/mortgage/trench-calculations/17/",
+    "calculation": {
+      "assumptions": {
+        "basePropertyCost": "5000000.00",
+        "priceAdjustmentType": "discount",
+        "priceAdjustmentPercent": "10.00",
+        "priceAdjustmentRubles": "500000.00",
+        "finalPropertyCost": "4500000.00",
+        "initialPaymentPercent": "20.00",
+        "initialPaymentRubles": "900000.00",
+        "initialPaymentDate": "2026-01-15",
+        "mortgageTermMonths": 24,
+        "annualRate": "12.00",
+        "trenchCount": 2
+      },
+      "summary": {
+        "loanAmount": "3600000.00",
+        "maximumMonthlyPayment": "190000.00",
+        "overpayment": "430000.00",
+        "totalPayments": "4030000.00",
+        "paymentsCount": 24,
+        "mortgageEndDate": "2028-01-15"
+      },
+      "trenches": [
+        {
+          "number": 1,
+          "date": "2026-01-15",
+          "percent": "40.00",
+          "amount": "1440000.00",
+          "annualRate": "12.00",
+          "monthlyPayment": "70000.00",
+          "paymentsCount": 6,
+          "remainingDebt": "2160000.00",
+          "overpayment": "180000.00"
+        },
+        {
+          "number": 2,
+          "date": "2026-07-15",
+          "percent": "60.00",
+          "amount": "2160000.00",
+          "annualRate": "10.00",
+          "monthlyPayment": "190000.00",
+          "paymentsCount": 18,
+          "remainingDebt": "0.00",
+          "overpayment": "250000.00"
+        }
+      ],
+      "schedule": [
+        {
+          "paymentNumber": 1,
+          "paymentDate": "2026-01-15",
+          "paymentAmount": "70000.00",
+          "interestAmount": "14400.00",
+          "principalAmount": "55600.00",
+          "remainingDebt": "1384400.00"
+        }
+      ]
+    }
+  }
+}

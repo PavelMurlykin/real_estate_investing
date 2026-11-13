@@ -183,7 +183,7 @@ describe('CustomerDetailPage', () => {
     const confirmButton = screen.getByRole('button', {
       name: 'Удалить клиента',
     })
-    expect(confirmButton).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Отмена' })).toHaveFocus()
 
     await user.click(confirmButton)
 

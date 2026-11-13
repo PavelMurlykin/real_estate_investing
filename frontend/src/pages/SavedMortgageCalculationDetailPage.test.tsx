@@ -197,7 +197,7 @@ describe('SavedMortgageCalculationDetailPage', () => {
     const confirmButton = screen.getByRole('button', {
       name: 'Удалить расчёт',
     })
-    expect(confirmButton).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Отмена' })).toHaveFocus()
 
     await user.click(confirmButton)
 
