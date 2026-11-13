@@ -80,7 +80,7 @@ export function RealEstateComplexDetailPage() {
     return (
       <ErrorState
         title="Жилой комплекс не найден или недоступен"
-        onRetry={() => void complexQuery.refetch()}
+        onRetry={() => complexQuery.refetch()}
       />
     )
   }
@@ -188,18 +188,15 @@ export function RealEstateComplexDetailPage() {
           <div className="section-heading">
             <div><span className="eyebrow">О проекте</span><h2>Описание</h2></div>
           </div>
-          <p className="complex-copy">
-            {realEstateComplex.description || 'Описание не заполнено.'}
-          </p>
+          {realEstateComplex.description ? <p className="complex-copy">{realEstateComplex.description}</p>
+            : <EmptyState compact title="Описание не заполнено." />}
         </section>
         <section className="saved-property-card detail-card">
           <div className="section-heading">
             <div><span className="eyebrow">Инвестиции</span><h2>Потенциал</h2></div>
           </div>
-          <p className="complex-copy">
-            {realEstateComplex.investmentPotential
-              || 'Инвестиционный потенциал не заполнен.'}
-          </p>
+          {realEstateComplex.investmentPotential ? <p className="complex-copy">{realEstateComplex.investmentPotential}</p>
+            : <EmptyState compact title="Инвестиционный потенциал не заполнен." />}
         </section>
       </div>
 
@@ -222,7 +219,7 @@ export function RealEstateComplexDetailPage() {
                 { id: 'column4', label: "Объектов", value: (building) => building.propertyCount, render: (building) => <>{formatInteger(building.propertyCount)}</> },
               ]} />
           </div>
-        ) : <p className="complex-copy">Корпуса не добавлены.</p>}
+        ) : <EmptyState compact title="Корпуса не добавлены." />}
       </section>
 
       <section className="saved-property-card detail-card" aria-labelledby="complex-metro-title">
@@ -247,7 +244,7 @@ export function RealEstateComplexDetailPage() {
                 { id: 'column3', label: "Время", value: (availability) => availability.walkingTimeMinutes, render: (availability) => <>{availability.walkingTimeMinutes}мин.</> },
               ]} />
           </div>
-        ) : <p className="complex-copy">Доступность метро не заполнена.</p>}
+        ) : <EmptyState compact title="Доступность метро не заполнена." />}
       </section>
 
       <section className="property-system-information" aria-label="Системная информация">

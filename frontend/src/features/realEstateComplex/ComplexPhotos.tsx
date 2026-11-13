@@ -1,4 +1,5 @@
 import { ModalDialog } from '@/shared/ui/ModalDialog'
+import { EmptyState } from '@/shared/ui/AsyncState'
 import { useRef, useState } from 'react'
 
 import type { RealEstateComplexDetail } from '@/api/schemas'
@@ -45,7 +46,7 @@ export function ComplexPhotos({ complex }: { complex: RealEstateComplexDetail })
         {isOpen ? null : navigation}
       </> : (
         <div className="complex-photo-placeholder">
-          <span aria-hidden="true">⌂</span><p>Фото жилого комплекса не загружено</p>
+          <EmptyState compact title="Фото жилого комплекса не загружено" />
         </div>
       )}
       {isOpen && photo ? (

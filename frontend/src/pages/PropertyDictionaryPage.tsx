@@ -1,3 +1,4 @@
+import { retryFailedQueries } from '@/shared/lib/retryFailedQueries'
 import { Notice } from '@/shared/ui/Notice'
 import { restoreFocus } from '@/shared/lib/restoreFocus'
 import { ModalDialog } from '@/shared/ui/ModalDialog'
@@ -418,8 +419,9 @@ export function PropertyDictionaryPage() {
   if (listQuery.isLoading || (isEditing && sessionQuery.isLoading)) {
     return <PageLoadingState />
   }
+  if (isEditing && sessionQuery.isError) return <ErrorState title="Не удалось проверить вход" isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
   if (listQuery.isError || !listQuery.data) {
-    return <ErrorState onRetry={() => void listQuery.refetch()} />
+    return <ErrorState onRetry={() => retryFailedQueries(listQuery, detailQuery)} />
   }
   if (isEditing && !canManageCatalogs) {
     return (
@@ -432,7 +434,7 @@ export function PropertyDictionaryPage() {
   }
   if (isEditing && detailQuery.isLoading) return <PageLoadingState />
   if (isEditing && (detailQuery.isError || !detailQuery.data)) {
-    return <ErrorState onRetry={() => void detailQuery.refetch()} />
+    return <ErrorState onRetry={() => retryFailedQueries(detailQuery, listQuery)} />
   }
 
   const { results, page, totalCount, totalPages } = listQuery.data

@@ -1,3 +1,4 @@
+import { retryFailedQueries } from '@/shared/lib/retryFailedQueries'
 import { Notice } from '@/shared/ui/Notice'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -264,6 +265,7 @@ export function DeveloperMortgageProgramFormPage() {
     )
   }
   if (sessionQuery.isLoading) return <PageLoadingState />
+  if (sessionQuery.isError) return <ErrorState title="Не удалось проверить вход" isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
   if (!sessionQuery.data?.isAuthenticated) {
     const nextPath = isEditing
       ? `/app/developer-programs/${identifier}/edit`
@@ -297,7 +299,7 @@ export function DeveloperMortgageProgramFormPage() {
     return (
       <ErrorState
         title="Не удалось загрузить справочники формы"
-        onRetry={() => void optionsQuery.refetch()}
+        onRetry={() => retryFailedQueries(optionsQuery, detailQuery)}
       />
     )
   }
@@ -305,7 +307,7 @@ export function DeveloperMortgageProgramFormPage() {
     return (
       <ErrorState
         title="Программа застройщика не найдена или недоступна"
-        onRetry={() => void detailQuery.refetch()}
+        onRetry={() => retryFailedQueries(detailQuery, optionsQuery)}
       />
     )
   }

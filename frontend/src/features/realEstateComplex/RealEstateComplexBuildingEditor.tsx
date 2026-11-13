@@ -1,3 +1,4 @@
+import { EmptyState } from '@/shared/ui/AsyncState'
 import { Notice } from '@/shared/ui/Notice'
 import { SearchableSelect } from '@/shared/ui/SearchableSelect'
 
@@ -47,7 +48,7 @@ export function RealEstateComplexBuildingEditor({
         </div>
         {error ? <Notice as="p" tone="error" role="alert" className="form-error">{error}</Notice> : null}
         {rows.length === 0 ? (
-          <p className="complex-editor__empty">Корпуса пока не добавлены.</p>
+          <EmptyState compact title="Корпуса пока не добавлены." />
         ) : null}
         <div className="complex-editor-grid">
           {rows.map((row, index) => {

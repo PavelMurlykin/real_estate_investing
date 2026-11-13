@@ -1,3 +1,4 @@
+import { retryFailedQueries } from '@/shared/lib/retryFailedQueries'
 import { Notice } from '@/shared/ui/Notice'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -243,6 +244,7 @@ export function MortgageProgramFormPage() {
     )
   }
   if (sessionQuery.isLoading) return <PageLoadingState />
+  if (sessionQuery.isError) return <ErrorState title="Не удалось проверить вход" isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
   if (!sessionQuery.data?.isAuthenticated) {
     const nextPath = isEditing
       ? `/app/mortgage-programs/${identifier}/edit`
@@ -278,7 +280,7 @@ export function MortgageProgramFormPage() {
     return (
       <ErrorState
         title="Не удалось загрузить список регионов"
-        onRetry={() => void optionsQuery.refetch()}
+        onRetry={() => retryFailedQueries(optionsQuery, detailQuery)}
       />
     )
   }
@@ -286,7 +288,7 @@ export function MortgageProgramFormPage() {
     return (
       <ErrorState
         title="Ипотечная программа не найдена или недоступна"
-        onRetry={() => void detailQuery.refetch()}
+        onRetry={() => retryFailedQueries(detailQuery, optionsQuery)}
       />
     )
   }
@@ -435,10 +437,7 @@ export function MortgageProgramFormPage() {
           </Notice>
             ) : null}
             {formState.regionalCreditLimits.length === 0 ? (
-              <div className="bank-program-empty">
-                <strong>Региональные лимиты не заданы</strong>
-                <p>Будет использоваться общий федеральный лимит.</p>
-              </div>
+              <EmptyState compact title="Региональные лимиты не заданы" description="Будет использоваться общий федеральный лимит." />
             ) : null}
             {formState.regionalCreditLimits.map((limit, index) => {
               const rowErrors = errors.limits[limit.key] ?? {}

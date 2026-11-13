@@ -62,7 +62,7 @@ export function MortgageProgramDetailPage() {
     return (
       <ErrorState
         title="Ипотечная программа не найдена или недоступна"
-        onRetry={() => void programQuery.refetch()}
+        onRetry={() => programQuery.refetch()}
       />
     )
   }
@@ -170,7 +170,7 @@ export function MortgageProgramDetailPage() {
 
           </>
         ) : (
-          <p className="complex-copy">Региональные исключения не заданы.</p>
+          <EmptyState compact title="Региональные исключения не заданы." />
         )}
       </section>
 

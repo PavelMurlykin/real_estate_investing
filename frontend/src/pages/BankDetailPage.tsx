@@ -59,7 +59,7 @@ export function BankDetailPage() {
     return (
       <ErrorState
         title="Банк не найден или недоступен"
-        onRetry={() => void bankQuery.refetch()}
+        onRetry={() => bankQuery.refetch()}
       />
     )
   }
@@ -160,7 +160,7 @@ export function BankDetailPage() {
 
           </>
         ) : (
-          <p className="complex-copy">У банка нет добавленных программ.</p>
+          <EmptyState compact title="У банка нет добавленных программ." />
         )}
       </section>
 

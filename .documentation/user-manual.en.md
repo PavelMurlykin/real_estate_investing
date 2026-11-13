@@ -90,6 +90,14 @@ Administrators can click “Обновить из ЦБ РФ” to refresh the da
 
 The list updates as you type a name or description in the search field. The program type filter is to the left of search and moves above it on narrow screens. Select preferential or market programs. The “Сбросить” button sits beside the search field and restores the full list. The table has separate name and description columns, and long descriptions wrap onto multiple lines.
 
+## Loading, errors and empty data
+
+Pages and nested sections share consistent loading, error and empty states. An indicator appears while data loads; reduced-motion preferences disable its rotation. Navigation remains available. A failed session check offers a retry and is not presented as a sign-out.
+
+The keyboard-accessible “Повторить” button reloads the section and its failed dependencies. It is disabled during the request. Another failure returns focus to the button; successful recovery focuses the restored section heading or the form’s initial field. If you have moved to another control, focus stays there. Loading dependent dictionaries restores focus to the previous field. Reloading a list retains its address and filters.
+
+Empty results are distinct from failures and suggest the next action. In a nested table, “Сбросить поиск” clears an unsuccessful search while retaining sorting. If a map fails or has no coordinates, “Повторить загрузку карты” offers recovery; the complex list and direct links remain available.
+
 ## Dialogs and notices
 
 Deletion and calculation unlink dialogs use consistent headings, spacing and buttons. “Отмена” receives initial focus. Tab and Shift+Tab move within the dialog; Escape, “Отмена” or a click on the shaded backdrop closes it. Dragging from the content onto the backdrop leaves it open. While a request is pending, dismissal and repeated confirmation are blocked. Closing returns focus to the trigger; after deletion, focus moves to the list heading. Image previews and the mobile menu follow the same dismissal and keyboard rules; arrow keys also change photos.

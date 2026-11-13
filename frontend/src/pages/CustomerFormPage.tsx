@@ -1,3 +1,4 @@
+import { retryFailedQueries } from '@/shared/lib/retryFailedQueries'
 import { Notice } from '@/shared/ui/Notice'
 import { RemoteMultiSelect } from '@/shared/ui/RemoteMultiSelect'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
@@ -276,6 +277,7 @@ export function CustomerFormPage() {
   }
 
   if (sessionQuery.isLoading) return <PageLoadingState />
+  if (sessionQuery.isError) return <ErrorState title="Не удалось проверить вход" isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
 
   if (!sessionQuery.data?.isAuthenticated) {
     const nextPath = isEditing
@@ -302,7 +304,7 @@ export function CustomerFormPage() {
     return (
       <ErrorState
         title="Клиент не найден или недоступен"
-        onRetry={() => void customerQuery.refetch()}
+        onRetry={() => retryFailedQueries(customerQuery, optionsQuery)}
       />
     )
   }
@@ -311,7 +313,7 @@ export function CustomerFormPage() {
     return (
       <ErrorState
         title="Не удалось загрузить справочники формы"
-        onRetry={() => void optionsQuery.refetch()}
+        onRetry={() => retryFailedQueries(optionsQuery, customerQuery)}
       />
     )
   }
@@ -348,9 +350,7 @@ export function CustomerFormPage() {
           </Notice>
       ) : null}
       {optionsQuery.isFetching ? (
-        <Notice as="p" tone="info" role="status" className="customer-form-loading">
-          Обновляем список районов…
-        </Notice>
+        <PageLoadingState compact title="Обновляем список районов…" />
       ) : null}
 
       <form className="customer-form" onSubmit={handleSubmit}>

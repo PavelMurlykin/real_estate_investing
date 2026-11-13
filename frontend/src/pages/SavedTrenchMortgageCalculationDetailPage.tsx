@@ -67,6 +67,7 @@ export function SavedTrenchMortgageCalculationDetailPage() {
   }
 
   if (sessionQuery.isLoading) return <PageLoadingState />
+  if (sessionQuery.isError) return <ErrorState title="Не удалось проверить вход" isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
 
   if (!sessionQuery.data?.isAuthenticated) {
     return (
@@ -116,7 +117,7 @@ export function SavedTrenchMortgageCalculationDetailPage() {
     return (
       <ErrorState
         title="Расчёт не найден или недоступен"
-        onRetry={() => void calculationQuery.refetch()}
+        onRetry={() => calculationQuery.refetch()}
       />
     )
   }

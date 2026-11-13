@@ -1,4 +1,4 @@
-import { Notice } from '@/shared/ui/Notice'
+import { EmptyState, ErrorState, PageLoadingState, RetryButton } from '@/shared/ui/AsyncState'
 import { useEffect, useRef, useState } from 'react'
 
 import type { HomepageComplex } from '@/api/schemas'
@@ -9,7 +9,18 @@ export default function ComplexMap({ complexes, city }: { complexes: Pick<Homepa
   const element = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
   const [retry, setRetry] = useState(0)
+  const retryTask = useRef<{ promise: Promise<void>; resolve: () => void } | null>(null)
+  const reload = () => {
+    if (retryTask.current) return retryTask.current.promise
+    let resolve: () => void = () => undefined
+    const promise = new Promise<void>((complete) => { resolve = complete })
+    retryTask.current = { promise, resolve }
+    setRetry((current) => current + 1)
+    return promise
+  }
   useEffect(() => {
+    const task = retryTask.current
+    const complete = () => { task?.resolve(); if (retryTask.current === task) retryTask.current = null }
     let cancelled = false
     let map: MapInstance | undefined
     void Promise.resolve().then(async () => {
@@ -49,16 +60,17 @@ export default function ComplexMap({ complexes, city }: { complexes: Pick<Homepa
         if (!cancelled && center) await Promise.resolve(currentMap.setCenter(center, 11))
       }
       if (!cancelled) setStatus(currentMap.geoObjects.getLength() ? 'ready' : 'empty')
-    }).catch(() => { if (!cancelled) setStatus('error') })
-    return () => { cancelled = true; map?.destroy() }
+    }).catch(() => { if (!cancelled) setStatus('error') }).finally(complete)
+    return () => { cancelled = true; map?.destroy(); complete() }
   }, [city, complexes, retry])
   return (
     <div className="complex-map-shell">
       <div ref={element} className="complex-map-canvas" role="region" aria-label={`Карта ЖК: ${city}`} hidden={status === 'error'} />
-      {status === 'loading' ? <Notice as="p" tone="info" role="status" >Загружаем карту и координаты ЖК…</Notice> : null}
-      {status === 'empty' ? <Notice as="p" tone="info" role="status" >Координаты ЖК не найдены. Прямые ссылки на карты доступны в карточках ниже.</Notice> : null}
-      {status === 'error' ? <Notice as="p" tone="info" role="status" >Карта временно недоступна. Список ЖК и прямые ссылки доступны ниже.</Notice> : null}
-      {status === 'error' || status === 'empty' ? <button type="button" className="button button--secondary" onClick={() => setRetry((current) => current + 1)}>Повторить загрузку карты</button> : null}
+      {status === 'loading' ? <PageLoadingState compact title="Загружаем карту и координаты ЖК…" /> : null}
+      {status === 'empty' ? <EmptyState compact title="Координаты ЖК не найдены. Прямые ссылки на карты доступны в карточках ниже."
+        action={<RetryButton onRetry={reload} label="Повторить загрузку карты" />} /> : null}
+      {status === 'error' ? <ErrorState title="Карта временно недоступна. Список ЖК и прямые ссылки доступны ниже."
+        compact retryLabel="Повторить загрузку карты" onRetry={reload} /> : null}
     </div>
   )
 }

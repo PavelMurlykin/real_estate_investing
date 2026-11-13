@@ -1,3 +1,4 @@
+import { ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 import { Notice } from '@/shared/ui/Notice'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent, RefObject } from 'react'
@@ -1104,28 +1105,25 @@ export function MortgageCalculatorPage({
         </div>
       </header>
 
-      {sampleIdentifier && !sessionQuery.data?.isAuthenticated ? (
+      {sessionQuery.isError ? <ErrorState compact title="Не удалось проверить вход"
+        isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} /> : null}
+      {sampleIdentifier && sessionQuery.data?.isAuthenticated === false ? (
         <Notice as="p" tone="info" role="status" className="status-notice">
           Войдите в аккаунт, чтобы загрузить параметры сохранённого расчёта.
         </Notice>
       ) : null}
       {activeSampleQuery.isLoading ? (
-        <Notice as="p" tone="info" role="status" className="status-notice">
-          Загружаем параметры сохранённого расчёта…
-        </Notice>
+        <PageLoadingState compact title="Загружаем параметры сохранённого расчёта…" className="status-notice" />
       ) : null}
       {activeSampleQuery.isError ? (
-        <Notice as="p" tone="error" role="alert" className="form-error">
-          Сохранённый расчёт не найден или недоступен. Можно заполнить форму
-          вручную.
-        </Notice>
+        <ErrorState compact title="Сохранённый расчёт не найден или недоступен. Можно заполнить форму вручную."
+          isRetrying={activeSampleQuery.isFetching} onRetry={() => activeSampleQuery.refetch()} />
       ) : null}
 
-      {optionsQuery.isError ? (
-        <Notice as="p" tone="info" role="status" className="status-notice">
-          Программы банков временно недоступны. Ручной расчёт продолжает работать.
-        </Notice>
-      ) : null}
+      {optionsQuery.isLoading ? <PageLoadingState compact title="Загружаем программы банков…" /> : null}
+      {optionsQuery.isError ? <ErrorState compact
+        title="Программы банков временно недоступны. Ручной расчёт продолжает работать."
+        isRetrying={optionsQuery.isFetching} onRetry={() => optionsQuery.refetch()} /> : null}
 
       <div className="mortgage-layout">
         <form className="calculator-card" noValidate onSubmit={handleSubmit}>
@@ -1173,7 +1171,7 @@ export function MortgageCalculatorPage({
                 if (!propertyListQuery.isFetching) void propertyListQuery.fetchNextPage()
               }}
               error={propertyListQuery.isError}
-              onRetry={() => void propertyListQuery.refetch()}
+              onRetry={() => propertyListQuery.refetch()}
             />
             <p className="property-fields-hint">
               Для быстрого расчёта объект не обязателен. Для сохранения заполните
@@ -1186,13 +1184,9 @@ export function MortgageCalculatorPage({
             />
             {isSelectedPropertyUnresolved ? (
               selectedPropertyQuery.isError && !selectedPropertyQuery.isFetching ? (
-                <Notice as="div" tone="error" role="alert" className="form-error">
-                  <p>Не удалось загрузить выбранный объект.</p>
-                  <button className="text-button" type="button" onClick={() => void selectedPropertyQuery.refetch()}>
-                    Повторить загрузку объекта
-                  </button>
-                </Notice>
-              ) : <Notice as="p" tone="info" role="status" >Загружаем данные объекта…</Notice>
+                <ErrorState compact title="Не удалось загрузить выбранный объект."
+                  retryLabel="Повторить загрузку объекта" onRetry={() => selectedPropertyQuery.refetch()} />
+              ) : <PageLoadingState compact title="Загружаем данные объекта…" />
             ) : null}
           </section>
 
@@ -1280,12 +1274,8 @@ export function MortgageCalculatorPage({
           </section>
 
           {developerOptionsQuery.isError ? (
-            <Notice as="div" tone="error" role="alert" className="form-error">
-              Не удалось загрузить условия застройщика. Выбор программы требует повторной загрузки.
-              <button className="text-button" type="button" onClick={() => void developerOptionsQuery.refetch()}>
-                Повторить
-              </button>
-            </Notice>
+            <ErrorState compact title="Не удалось загрузить условия застройщика. Выбор программы требует повторной загрузки."
+              isRetrying={developerOptionsQuery.isFetching} onRetry={() => developerOptionsQuery.refetch()} />
           ) : null}
           {selectedDeveloperProgram ? (
             <Notice as="p" tone="info" role="status" className="status-notice">

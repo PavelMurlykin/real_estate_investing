@@ -246,14 +246,14 @@ export function ProfilePage() {
 
   if (sessionQuery.isLoading) return <PageLoadingState />
   if (sessionQuery.isError) {
-    return <ErrorState onRetry={() => void sessionQuery.refetch()} />
+    return <ErrorState isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
   }
   if (!sessionQuery.data?.isAuthenticated) {
     return <Navigate replace to="/login?next=%2Fapp%2Fprofile" />
   }
   if (profileQuery.isLoading) return <PageLoadingState />
   if (profileQuery.isError || !profileQuery.data) {
-    return <ErrorState onRetry={() => void profileQuery.refetch()} />
+    return <ErrorState onRetry={() => profileQuery.refetch()} />
   }
 
   return (

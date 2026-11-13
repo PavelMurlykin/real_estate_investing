@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -226,6 +226,45 @@ async function chooseBankOrProgram(
 }
 
 describe('MortgageCalculatorPage', () => {
+  it.each(['market', 'trench'] as const)('recovers bank options without replacing manual %s inputs', async (mode) => {
+    const user = userEvent.setup()
+    let failed = true
+    const fetchMock = vi.fn<typeof fetch>(async () => failed
+      ? new Response(null, { status: 503 }) : Response.json(mortgageOptions))
+    vi.stubGlobal('fetch', fetchMock)
+    const { queryClient } = renderCalculator({ initialCalculationType: mode, session: authenticatedSession })
+    const cost = screen.getByLabelText('Базовая стоимость, ₽')
+    await user.clear(cost)
+    await user.type(cost, '6123456')
+    await act(() => queryClient.invalidateQueries({ queryKey: ['mortgage-options'] }))
+    const error = await screen.findByRole('alert', { name: /Программы банков временно недоступны/ })
+    expect(cost).toHaveValue(6123456)
+    failed = false
+    await user.click(within(error).getByRole('button', { name: 'Повторить' }))
+    await waitFor(() => expect(error).not.toBeInTheDocument())
+    expect(cost).toHaveValue(6123456)
+    await chooseBankOrProgram(user, 'Банк', 'Надёжный банк')
+    expect(screen.getByRole('combobox', { name: 'Ипотечная программа' })).toBeEnabled()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it.each(['market', 'trench'] as const)('keeps %s calculation available during a retryable session failure', async (mode) => {
+    const user = userEvent.setup()
+    let failed = true
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => failed
+      ? new Response(null, { status: 503 }) : Response.json(authenticatedSession)))
+    const { queryClient } = renderCalculator({ initialCalculationType: mode, session: authenticatedSession })
+    await act(() => queryClient.invalidateQueries({ queryKey: ['session'] }))
+    const error = await screen.findByRole('alert', { name: 'Не удалось проверить вход' })
+    expect(screen.getByLabelText('Базовая стоимость, ₽')).toBeEnabled()
+    failed = false
+    const retry = within(error).getByRole('button', { name: 'Повторить' })
+    retry.focus()
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(error).not.toBeInTheDocument())
+    expect(screen.getByRole('heading', { level: 1, name: 'Ипотечный калькулятор' })).toBeInTheDocument()
+  })
+
   it.each(['market', 'trench'] as const)('searches bank and program by keyboard and resets dependent choices in %s mode', async (mode) => {
     const user = userEvent.setup()
     const fetchMock = vi.fn<typeof fetch>()

@@ -72,6 +72,7 @@ export function CustomerListPage() {
   }
 
   if (sessionQuery.isLoading) return <PageLoadingState />
+  if (sessionQuery.isError) return <ErrorState title="Не удалось проверить вход" isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
 
   if (!sessionQuery.data?.isAuthenticated) {
     return (
@@ -100,7 +101,7 @@ export function CustomerListPage() {
 
   if (customerQuery.isLoading) return <PageLoadingState />
   if (customerQuery.isError || !customerQuery.data) {
-    return <ErrorState onRetry={() => void customerQuery.refetch()} />
+    return <ErrorState onRetry={() => customerQuery.refetch()} />
   }
 
   const { results, page, totalCount, totalPages } = customerQuery.data

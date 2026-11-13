@@ -83,7 +83,7 @@ export function CompanyGroupListPage() {
 
   if (companyGroupQuery.isLoading) return <PageLoadingState />
   if (companyGroupQuery.isError || !companyGroupQuery.data) {
-    return <ErrorState onRetry={() => void companyGroupQuery.refetch()} />
+    return <ErrorState onRetry={() => companyGroupQuery.refetch()} />
   }
 
   const canManageCatalogs = (

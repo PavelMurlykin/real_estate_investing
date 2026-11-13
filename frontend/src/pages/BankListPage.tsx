@@ -113,7 +113,7 @@ export function BankListPage() {
 
   if (bankQuery.isLoading) return <PageLoadingState />
   if (bankQuery.isError || !bankQuery.data) {
-    return <ErrorState onRetry={() => void bankQuery.refetch()} />
+    return <ErrorState onRetry={() => bankQuery.refetch()} />
   }
 
   const canManageCatalogs = (

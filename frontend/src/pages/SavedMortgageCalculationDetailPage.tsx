@@ -60,6 +60,7 @@ export function SavedMortgageCalculationDetailPage() {
   }
 
   if (sessionQuery.isLoading) return <PageLoadingState />
+  if (sessionQuery.isError) return <ErrorState title="Не удалось проверить вход" isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
 
   if (!sessionQuery.data?.isAuthenticated) {
     return (
@@ -104,7 +105,7 @@ export function SavedMortgageCalculationDetailPage() {
     return (
       <ErrorState
         title="Расчёт не найден или недоступен"
-        onRetry={() => void calculationQuery.refetch()}
+        onRetry={() => calculationQuery.refetch()}
       />
     )
   }

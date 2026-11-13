@@ -150,6 +150,7 @@ export function SavedMortgageCalculationListPage() {
   }
 
   if (sessionQuery.isLoading) return <PageLoadingState />
+  if (sessionQuery.isError) return <ErrorState title="Не удалось проверить вход" isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
 
   if (!sessionQuery.data?.isAuthenticated) {
     return (
@@ -178,7 +179,7 @@ export function SavedMortgageCalculationListPage() {
 
   if (calculationQuery.isLoading) return <PageLoadingState />
   if (calculationQuery.isError || !calculationQuery.data) {
-    return <ErrorState onRetry={() => void calculationQuery.refetch()} />
+    return <ErrorState onRetry={() => calculationQuery.refetch()} />
   }
 
   const { results, page, totalCount, totalPages } = calculationQuery.data

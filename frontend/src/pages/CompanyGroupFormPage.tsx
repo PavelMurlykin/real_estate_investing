@@ -103,6 +103,7 @@ export function CompanyGroupFormPage() {
     )
   }
   if (sessionQuery.isLoading) return <PageLoadingState />
+  if (sessionQuery.isError) return <ErrorState title="Не удалось проверить вход" isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
   if (!sessionQuery.data?.isAuthenticated) {
     const nextPath = isEditing
       ? `/app/company-groups/${companyGroupIdentifier}/edit`
@@ -142,7 +143,7 @@ export function CompanyGroupFormPage() {
     return (
       <ErrorState
         title="Группа компаний не найдена или недоступна"
-        onRetry={() => void companyGroupQuery.refetch()}
+        onRetry={() => companyGroupQuery.refetch()}
       />
     )
   }

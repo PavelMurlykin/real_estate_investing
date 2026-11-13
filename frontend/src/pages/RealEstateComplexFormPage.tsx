@@ -293,6 +293,7 @@ export function RealEstateComplexFormPage() {
   if (sessionQuery.isLoading || (isEditing && complexQuery.isLoading)) {
     return <PageLoadingState />
   }
+  if (sessionQuery.isError) return <ErrorState title="Не удалось проверить вход" isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
   if (!sessionQuery.data?.capabilities.manageCatalogs) {
     return (
       <EmptyState
@@ -304,10 +305,9 @@ export function RealEstateComplexFormPage() {
   }
   if ((isEditing && (complexQuery.isError || !complexQuery.data))
     || optionsQuery.isError) {
-    return <ErrorState onRetry={() => {
-      void complexQuery.refetch()
-      void optionsQuery.refetch()
-    }} />
+    return <ErrorState onRetry={() => Promise.all([
+      ...(isEditing ? [complexQuery.refetch()] : []), optionsQuery.refetch(),
+    ])} />
   }
   if (optionsQuery.isLoading || !optionsQuery.data) return <PageLoadingState />
 

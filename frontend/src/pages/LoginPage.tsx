@@ -109,7 +109,7 @@ export function LoginPage() {
 
   if (sessionQuery.isLoading) return <PageLoadingState />
   if (sessionQuery.isError) {
-    return <ErrorState onRetry={() => void sessionQuery.refetch()} />
+    return <ErrorState isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
   }
   if (sessionQuery.data?.isAuthenticated) {
     return <Navigate replace to={nextPath} />

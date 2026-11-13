@@ -1,4 +1,5 @@
 import { Notice } from '@/shared/ui/Notice'
+import { ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MouseEventHandler } from 'react'
 import { Link, matchPath, useLocation } from 'react-router-dom'
@@ -227,7 +228,9 @@ export function Sidebar({ isOpen, isMobile = false, onClose }: SidebarProps) {
 
       <div className="sidebar__account">
         {sessionQuery.isLoading ? (
-          <div className="account-loading" aria-label="Загрузка профиля" />
+          <PageLoadingState compact title="Загрузка профиля" />
+        ) : sessionQuery.isError ? (
+          <ErrorState compact title="Не удалось загрузить аккаунт" isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
         ) : sessionQuery.data?.isAuthenticated && sessionQuery.data.user ? (
           <>
             <div className="account-card">

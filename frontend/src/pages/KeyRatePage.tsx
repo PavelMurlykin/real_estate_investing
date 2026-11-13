@@ -1,3 +1,4 @@
+import { retryFailedQueries } from '@/shared/lib/retryFailedQueries'
 import { Notice } from '@/shared/ui/Notice'
 import { useRef } from 'react'
 import { TableScrollArea } from '@/shared/ui/TableScrollArea'
@@ -57,7 +58,7 @@ export function KeyRatePage() {
 
   if (keyRateQuery.isLoading) return <PageLoadingState />
   if (keyRateQuery.isError || !keyRateQuery.data) {
-    return <ErrorState onRetry={() => void keyRateQuery.refetch()} />
+    return <ErrorState onRetry={() => retryFailedQueries(keyRateQuery, chartQuery)} />
   }
 
   const { page, results, totalCount, totalPages } = keyRateQuery.data
@@ -109,7 +110,7 @@ export function KeyRatePage() {
       {chartQuery.isError ? (
         <ErrorState
           title="Не удалось загрузить график ключевой ставки"
-          onRetry={() => void chartQuery.refetch()}
+          onRetry={() => retryFailedQueries(chartQuery, keyRateQuery)}
         />
       ) : null}
 

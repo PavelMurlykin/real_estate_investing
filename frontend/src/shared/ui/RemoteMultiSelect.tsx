@@ -19,5 +19,5 @@ export function RemoteMultiSelect({ label, values, onChange, error, ...choicesPr
     selectedOptions={options.map((option) => ({ value: String(option.id), label: option.label }))}
     disabled={choicesProps.disabled} loading={isSearching} onSearch={remoteSearch ? setSearch : undefined}
     hasMore={hasMore} onLoadMore={loadMore}
-    error={choicesQuery.isError} onRetry={() => void choicesQuery.refetch()} />
+    error={choicesQuery.isError} onRetry={() => choicesQuery.refetch()} />
 }

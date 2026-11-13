@@ -28,7 +28,7 @@ import {
   formatMonths,
   formatPercent,
 } from '@/shared/lib/formatters'
-import { EmptyState, ErrorState } from '@/shared/ui/AsyncState'
+import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 import { CalculationFilters } from '@/features/mortgage/CalculationFilters'
 import { calculationFilterNames } from '@/features/mortgage/calculationFilterFields'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
@@ -192,7 +192,7 @@ export function CustomerCalculationsSection({
             <h2 id="customer-calculations-title">Связанные расчёты</h2>
           </div>
         </div>
-        <Notice as="p" tone="info" role="status" className="status-notice">Загружаем расчёты клиента…</Notice>
+        <PageLoadingState compact title="Загружаем расчёты клиента…" className="status-notice" />
       </section>
     )
   }
@@ -208,7 +208,7 @@ export function CustomerCalculationsSection({
         </div>
         <ErrorState
           title="Не удалось загрузить расчёты клиента"
-          onRetry={() => void calculationsQuery.refetch()}
+          onRetry={() => calculationsQuery.refetch()}
         />
       </section>
     )

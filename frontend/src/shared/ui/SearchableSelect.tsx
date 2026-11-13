@@ -99,7 +99,7 @@ function SearchableChoices({ label, values, options, selectedOptions, onChange, 
           aria-describedby={validationError ? `${identifier}-error` : undefined}
           value={open ? query : !multiple && value ? selected(value)?.label ?? 'Загрузка выбранного значения…' : ''}
           placeholder={placeholder ?? (open ? 'Введите значение' : emptyLabel)}
-          onFocus={() => setOpen(true)}
+          onFocus={(event) => { if (!event.currentTarget.hasAttribute('data-restoring-focus')) setOpen(true) }}
           onClick={() => setOpen(true)}
           onChange={(event) => { setQuery(event.target.value); onSearch?.(event.target.value); setActive(null); setOpen(true) }}
           onKeyDown={(event) => {

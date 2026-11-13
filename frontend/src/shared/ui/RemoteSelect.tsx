@@ -31,6 +31,6 @@ export function RemoteSelect({
         onChange(next, options.find((option) => String(option.id) === next))
       }}
       disabled={disabled} loading={isSearching} onSearch={remoteSearch || filter ? setSearch : undefined} hasMore={hasMore} onLoadMore={loadMore}
-      error={choicesQuery.isError} onRetry={() => void choicesQuery.refetch()} />
+      error={choicesQuery.isError} onRetry={() => choicesQuery.refetch()} />
   )
 }

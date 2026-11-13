@@ -8,6 +8,16 @@ import { renderWithProviders } from '@/test/render'
 import { InteractiveTable } from './InteractiveTable'
 
 describe('InteractiveTable', () => {
+  it('clears an unsuccessful search from the empty state while retaining sort order', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<InteractiveTable caption="Банки" rows={[{ id: 1, name: 'Я' }, { id: 2, name: 'А' }]}
+      columns={[{ id: 'name', label: 'Банк', value: (row) => row.name }]} getRowKey={(row) => row.id} />)
+    await user.click(screen.getByRole('button', { name: 'Банк' }))
+    await user.type(screen.getByRole('searchbox'), 'нет такого банка')
+    expect(screen.getByRole('heading', { name: 'Нет строк, соответствующих поиску.' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Сбросить поиск' }))
+    expect(screen.getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['А', 'Я'])
+  })
   it('keeps missing values last in both directions and reaches sorting from the scroll region with the keyboard', async () => {
     const user = userEvent.setup()
     renderWithProviders(<InteractiveTable caption="Числа" rows={[

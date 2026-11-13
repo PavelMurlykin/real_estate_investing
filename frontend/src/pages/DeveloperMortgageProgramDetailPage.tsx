@@ -63,7 +63,7 @@ export function DeveloperMortgageProgramDetailPage() {
     return (
       <ErrorState
         title="Программа застройщика не найдена или недоступна"
-        onRetry={() => void programQuery.refetch()}
+        onRetry={() => programQuery.refetch()}
       />
     )
   }

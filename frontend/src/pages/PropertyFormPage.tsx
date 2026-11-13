@@ -1,3 +1,4 @@
+import { retryFailedQueries } from '@/shared/lib/retryFailedQueries'
 import { Notice } from '@/shared/ui/Notice'
 import { RemoteMultiSelect } from '@/shared/ui/RemoteMultiSelect'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
@@ -306,6 +307,7 @@ export function PropertyFormPage() {
     )
   }
   if (sessionQuery.isLoading) return <PageLoadingState />
+  if (sessionQuery.isError) return <ErrorState title="Не удалось проверить вход" isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
   if (!canManageCatalogs) {
     return (
       <EmptyState
@@ -324,7 +326,7 @@ export function PropertyFormPage() {
     return (
       <ErrorState
         title="Объект не найден или недоступен"
-        onRetry={() => void propertyQuery.refetch()}
+        onRetry={() => retryFailedQueries(propertyQuery, optionsQuery)}
       />
     )
   }
@@ -333,7 +335,7 @@ export function PropertyFormPage() {
     return (
       <ErrorState
         title="Не удалось загрузить справочники формы"
-        onRetry={() => void optionsQuery.refetch()}
+        onRetry={() => retryFailedQueries(optionsQuery, propertyQuery)}
       />
     )
   }
@@ -374,9 +376,7 @@ export function PropertyFormPage() {
           </Notice>
       ) : null}
       {optionsQuery.isFetching ? (
-        <Notice as="p" tone="info" role="status" className="customer-form-loading">
-          Обновляем связанные справочники…
-        </Notice>
+        <PageLoadingState compact title="Обновляем связанные справочники…" />
       ) : null}
 
       <form className="customer-form property-form" onSubmit={handleSubmit}>

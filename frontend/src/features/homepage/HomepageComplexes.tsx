@@ -1,10 +1,9 @@
-import { Notice } from '@/shared/ui/Notice'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { lazy, Suspense } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { fetchHomepageComplexes } from '@/api/queries'
-import { EmptyState, ErrorState } from '@/shared/ui/AsyncState'
+import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 
 const ComplexMap = lazy(() => import('./ComplexMap'))
@@ -45,15 +44,13 @@ export function HomepageComplexes() {
           <button type="button" className={`button button--${view === 'map' ? 'primary' : 'secondary'}`} aria-pressed={view === 'map'} onClick={() => update('view', 'map')}>На карте</button>
         </div>
       </div>
-      {complexesQuery.isLoading || complexesQuery.isPlaceholderData ? <Notice as="p" tone="info" role="status" >Загружаем ЖК выбранного города…</Notice> : null}
-      {complexesQuery.isError ? <ErrorState title="Не удалось загрузить жилые комплексы" onRetry={() => {
-        if (data) void complexesQuery.fetchNextPage()
-        else void complexesQuery.refetch()
-      }} /> : null}
+      {complexesQuery.isLoading || complexesQuery.isPlaceholderData ? <PageLoadingState compact title="Загружаем ЖК выбранного города…" /> : null}
+      {complexesQuery.isError ? <ErrorState title="Не удалось загрузить жилые комплексы"
+        onRetry={() => data ? complexesQuery.fetchNextPage() : complexesQuery.refetch()} /> : null}
       {data && !complexesQuery.isPlaceholderData ? <>
         <div className="results-heading" aria-live="polite"><p>ЖК в городе {selectedCity?.name ?? '—'}: <strong>{data.totalCount}</strong>. Показано: {complexes.length}.</p></div>
         {view === 'map' && complexes.length && selectedCity ? (
-          <Suspense fallback={<Notice as="p" tone="info" role="status" >Загружаем карту…</Notice>}>
+          <Suspense fallback={<PageLoadingState compact title="Загружаем карту…" />}>
             <ComplexMap complexes={complexes} city={selectedCity.name} />
           </Suspense>
         ) : null}

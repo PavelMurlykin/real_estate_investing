@@ -82,6 +82,7 @@ export function CustomerDetailPage() {
   }
 
   if (sessionQuery.isLoading) return <PageLoadingState />
+  if (sessionQuery.isError) return <ErrorState title="Не удалось проверить вход" isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
 
   if (!sessionQuery.data?.isAuthenticated) {
     const nextPath = `/app/customers/${customerIdentifier}`
@@ -106,7 +107,7 @@ export function CustomerDetailPage() {
     return (
       <ErrorState
         title="Клиент не найден или недоступен"
-        onRetry={() => void customerQuery.refetch()}
+        onRetry={() => customerQuery.refetch()}
       />
     )
   }

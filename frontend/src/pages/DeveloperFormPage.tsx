@@ -1,3 +1,4 @@
+import { retryFailedQueries } from '@/shared/lib/retryFailedQueries'
 import { Notice } from '@/shared/ui/Notice'
 import { RemoteMultiSelect } from '@/shared/ui/RemoteMultiSelect'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
@@ -201,6 +202,7 @@ export function DeveloperFormPage() {
     )
   }
   if (sessionQuery.isLoading) return <PageLoadingState />
+  if (sessionQuery.isError) return <ErrorState title="Не удалось проверить вход" isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
   if (!sessionQuery.data?.isAuthenticated) {
     const nextPath = isEditing
       ? `/app/developers/${developerIdentifier}/edit`
@@ -243,7 +245,7 @@ export function DeveloperFormPage() {
     return (
       <ErrorState
         title="Не удалось загрузить справочники формы"
-        onRetry={() => void optionsQuery.refetch()}
+        onRetry={() => retryFailedQueries(optionsQuery, developerQuery)}
       />
     )
   }
@@ -251,7 +253,7 @@ export function DeveloperFormPage() {
     return (
       <ErrorState
         title="Застройщик не найден или недоступен"
-        onRetry={() => void developerQuery.refetch()}
+        onRetry={() => retryFailedQueries(developerQuery, optionsQuery)}
       />
     )
   }

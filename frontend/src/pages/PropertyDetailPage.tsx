@@ -105,7 +105,7 @@ export function PropertyDetailPage() {
     return (
       <ErrorState
         title="Объект не найден или недоступен"
-        onRetry={() => void propertyQuery.refetch()}
+        onRetry={() => propertyQuery.refetch()}
       />
     )
   }
@@ -299,8 +299,7 @@ export function PropertyDetailPage() {
                 </button>
               ) : (
                 <div className="property-image-placeholder">
-                  <span aria-hidden="true">⌂</span>
-                  <p>Не загружено</p>
+                  <EmptyState compact title="Не загружено" />
                 </div>
               )}
             </article>

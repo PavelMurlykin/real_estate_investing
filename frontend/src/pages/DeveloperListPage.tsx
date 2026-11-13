@@ -87,7 +87,7 @@ export function DeveloperListPage() {
 
   if (developerQuery.isLoading) return <PageLoadingState />
   if (developerQuery.isError || !developerQuery.data) {
-    return <ErrorState onRetry={() => void developerQuery.refetch()} />
+    return <ErrorState onRetry={() => developerQuery.refetch()} />
   }
 
   const canManageCatalogs = (

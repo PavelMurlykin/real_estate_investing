@@ -94,7 +94,7 @@ export function PropertyListPage() {
   }
 
   if (propertyQuery.isError || !propertyQuery.data) {
-    return <ErrorState onRetry={() => void propertyQuery.refetch()} />
+    return <ErrorState onRetry={() => propertyQuery.refetch()} />
   }
 
   const { results, page, totalCount, totalPages } = propertyQuery.data

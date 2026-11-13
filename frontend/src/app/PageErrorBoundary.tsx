@@ -1,4 +1,4 @@
-import { Notice } from '@/shared/ui/Notice'
+import { ErrorState } from '@/shared/ui/AsyncState'
 import { Component, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -20,26 +20,9 @@ export class PageErrorBoundary extends Component<
     if (!this.state.hasError) return this.props.children
 
     return (
-      <Notice as="section" tone="error" role="alert" className="state-card state-card--error">
-
-        <div>
-          <h1>Не удалось открыть страницу</h1>
-          <p>
-            Обновите страницу или выберите другой раздел в меню.
-            Несохранённые изменения при обновлении будут потеряны.
-          </p>
-          <div className="page-error-actions">
-            <button
-              className="button button--secondary"
-              type="button"
-              onClick={() => window.location.reload()}
-            >
-              Обновить страницу
-            </button>
-            <Link className="text-link" to="/">На главную</Link>
-          </div>
-        </div>
-      </Notice>
+      <ErrorState headingLevel={1} title="Не удалось открыть страницу" retryLabel="Обновить страницу"
+        description="Обновите страницу или выберите другой раздел в меню. Несохранённые изменения при обновлении будут потеряны."
+        onRetry={() => window.location.reload()} action={<Link className="button button--secondary" to="/">На главную</Link>} />
     )
   }
 }

@@ -16,7 +16,7 @@ export function HomePage() {
   }
 
   if (overviewQuery.isError || !overviewQuery.data) {
-    return <ErrorState onRetry={() => void overviewQuery.refetch()} />
+    return <ErrorState onRetry={() => overviewQuery.refetch()} />
   }
 
   return (

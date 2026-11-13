@@ -53,7 +53,7 @@ export function PasswordResetTokenPage() {
   ])
 
   if (sessionQuery.isError) {
-    return <ErrorState onRetry={() => void sessionQuery.refetch()} />
+    return <ErrorState isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
   }
   if (errors.token || errors.form) {
     return (

@@ -75,7 +75,7 @@ export function MortgageProgramListPage() {
 
   if (programQuery.isLoading) return <PageLoadingState />
   if (programQuery.isError || !programQuery.data) {
-    return <ErrorState onRetry={() => void programQuery.refetch()} />
+    return <ErrorState onRetry={() => programQuery.refetch()} />
   }
 
   const canManageCatalogs = (

@@ -14,6 +14,20 @@ for (const width of [360, 768, 1280]) {
     skip: isolatedWritesEnabled ? false : 'requires isolated acceptance stack',
   }, async (context) => {
     const { page, trackCleanup } = await createAuthenticatedPage(context, 'moderator', { width, height: 900 })
+    let phase = 'ready'
+    let releaseLoading
+    let loadingGate
+    let dataRequests = new Set()
+    await page.route('**/api/**', async (route) => {
+      const request = route.request()
+      const path = new URL(request.url()).pathname
+      if (request.method() === 'GET' && path !== '/api/v1/auth/session/' && !path.startsWith('/api/v1/catalog-options/')) {
+        dataRequests.add(path)
+        if (phase === 'loading') await loadingGate
+        if (phase === 'error') return route.fulfill({ status: 503, json: { detail: 'Временный сбой.' } })
+      }
+      return route.fallback()
+    })
     const csrfToken = await getCsrfToken(page.context())
     const createRecord = async (resource, data) => {
       const response = await page.request.post(isolatedBaseUrl + '/api/v1/' + resource + '/', {
@@ -35,14 +49,41 @@ for (const width of [360, 768, 1280]) {
       .then((response) => response.json())
     assert.ok(classes.results.length)
 
-    const openAndCheck = async (route) => {
+    const openAndCheck = async (route, checkRecovery = false) => {
+      dataRequests = new Set()
       const response = await page.goto(isolatedBaseUrl + '/app/' + route)
       assert.equal(response.status(), 200, route)
       await page.getByRole('main').getByRole('heading', { level: 1 }).waitFor()
       assert.doesNotMatch(await page.getByRole('main').getByRole('heading', { level: 1 }).innerText(), /не найден|недоступ|недостаточно|не удалось/i, route)
-      await page.getByRole('main').getByText('Загрузка…', { exact: true }).waitFor({ state: 'hidden' })
+      await page.waitForFunction(() => !document.querySelector('main .async-state--loading'))
       await assertReactPageLayout(page)
       await assertFormKeyboard(page)
+      if (checkRecovery && dataRequests.size) {
+        const title = await page.getByRole('main').getByRole('heading', { level: 1 }).innerText()
+        phase = 'loading'
+        loadingGate = new Promise((resolve) => { releaseLoading = resolve })
+        await page.reload()
+        await page.getByRole('main').locator('.async-state--loading').first().waitFor()
+        await assertReactPageLayout(page)
+        phase = 'error'
+        releaseLoading()
+        const error = page.getByRole('main').locator('.async-state--error').first()
+        await error.waitFor()
+        await assertReactPageLayout(page)
+        phase = 'ready'
+        await error.getByRole('button', { name: 'Повторить', exact: true }).focus()
+        await page.keyboard.press('Enter')
+        await page.getByRole('main').getByRole('heading', { level: 1, name: title, exact: true }).waitFor()
+        await page.waitForFunction(() => {
+          const active = document.activeElement
+          return active === document.querySelector('main h1')
+            || Boolean(active?.closest('main form') && active.matches('input, select, textarea, button, a[href]'))
+        }).catch(async (error) => {
+          const active = await page.evaluate(() => ({ tag: document.activeElement?.tagName, id: document.activeElement?.id }))
+          throw new Error(route + ': focus after recovery ' + JSON.stringify(active), { cause: error })
+        })
+        await assertReactPageLayout(page)
+      }
     }
     const routes = [
       'company-groups', 'company-groups/new', `company-groups/${group.id}/edit`,
@@ -60,7 +101,7 @@ for (const width of [360, 768, 1280]) {
       `mortgage/calculations?customerId=${customer.id}`, `mortgage/trench/calculations?customerId=${customer.id}`,
     ]
     for (const route of routes) {
-      await openAndCheck(route)
+      await openAndCheck(route, true)
       if (['customers/new', 'properties/new', 'profile'].includes(route)) {
         await screenshot(page, 'react-' + route.replaceAll('/', '-') + '-' + width + '.png')
       }

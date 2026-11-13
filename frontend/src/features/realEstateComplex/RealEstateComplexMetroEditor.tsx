@@ -1,3 +1,4 @@
+import { EmptyState } from '@/shared/ui/AsyncState'
 import { Notice } from '@/shared/ui/Notice'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import type { RealEstateComplexOptions } from '@/api/schemas'
@@ -45,9 +46,7 @@ export function RealEstateComplexMetroEditor({
           </button>
         </div>
         {options.metroStations.length === 0 ? (
-          <p className="complex-editor__empty">
-            Выберите город, чтобы получить список станций метро.
-          </p>
+          <EmptyState compact title="Выберите город, чтобы получить список станций метро." />
         ) : null}
         {error ? <Notice as="p" tone="error" role="alert" className="form-error">{error}</Notice> : null}
         <div className="complex-editor-grid complex-editor-grid--metro">

@@ -63,7 +63,7 @@ export function PasswordResetConfirmPage() {
 
   if (sessionQuery.isLoading) return <PageLoadingState />
   if (sessionQuery.isError) {
-    return <ErrorState onRetry={() => void sessionQuery.refetch()} />
+    return <ErrorState isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
   }
 
   return (

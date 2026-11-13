@@ -1,3 +1,4 @@
+import { retryFailedQueries } from '@/shared/lib/retryFailedQueries'
 import { Notice } from '@/shared/ui/Notice'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -303,6 +304,7 @@ export function BankFormPage() {
     )
   }
   if (sessionQuery.isLoading) return <PageLoadingState />
+  if (sessionQuery.isError) return <ErrorState title="Не удалось проверить вход" isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
   if (!sessionQuery.data?.isAuthenticated) {
     const nextPath = isEditing
       ? `/app/banks/${bankIdentifier}/edit`
@@ -342,7 +344,7 @@ export function BankFormPage() {
     return (
       <ErrorState
         title="Не удалось загрузить ипотечные программы"
-        onRetry={() => void optionsQuery.refetch()}
+        onRetry={() => retryFailedQueries(optionsQuery, bankQuery)}
       />
     )
   }
@@ -350,7 +352,7 @@ export function BankFormPage() {
     return (
       <ErrorState
         title="Банк не найден или недоступен"
-        onRetry={() => void bankQuery.refetch()}
+        onRetry={() => retryFailedQueries(bankQuery, optionsQuery)}
       />
     )
   }
@@ -499,10 +501,7 @@ export function BankFormPage() {
           </Notice>
             ) : null}
             {formState.programs.length === 0 ? (
-              <div className="bank-program-empty">
-                <strong>Программы не добавлены</strong>
-                <p>Банк можно сохранить без программ и заполнить их позже.</p>
-              </div>
+              <EmptyState compact title="Программы не добавлены" description="Банк можно сохранить без программ и заполнить их позже." />
             ) : null}
             {formState.programs.map((program, rowIndex) => {
               const rowErrors = clientErrors.programRows[program.clientKey]

@@ -82,7 +82,7 @@ export function RealEstateComplexListPage() {
 
   if (complexQuery.isLoading) return <PageLoadingState />
   if (complexQuery.isError || !complexQuery.data) {
-    return <ErrorState onRetry={() => void complexQuery.refetch()} />
+    return <ErrorState onRetry={() => complexQuery.refetch()} />
   }
 
   const canManageCatalogs = (

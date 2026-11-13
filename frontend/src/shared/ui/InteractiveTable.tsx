@@ -1,4 +1,5 @@
 import { TableScrollArea } from '@/shared/ui/TableScrollArea'
+import { EmptyState } from '@/shared/ui/AsyncState'
 import type { Key, ReactNode } from 'react'
 import { useId, useState } from 'react'
 
@@ -65,7 +66,9 @@ export function InteractiveTable<Row>({ rows, columns, getRowKey, caption, class
           })}</tr></thead>
           <tbody>{visibleRows.length ? visibleRows.map((row) => (
             <tr key={getRowKey(row)}>{columns.map((column) => <td key={column.id}>{column.render ? column.render(row) : column.value(row)}</td>)}</tr>
-          )) : <tr><td colSpan={columns.length}>Нет строк, соответствующих поиску.</td></tr>}</tbody>
+          )) : <tr><td colSpan={columns.length}><EmptyState compact title="Нет строк, соответствующих поиску."
+            action={query ? <button type="button" className="button button--secondary" onClick={() => setSearch('')}>Сбросить поиск</button> : undefined} />
+          </td></tr>}</tbody>
         </table>
       </TableScrollArea>
     </div>

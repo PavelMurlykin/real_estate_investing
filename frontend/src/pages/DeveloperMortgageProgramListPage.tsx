@@ -1,3 +1,4 @@
+import { retryFailedQueries } from '@/shared/lib/retryFailedQueries'
 import { Notice } from '@/shared/ui/Notice'
 import { restoreFocus } from '@/shared/lib/restoreFocus'
 import { ModalDialog } from '@/shared/ui/ModalDialog'
@@ -83,13 +84,13 @@ export function DeveloperMortgageProgramListPage() {
     return <PageLoadingState />
   }
   if (programQuery.isError || !programQuery.data) {
-    return <ErrorState onRetry={() => void programQuery.refetch()} />
+    return <ErrorState onRetry={() => retryFailedQueries(programQuery, optionsQuery)} />
   }
   if (optionsQuery.isError || !optionsQuery.data) {
     return (
       <ErrorState
         title="Не удалось загрузить фильтры программ"
-        onRetry={() => void optionsQuery.refetch()}
+        onRetry={() => retryFailedQueries(optionsQuery, programQuery)}
       />
     )
   }
