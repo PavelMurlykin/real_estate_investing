@@ -480,14 +480,16 @@ export function BankFormPage() {
             <div>
               <h2 id="bank-programs-section">Ипотечные программы</h2>
               <p>Ставка, первый взнос и максимальный срок по каждой программе.</p>
-              <button
-                className="button button--secondary bank-add-program"
-                type="button"
-                onClick={addProgram}
-              >
-                Добавить программу
-              </button>
             </div>
+          </div>
+          <div className="form-section-actions">
+            <button
+              className="button button--secondary bank-add-program"
+              type="button"
+              onClick={addProgram}
+            >
+              Добавить программу
+            </button>
           </div>
           <div className="bank-program-editors">
             {optionsQuery.data.truncated ? (

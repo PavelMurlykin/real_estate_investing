@@ -7,6 +7,7 @@ import {
 } from './isolated-helpers.mjs'
 import { screenshot } from './helpers.mjs'
 import { assertReactPageLayout } from './page-layout-helpers.mjs'
+import { assertFormKeyboard } from './form-style-helpers.mjs'
 
 for (const width of [360, 768, 1280]) {
   test(`React forms and cards have clear spacing and no Django links at ${width}px`, {
@@ -41,6 +42,7 @@ for (const width of [360, 768, 1280]) {
       assert.doesNotMatch(await page.getByRole('main').getByRole('heading', { level: 1 }).innerText(), /не найден|недоступ|недостаточно|не удалось/i, route)
       await page.getByRole('main').getByText('Загрузка…', { exact: true }).waitFor({ state: 'hidden' })
       await assertReactPageLayout(page)
+      await assertFormKeyboard(page)
     }
     const routes = [
       'company-groups', 'company-groups/new', `company-groups/${group.id}/edit`,

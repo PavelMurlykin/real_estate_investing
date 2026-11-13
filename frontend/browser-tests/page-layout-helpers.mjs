@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { assertFormStyles } from './form-style-helpers.mjs'
 
 export async function assertReactPageLayout(page) {
   const issues = await page.getByRole('main').evaluate((main) => {
@@ -38,4 +39,5 @@ export async function assertReactPageLayout(page) {
     return failures
   })
   assert.deepEqual(issues, [], page.url())
+  await assertFormStyles(page)
 }

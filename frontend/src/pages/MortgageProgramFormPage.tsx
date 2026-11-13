@@ -415,15 +415,17 @@ export function MortgageProgramFormPage() {
             <div>
               <h2 id="program-limits">Региональные лимиты</h2>
               <p>Лимиты для регионов, где они отличаются от федерального.</p>
-              <button
-                className="button button--secondary nested-editor-add-button"
-                type="button"
-                onClick={addLimit}
-                disabled={formState.regionalCreditLimits.length >= 100}
-              >
-                Добавить регион
-              </button>
             </div>
+          </div>
+          <div className="form-section-actions">
+            <button
+              className="button button--secondary nested-editor-add-button"
+              type="button"
+              onClick={addLimit}
+              disabled={formState.regionalCreditLimits.length >= 100}
+            >
+              Добавить регион
+            </button>
           </div>
           <div className="nested-editor-list">
             {optionsQuery.data.truncated ? (

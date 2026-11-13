@@ -108,6 +108,10 @@
 }
 
 .searchable-select__values {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -165,7 +169,7 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: var(--shadow-sm);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   letter-spacing: normal;
   text-transform: none;
@@ -339,6 +343,19 @@
   --shadow-md: 0 16px 42px rgb(20 40 30 / 10%);
   --header-height: 72px;
   --sidebar-width: 272px;
+  --form-font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --form-title-font: 'Playfair Display', Georgia, serif;
+  --form-title-size: 2.25rem;
+  --form-section-title-size: 1.25rem;
+  --form-input-size: 1rem;
+  --form-label-size: 0.75rem;
+  --form-control-height: 3rem;
+  --form-control-radius: 0.75rem;
+  --form-card-radius: 1rem;
+  --form-padding: 1.5rem;
+  --form-gap: 1.5rem;
+  --form-field-gap: 0.5rem;
+  --form-action-gap: 0.75rem;
 }
 
 :root[data-theme='dark'] {
@@ -389,6 +406,13 @@ textarea {
   font: inherit;
 }
 
+input[type='checkbox'],
+input[type='radio'] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--brand);
+}
+
 button,
 a {
   -webkit-tap-highlight-color: transparent;
@@ -403,7 +427,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid var(--accent-strong);
+  outline: 3px solid var(--brand);
   outline-offset: 3px;
 }
 
@@ -824,17 +848,20 @@ textarea:focus-visible {
 }
 
 .button {
-  min-height: 44px;
+  min-height: var(--form-control-height);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 18px;
+  padding: 12px 20px;
   border: 1px solid transparent;
-  border-radius: 11px;
-  font-size: 13px;
-  font-weight: 800;
+  border-radius: var(--form-control-radius);
+  font-size: 14px;
+  font-weight: 700;
   text-decoration: none;
   cursor: pointer;
+  font-family: var(--form-font);
+  line-height: 1.4;
+  text-align: center;
 }
 
 .button--primary {
@@ -1131,7 +1158,10 @@ textarea:focus-visible {
 }
 
 .page-header h1 {
-  font-size: clamp(34px, 4vw, 52px);
+  font-size: var(--form-title-size);
+  font-family: var(--form-title-font);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 
 .page-header p {
@@ -1385,15 +1415,17 @@ textarea:focus-visible {
   align-items: flex-start;
   gap: 11px;
   color: var(--text);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   letter-spacing: normal;
   text-transform: none;
+  min-height: var(--form-control-height);
+  cursor: pointer;
 }
 
 .developer-active-field input {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   margin-top: 2px;
   accent-color: var(--brand);
 }
@@ -1405,7 +1437,7 @@ textarea:focus-visible {
 
 .developer-active-field small {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -1553,17 +1585,17 @@ textarea:focus-visible {
 .calculator-card {
   min-width: 0;
   display: grid;
-  gap: 24px;
+  gap: var(--form-gap);
 }
 
 .calculator-section {
   min-width: 0;
   display: grid;
-  gap: 24px;
-  padding: 30px;
+  gap: var(--form-gap);
+  padding: var(--form-padding);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 22px;
+  border-radius: var(--form-card-radius);
   box-shadow: var(--shadow-sm);
 }
 
@@ -1575,28 +1607,28 @@ textarea:focus-visible {
 }
 
 .calculator-section__heading > span {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   flex: 0 0 auto;
   display: grid;
   place-items: center;
   color: var(--brand);
   background: var(--brand-soft);
-  border-radius: 11px;
+  border-radius: 50%;
   font-size: 11px;
   font-weight: 800;
 }
 
 .calculator-section__heading h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--form-section-title-size);
   line-height: 1.35;
 }
 
 .calculator-section__heading p {
-  margin: 3px 0 0;
+  margin: var(--form-field-gap) 0 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.6;
 }
 
@@ -1665,45 +1697,56 @@ textarea:focus-visible {
 .field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  gap: var(--form-gap);
 }
 
 .form-field {
   min-width: 0;
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: var(--form-field-gap);
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--form-label-size);
   font-weight: 800;
   letter-spacing: 0.025em;
   text-transform: uppercase;
+  line-height: 1.5;
 }
 
 .form-field--wide {
   grid-column: 1 / -1;
 }
 
-.form-field input,
+.form-field input:not(:where([type='checkbox'], [type='radio'], [type='hidden'])),
 .form-field select,
 .form-field textarea {
   width: 100%;
-  min-height: 48px;
-  padding: 0 13px;
+  min-height: var(--form-control-height);
+  padding: 10px 12px;
   color: var(--text);
   background: var(--background);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--form-control-radius);
   font-weight: 500;
   letter-spacing: normal;
   text-transform: none;
+  min-width: 0;
+  font-family: var(--form-font);
+  font-size: var(--form-input-size);
+  line-height: 1.5;
 }
 
 .form-field textarea {
-  min-height: 116px;
-  padding: 13px;
+  min-height: 128px;
+  padding: 12px;
   line-height: 1.5;
   resize: vertical;
+}
+
+.form-field input::placeholder,
+.form-field textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
 }
 
 .form-field input[aria-invalid='true'],
@@ -1719,7 +1762,7 @@ textarea:focus-visible {
 
 .form-field small {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: normal;
   text-transform: none;
@@ -1728,10 +1771,12 @@ textarea:focus-visible {
 .field-error,
 .form-error {
   color: var(--danger);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: normal;
   text-transform: none;
+  line-height: 1.5;
+  margin: 0;
 }
 
 .segmented-field {
@@ -1749,20 +1794,20 @@ textarea:focus-visible {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
-  padding: 4px;
+  padding: 1px;
   background: var(--background);
   border: 1px solid var(--border);
   border-radius: 12px;
 }
 
 .segmented-control label {
-  min-height: 40px;
+  min-height: 44px;
   display: grid;
   place-items: center;
   color: var(--text-muted);
   border-radius: 9px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   text-transform: none;
 }
 
@@ -1783,7 +1828,7 @@ textarea:focus-visible {
 }
 
 .segmented-control label:has(input:focus-visible) {
-  outline: 3px solid var(--accent-strong);
+  outline: 3px solid var(--brand);
   outline-offset: 2px;
 }
 
@@ -1798,8 +1843,8 @@ textarea:focus-visible {
 }
 
 .toggle-field input {
-  width: 19px;
-  height: 19px;
+  width: 20px;
+  height: 20px;
   accent-color: var(--brand);
 }
 
@@ -1808,7 +1853,7 @@ textarea:focus-visible {
 }
 
 .form-error {
-  margin: 20px 30px 0;
+  margin: 0;
   padding: 12px 14px;
   background: var(--danger-soft);
   border-radius: 10px;
@@ -1816,7 +1861,6 @@ textarea:focus-visible {
 
 .calculator-submit {
   width: 100%;
-  min-height: 52px;
   margin: 0;
 }
 
@@ -2046,7 +2090,6 @@ textarea:focus-visible {
   gap: 10px;
 }
 
-
 .saved-property-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2096,9 +2139,6 @@ textarea:focus-visible {
 }
 
 @media (max-width: 720px) {
-  .calculator-section {
-    padding: 24px;
-  }
 
   .field-grid {
     grid-template-columns: 1fr;
@@ -2233,38 +2273,29 @@ textarea:focus-visible {
 .dictionary-form-card {
   position: sticky;
   top: 1.25rem;
-  padding: 1.35rem;
+  padding: var(--form-padding);
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: var(--form-card-radius);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
 }
 
 .dictionary-form-card h2 {
-  margin: 0.35rem 0 1.15rem;
-  font-family: var(--font-display);
-  font-size: clamp(1.25rem, 2vw, 1.65rem);
+  margin: 0 0 var(--form-gap);
+  font-family: var(--form-font);
+  font-size: var(--form-section-title-size);
+  line-height: 1.35;
 }
 
 .dictionary-form-card form {
   display: grid;
-  gap: 1rem;
-}
-
-.dictionary-form-card .form-field {
-  display: grid;
-  gap: 0.42rem;
-}
-
-.dictionary-form-card textarea {
-  resize: vertical;
-  min-height: 7.5rem;
+  gap: var(--form-gap);
 }
 
 .dictionary-form-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
+  gap: var(--form-action-gap);
   align-items: center;
 }
 
@@ -2347,10 +2378,6 @@ textarea:focus-visible {
     padding-inline: 0.25rem;
   }
 
-  .dictionary-form-card {
-    padding: 1rem;
-  }
-
   .location-filter-panel {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -2361,14 +2388,6 @@ textarea:focus-visible {
 }
 
 @media (max-width: 500px) {
-  .calculator-section {
-    padding: 20px;
-  }
-
-  .form-error {
-    margin-right: 20px;
-    margin-left: 20px;
-  }
 
   .mortgage-summary__grid {
     grid-template-columns: 1fr;
@@ -2509,20 +2528,23 @@ textarea:focus-visible {
   max-width: 1180px;
 }
 
-.nested-editor-add-button {
-  margin-top: 18px;
+.form-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--form-action-gap);
 }
 
 .nested-editor-list {
   min-width: 0;
   display: grid;
-  gap: 16px;
+  gap: var(--form-gap);
 }
 
 .nested-editor-card {
   min-width: 0;
   display: grid;
-  gap: 16px;
+  gap: var(--form-gap);
   padding: 20px;
   margin: 0;
   background: var(--surface-muted);
@@ -2535,13 +2557,15 @@ textarea:focus-visible {
   color: var(--brand);
   background: var(--brand-soft);
   border-radius: 999px;
-  font-size: 9px;
-  font-weight: 900;
+  font-size: var(--form-label-size);
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .nested-editor-card__heading {
+  font-size: 16px;
+  line-height: 1.35;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3539,10 +3563,10 @@ textarea:focus-visible {
 
 .auth-card {
   width: min(100%, 500px);
-  padding: clamp(24px, 5vw, 42px);
+  padding: var(--form-padding);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 24px;
+  border-radius: var(--form-card-radius);
   box-shadow: var(--shadow-md);
 }
 
@@ -3551,13 +3575,15 @@ textarea:focus-visible {
 }
 
 .auth-card__header {
-  margin-bottom: 28px;
+  margin-bottom: var(--form-gap);
 }
 
 .auth-card__header h1 {
-  margin: 6px 0 10px;
-  font-family: var(--font-display);
-  font-size: clamp(30px, 5vw, 42px);
+  margin: 0 0 var(--form-field-gap);
+  font-family: var(--form-title-font);
+  font-size: var(--form-title-size);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 
 .auth-card__header p {
@@ -3568,7 +3594,7 @@ textarea:focus-visible {
 
 .auth-form {
   display: grid;
-  gap: 18px;
+  gap: var(--form-gap);
 }
 
 .auth-form .form-field {
@@ -3582,7 +3608,7 @@ textarea:focus-visible {
 .account-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  gap: var(--form-gap);
 }
 
 .account-checkbox {
@@ -3598,8 +3624,8 @@ textarea:focus-visible {
 }
 
 .account-checkbox input {
-  width: 19px;
-  height: 19px;
+  width: 20px;
+  height: 20px;
   flex: 0 0 auto;
   margin-top: 1px;
   accent-color: var(--brand);
@@ -3612,7 +3638,7 @@ textarea:focus-visible {
 
 .account-checkbox small {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -3629,7 +3655,7 @@ textarea:focus-visible {
 .account-form-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--form-action-gap);
 }
 
 .account-form-actions .button {
@@ -3674,17 +3700,17 @@ textarea:focus-visible {
 
 .customer-form {
   display: grid;
-  gap: 18px;
+  gap: var(--form-gap);
 }
 
 .customer-form-section {
   display: grid;
-  grid-template-columns: minmax(190px, 0.42fr) minmax(0, 1fr);
-  gap: clamp(24px, 4vw, 54px);
-  padding: clamp(24px, 4vw, 38px);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--form-gap);
+  padding: var(--form-padding);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 22px;
+  border-radius: var(--form-card-radius);
   box-shadow: var(--shadow-sm);
 }
 
@@ -3708,15 +3734,16 @@ textarea:focus-visible {
 }
 
 .customer-form-section__heading h2 {
-  margin: 2px 0 7px;
-  font-size: 19px;
+  margin: 0 0 var(--form-field-gap);
+  font-size: var(--form-section-title-size);
+  line-height: 1.35;
 }
 
 .customer-form-section__heading p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.55;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .customer-form-grid {
@@ -3760,14 +3787,14 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   gap: 9px;
-  min-height: 40px;
+  min-height: var(--form-control-height);
   padding: 8px 10px;
   color: var(--text);
   background: var(--surface);
   border: 1px solid transparent;
   border-radius: 9px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 650;
   letter-spacing: normal;
   text-transform: none;
@@ -3783,14 +3810,14 @@ textarea:focus-visible {
 .customer-choice-grid input,
 .customer-radio-row input {
   flex: 0 0 auto;
-  width: 17px;
-  height: 17px;
+  width: 20px;
+  height: 20px;
   accent-color: var(--brand);
 }
 
 .customer-choice-grid label:has(input:focus-visible),
 .customer-radio-row label:has(input:focus-visible) {
-  outline: 3px solid var(--accent-strong);
+  outline: 3px solid var(--brand);
   outline-offset: 2px;
 }
 
@@ -3935,11 +3962,11 @@ dialog.confirmation-dialog {
 .customer-form-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  padding: 22px 24px;
+  gap: var(--form-action-gap);
+  padding: var(--form-padding);
   background: var(--surface-muted);
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: var(--form-card-radius);
 }
 
 .customer-form-actions .button:disabled {
@@ -3963,9 +3990,6 @@ dialog.confirmation-dialog {
 }
 
 @media (max-width: 600px) {
-  .customer-form-section {
-    padding: 22px;
-  }
 
   .customer-choice-grid {
     grid-template-columns: 1fr;
@@ -4211,7 +4235,7 @@ dialog.confirmation-dialog {
 
 .complex-editor-grid {
   display: grid;
-  gap: 14px;
+  gap: var(--form-gap);
 }
 
 .complex-editor-grid--metro {
@@ -4221,8 +4245,8 @@ dialog.confirmation-dialog {
 .complex-editor-card {
   min-width: 0;
   display: grid;
-  gap: 16px;
-  padding: 19px;
+  gap: var(--form-gap);
+  padding: 20px;
   background: var(--background);
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -4238,6 +4262,7 @@ dialog.confirmation-dialog {
 .complex-editor-card__heading h3 {
   margin: 0;
   font-size: 16px;
+  line-height: 1.35;
 }
 
 .complex-editor-card__heading button:disabled {
@@ -4255,7 +4280,7 @@ dialog.confirmation-dialog {
 
 .complex-editor-fields {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 13px;
+  gap: var(--form-gap);
 }
 
 .complex-metro-line {
@@ -4515,13 +4540,17 @@ dialog.confirmation-dialog {
 }
 
 .text-button {
-  padding: 0;
+  padding: 8px;
   color: var(--brand);
   background: transparent;
   border: 0;
   cursor: pointer;
   font: inherit;
   font-weight: 700;
+  min-height: 44px;
+  font-family: var(--form-font);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .text-button--danger {
@@ -4858,14 +4887,10 @@ dialog.confirmation-dialog {
   max-width: 1180px;
 }
 
-.bank-add-program {
-  margin-top: 18px;
-}
-
 .bank-program-editors {
   min-width: 0;
   display: grid;
-  gap: 16px;
+  gap: var(--form-gap);
 }
 
 .bank-program-empty {
@@ -4880,7 +4905,7 @@ dialog.confirmation-dialog {
 .bank-program-editor {
   min-width: 0;
   display: grid;
-  gap: 16px;
+  gap: var(--form-gap);
   padding: 20px;
   margin: 0;
   background: var(--surface-muted);
@@ -4893,8 +4918,8 @@ dialog.confirmation-dialog {
   color: var(--brand);
   background: var(--brand-soft);
   border-radius: 999px;
-  font-size: 9px;
-  font-weight: 900;
+  font-size: var(--form-label-size);
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -4907,7 +4932,8 @@ dialog.confirmation-dialog {
 }
 
 .bank-program-editor__heading > strong {
-  font-size: 13px;
+  font-size: 16px;
+  line-height: 1.35;
 }
 
 .bank-program-fields {
@@ -4983,7 +5009,6 @@ dialog.confirmation-dialog {
     width: 100%;
   }
 
-  .bank-programs-section .customer-form-section__heading,
   .bank-program-editor__heading {
     align-items: stretch;
     flex-direction: column;
@@ -5131,3 +5156,34 @@ dialog.confirmation-dialog {
 .complex-metro-station { display: inline-flex; align-items: center; gap: .4rem; min-width: 0; }
 .metro-line-stripe { width: 4px; min-height: 20px; align-self: stretch; flex-shrink: 0; border-radius: 2px; }
 .transport-icon { display: inline-flex; vertical-align: middle; flex-shrink: 0; }
+
+/* Compact screens keep the same control dimensions and a single spacing scale. */
+@media (max-width: 600px) {
+  :root {
+    --form-title-size: 1.75rem;
+    --form-padding: 1.25rem;
+  }
+
+  .dictionary-form-actions .button,
+  .account-form-actions .button,
+  .form-section-actions .button {
+    width: 100%;
+  }
+}
+
+.form-field input[type='file'] {
+  padding: 6px;
+  overflow: hidden;
+}
+
+.form-field input[type='file']::file-selector-button {
+  min-height: 36px;
+  margin-right: 8px;
+  padding: 6px 10px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
+}
