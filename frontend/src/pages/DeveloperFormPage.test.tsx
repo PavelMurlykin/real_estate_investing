@@ -1,3 +1,4 @@
+import { chooseOption } from '@/test/chooseOption'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
@@ -118,8 +119,9 @@ describe('DeveloperFormPage', () => {
     renderCreateForm()
 
     await user.type(screen.getByLabelText('Название *'), '  Новый девелопер  ')
-    await user.selectOptions(screen.getByLabelText('Группа компаний'), '4')
-    await user.selectOptions(screen.getByLabelText('Регионы'), ['8', '9'])
+    await chooseOption(user, 'Группа компаний', 'Группа Север')
+    await chooseOption(user, 'Регионы', 'Санкт-Петербург')
+    await chooseOption(user, 'Регионы', 'Ленинградская область')
     await user.type(screen.getByLabelText('ИНН'), '7812345678')
     await user.click(screen.getByRole('checkbox', {
       name: /Активный застройщик/,
@@ -212,7 +214,7 @@ describe('DeveloperFormPage', () => {
       'Невский проспект, 1',
     )
     expect(screen.getByLabelText('ИНН')).toHaveValue('7812345678')
-    expect(screen.getByLabelText('Регионы')).toHaveValue(['8'])
+    expect(screen.getByRole('button', { name: 'Убрать: Санкт-Петербург' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Django-форма' })).toHaveAttribute(
       'href',
       "/property/developers/7/update/?legacy=1",

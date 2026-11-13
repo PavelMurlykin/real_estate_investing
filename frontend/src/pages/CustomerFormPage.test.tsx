@@ -9,6 +9,7 @@ import type {
   Session,
 } from '@/api/schemas'
 import { createTestQueryClient, renderWithProviders } from '@/test/render'
+import { chooseOption } from '@/test/chooseOption'
 
 import { CustomerFormPage } from './CustomerFormPage'
 
@@ -125,6 +126,33 @@ afterEach(() => {
 })
 
 describe('CustomerFormPage', () => {
+  it('preserves district on city reselect, clears it on city change, and submits searched choices', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (_path, options) =>
+      Response.json(options?.method === 'POST' ? { id: 99 } : formOptions, { status: options?.method === 'POST' ? 201 : 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { queryClient } = renderCreateForm()
+    for (const city of ['1', '2']) queryClient.setQueryData(['customer-form-options', city], formOptions)
+    await user.type(screen.getByLabelText('Имя *'), 'Мария')
+    await chooseOption(user, 'Желаемый город покупки', 'Москва')
+    await chooseOption(user, 'Желаемый район', 'Хамовники')
+    await chooseOption(user, 'Желаемый город покупки', 'Москва')
+    expect(screen.getByRole('combobox', { name: 'Желаемый район' })).toHaveValue('Хамовники')
+    await chooseOption(user, 'Желаемый город покупки', 'Химки')
+    expect(screen.getByRole('combobox', { name: 'Желаемый район' })).toHaveValue('')
+    await chooseOption(user, 'Желаемый город покупки', 'Не выбрано')
+    expect(screen.getByRole('combobox', { name: 'Желаемый район' })).toBeDisabled()
+    await chooseOption(user, 'Цель покупки', 'Для инвестиций')
+    await chooseOption(user, 'Планировки', 'Евро-3')
+    await chooseOption(user, 'Доступные льготные программы', 'Семейная ипотека')
+    expect(fetchMock).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Сохранить клиента' }))
+    expect(await screen.findByRole('heading', { name: 'Карточка клиента сохранена' })).toBeInTheDocument()
+    expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string)).toMatchObject({
+      desiredCityId: null, desiredDistrictId: null, purchaseGoal: 'investment', desiredLayoutIds: [5], preferentialProgramIds: [3],
+    })
+  })
+
   it('prompts anonymous visitors to sign in', () => {
     renderWithProviders(
       <Routes>
@@ -160,11 +188,11 @@ describe('CustomerFormPage', () => {
     )
 
     expect(await screen.findByLabelText('Имя *')).toHaveValue('Иван')
-    expect(screen.getByLabelText('Семейная ипотека')).toBeChecked()
-    expect(screen.getByLabelText('Евро-3')).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Убрать: Семейная ипотека' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Убрать: Евро-3' })).toBeInTheDocument()
     expect(
       screen.getByRole('combobox', { name: 'Желаемый район' }),
-    ).toHaveValue('4')
+    ).toHaveValue('Хамовники')
     expect(screen.getByRole('link', { name: 'Django-форма' })).toHaveAttribute(
       'href',
       "/customers/12/update/?legacy=1",

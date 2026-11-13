@@ -1,3 +1,4 @@
+import { chooseOption } from '@/test/chooseOption'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
@@ -85,6 +86,35 @@ function renderCreate() {
 }
 
 describe('DeveloperMortgageProgramFormPage', () => {
+  it('clears the complex when changing company group without offering the saved complex in the new scope', async () => {
+    const user = userEvent.setup()
+    const client = managerClient()
+    const groups = [...baseOptions.companyGroups, { id: 6, name: 'Другая группа' }]
+    client.setQueryData(['developer-mortgage-program', 9], program)
+    client.setQueryData(['developer-mortgage-program-options', 4], { ...groupedOptions, companyGroups: groups })
+    client.setQueryData(['developer-mortgage-program-options', 6], {
+      ...baseOptions, companyGroups: groups, realEstateComplexes: [{ id: 8, name: 'ЖК другой группы' }],
+    })
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    renderWithProviders(<Routes>
+      <Route path="/developer-programs/:developerProgramId/edit" element={<DeveloperMortgageProgramFormPage />} />
+    </Routes>, { initialRoute: '/developer-programs/9/edit', queryClient: client })
+    expect(await screen.findByLabelText('Жилой комплекс')).toHaveValue('ЖК Речной (Север Девелопмент)')
+    await chooseOption(user, 'Группа компаний *', 'Группа Север')
+    expect(screen.getByLabelText('Жилой комплекс')).toHaveValue('ЖК Речной (Север Девелопмент)')
+    await chooseOption(user, 'Группа компаний *', 'Другая группа')
+    expect(screen.getByLabelText('Жилой комплекс')).toHaveValue('')
+    await user.click(screen.getByRole('combobox', { name: 'Жилой комплекс' }))
+    expect(screen.queryByRole('option', { name: 'ЖК Речной (Север Девелопмент)' })).not.toBeInTheDocument()
+    await user.type(screen.getByRole('combobox', { name: 'Жилой комплекс' }), 'другой')
+    await user.keyboard('{Enter}')
+    expect(screen.getByLabelText('Жилой комплекс')).toHaveValue('ЖК другой группы')
+    expect(screen.getByLabelText('Банк *')).toHaveValue('Тест Банк')
+    expect(screen.getByLabelText('Ипотечная программа *')).toHaveValue('Семейная ипотека')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('does not request protected form data for an anonymous visitor', () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
@@ -110,10 +140,10 @@ describe('DeveloperMortgageProgramFormPage', () => {
     vi.stubGlobal('fetch', fetchMock)
     renderCreate()
 
-    await user.selectOptions(screen.getByLabelText('Группа компаний *'), '4')
-    await user.selectOptions(screen.getByLabelText('Жилой комплекс'), '7')
-    await user.selectOptions(screen.getByLabelText('Банк *'), '2')
-    await user.selectOptions(screen.getByLabelText('Ипотечная программа *'), '5')
+    await chooseOption(user, 'Группа компаний *', 'Группа Север')
+    await chooseOption(user, 'Жилой комплекс', 'ЖК Речной (Север Девелопмент)')
+    await chooseOption(user, 'Банк *', 'Тест Банк')
+    await chooseOption(user, 'Ипотечная программа *', 'Семейная ипотека')
     await user.type(screen.getByLabelText('Удорожание, %'), '-1.25')
     await user.type(screen.getByLabelText('Первоначальный взнос, %'), '20.1')
     await user.type(screen.getByLabelText('Годовая ставка, %'), '4.3')
@@ -163,7 +193,7 @@ describe('DeveloperMortgageProgramFormPage', () => {
       { initialRoute: '/developer-programs/9/edit', queryClient: client },
     )
 
-    expect(await screen.findByLabelText('Жилой комплекс')).toHaveValue('7')
+    expect(await screen.findByLabelText('Жилой комплекс')).toHaveValue('ЖК Речной (Север Девелопмент)')
     expect(screen.getByLabelText('Годовая ставка, %')).toHaveValue(4.3)
     expect(screen.getByRole('link', { name: 'Django-форма' }))
       .toHaveAttribute('href', "/bank/developer-programs/9/edit/?legacy=1")
@@ -182,9 +212,9 @@ describe('DeveloperMortgageProgramFormPage', () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
     renderCreate()
-    await user.selectOptions(screen.getByLabelText('Группа компаний *'), '4')
-    await user.selectOptions(screen.getByLabelText('Банк *'), '2')
-    await user.selectOptions(screen.getByLabelText('Ипотечная программа *'), '5')
+    await chooseOption(user, 'Группа компаний *', 'Группа Север')
+    await chooseOption(user, 'Банк *', 'Тест Банк')
+    await chooseOption(user, 'Ипотечная программа *', 'Семейная ипотека')
     await user.type(screen.getByLabelText('Годовая ставка, %'), '101')
     await user.click(screen.getByRole('button', { name: 'Создать программу' }))
 

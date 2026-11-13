@@ -1,3 +1,4 @@
+import { chooseOption } from '@/test/chooseOption'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
@@ -136,22 +137,48 @@ function renderCreateForm() {
 }
 
 async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
-  await user.selectOptions(screen.getByLabelText('Регион *'), '1')
-  await user.selectOptions(screen.getByLabelText('Город *'), '2')
-  await user.selectOptions(screen.getByLabelText('Район *'), '3')
-  await user.selectOptions(screen.getByLabelText('Застройщик *'), '4')
-  await user.selectOptions(screen.getByLabelText('Жилой комплекс *'), '5')
-  await user.selectOptions(screen.getByLabelText('Корпус *'), '6')
+  await chooseOption(user, 'Регион *', 'Ленинградская область')
+  await chooseOption(user, 'Город *', 'Санкт-Петербург')
+  await chooseOption(user, 'Район *', 'Петроградский')
+  await chooseOption(user, 'Застройщик *', 'Северный девелопер')
+  await chooseOption(user, 'Жилой комплекс *', 'Белые ночи')
+  await chooseOption(user, 'Корпус *', '1')
   await user.type(screen.getByLabelText('Номер квартиры *'), '303')
   await user.type(screen.getByLabelText('Площадь, м² *'), '61.25')
   await user.type(screen.getByLabelText('Этаж *'), '12')
   await user.type(screen.getByLabelText('Стоимость, ₽ *'), '19000000')
-  await user.selectOptions(screen.getByLabelText('Планировка *'), '7')
-  await user.selectOptions(screen.getByLabelText('Отделка *'), '8')
-  await user.click(screen.getByLabelText('Парк'))
+  await chooseOption(user, 'Планировка *', 'Евродвушка')
+  await chooseOption(user, 'Отделка *', 'Чистовая')
+  await chooseOption(user, 'Вид из окна', 'Парк')
 }
 
 describe('PropertyFormPage', () => {
+  it.each([
+    ['Регион *', ['Город *', 'Район *', 'Жилой комплекс *', 'Корпус *']],
+    ['Город *', ['Район *', 'Жилой комплекс *', 'Корпус *']],
+    ['Район *', ['Жилой комплекс *', 'Корпус *']],
+    ['Застройщик *', ['Жилой комплекс *', 'Корпус *']],
+    ['Жилой комплекс *', ['Корпус *']],
+  ])('clears dependent choices after clearing %s and preserves them on reselect', async (parent, children) => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async () => Response.json(formOptions))
+    vi.stubGlobal('fetch', fetchMock)
+    renderCreateForm()
+    await fillRequiredFields(user)
+    const input = screen.getByRole('combobox', { name: parent })
+    const original = (input as HTMLInputElement).value
+    await chooseOption(user, parent, original)
+    expect(screen.getByRole('combobox', { name: 'Корпус *' })).toHaveValue('1')
+    await chooseOption(user, parent, 'Не выбрано')
+    for (const child of children) {
+      expect(screen.getByRole('combobox', { name: child })).toHaveValue('')
+      expect(screen.getByRole('combobox', { name: child })).toBeDisabled()
+    }
+    expect(screen.getByRole('combobox', { name: 'Планировка *' })).toHaveValue('Евродвушка')
+    expect(screen.getByRole('combobox', { name: 'Отделка *' })).toHaveValue('Чистовая')
+    expect(fetchMock.mock.calls.every(([, options]) => !options?.method || options.method === 'GET')).toBe(true)
+  })
+
   it('finds a layout outside the initial dictionary and submits its identifier', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn().mockImplementation(async (path: string) => {
@@ -166,11 +193,12 @@ describe('PropertyFormPage', () => {
       })
     })
     vi.stubGlobal('fetch', fetchMock)
-    renderCreateForm()
+    const { queryClient } = renderCreateForm()
     await fillRequiredFields(user)
-    await user.type(screen.getByLabelText('Поиск: Планировка'), 'Редкая')
-    await user.selectOptions(await screen.findByRole('combobox', { name: 'Планировка *' }),
-      await screen.findByRole('option', { name: 'Редкая планировка' }))
+    optionQueryStrings.forEach((queryString) => queryClient.setQueryData(['property-form-options', queryString], { ...formOptions, truncated: { ...formOptions.truncated, layouts: true } }))
+    await user.click(screen.getByRole('combobox', { name: 'Планировка *' }))
+    await user.type(screen.getByRole('combobox', { name: 'Планировка *' }), 'Редкая')
+    await user.click(await screen.findByRole('option', { name: 'Редкая планировка' }))
     await user.click(screen.getByRole('button', { name: 'Создать объект' }))
     expect(await screen.findByRole('heading', { name: 'Объект сохранён' })).toBeInTheDocument()
     const request = fetchMock.mock.calls.find(([path]) => path === '/api/v1/properties/')
@@ -280,7 +308,7 @@ describe('PropertyFormPage', () => {
     )
 
     expect(await screen.findByLabelText('Номер квартиры *')).toHaveValue('101')
-    expect(screen.getByLabelText('Парк')).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Убрать: Парк' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Django-форма' })).toHaveAttribute(
       'href',
       "/property/12/update/?legacy=1",

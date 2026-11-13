@@ -35,7 +35,7 @@ export function HomepageComplexes() {
         <div><span className="eyebrow">Подбор недвижимости</span><h2 id="homepage-complexes-title">Жилые комплексы по городам</h2></div>
       </div>
       <div className="filter-panel">
-        <RemoteSelect dictionary="cities" label="Город на главной"
+        <RemoteSelect filter dictionary="cities" label="Город на главной"
           value={complexesQuery.isPlaceholderData ? city : selectedCity ? String(selectedCity.id) : ''}
           initialOptions={selectedCity ? [{ id: selectedCity.id, label: selectedCity.name }] : []}
           truncated filters={{ activeOnly: 'true' }} onChange={(value) => update('city', value)} />

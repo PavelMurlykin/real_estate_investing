@@ -1,3 +1,4 @@
+import { chooseOption } from '@/test/chooseOption'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
@@ -92,7 +93,7 @@ describe('MortgageProgramFormPage', () => {
     await user.type(screen.getByLabelText(/^Федеральный лимит, ₽/), '12000000')
     await user.click(screen.getByLabelText(/^Льготная программа/))
     await user.click(screen.getByRole('button', { name: 'Добавить регион' }))
-    await user.selectOptions(screen.getByLabelText('Регион *'), '77')
+    await chooseOption(user, 'Регион *', 'Москва')
     await user.type(screen.getByLabelText('Лимит, ₽ *'), '15000000')
     await user.click(screen.getByRole('button', { name: 'Создать программу' }))
 
@@ -133,7 +134,7 @@ describe('MortgageProgramFormPage', () => {
     )
 
     expect(await screen.findByLabelText('Условия *')).toHaveValue('Для семей с детьми')
-    expect(screen.getByLabelText('Регион *')).toHaveValue('77')
+    expect(screen.getByLabelText('Регион *')).toHaveValue('Москва')
     expect(screen.getByRole('link', { name: 'Django-справочник' }))
       .toHaveAttribute('href', "/bank/?model=mortgage_program&edit=5&legacy=1")
     await user.clear(screen.getByLabelText('Условия *'))

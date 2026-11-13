@@ -29,9 +29,9 @@ function renderComplexes() {
 describe('HomepageComplexes', () => {
   it('shows the legacy card fields and loads later city records', async () => {
     const user = userEvent.setup()
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ...firstPage, page: 2,
-      results: [{ ...complex, id: 3, name: 'Второй ЖК' }],
-    }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    const fetchMock = vi.fn().mockImplementation(async (path: string) => Response.json(path.includes('/catalog-options/')
+      ? { results: [{ id: 7, label: 'Санкт-Петербург' }], selected: [], page: 1, nextPage: null, totalCount: 1 }
+      : { ...firstPage, page: 2, results: [{ ...complex, id: 3, name: 'Второй ЖК' }] }))
     vi.stubGlobal('fetch', fetchMock)
     renderComplexes()
     expect(screen.getByRole('img', { name: 'ЖК Петербург' })).toHaveAttribute('src', '/media/complex.jpg')
@@ -40,7 +40,7 @@ describe('HomepageComplexes', () => {
     expect(screen.getByRole('link', { name: 'Объекты ЖК' })).toHaveAttribute('href', '/properties?realEstateComplex=1')
     await user.click(screen.getByRole('button', { name: 'Показать ещё ЖК' }))
     expect(await screen.findByRole('heading', { name: 'Второй ЖК' })).toBeInTheDocument()
-    expect(fetchMock.mock.calls[0][0]).toContain('page=2')
+    expect(fetchMock.mock.calls.some(([path]) => path.includes('/homepage/') && path.includes('page=2'))).toBe(true)
     expect(screen.queryByRole('button', { name: 'Показать ещё ЖК' })).not.toBeInTheDocument()
   })
 
@@ -55,8 +55,9 @@ describe('HomepageComplexes', () => {
     renderComplexes()
     await user.click(screen.getByRole('button', { name: 'На карте' }))
     expect(await screen.findByRole('region', { name: 'Карта ЖК: Санкт-Петербург' })).toBeInTheDocument()
-    await user.type(screen.getByLabelText('Поиск: Город на главной'), 'Москва')
-    await user.selectOptions(screen.getByLabelText('Город на главной'), await screen.findByRole('option', { name: 'Москва' }))
+    await user.click(screen.getByRole('combobox', { name: 'Город на главной' }))
+    await user.type(screen.getByRole('combobox', { name: 'Город на главной' }), 'Москва')
+    await user.click(await screen.findByRole('option', { name: 'Москва' }))
     expect(await screen.findByRole('heading', { name: 'ЖК Москва' })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('region', { name: 'Карта ЖК: Москва' })).toBeInTheDocument())
     const parameters = new URLSearchParams(screen.getByLabelText('Адрес').textContent ?? '')

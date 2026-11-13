@@ -112,7 +112,11 @@ Numeric filters apply while typing with a 250 ms delay and reset pagination. Bou
 
 If an editable dropdown fails to load its choices, press Tab from the field to reach “Повторить загрузку справочника”, then press Enter. Focus returns to the search field when the retry starts.
 
-In property, complex, customer, developer, bank/developer program, regional limit and location forms, use “Поиск: …” above a selector. Typing searches the entire relevant dictionary within the selected parent; “Показать ещё варианты” loads additional choices. Selected values load separately and remain available outside the first page. This also covers multiple developer regions, customer layouts and preferential programs, and property window views. Changing a region, city or complex clears dependent fields; review them before saving. If loading fails, use “Повторить загрузку справочника”.
+All React property, complex, customer, developer, bank, mortgage/developer program, regional limit and location forms combine dictionary search and selection in one field. The homepage city selector works the same way. Type a name and select a match with the mouse or arrow keys and Enter. Escape or leaving the field cancels unfinished search and retains the previous selection. Choose “Не выбрано” to clear a single value, or “Все” in filters. Search respects the selected parent. Reselecting the same parent preserves dependent values; changing the region, city, developer, complex or company group clears dependent fields.
+
+For multiple developer regions, customer layouts and preferential programs, and property window views, add choices one by one through search without Ctrl/Cmd. Selected values appear above the field. “Убрать” removes one value; “Очистить выбор” clears all selections. Searching and adding another choice preserve the other selected values. Removal buttons are keyboard accessible.
+
+Large dictionaries search on the server and load more results when scrolling. “Показать ещё варианты” inside the dropdown is also accessible with Tab and Enter. Saved values load separately even when absent from the first page. Use “Повторить загрузку справочника” if loading fails.
 
 For roles and operation see `role_model.md`, `application_initial_setup.md` and `manual_deployment.md`.
 

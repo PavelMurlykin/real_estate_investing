@@ -56,6 +56,11 @@ for (const width of [360, 1280]) {
       ])
       assert.equal(response.status(), 200)
       assert.equal(Number(response.request().postDataJSON().annualRate), Number(program.interestRate))
+      // The rendered result receives focus after the response is processed by React.
+      // Wait for that transition before starting another dropdown interaction.
+      await page.getByRole('heading', {
+        name: mode === 'market' ? 'Параметры кредита' : 'Параметры траншевого кредита', exact: true,
+      }).and(page.locator(':focus')).waitFor()
       await programInput.click()
       await page.getByRole('listbox', { name: 'Варианты: Ипотечная программа', exact: true })
         .getByRole('option', { name: 'Ручные параметры', exact: true }).click()

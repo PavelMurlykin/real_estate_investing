@@ -328,6 +328,7 @@ export function DeveloperMortgageProgramFormPage() {
     }
     if (
       currentProgram.realEstateComplexId
+      && Number(formState.companyGroupId) === currentProgram.companyGroupId
       && currentProgram.realEstateComplexName
       && !realEstateComplexes.some(
         (option) => option.id === currentProgram.realEstateComplexId,

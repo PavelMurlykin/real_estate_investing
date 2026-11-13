@@ -78,6 +78,8 @@ describe('SearchableSelect', () => {
           options={error ? [] : [{ value: '1', label: 'Москва' }]}
           onChange={() => {}}
           error={error}
+          hasMore={error}
+          onLoadMore={vi.fn()}
           onRetry={() => setError(false)}
         />
       )
@@ -118,7 +120,7 @@ describe('SearchableSelect', () => {
     const input = screen.getByRole('combobox', { name: 'Город' })
     await user.click(input)
     expect(await screen.findByRole('option', { name: 'Первый город' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /варианты/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Показать ещё варианты' })).toBeInTheDocument()
     expect(screen.queryByLabelText('Поиск: Город')).not.toBeInTheDocument()
     const list = screen.getByRole('listbox', { name: 'Варианты: Город' })
     Object.defineProperties(list, { scrollHeight: { value: 1000 }, clientHeight: { value: 200 }, scrollTop: { value: 800, writable: true } })

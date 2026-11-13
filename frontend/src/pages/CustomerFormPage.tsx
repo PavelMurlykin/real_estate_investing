@@ -1,6 +1,7 @@
 import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { RemoteMultiSelect } from '@/shared/ui/RemoteMultiSelect'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
+import { SearchableSelect } from '@/shared/ui/SearchableSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -601,25 +602,10 @@ export function CustomerFormPage() {
             </div>
           </div>
           <div className="field-grid customer-form-grid">
-            <label className="form-field">
-              Цель покупки
-              <select
-                name="purchaseGoal"
-                value={formState.purchaseGoal}
-                onChange={(event) => updateField(
-                  'purchaseGoal',
-                  event.target.value,
-                )}
-              >
-                <option value="">Не указана</option>
-                {options.purchaseGoals.map((goal) => (
-                  <option value={goal.value} key={goal.value}>
-                    {goal.label}
-                  </option>
-                ))}
-              </select>
-              <FieldError fieldName="purchaseGoal" errors={fieldErrors} />
-            </label>
+            <SearchableSelect label="Цель покупки" value={formState.purchaseGoal}
+              options={options.purchaseGoals} emptyLabel="Не указана"
+              onChange={(value) => updateField('purchaseGoal', value)}
+              validationError={fieldErrors.purchaseGoal} />
             <RemoteSelect
               dictionary="cities" label={"Желаемый город покупки"}
               value={formState.desiredCityId} onChange={(value) => {

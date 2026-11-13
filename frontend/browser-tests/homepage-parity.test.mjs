@@ -1,3 +1,4 @@
+import { chooseDictionary } from './dictionary-helpers.mjs'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
@@ -42,7 +43,7 @@ for (const width of [360, 1280]) {
     const section = page.getByRole('region', { name: 'Жилые комплексы по городам' })
     const complex = data.results[0]
     await section.getByRole('heading', { name: complex.name, exact: true }).waitFor()
-    assert.equal(await section.getByLabel('Город на главной', { exact: true }).inputValue(), String(data.selectedCity.id))
+    assert.equal(await section.getByLabel('Город на главной', { exact: true }).inputValue(), data.selectedCity.name)
     assert.equal(await section.getByRole('link', { name: 'Подробнее о ЖК', exact: true }).first().getAttribute('href'), `/app/complexes/${complex.id}`)
     assert.equal(await section.getByRole('link', { name: 'Объекты ЖК', exact: true }).first().getAttribute('href'), `/app/properties?realEstateComplex=${complex.id}`)
     assert.equal(sdkRequests, 0, 'List view should not download the map SDK')
@@ -51,7 +52,7 @@ for (const width of [360, 1280]) {
     await map.getByText('Карта загружена', { exact: true }).waitFor()
     await page.waitForFunction(() => window.__homepageMaps?.markers > 0)
     assert.equal(sdkRequests, 1)
-    await section.getByLabel('Город на главной', { exact: true }).selectOption(String(data.selectedCity.id))
+    await chooseDictionary(page, 'Город на главной', data.selectedCity.name)
     await page.waitForURL((url) => url.searchParams.get('city') === String(data.selectedCity.id) && url.searchParams.get('view') === 'map')
     await section.getByRole('heading', { name: complex.name, exact: true }).waitFor()
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)

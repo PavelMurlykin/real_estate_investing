@@ -328,7 +328,7 @@ export function DeveloperFormPage() {
             <RemoteMultiSelect dictionary="regions" label="Регионы"
               values={formState.regionIds} onChange={(values) => updateField('regionIds', values)}
               initialOptions={optionsQuery.data.regions.map((option) => ({ id: option.id, label: option.name }))}
-              truncated={optionsQuery.data.truncated.regions} error={fieldErrors.regionIds} mode="select" />
+              truncated={optionsQuery.data.truncated.regions} error={fieldErrors.regionIds} />
             {optionsAreTruncated ? (
               <p className="form-error form-field--wide" role="alert">
             Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».

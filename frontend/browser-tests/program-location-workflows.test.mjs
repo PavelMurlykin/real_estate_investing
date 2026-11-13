@@ -1,3 +1,4 @@
+import { chooseDictionary } from './dictionary-helpers.mjs'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { test } from 'node:test'
@@ -109,7 +110,7 @@ for (const width of [360, 1280]) {
     await page.getByLabel(/^Условия/).fill('E2E условия программы')
     await page.getByLabel('Льготная программа').check()
     await page.getByRole('button', { name: 'Добавить регион' }).click()
-    await page.getByLabel(/^Регион \*/).selectOption({ label: 'E2E регион' })
+    await chooseDictionary(page, /^Регион \*/, 'E2E регион')
     await page.getByLabel(/^Лимит, ₽/).fill('15000000')
     await assertNoPageOverflow(page)
     const program = await submitRecord(
@@ -136,10 +137,10 @@ for (const width of [360, 1280]) {
       context, 'moderator', { width, height: 900 },
     )
     await openRoute(page, 'developer-programs/new')
-    await page.getByLabel(/^Группа компаний/).selectOption(String(fixtureManifest.companyGroupId))
-    await page.getByLabel(/^Жилой комплекс/).selectOption(String(fixtureManifest.complexId))
-    await page.getByLabel(/^Банк/).selectOption(String(fixtureManifest.bankId))
-    await page.getByLabel(/^Ипотечная программа/).selectOption(String(fixtureManifest.mortgageProgramId))
+    await chooseDictionary(page, /^Группа компаний/, 'E2E группа')
+    await chooseDictionary(page, /^Жилой комплекс/, /^E2E квартал \(/)
+    await chooseDictionary(page, /^Банк/, 'E2E банк')
+    await chooseDictionary(page, /^Ипотечная программа/, 'E2E ипотечная программа')
     await page.getByLabel(/^Годовая ставка/).fill('5.75')
     await page.getByLabel(/^Первоначальный взнос/).fill('20')
     await page.getByLabel(/^Максимальная сумма/).fill('10000000')

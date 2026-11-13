@@ -1,3 +1,4 @@
+import { chooseDictionary } from './dictionary-helpers.mjs'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { test } from 'node:test'
@@ -40,9 +41,9 @@ async function selectComplexChoice(page, name, label) {
 }
 
 async function selectLocation(page) {
-  await page.getByLabel(/^Регион \*/).selectOption({ label: 'E2E регион' })
-  await page.getByLabel(/^Город \*/).selectOption({ label: 'E2E город' })
-  await page.getByLabel(/^Район \*/).selectOption({ label: 'E2E район' })
+  await chooseDictionary(page, /^Регион \*/, 'E2E регион')
+  await chooseDictionary(page, /^Город \*/, 'E2E город')
+  await chooseDictionary(page, /^Район \*/, 'E2E район')
 }
 
 async function deleteDetailRecord(page, apiPath, status = 204) {
@@ -94,7 +95,7 @@ for (const width of [360, 1280]) {
 
     await openRoute(page, 'developers/new')
     await page.getByLabel(/^Название/).fill(developerName)
-    await page.getByLabel('Регионы', { exact: true }).selectOption({ label: 'E2E регион' })
+    await chooseDictionary(page, 'Регионы', 'E2E регион')
     const developer = await submitRecord(page, '/api/v1/developers/', 'Создать застройщика')
     trackCleanup(`/api/v1/developers/${developer.id}/`)
     await openRoute(page, `developers?q=${encodeURIComponent(developerName)}`)
@@ -131,15 +132,15 @@ for (const width of [360, 1280]) {
 
     await openRoute(page, 'properties/new')
     await selectLocation(page)
-    await page.getByLabel(/^Застройщик \*/).selectOption({ label: developerName })
-    await page.getByLabel(/^Жилой комплекс/).selectOption({ label: complexName })
-    await page.getByLabel(/^Корпус \*/).selectOption({ label: 'E2E-1' })
+    await chooseDictionary(page, /^Застройщик \*/, developerName)
+    await chooseDictionary(page, /^Жилой комплекс/, complexName)
+    await chooseDictionary(page, /^Корпус \*/, 'E2E-1')
     await page.getByLabel(/^Номер квартиры/).fill(apartmentNumber)
     await page.getByLabel(/^Площадь/).fill('54.25')
     await page.getByLabel(/^Этаж \*/).fill('5')
     await page.getByLabel(/^Стоимость/).fill('5100000')
-    await page.getByLabel(/^Планировка \*/).selectOption({ label: 'E2E планировка' })
-    await page.getByLabel(/^Отделка \*/).selectOption({ label: 'E2E отделка' })
+    await chooseDictionary(page, /^Планировка \*/, 'E2E планировка')
+    await chooseDictionary(page, /^Отделка \*/, 'E2E отделка')
     const property = await submitRecord(page, '/api/v1/properties/', 'Создать объект')
     trackCleanup(`/api/v1/properties/${property.id}/`)
     await page.getByRole('heading', { name: `${complexName}, квартира ${apartmentNumber}` }).waitFor()
@@ -177,7 +178,7 @@ for (const width of [360, 1280]) {
     await openRoute(page, 'banks/new')
     await page.getByLabel(/^Название/).fill(name)
     await page.getByRole('button', { name: 'Добавить программу' }).click()
-    await page.getByLabel(/^Ипотечная программа/).selectOption(String(fixtureManifest.mortgageProgramId))
+    await chooseDictionary(page, /^Ипотечная программа/, 'E2E ипотечная программа')
     await page.getByLabel(/^Ставка/).fill('8.5')
     await page.getByLabel(/^Первый взнос/).fill('20')
     await page.getByLabel(/^Максимальный срок/).fill('30')

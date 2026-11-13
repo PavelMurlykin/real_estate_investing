@@ -1,3 +1,4 @@
+import { chooseOption } from '@/test/chooseOption'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
@@ -113,10 +114,7 @@ describe('BankFormPage', () => {
       'https://example.com/new.svg',
     )
     await user.click(screen.getByRole('button', { name: 'Добавить программу' }))
-    await user.selectOptions(
-      screen.getByLabelText('Ипотечная программа *'),
-      '3',
-    )
+    await chooseOption(user, 'Ипотечная программа *', 'Семейная ипотека')
     await user.type(screen.getByLabelText('Ставка, % *'), '5.9')
     await user.type(screen.getByLabelText('Первый взнос, % *'), '20.1')
     await user.type(screen.getByLabelText('Максимальный срок, лет'), '30')
@@ -166,7 +164,7 @@ describe('BankFormPage', () => {
 
     const nameInput = await screen.findByLabelText('Название *')
     expect(nameInput).toHaveValue('Северный банк')
-    expect(screen.getByLabelText('Ипотечная программа *')).toHaveValue('3')
+    expect(screen.getByLabelText('Ипотечная программа *')).toHaveValue('Семейная ипотека')
     expect(screen.getByLabelText('Ставка, % *')).toHaveValue(5.9)
     expect(screen.getByRole('link', { name: 'Django-форма' })).toHaveAttribute(
       'href',
@@ -199,7 +197,8 @@ describe('BankFormPage', () => {
     const rateInputs = screen.getAllByLabelText('Ставка, % *')
     const paymentInputs = screen.getAllByLabelText('Первый взнос, % *')
     for (let index = 0; index < 2; index += 1) {
-      await user.selectOptions(programSelects[index], '3')
+      await user.click(programSelects[index])
+      await user.click(screen.getByRole('option', { name: 'Семейная ипотека' }))
       await user.type(rateInputs[index], '6')
       await user.type(paymentInputs[index], '20')
     }

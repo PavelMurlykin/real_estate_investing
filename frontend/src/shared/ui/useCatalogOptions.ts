@@ -51,8 +51,13 @@ export function useCatalogOptions({
     ? [...new Map(choicesQuery.data.pages.flatMap((page) => [...page.selected, ...page.results])
       .map((option) => [option.id, option])).values()]
     : initialOptions ?? []
+  const matchingIdentifiers = new Set(choicesQuery.data?.pages.flatMap((page) => page.results.map((option) => option.id)))
+  const remoteSearch = truncated || !initialOptions || Boolean(choicesQuery.data) || selectedMissing
   return {
-    options, choicesQuery, search, isSearching: choicesQuery.isFetching || query !== search.trim(),
+    options, choicesQuery, search, remoteSearch,
+    searchOptions: options.filter((option) => (!remoteSearch || !search.trim() || matchingIdentifiers.has(option.id))
+      && (choicesQuery.data || !choicesQuery.isFetching || values.includes(String(option.id)))),
+    isSearching: choicesQuery.isFetching || query !== search.trim(),
     setSearch: (value: string) => { setSearch(value); setRemoteActivated(true) },
     hasMore: choicesQuery.data ? choicesQuery.hasNextPage : truncated,
     loadMore: () => {
