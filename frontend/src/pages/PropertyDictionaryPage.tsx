@@ -1,3 +1,6 @@
+import { SelectFilter } from '@/shared/ui/SelectFilter'
+import { TableScrollArea } from '@/shared/ui/TableScrollArea'
+import { Pagination } from '@/shared/ui/Pagination'
 import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
@@ -473,21 +476,8 @@ export function PropertyDictionaryPage() {
             <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
-        <div className="sort-control">
-          <label htmlFor="dictionary-status">Статус</label>
-          <select
-            id="dictionary-status"
-            value={searchParameters.get('status') ?? 'all'}
-            onChange={(event) => updateParameters({
-              status: event.target.value,
-              page: null,
-            })}
-          >
-            <option value="all">Все</option>
-            <option value="active">Активные</option>
-            <option value="inactive">Неактивные</option>
-          </select>
-        </div>
+        <SelectFilter label="Статус" parameter="status" emptyLabel="Все"
+          options={[{ value: 'active', label: 'Активные' }, { value: 'inactive', label: 'Неактивные' }]} />
         <ResetFilters />
       </section>
 
@@ -508,7 +498,7 @@ export function PropertyDictionaryPage() {
             />
           ) : (
             <>
-              <div className="table-card property-table-wrapper">
+              <TableScrollArea className="table-card property-table-wrapper" label={configuration.title}>
                 <table className="property-table catalog-table dictionary-table">
                   <caption className="visually-hidden">{configuration.title}</caption>
                   <thead>
@@ -557,7 +547,7 @@ export function PropertyDictionaryPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </TableScrollArea>
               <div className="property-mobile-list">
                 {results.map((entry) => (
                   <article className="property-mobile-card catalog-mobile-card" key={entry.id}>
@@ -593,15 +583,7 @@ export function PropertyDictionaryPage() {
           )}
 
           {totalPages > 1 ? (
-            <nav className="pagination" aria-label={`Страницы: ${configuration.title}`}>
-              <button type="button" disabled={page <= 1} onClick={() => updateParameters({ page: String(page - 1) })}>
-                <span aria-hidden="true">←</span> Назад
-              </button>
-              <span>Страница <strong>{page}</strong> из {totalPages}</span>
-              <button type="button" disabled={page >= totalPages} onClick={() => updateParameters({ page: String(page + 1) })}>
-                Далее <span aria-hidden="true">→</span>
-              </button>
-            </nav>
+            <Pagination label={`Страницы: ${configuration.title}`} page={page} totalPages={totalPages} onPageChange={(nextPage) => updateParameters({ page: String(nextPage) })} />
           ) : null}
         </section>
 

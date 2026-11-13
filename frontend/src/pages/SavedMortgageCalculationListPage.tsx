@@ -1,3 +1,5 @@
+import { TableScrollArea } from '@/shared/ui/TableScrollArea'
+import { Pagination } from '@/shared/ui/Pagination'
 import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
@@ -252,7 +254,7 @@ export function SavedMortgageCalculationListPage() {
         />
       ) : (
         <>
-          <div className="table-card property-table-wrapper">
+          <TableScrollArea className="table-card property-table-wrapper" label="История ипотечных расчётов">
             <table className="property-table calculation-table">
               <caption className="visually-hidden">История ипотечных расчётов</caption>
               <thead>
@@ -315,7 +317,7 @@ export function SavedMortgageCalculationListPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScrollArea>
           <div className="property-mobile-list">
             {results.map((calculation) => (
               <CalculationMobileCard
@@ -331,23 +333,7 @@ export function SavedMortgageCalculationListPage() {
       )}
 
       {totalPages > 1 ? (
-        <nav className="pagination" aria-label="Страницы истории расчётов">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => updateParameters({ page: String(page - 1) })}
-          >
-            <span aria-hidden="true">←</span> Назад
-          </button>
-          <span>Страница <strong>{page}</strong> из {totalPages}</span>
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => updateParameters({ page: String(page + 1) })}
-          >
-            Далее <span aria-hidden="true">→</span>
-          </button>
-        </nav>
+        <Pagination label="Страницы истории расчётов" page={page} totalPages={totalPages} onPageChange={(nextPage) => updateParameters({ page: String(nextPage) })} />
       ) : null}
     </div>
   )

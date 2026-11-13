@@ -1,3 +1,5 @@
+import { TableScrollArea } from '@/shared/ui/TableScrollArea'
+import { Pagination } from '@/shared/ui/Pagination'
 import { ComplexImport } from '@/features/realEstateComplex/ComplexImport'
 import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
@@ -174,7 +176,7 @@ export function RealEstateComplexListPage() {
         />
       ) : (
         <>
-          <div className="table-card property-table-wrapper">
+          <TableScrollArea className="table-card property-table-wrapper" label="Список жилых комплексов">
             <table className="property-table catalog-table complex-table">
               <caption className="visually-hidden">
                 Список жилых комплексов
@@ -244,7 +246,7 @@ export function RealEstateComplexListPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScrollArea>
           <div className="property-mobile-list">
             {results.map((realEstateComplex) => (
               <article
@@ -280,23 +282,7 @@ export function RealEstateComplexListPage() {
       )}
 
       {totalPages > 1 ? (
-        <nav className="pagination" aria-label="Страницы жилых комплексов">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => updateParameters({ page: String(page - 1) })}
-          >
-            <span aria-hidden="true">←</span> Назад
-          </button>
-          <span>Страница <strong>{page}</strong> из {totalPages}</span>
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => updateParameters({ page: String(page + 1) })}
-          >
-            Далее <span aria-hidden="true">→</span>
-          </button>
-        </nav>
+        <Pagination label="Страницы жилых комплексов" page={page} totalPages={totalPages} onPageChange={(nextPage) => updateParameters({ page: String(nextPage) })} />
       ) : null}
 
       {selectedComplex ? (

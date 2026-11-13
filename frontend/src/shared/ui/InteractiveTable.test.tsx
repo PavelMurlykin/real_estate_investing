@@ -8,6 +8,23 @@ import { renderWithProviders } from '@/test/render'
 import { InteractiveTable } from './InteractiveTable'
 
 describe('InteractiveTable', () => {
+  it('keeps missing values last in both directions and reaches sorting from the scroll region with the keyboard', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<InteractiveTable caption="Числа" rows={[
+      { id: 1, value: null }, { id: 2, value: 0 }, { id: 3, value: -3.5 }, { id: 4, value: 20 },
+    ]} columns={[{ id: 'value', label: 'Значение', value: (row) => row.value }]}
+      getRowKey={(row) => row.id} />)
+    const region = screen.getByRole('region', { name: 'Прокрутка: Числа' })
+    region.focus()
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Значение' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(screen.getByRole('columnheader')).toHaveAttribute('aria-sort', 'ascending')
+    expect(screen.getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['-3.5', '0', '20', ''])
+    await user.keyboard('{Enter}')
+    expect(screen.getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['20', '0', '-3.5', ''])
+  })
+
   it('sorts numbers across all rows and searches formatted values beyond the preview', async () => {
     const user = userEvent.setup()
     const rows = [

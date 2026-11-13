@@ -92,6 +92,10 @@ The list updates as you type a name or description in the search field. The prog
 
 ## Working with tables
 
+Tables use consistent headers, rows, action buttons, filters and pagination. Dictionary, status and type filters combine search and selection in one field: typing narrows the choices, Enter applies the selected choice and Escape cancels the search. Changing a filter or sorting returns its list to the first page while retaining other filters and customer context.
+
+Wide tables scroll within their own area. Reach the area with Tab and use the arrow keys to scroll; sorting headers and “Назад”/“Далее” buttons are also keyboard accessible. The active header shows the sorting direction and pagination announces the current page. On narrow screens, the page counter sits above the buttons; lists retain cards where a mobile representation is provided.
+
 Click a column header to sort ascending, then click again to sort descending. An arrow shows the direction; headers also work with the keyboard. Paginated lists sort the entire server selection, retain filters and reset pagination. On phones, the table scrolls horizontally inside its card and headers remain sortable. There is no separate “Сортировка” selector.
 
 Text search applies while typing with a 250 ms delay. Some lists also offer a “Найти” button. Nested bank, limit, building, metro, tranche and schedule tables have their own “Поиск в таблице” field; sorting and search cover all loaded rows. Schedule search covers the full calculation even with the twelve-payment preview. Displayed dates and comma-separated money values are searchable. Wide nested tables scroll inside their cards on phones.

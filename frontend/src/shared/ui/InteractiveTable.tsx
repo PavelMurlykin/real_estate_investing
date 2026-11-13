@@ -1,3 +1,4 @@
+import { TableScrollArea } from '@/shared/ui/TableScrollArea'
 import type { Key, ReactNode } from 'react'
 import { useId, useState } from 'react'
 
@@ -49,7 +50,7 @@ export function InteractiveTable<Row>({ rows, columns, getRowKey, caption, class
           placeholder="Введите значение" onChange={(event) => setSearch(event.target.value)} />
       </label>
       {query ? <p className="table-search-count" role="status">Найдено строк: {filteredRows.length}</p> : null}
-      <div className="interactive-table__scroll">
+      <TableScrollArea className="interactive-table__scroll" label={caption}>
         <table className={className}>
           <caption className="visually-hidden">{caption}</caption>
           <thead><tr>{columns.map((column) => {
@@ -66,7 +67,7 @@ export function InteractiveTable<Row>({ rows, columns, getRowKey, caption, class
             <tr key={getRowKey(row)}>{columns.map((column) => <td key={column.id}>{column.render ? column.render(row) : column.value(row)}</td>)}</tr>
           )) : <tr><td colSpan={columns.length}>Нет строк, соответствующих поиску.</td></tr>}</tbody>
         </table>
-      </div>
+      </TableScrollArea>
     </div>
   )
 }

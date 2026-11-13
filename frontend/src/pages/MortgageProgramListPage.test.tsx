@@ -1,3 +1,4 @@
+import { chooseOption } from '@/test/chooseOption'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
@@ -81,11 +82,11 @@ describe('MortgageProgramListPage', () => {
       `/api/v1/mortgage-programs/?${query}`,
       expect.objectContaining({ credentials: 'same-origin' }),
     ))
-    await user.selectOptions(screen.getByLabelText('Тип программы'), 'market')
+    await chooseOption(user, 'Тип программы', 'Рыночные')
     await user.click(within(screen.getByRole('search')).getByRole('button', { name: 'Сбросить' }))
 
     expect(screen.getByRole('searchbox', { name: 'Поиск' })).toHaveValue('')
-    expect(screen.getByLabelText('Тип программы')).toHaveValue('all')
+    expect(screen.getByLabelText('Тип программы')).toHaveValue('')
   })
 
   it('stores the selected type in the URL and reloads the directory', async () => {
@@ -97,7 +98,7 @@ describe('MortgageProgramListPage', () => {
     vi.stubGlobal('fetch', fetchMock)
     renderWithProviders(<MortgageProgramListPage />, { queryClient: queryClient() })
 
-    await user.selectOptions(screen.getByLabelText('Тип программы'), 'market')
+    await chooseOption(user, 'Тип программы', 'Рыночные')
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/mortgage-programs/?programType=market',

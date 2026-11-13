@@ -1,3 +1,5 @@
+import { TableScrollArea } from '@/shared/ui/TableScrollArea'
+import { Pagination } from '@/shared/ui/Pagination'
 import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
@@ -153,7 +155,7 @@ export function CompanyGroupListPage() {
         />
       ) : (
         <>
-          <div className="table-card property-table-wrapper">
+          <TableScrollArea className="table-card property-table-wrapper" label="Список групп компаний">
             <table className="property-table catalog-table">
               <caption className="visually-hidden">
                 Список групп компаний
@@ -202,7 +204,7 @@ export function CompanyGroupListPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScrollArea>
           <div className="property-mobile-list">
             {results.map((companyGroup) => (
               <article
@@ -248,23 +250,7 @@ export function CompanyGroupListPage() {
       )}
 
       {totalPages > 1 ? (
-        <nav className="pagination" aria-label="Страницы групп компаний">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => updateParameters({ page: String(page - 1) })}
-          >
-            <span aria-hidden="true">←</span> Назад
-          </button>
-          <span>Страница <strong>{page}</strong> из {totalPages}</span>
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => updateParameters({ page: String(page + 1) })}
-          >
-            Далее <span aria-hidden="true">→</span>
-          </button>
-        </nav>
+        <Pagination label="Страницы групп компаний" page={page} totalPages={totalPages} onPageChange={(nextPage) => updateParameters({ page: String(nextPage) })} />
       ) : null}
 
       {selectedCompanyGroup ? (

@@ -1,3 +1,6 @@
+import { SelectFilter } from '@/shared/ui/SelectFilter'
+import { TableScrollArea } from '@/shared/ui/TableScrollArea'
+import { Pagination } from '@/shared/ui/Pagination'
 import { BankCatalogImport } from '@/shared/ui/BankCatalogImport'
 import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
@@ -125,21 +128,8 @@ export function MortgageProgramListPage() {
         className="filter-panel mortgage-program-filter-panel"
         aria-label="Фильтры ипотечных программ"
       >
-        <div className="sort-control">
-          <label htmlFor="mortgage-program-type">Тип программы</label>
-          <select
-            id="mortgage-program-type"
-            value={searchParameters.get('programType') ?? 'all'}
-            onChange={(event) => updateParameters({
-              programType: event.target.value,
-              page: null,
-            })}
-          >
-            <option value="all">Все программы</option>
-            <option value="preferential">Льготные</option>
-            <option value="market">Рыночные</option>
-          </select>
-        </div>
+        <SelectFilter label="Тип программы" parameter="programType" emptyLabel="Все программы"
+          options={[{ value: 'preferential', label: 'Льготные' }, { value: 'market', label: 'Рыночные' }]} />
         <div className="live-search-control" role="search">
           <LiveFilterInput label="Поиск" id="mortgage-program-search" parameter="q" placeholder="Название или описание" />
           <ResetFilters />
@@ -165,7 +155,7 @@ export function MortgageProgramListPage() {
           ) : undefined}
         />
       ) : (
-        <div className="table-card property-table-wrapper">
+        <TableScrollArea className="table-card property-table-wrapper" label="Список ипотечных программ">
           <table className="property-table mortgage-program-table">
             <caption className="visually-hidden">
               Список ипотечных программ
@@ -236,27 +226,11 @@ export function MortgageProgramListPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScrollArea>
       )}
 
       {totalPages > 1 ? (
-        <nav className="pagination" aria-label="Страницы ипотечных программ">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => updateParameters({ page: String(page - 1) })}
-          >
-            <span aria-hidden="true">←</span> Назад
-          </button>
-          <span>Страница <strong>{page}</strong> из {totalPages}</span>
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => updateParameters({ page: String(page + 1) })}
-          >
-            Далее <span aria-hidden="true">→</span>
-          </button>
-        </nav>
+        <Pagination label="Страницы ипотечных программ" page={page} totalPages={totalPages} onPageChange={(nextPage) => updateParameters({ page: String(nextPage) })} />
       ) : null}
 
       {selectedProgram ? (

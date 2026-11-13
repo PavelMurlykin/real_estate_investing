@@ -1,3 +1,6 @@
+import { SelectFilter } from '@/shared/ui/SelectFilter'
+import { TableScrollArea } from '@/shared/ui/TableScrollArea'
+import { Pagination } from '@/shared/ui/Pagination'
 import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { useTableSearchParams } from '@/shared/lib/useTableSearchParams'
@@ -163,21 +166,8 @@ export function BankListPage() {
           <LiveFilterInput label="Поиск" id="bank-search" parameter="q" placeholder="Название банка" />
         </div>
         <div className="live-search-control">
-          <div className="sort-control">
-            <label htmlFor="bank-program-scope">Программы</label>
-            <select
-              id="bank-program-scope"
-              value={searchParameters.get('scope') ?? 'all'}
-              onChange={(event) => updateParameters({
-                scope: event.target.value,
-                page: null,
-              })}
-            >
-              <option value="all">Все банки</option>
-              <option value="withPrograms">С программами</option>
-              <option value="withoutPrograms">Без программ</option>
-            </select>
-          </div>
+          <SelectFilter label="Программы" parameter="scope" emptyLabel="Все банки"
+          options={[{ value: 'withPrograms', label: 'С программами' }, { value: 'withoutPrograms', label: 'Без программ' }]} />
           <ResetFilters />
         </div>
       </section>
@@ -199,7 +189,7 @@ export function BankListPage() {
         />
       ) : (
         <>
-          <div className="table-card property-table-wrapper">
+          <TableScrollArea className="table-card property-table-wrapper" label="Список банков">
             <table className="property-table bank-table">
               <caption className="visually-hidden">Список банков</caption>
               <colgroup>
@@ -261,7 +251,7 @@ export function BankListPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScrollArea>
           <div className="property-mobile-list">
             {results.map((bank) => (
               <article
@@ -314,23 +304,7 @@ export function BankListPage() {
       )}
 
       {totalPages > 1 ? (
-        <nav className="pagination" aria-label="Страницы банков">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => updateParameters({ page: String(page - 1) })}
-          >
-            <span aria-hidden="true">←</span> Назад
-          </button>
-          <span>Страница <strong>{page}</strong> из {totalPages}</span>
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => updateParameters({ page: String(page + 1) })}
-          >
-            Далее <span aria-hidden="true">→</span>
-          </button>
-        </nav>
+        <Pagination label="Страницы банков" page={page} totalPages={totalPages} onPageChange={(nextPage) => updateParameters({ page: String(nextPage) })} />
       ) : null}
 
       {selectedBank ? (

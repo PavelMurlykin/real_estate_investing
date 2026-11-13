@@ -1,3 +1,6 @@
+import { SelectFilter } from '@/shared/ui/SelectFilter'
+import { TableScrollArea } from '@/shared/ui/TableScrollArea'
+import { Pagination } from '@/shared/ui/Pagination'
 import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
@@ -151,21 +154,8 @@ export function DeveloperListPage() {
               regionId: value || null,
               page: null,
             })} />
-        <div className="sort-control">
-          <label htmlFor="developer-status">Статус</label>
-          <select
-            id="developer-status"
-            value={searchParameters.get('status') ?? 'all'}
-            onChange={(event) => updateParameters({
-              status: event.target.value,
-              page: null,
-            })}
-          >
-            <option value="all">Все</option>
-            <option value="active">Активные</option>
-            <option value="inactive">Неактивные</option>
-          </select>
-        </div>
+        <SelectFilter label="Статус" parameter="status" emptyLabel="Все"
+          options={[{ value: 'active', label: 'Активные' }, { value: 'inactive', label: 'Неактивные' }]} />
         <ResetFilters />
 
       </section>
@@ -187,7 +177,7 @@ export function DeveloperListPage() {
         />
       ) : (
         <>
-          <div className="table-card property-table-wrapper">
+          <TableScrollArea className="table-card property-table-wrapper" label="Список застройщиков">
             <table className="property-table catalog-table developer-table">
               <caption className="visually-hidden">Список застройщиков</caption>
               <thead>
@@ -244,7 +234,7 @@ export function DeveloperListPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScrollArea>
           <div className="property-mobile-list">
             {results.map((developer) => (
               <article
@@ -299,23 +289,7 @@ export function DeveloperListPage() {
       )}
 
       {totalPages > 1 ? (
-        <nav className="pagination" aria-label="Страницы застройщиков">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => updateParameters({ page: String(page - 1) })}
-          >
-            <span aria-hidden="true">←</span> Назад
-          </button>
-          <span>Страница <strong>{page}</strong> из {totalPages}</span>
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => updateParameters({ page: String(page + 1) })}
-          >
-            Далее <span aria-hidden="true">→</span>
-          </button>
-        </nav>
+        <Pagination label="Страницы застройщиков" page={page} totalPages={totalPages} onPageChange={(nextPage) => updateParameters({ page: String(nextPage) })} />
       ) : null}
 
       {selectedDeveloper ? (

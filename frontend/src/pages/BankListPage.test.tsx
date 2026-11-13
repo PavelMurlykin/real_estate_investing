@@ -1,3 +1,4 @@
+import { chooseOption } from '@/test/chooseOption'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
@@ -121,7 +122,7 @@ describe('BankListPage', () => {
     const search = screen.getByRole('searchbox', { name: 'Поиск' })
     const scope = screen.getByRole('combobox', { name: 'Программы' })
     await user.type(search, 'Северный')
-    await user.selectOptions(scope, 'withPrograms')
+    await chooseOption(user, 'Программы', 'С программами')
     const parameters = new URLSearchParams({ q: 'Северный', scope: 'withPrograms' })
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
@@ -131,7 +132,7 @@ describe('BankListPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Сбросить' }))
     expect(search).toHaveValue('')
-    expect(scope).toHaveValue('all')
+    expect(scope).toHaveValue('')
   })
 
   it('shows React create and edit routes to catalog managers', () => {

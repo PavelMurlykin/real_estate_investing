@@ -1,3 +1,6 @@
+import { SelectFilter } from '@/shared/ui/SelectFilter'
+import { TableScrollArea } from '@/shared/ui/TableScrollArea'
+import { Pagination } from '@/shared/ui/Pagination'
 import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
@@ -264,23 +267,8 @@ export function CustomerCalculationsSection({
             <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
-        <div className="sort-control">
-          <label htmlFor="customer-calculation-program">Тип программы</label>
-          <select
-            id="customer-calculation-program"
-            value={programType}
-            onChange={(event) => updateParameters({
-              calculationProgram: event.target.value === 'all'
-                ? null
-                : event.target.value,
-              calculationPage: null,
-            })}
-          >
-            <option value="all">Все расчёты</option>
-            <option value="market">Рыночные</option>
-            <option value="trench">Траншевые</option>
-          </select>
-        </div>
+        <SelectFilter label="Тип программы" parameter="calculationProgram" emptyLabel="Все расчёты"
+          options={[{ value: 'market', label: 'Рыночные' }, { value: 'trench', label: 'Траншевые' }]} pageParameter="calculationPage" />
         <ResetFilters prefix="calculation" />
       </div>
 
@@ -313,7 +301,7 @@ export function CustomerCalculationsSection({
         />
       ) : (
         <>
-          <div className="table-card property-table-wrapper">
+          <TableScrollArea className="table-card property-table-wrapper" label="Связанные расчёты клиента">
             <table className="property-table calculation-table customer-calculation-table">
               <caption className="visually-hidden">Связанные расчёты клиента</caption>
               <thead>
@@ -376,7 +364,7 @@ export function CustomerCalculationsSection({
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScrollArea>
           <div className="property-mobile-list">
             {results.map((calculation) => (
               <article
@@ -428,23 +416,7 @@ export function CustomerCalculationsSection({
       )}
 
       {totalPages > 1 ? (
-        <nav className="pagination" aria-label="Страницы расчётов клиента">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => updateParameters({ calculationPage: String(page - 1) })}
-          >
-            <span aria-hidden="true">←</span> Назад
-          </button>
-          <span>Страница <strong>{page}</strong> из {totalPages}</span>
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => updateParameters({ calculationPage: String(page + 1) })}
-          >
-            Далее <span aria-hidden="true">→</span>
-          </button>
-        </nav>
+        <Pagination label="Страницы расчётов клиента" page={page} totalPages={totalPages} onPageChange={(nextPage) => updateParameters({ calculationPage: String(nextPage) })} />
       ) : null}
 
       {calculationToUnlink ? (

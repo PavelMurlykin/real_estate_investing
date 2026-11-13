@@ -238,13 +238,14 @@
   justify-content: space-between;
   gap: 0.75rem;
   width: 100%;
-  padding: 0;
+  padding: 4px 0;
   border: 0;
   background: transparent;
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
+  min-height: 44px;
 }
 
 .sortable-header:focus-visible {
@@ -356,6 +357,10 @@
   --form-gap: 1.5rem;
   --form-field-gap: 0.5rem;
   --form-action-gap: 0.75rem;
+  --table-font-size: 0.875rem;
+  --table-heading-size: 0.75rem;
+  --table-row-height: 3.5rem;
+  --table-cell-padding: 12px 16px;
 }
 
 :root[data-theme='dark'] {
@@ -1174,11 +1179,11 @@ textarea:focus-visible {
 .filter-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(230px, 0.3fr);
-  gap: 20px;
-  padding: 20px;
+  gap: var(--form-gap);
+  padding: var(--form-padding);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: var(--form-card-radius);
   box-shadow: var(--shadow-sm);
 }
 
@@ -1265,7 +1270,7 @@ textarea:focus-visible {
   overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: var(--form-card-radius);
   box-shadow: var(--shadow-sm);
 }
 
@@ -1278,12 +1283,15 @@ textarea:focus-visible {
 .property-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--table-font-size);
+  font-family: var(--form-font);
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
 }
 
 .property-table th,
 .property-table td {
-  padding: 15px 14px;
+  padding: var(--table-cell-padding);
   text-align: left;
   vertical-align: middle;
   white-space: nowrap;
@@ -1293,10 +1301,11 @@ textarea:focus-visible {
 .property-table th {
   color: var(--text-muted);
   background: var(--surface-muted);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.045em;
+  font-size: var(--table-heading-size);
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  padding: 6px 16px;
 }
 
 .property-table tbody tr:last-child td {
@@ -1308,21 +1317,23 @@ textarea:focus-visible {
 }
 
 .row-action {
-  width: 31px;
-  height: 31px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   color: var(--brand);
   background: var(--brand-soft);
-  border-radius: 9px;
+  border-radius: var(--form-control-radius);
   font-size: 16px;
   font-weight: 800;
   text-decoration: none;
+  min-width: 44px;
+  flex-shrink: 0;
 }
 
 .row-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 
 .row-action--calculator {
@@ -1446,20 +1457,22 @@ textarea:focus-visible {
 }
 
 .pagination {
-  display: flex;
+  display: grid;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: var(--form-action-gap);
+  grid-template-columns: auto minmax(0, auto) auto;
 }
 
 .pagination button {
-  min-height: 40px;
-  padding: 8px 14px;
+  min-height: var(--form-control-height);
+  gap: 8px;
+  padding: 12px 20px;
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 12px;
+  border-radius: var(--form-control-radius);
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -1471,7 +1484,9 @@ textarea:focus-visible {
 
 .pagination > span {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 14px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .state-card {
@@ -2420,6 +2435,7 @@ textarea:focus-visible {
 
 .mortgage-program-table {
   table-layout: fixed;
+  min-width: 720px;
 }
 
 .mortgage-program-table__name {
@@ -2435,7 +2451,7 @@ textarea:focus-visible {
 }
 
 .mortgage-program-table__actions {
-  width: 100px;
+  width: 136px;
 }
 
 .mortgage-program-table th,
@@ -2614,15 +2630,6 @@ textarea:focus-visible {
 
   .mortgage-program-table__limit {
     width: 21%;
-  }
-
-  .mortgage-program-table__actions {
-    width: 42px;
-  }
-
-  .mortgage-program-table th,
-  .mortgage-program-table td {
-    padding-inline: 5px;
   }
 
   .mortgage-program-table .row-actions {
@@ -2921,16 +2928,6 @@ textarea:focus-visible {
     width: calc(100% + 2px);
     margin: 0 0 -1px -1px;
     border-radius: 0 0 11px 11px;
-  }
-
-  .pagination {
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  .pagination > span {
-    max-width: 90px;
-    text-align: center;
   }
 
   .state-card {
@@ -3344,7 +3341,6 @@ textarea:focus-visible {
 }
 
 .key-rate-table {
-  font-size: 17px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -3354,23 +3350,10 @@ textarea:focus-visible {
   text-align: center;
 }
 
-.key-rate-table th {
-  font-size: 14px;
-  text-transform: none;
-  letter-spacing: normal;
-}
-
 .key-rate-table .sortable-header {
   justify-content: center;
   gap: 0.25rem;
   text-align: center;
-}
-
-@media (max-width: 520px) {
-  .key-rate-table th,
-  .key-rate-table td {
-    padding-inline: 6px;
-  }
 }
 
 .key-rate-change {
@@ -4476,11 +4459,11 @@ dialog.confirmation-dialog {
 .customer-calculation-toolbar {
   display: grid;
   grid-template-columns: minmax(280px, 1fr) minmax(150px, 0.35fr) minmax(190px, 0.45fr);
-  gap: 14px;
-  padding: 18px;
-  background: var(--surface-muted);
+  gap: var(--form-gap);
+  padding: var(--form-padding);
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--form-card-radius);
 }
 
 .customer-calculation-results > div,
@@ -4739,6 +4722,7 @@ dialog.confirmation-dialog {
 
 .bank-table {
   table-layout: fixed;
+  min-width: 640px;
 }
 
 .bank-table__numeric {
@@ -4746,7 +4730,7 @@ dialog.confirmation-dialog {
 }
 
 .bank-table__actions {
-  width: 100px;
+  width: 136px;
 }
 
 .bank-table th,
@@ -4978,15 +4962,6 @@ dialog.confirmation-dialog {
 }
 
 @media (max-width: 500px) {
-  .bank-table__actions {
-    width: 42px;
-  }
-
-  .bank-table th,
-  .bank-table td {
-    padding-inline: 5px;
-  }
-
   .bank-table .row-actions {
     flex-direction: column;
   }
@@ -5186,4 +5161,47 @@ dialog.confirmation-dialog {
   border-radius: 8px;
   font: inherit;
   cursor: pointer;
+}
+
+/* Shared table geometry applies to catalog and nested calculation tables. */
+.table-scroll-area {
+  min-width: 0;
+  max-width: 100%;
+  overflow: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-muted) var(--surface-muted);
+  scroll-margin-top: calc(var(--header-height) + 12px);
+}
+
+.table-scroll-area:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: -3px;
+}
+
+.property-table td {
+  height: var(--table-row-height);
+}
+
+.property-table tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--surface-muted) 30%, transparent);
+}
+
+.property-table tbody tr:is(:hover, :focus-within) {
+  background: var(--brand-soft);
+}
+
+@media (max-width: 500px) {
+  .pagination {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pagination__status {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .pagination .button {
+    width: 100%;
+  }
 }

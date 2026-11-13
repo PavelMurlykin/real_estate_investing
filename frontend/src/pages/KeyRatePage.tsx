@@ -1,3 +1,5 @@
+import { TableScrollArea } from '@/shared/ui/TableScrollArea'
+import { Pagination } from '@/shared/ui/Pagination'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 
@@ -122,7 +124,7 @@ export function KeyRatePage() {
               : 'Администратор сможет загрузить историю из Банка России.'}
           />
         ) : (
-          <div className="table-card property-table-wrapper">
+          <TableScrollArea className="table-card property-table-wrapper" label="История ключевой ставки Банка России">
             <table className="property-table key-rate-table">
               <caption className="visually-hidden">История ключевой ставки Банка России</caption>
               <thead>
@@ -145,19 +147,11 @@ export function KeyRatePage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </TableScrollArea>
         )}
 
         {totalPages > 1 ? (
-          <nav className="pagination" aria-label="Страницы истории ключевой ставки">
-            <button type="button" disabled={page <= 1} onClick={() => updatePage(page - 1)}>
-              <span aria-hidden="true">←</span> Назад
-            </button>
-            <span>Страница <strong>{page}</strong> из {totalPages}</span>
-            <button type="button" disabled={page >= totalPages} onClick={() => updatePage(page + 1)}>
-              Далее <span aria-hidden="true">→</span>
-            </button>
-          </nav>
+          <Pagination label="Страницы истории ключевой ставки" page={page} totalPages={totalPages} onPageChange={updatePage} />
         ) : null}
       </div>
     </div>

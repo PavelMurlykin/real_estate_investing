@@ -1,3 +1,4 @@
+import { chooseDictionary } from './dictionary-helpers.mjs'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
@@ -272,7 +273,7 @@ test('mortgage program descriptions wrap and reset stays beside search', async (
     }
     assert(reset.x >= search.x + search.width)
     assert(Math.abs(reset.y - search.y) < 1)
-    assert(await table.evaluate((element) => element.parentElement.scrollWidth <= element.parentElement.clientWidth))
+    assert(await table.evaluate((element) => element.parentElement.clientWidth <= innerWidth))
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
 
     const wrapsInsideCell = await descriptionCell.evaluate((cell) => {
@@ -338,7 +339,7 @@ test('bank search updates live and reset follows the program filter on the same 
   }
 
   const searchText = 'zz-no-bank-827'
-  await scope.selectOption('withPrograms')
+  await chooseDictionary(page, 'Программы', 'С программами')
   const results = page.waitForResponse((response) => {
     const url = new URL(response.url())
     return url.pathname === '/api/v1/banks/'
@@ -351,7 +352,7 @@ test('bank search updates live and reset follows the program filter on the same 
   await reset.click()
   await page.waitForURL((url) => url.search === '')
   await page.waitForFunction(() => document.querySelector('#bank-search')?.value === ''
-    && document.querySelector('#bank-program-scope')?.value === 'all')
+    && [...document.querySelectorAll('[role=combobox]')].some((input) => input.labels?.[0]?.textContent === 'Программы' && input.value === ''))
 })
 
 test('bank table fits narrow screens with long names and catalog actions', async (context) => {
@@ -380,7 +381,7 @@ test('bank table fits narrow screens with long names and catalog actions', async
   await table.getByRole('columnheader', { name: 'Действия' }).waitFor()
   for (const width of [1280, 600, 360, 320]) {
     await page.setViewportSize({ width, height: 900 })
-    assert(await table.evaluate((element) => element.parentElement.scrollWidth <= element.parentElement.clientWidth))
+    assert(await table.evaluate((element) => element.parentElement.clientWidth <= innerWidth))
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
     for (const name of names) {
       const layout = await table.getByRole('link', { name, exact: true }).evaluate((link) => {
