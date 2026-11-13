@@ -1,3 +1,6 @@
+import { Notice } from '@/shared/ui/Notice'
+import { restoreFocus } from '@/shared/lib/restoreFocus'
+import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { TableScrollArea } from '@/shared/ui/TableScrollArea'
 import { Pagination } from '@/shared/ui/Pagination'
 import { ResetFilters } from '@/shared/ui/ResetFilters'
@@ -6,7 +9,7 @@ import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { ApiError } from '@/api/client'
@@ -41,22 +44,9 @@ export function CompanyGroupListPage() {
     onSuccess: async () => {
       setSelectedCompanyGroup(null)
       await queryClient.invalidateQueries({ queryKey: ['company-groups'] })
-      window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+      window.setTimeout(() => restoreFocus(deleteTriggerRef.current), 0)
     },
   })
-
-  useEffect(() => {
-    if (!selectedCompanyGroup) return
-    cancelButtonRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !deleteMutation.isPending) {
-        setSelectedCompanyGroup(null)
-        window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [deleteMutation.isPending, selectedCompanyGroup])
 
   const updateParameters = (updates: Record<string, string | null>) => {
     const nextParameters = new URLSearchParams(searchParameters)
@@ -88,7 +78,7 @@ export function CompanyGroupListPage() {
   const closeDeleteDialog = () => {
     if (deleteMutation.isPending) return
     setSelectedCompanyGroup(null)
-    window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+    window.setTimeout(() => restoreFocus(deleteTriggerRef.current), 0)
   }
 
   if (companyGroupQuery.isLoading) return <PageLoadingState />
@@ -100,7 +90,6 @@ export function CompanyGroupListPage() {
     sessionQuery.data?.capabilities.manageCatalogs === true
   )
   const { results, page, totalCount, totalPages } = companyGroupQuery.data
-
 
   return (
     <div className="page-stack company-group-list-page">
@@ -254,20 +243,7 @@ export function CompanyGroupListPage() {
       ) : null}
 
       {selectedCompanyGroup ? (
-        <div
-          className="confirmation-dialog-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.currentTarget === event.target) closeDeleteDialog()
-          }}
-        >
-          <section
-            className="confirmation-dialog"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="company-group-delete-title"
-            aria-describedby="company-group-delete-description"
-          >
+        <ModalDialog labelledBy="company-group-delete-title" describedBy="company-group-delete-description" pending={deleteMutation.isPending} onClose={closeDeleteDialog}>
             <span className="eyebrow">Подтверждение</span>
             <h2 id="company-group-delete-title">Удалить группу компаний?</h2>
             <p id="company-group-delete-description">
@@ -275,12 +251,12 @@ export function CompanyGroupListPage() {
               восстановления.
             </p>
             {deleteMutation.isError ? (
-              <p className="form-error" role="alert">
+              <Notice as="p" tone="error" role="alert" className="form-error">
                 {deleteMutation.error instanceof ApiError
                   && deleteMutation.error.status === 409
                   ? 'Сначала отвяжите от группы всех застройщиков.'
                   : 'Не удалось удалить группу. Повторите попытку.'}
-              </p>
+              </Notice>
             ) : null}
             <div className="confirmation-dialog__actions">
               <button
@@ -303,8 +279,7 @@ export function CompanyGroupListPage() {
                 {deleteMutation.isPending ? 'Удаляем…' : 'Удалить'}
               </button>
             </div>
-          </section>
-        </div>
+          </ModalDialog>
       ) : null}
     </div>
   )

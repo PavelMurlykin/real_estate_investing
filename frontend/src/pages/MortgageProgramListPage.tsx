@@ -1,3 +1,6 @@
+import { Notice } from '@/shared/ui/Notice'
+import { restoreFocus } from '@/shared/lib/restoreFocus'
+import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { SelectFilter } from '@/shared/ui/SelectFilter'
 import { TableScrollArea } from '@/shared/ui/TableScrollArea'
 import { Pagination } from '@/shared/ui/Pagination'
@@ -7,7 +10,7 @@ import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { ApiError } from '@/api/client'
@@ -42,22 +45,9 @@ export function MortgageProgramListPage() {
     onSuccess: async () => {
       setSelectedProgram(null)
       await queryClient.invalidateQueries({ queryKey: ['mortgage-programs'] })
-      window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+      window.setTimeout(() => restoreFocus(deleteTriggerRef.current), 0)
     },
   })
-
-  useEffect(() => {
-    if (!selectedProgram) return
-    cancelButtonRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !deleteMutation.isPending) {
-        setSelectedProgram(null)
-        window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [deleteMutation.isPending, selectedProgram])
 
   const updateParameters = (updates: Record<string, string | null>) => {
     const nextParameters = new URLSearchParams(searchParameters)
@@ -80,7 +70,7 @@ export function MortgageProgramListPage() {
   const closeDeleteDialog = () => {
     if (deleteMutation.isPending) return
     setSelectedProgram(null)
-    window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+    window.setTimeout(() => restoreFocus(deleteTriggerRef.current), 0)
   }
 
   if (programQuery.isLoading) return <PageLoadingState />
@@ -234,32 +224,19 @@ export function MortgageProgramListPage() {
       ) : null}
 
       {selectedProgram ? (
-        <div
-          className="confirmation-dialog-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.currentTarget === event.target) closeDeleteDialog()
-          }}
-        >
-          <section
-            className="confirmation-dialog"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="mortgage-program-delete-title"
-            aria-describedby="mortgage-program-delete-description"
-          >
+        <ModalDialog labelledBy="mortgage-program-delete-title" describedBy="mortgage-program-delete-description" pending={deleteMutation.isPending} onClose={closeDeleteDialog}>
             <span className="eyebrow">Подтверждение</span>
             <h2 id="mortgage-program-delete-title">Удалить программу?</h2>
             <p id="mortgage-program-delete-description">
               «{selectedProgram.name}», её лимиты будут удалены.
             </p>
             {deleteMutation.isError ? (
-              <p className="form-error" role="alert">
+              <Notice as="p" tone="error" role="alert" className="form-error">
                 {deleteMutation.error instanceof ApiError
                   && deleteMutation.error.status === 409
                   ? 'Программа используется банком или программой застройщика. Сначала переназначьте эти связи.'
                   : 'Не удалось удалить программу. Повторите попытку.'}
-              </p>
+              </Notice>
             ) : null}
             <div className="confirmation-dialog__actions">
               <button
@@ -280,8 +257,7 @@ export function MortgageProgramListPage() {
                 {deleteMutation.isPending ? 'Удаляем…' : 'Удалить'}
               </button>
             </div>
-          </section>
-        </div>
+          </ModalDialog>
       ) : null}
     </div>
   )

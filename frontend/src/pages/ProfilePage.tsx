@@ -1,6 +1,7 @@
+import { Notice } from '@/shared/ui/Notice'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 
 import {
@@ -41,6 +42,7 @@ function ProfileFieldError({
 }
 
 function ProfileForm({ profile }: { profile: UserProfile }) {
+  const saveButtonRef = useRef<HTMLButtonElement>(null)
   const queryClient = useQueryClient()
   const [isRealEstateAgent, setIsRealEstateAgent] = useState(
     profile.isRealEstateAgent,
@@ -211,17 +213,17 @@ function ProfileForm({ profile }: { profile: UserProfile }) {
       </div>
 
       {errors.form ? (
-        <p className="form-error" role="alert">{errors.form}</p>
+        <Notice as="p" tone="error" role="alert" className="form-error">{errors.form}</Notice>
       ) : null}
       {isSaved ? (
-        <p className="account-form-status" role="status">
+        <Notice as="p" tone="success" role="status" className="account-form-status" onDismiss={() => setIsSaved(false)} returnFocusRef={saveButtonRef}>
           Профиль сохранён.
-        </p>
+        </Notice>
       ) : null}
       <div className="account-form-actions">
         <button
           className="button button--primary"
-          type="submit"
+          type="submit" ref={saveButtonRef}
           disabled={profileMutation.isPending}
         >
           {profileMutation.isPending ? 'Сохраняем…' : 'Сохранить профиль'}

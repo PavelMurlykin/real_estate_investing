@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:browser": "node --test browser-tests/*.test.mjs",
+    "test:browser": "node --test --test-concurrency=4 browser-tests/*.test.mjs",
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {

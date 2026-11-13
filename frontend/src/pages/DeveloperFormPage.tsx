@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { RemoteMultiSelect } from '@/shared/ui/RemoteMultiSelect'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -323,9 +324,9 @@ export function DeveloperFormPage() {
               initialOptions={optionsQuery.data.regions.map((option) => ({ id: option.id, label: option.name }))}
               truncated={optionsQuery.data.truncated.regions} error={fieldErrors.regionIds} />
             {optionsAreTruncated ? (
-              <p className="form-error form-field--wide" role="alert">
+              <Notice as="p" tone="error" role="alert" className="form-error form-field--wide">
             Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».
-          </p>
+          </Notice>
             ) : null}
           </div>
         </section>
@@ -490,11 +491,11 @@ export function DeveloperFormPage() {
         </section>
 
         {hasGeneralError ? (
-          <p className="form-error" role="alert">
+          <Notice as="p" tone="error" role="alert" className="form-error">
             {fieldErrors.non_field_errors
               || fieldErrors.detail
               || 'Не удалось сохранить застройщика. Повторите попытку.'}
-          </p>
+          </Notice>
         ) : null}
         <div className="customer-form-actions">
           <Link className="button button--secondary" to="/developers">

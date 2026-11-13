@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { ModalDialog } from '@/shared/ui/ModalDialog'
+import { useRef, useState } from 'react'
 
 import type { RealEstateComplexDetail } from '@/api/schemas'
 
@@ -18,14 +19,6 @@ export function ComplexPhotos({ complex }: { complex: RealEstateComplexDetail })
     setIsOpen(false)
     triggerRef.current?.focus()
   }
-
-  useEffect(() => {
-    if (!isOpen) return
-    closeRef.current?.focus()
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = previousOverflow }
-  }, [isOpen])
 
   const navigation = photos.length > 1 ? (
     <div className="complex-carousel__navigation">
@@ -56,24 +49,7 @@ export function ComplexPhotos({ complex }: { complex: RealEstateComplexDetail })
         </div>
       )}
       {isOpen && photo ? (
-        <div className="property-image-modal" role="dialog" aria-modal="true"
-          aria-labelledby="complex-photo-modal-title"
-          onMouseDown={(event) => { if (event.currentTarget === event.target) close() }}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') close()
-            if (event.key === 'Tab') {
-              const buttons = event.currentTarget.querySelectorAll<HTMLButtonElement>('button')
-              const first = buttons[0]
-              const last = buttons[buttons.length - 1]
-              if (event.shiftKey && document.activeElement === first) {
-                event.preventDefault()
-                last?.focus()
-              } else if (!event.shiftKey && document.activeElement === last) {
-                event.preventDefault()
-                first?.focus()
-              }
-            }
-          }}>
+        <ModalDialog className="property-image-dialog" role="dialog" labelledBy="complex-photo-modal-title" onClose={close}>
           <div className="property-image-modal__content">
             <div className="property-image-modal__header">
               <h2 id="complex-photo-modal-title">Фото {complex.name}</h2>
@@ -82,7 +58,7 @@ export function ComplexPhotos({ complex }: { complex: RealEstateComplexDetail })
             <img src={photo.url} alt={`${complex.name} — фото ${activeIndex % photos.length + 1}`} />
             {navigation}
           </div>
-        </div>
+        </ModalDialog>
       ) : null}
     </section>
   )

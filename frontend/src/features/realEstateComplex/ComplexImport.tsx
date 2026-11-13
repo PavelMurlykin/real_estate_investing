@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { apiErrorMessage } from '@/api/client'
@@ -30,11 +31,11 @@ export function ComplexImport() {
           {mutation.isPending ? 'Загружаем…' : 'Импортировать'}
         </button>
       </form>
-      {mutation.isError ? <p className="form-error" role="alert">{apiErrorMessage(mutation.error) ?? 'Не удалось импортировать файл.'}</p> : null}
-      {mutation.isSuccess ? <p role="status">
+      {mutation.isError ? <Notice as="p" tone="error" role="alert" className="form-error">{apiErrorMessage(mutation.error) ?? 'Не удалось импортировать файл.'}</Notice> : null}
+      {mutation.isSuccess ? <Notice as="p" tone="success" role="status" >
         Создано ЖК {mutation.data.created}, обновлено {mutation.data.updated}, добавлено фото {mutation.data.photos}.
         Корпусов обработано {mutation.data.buildings}, станций {mutation.data.metro}.
-      </p> : null}
+      </Notice> : null}
     </details>
   )
 }

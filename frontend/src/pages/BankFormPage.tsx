@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
@@ -493,9 +494,9 @@ export function BankFormPage() {
           </div>
           <div className="bank-program-editors">
             {optionsQuery.data.truncated ? (
-              <p className="form-error" role="alert">
+              <Notice as="p" tone="error" role="alert" className="form-error">
             Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».
-          </p>
+          </Notice>
             ) : null}
             {formState.programs.length === 0 ? (
               <div className="bank-program-empty">
@@ -632,19 +633,19 @@ export function BankFormPage() {
               )
             })}
             {(clientErrors.programs || serverProgramsError) ? (
-              <p className="form-error" role="alert">
+              <Notice as="p" tone="error" role="alert" className="form-error">
                 {clientErrors.programs || serverProgramsError}
-              </p>
+              </Notice>
             ) : null}
           </div>
         </section>
 
         {hasGeneralServerError ? (
-          <p className="form-error" role="alert">
+          <Notice as="p" tone="error" role="alert" className="form-error">
             {firstErrorMessage(serverErrors.non_field_errors)
               || firstErrorMessage(serverErrors.detail)
               || 'Не удалось сохранить банк. Повторите попытку.'}
-          </p>
+          </Notice>
         ) : null}
         <div className="customer-form-actions">
           <Link className="button button--secondary" to="/banks">

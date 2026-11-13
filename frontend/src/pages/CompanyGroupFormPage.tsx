@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -215,11 +216,11 @@ export function CompanyGroupFormPage() {
         </section>
 
         {hasGeneralError ? (
-          <p className="form-error" role="alert">
+          <Notice as="p" tone="error" role="alert" className="form-error">
             {fieldErrors.non_field_errors
               || fieldErrors.detail
               || 'Не удалось сохранить группу. Повторите попытку.'}
-          </p>
+          </Notice>
         ) : null}
         <div className="customer-form-actions">
           <Link className="button button--secondary" to="/company-groups">

@@ -1,3 +1,6 @@
+import { Notice } from '@/shared/ui/Notice'
+import { restoreFocus } from '@/shared/lib/restoreFocus'
+import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { SelectFilter } from '@/shared/ui/SelectFilter'
 import { TableScrollArea } from '@/shared/ui/TableScrollArea'
 import { Pagination } from '@/shared/ui/Pagination'
@@ -7,7 +10,7 @@ import { useTableSearchParams } from '@/shared/lib/useTableSearchParams'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { BankCatalogImport } from '@/shared/ui/BankCatalogImport'
@@ -80,22 +83,9 @@ export function BankListPage() {
     onSuccess: async () => {
       setSelectedBank(null)
       await queryClient.invalidateQueries({ queryKey: ['banks'] })
-      window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+      window.setTimeout(() => restoreFocus(deleteTriggerRef.current), 0)
     },
   })
-
-  useEffect(() => {
-    if (!selectedBank) return
-    cancelButtonRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !deleteMutation.isPending) {
-        setSelectedBank(null)
-        window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [deleteMutation.isPending, selectedBank])
 
   const updateParameters = (updates: Record<string, string | null>) => {
     updateSearchParameters((nextParameters) => {
@@ -118,7 +108,7 @@ export function BankListPage() {
   const closeDeleteDialog = () => {
     if (deleteMutation.isPending) return
     setSelectedBank(null)
-    window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+    window.setTimeout(() => restoreFocus(deleteTriggerRef.current), 0)
   }
 
   if (bankQuery.isLoading) return <PageLoadingState />
@@ -308,32 +298,19 @@ export function BankListPage() {
       ) : null}
 
       {selectedBank ? (
-        <div
-          className="confirmation-dialog-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.currentTarget === event.target) closeDeleteDialog()
-          }}
-        >
-          <section
-            className="confirmation-dialog"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="bank-delete-title"
-            aria-describedby="bank-delete-description"
-          >
+        <ModalDialog labelledBy="bank-delete-title" describedBy="bank-delete-description" pending={deleteMutation.isPending} onClose={closeDeleteDialog}>
             <span className="eyebrow">Подтверждение</span>
             <h2 id="bank-delete-title">Удалить банк?</h2>
             <p id="bank-delete-description">
               «{selectedBank.name}» и его банковские условия будут удалены.
             </p>
             {deleteMutation.isError ? (
-              <p className="form-error" role="alert">
+              <Notice as="p" tone="error" role="alert" className="form-error">
                 {deleteMutation.error instanceof ApiError
                   && deleteMutation.error.status === 409
                   ? 'Банк используется в программах застройщиков. Сначала переназначьте эти связи.'
                   : 'Не удалось удалить банк. Повторите попытку.'}
-              </p>
+              </Notice>
             ) : null}
             <div className="confirmation-dialog__actions">
               <button
@@ -354,8 +331,7 @@ export function BankListPage() {
                 {deleteMutation.isPending ? 'Удаляем…' : 'Удалить'}
               </button>
             </div>
-          </section>
-        </div>
+          </ModalDialog>
       ) : null}
     </div>
   )

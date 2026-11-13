@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { TableScrollArea } from '@/shared/ui/TableScrollArea'
 import { Pagination } from '@/shared/ui/Pagination'
 import { ResetFilters } from '@/shared/ui/ResetFilters'
@@ -182,7 +183,6 @@ export function SavedMortgageCalculationListPage() {
 
   const { results, page, totalCount, totalPages } = calculationQuery.data
 
-
   return (
     <div className="page-stack">
       <header className="page-header">
@@ -235,9 +235,9 @@ export function SavedMortgageCalculationListPage() {
         ) : calculationQuery.isFetching ? <span>Обновляем…</span> : null}
       </div>
       {linkMutation.isError ? (
-        <p className="form-error" role="alert">
+        <Notice as="p" tone="error" role="alert" className="form-error">
           Не удалось добавить расчёты клиенту. Повторите попытку.
-        </p>
+        </Notice>
       ) : null}
 
       {results.length === 0 ? (

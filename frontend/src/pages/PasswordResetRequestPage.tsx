@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useRef, useState } from 'react'
@@ -71,10 +72,10 @@ export function PasswordResetRequestPage() {
         </header>
 
         {isRequested ? (
-          <div className="account-form-status" role="status">
+          <Notice as="div" tone="success" role="status" className="account-form-status">
             Инструкция отправлена, если аккаунт с таким email существует.
             Проверьте входящие сообщения и папку со спамом.
-          </div>
+          </Notice>
         ) : null}
 
         <form
@@ -105,7 +106,7 @@ export function PasswordResetRequestPage() {
           </div>
 
           {errors.form ? (
-            <p className="form-error" role="alert">{errors.form}</p>
+            <Notice as="p" tone="error" role="alert" className="form-error">{errors.form}</Notice>
           ) : null}
           <button
             className="button button--primary auth-form__submit"

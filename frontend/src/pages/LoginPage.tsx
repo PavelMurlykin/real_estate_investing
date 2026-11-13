@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
@@ -129,14 +130,14 @@ export function LoginPage() {
         </header>
 
         {searchParameters.get('registered') === '1' ? (
-          <p className="account-form-status" role="status">
+          <Notice as="p" tone="success" role="status" className="account-form-status">
             Аккаунт создан. Теперь войдите.
-          </p>
+          </Notice>
         ) : null}
         {searchParameters.get('reset') === '1' ? (
-          <p className="account-form-status" role="status">
+          <Notice as="p" tone="success" role="status" className="account-form-status">
             Пароль обновлён. Теперь войдите.
-          </p>
+          </Notice>
         ) : null}
 
         <form className="auth-form" noValidate onSubmit={submitLogin}>
@@ -174,9 +175,9 @@ export function LoginPage() {
             />
           </div>
           {errorMessage ? (
-            <p id="login-form-error" className="form-error" role="alert">
+            <Notice as="p" tone="error" role="alert" id="login-form-error" className="form-error">
               {errorMessage}
-            </p>
+            </Notice>
           ) : null}
           <button
             className="button button--primary auth-form__submit"

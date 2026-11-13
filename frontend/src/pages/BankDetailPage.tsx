@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { InteractiveTable } from '@/shared/ui/InteractiveTable'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -178,12 +179,12 @@ export function BankDetailPage() {
               «{bank.name}» и его банковские условия будут удалены.
             </p>
             {deleteMutation.isError ? (
-              <p className="form-error" role="alert">
+              <Notice as="p" tone="error" role="alert" className="form-error">
                 {deleteMutation.error instanceof ApiError
                   && deleteMutation.error.status === 409
                   ? 'Банк используется в программах застройщиков. Сначала переназначьте эти связи.'
                   : 'Не удалось удалить банк. Повторите попытку.'}
-              </p>
+              </Notice>
             ) : null}
             <div className="confirmation-dialog__actions">
               <button

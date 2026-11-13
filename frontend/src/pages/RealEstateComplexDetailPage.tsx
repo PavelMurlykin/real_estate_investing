@@ -1,8 +1,11 @@
+import { Notice } from '@/shared/ui/Notice'
+import { restoreFocus } from '@/shared/lib/restoreFocus'
+import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { ComplexPhotos } from '@/features/realEstateComplex/ComplexPhotos'
 import { MetroLineStripe, TransportIcon } from '@/features/realEstateComplex/MetroAccess'
 import { InteractiveTable } from '@/shared/ui/InteractiveTable'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { ApiError } from '@/api/client'
@@ -35,7 +38,6 @@ export function RealEstateComplexDetailPage() {
   const sessionQuery = useQuery(sessionQueryOptions)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const deleteTriggerRef = useRef<HTMLButtonElement>(null)
-  const deleteDialogRef = useRef<HTMLDialogElement>(null)
   const deleteTitleRef = useRef<HTMLHeadingElement>(null)
   const deleteCancelButtonRef = useRef<HTMLButtonElement>(null)
   const deleteConfirmButtonRef = useRef<HTMLButtonElement>(null)
@@ -54,24 +56,10 @@ export function RealEstateComplexDetailPage() {
   })
   useDocumentTitle(complexQuery.data?.name ?? 'Карточка жилого комплекса')
 
-  useEffect(() => {
-    const dialog = deleteDialogRef.current
-    if (!isDeleteDialogOpen || !dialog) return
-    const previousOverflow = document.body.style.overflow
-    dialog.showModal()
-    document.body.style.overflow = 'hidden'
-    deleteCancelButtonRef.current?.focus()
-    return () => {
-      if (dialog.open) dialog.close()
-      document.body.style.overflow = previousOverflow
-    }
-  }, [isDeleteDialogOpen])
-
   const closeDeleteDialog = () => {
     if (deleteMutation.isPending) return
-    deleteDialogRef.current?.close()
     setIsDeleteDialogOpen(false)
-    deleteTriggerRef.current?.focus()
+    restoreFocus(deleteTriggerRef.current)
   }
 
   if (!hasValidIdentifier) {
@@ -268,30 +256,7 @@ export function RealEstateComplexDetailPage() {
       </section>
 
       {isDeleteDialogOpen ? (
-        <dialog
-          ref={deleteDialogRef}
-          className="confirmation-dialog"
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="complex-detail-delete-title"
-          aria-describedby="complex-detail-delete-description"
-          onCancel={(event) => {
-            event.preventDefault()
-            closeDeleteDialog()
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== 'Tab') return
-            if (deleteMutation.isPending) {
-              event.preventDefault()
-            } else if (event.shiftKey && document.activeElement !== deleteConfirmButtonRef.current) {
-              event.preventDefault()
-              deleteConfirmButtonRef.current?.focus()
-            } else if (!event.shiftKey && document.activeElement === deleteConfirmButtonRef.current) {
-              event.preventDefault()
-              deleteCancelButtonRef.current?.focus()
-            }
-          }}
-        >
+        <ModalDialog labelledBy="complex-detail-delete-title" describedBy="complex-detail-delete-description" pending={deleteMutation.isPending} onClose={closeDeleteDialog}>
           <span className="eyebrow">Подтверждение</span>
           <h2 id="complex-detail-delete-title" ref={deleteTitleRef} tabIndex={-1}>
             Удалить жилой комплекс?
@@ -301,12 +266,12 @@ export function RealEstateComplexDetailPage() {
             восстановления.
           </p>
           {deleteMutation.isError ? (
-            <p className="form-error" role="alert">
+            <Notice as="p" tone="error" role="alert" className="form-error">
               {deleteMutation.error instanceof ApiError
                 && deleteMutation.error.status === 409
                 ? 'ЖК нельзя удалить, пока с его корпусами связаны объекты.'
                 : 'Не удалось удалить жилой комплекс. Повторите попытку.'}
-            </p>
+            </Notice>
           ) : null}
           <div className="confirmation-dialog__actions">
             <button
@@ -331,7 +296,7 @@ export function RealEstateComplexDetailPage() {
               {deleteMutation.isPending ? 'Удаляем…' : 'Удалить'}
             </button>
           </div>
-        </dialog>
+        </ModalDialog>
       ) : null}
     </div>
   )

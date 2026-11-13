@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -61,9 +62,9 @@ export function PasswordResetTokenPage() {
           <header className="auth-card__header">
             <span className="eyebrow">Доступ к аккаунту</span>
             <h1 id="reset-link-error-title">Ссылка не работает</h1>
-            <p role="alert">
+            <Notice as="p" tone="error" role="alert" >
               {errors.token ?? errors.form}
-            </p>
+            </Notice>
           </header>
           <div className="auth-card__links">
             <Link to="/password/reset">Запросить новую ссылку</Link>

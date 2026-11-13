@@ -1,3 +1,6 @@
+import { Notice } from '@/shared/ui/Notice'
+import { restoreFocus } from '@/shared/lib/restoreFocus'
+import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { TableScrollArea } from '@/shared/ui/TableScrollArea'
 import { Pagination } from '@/shared/ui/Pagination'
 import { ResetFilters } from '@/shared/ui/ResetFilters'
@@ -7,7 +10,7 @@ import { useTableSearchParams } from '@/shared/lib/useTableSearchParams'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import {
@@ -58,22 +61,9 @@ export function DeveloperMortgageProgramListPage() {
       await queryClient.invalidateQueries({
         queryKey: ['developer-mortgage-programs'],
       })
-      window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+      window.setTimeout(() => restoreFocus(deleteTriggerRef.current), 0)
     },
   })
-
-  useEffect(() => {
-    if (!selectedProgram) return
-    cancelButtonRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !deleteMutation.isPending) {
-        setSelectedProgram(null)
-        window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [deleteMutation.isPending, selectedProgram])
 
   const updateParameters = (updates: Record<string, string | null>) => {
     updateSearchParameters((nextParameters) => {
@@ -307,22 +297,7 @@ export function DeveloperMortgageProgramListPage() {
         <Pagination label="Страницы программ застройщиков" page={page} totalPages={totalPages} onPageChange={(nextPage) => updateParameters({ page: String(nextPage) })} />
       ) : null}
       {selectedProgram ? (
-        <div
-          className="confirmation-dialog-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.currentTarget === event.target && !deleteMutation.isPending) {
-              setSelectedProgram(null)
-            }
-          }}
-        >
-          <section
-            className="confirmation-dialog"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="developer-program-delete-title"
-            aria-describedby="developer-program-delete-description"
-          >
+        <ModalDialog labelledBy="developer-program-delete-title" describedBy="developer-program-delete-description" pending={deleteMutation.isPending} onClose={() => setSelectedProgram(null)}>
             <span className="eyebrow">Подтверждение</span>
             <h2 id="developer-program-delete-title">Удалить программу?</h2>
             <p id="developer-program-delete-description">
@@ -330,9 +305,9 @@ export function DeveloperMortgageProgramListPage() {
               {selectedProgram.mortgageProgramName}» будут удалены.
             </p>
             {deleteMutation.isError ? (
-              <p className="form-error" role="alert">
+              <Notice as="p" tone="error" role="alert" className="form-error">
                 Не удалось удалить программу. Повторите попытку.
-              </p>
+              </Notice>
             ) : null}
             <div className="confirmation-dialog__actions">
               <button
@@ -342,7 +317,7 @@ export function DeveloperMortgageProgramListPage() {
                 disabled={deleteMutation.isPending}
                 onClick={() => {
                   setSelectedProgram(null)
-                  window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+                  window.setTimeout(() => restoreFocus(deleteTriggerRef.current), 0)
                 }}
               >Отмена</button>
               <button
@@ -352,8 +327,7 @@ export function DeveloperMortgageProgramListPage() {
                 onClick={() => deleteMutation.mutate(selectedProgram.id)}
               >{deleteMutation.isPending ? 'Удаляем…' : 'Удалить'}</button>
             </div>
-          </section>
-        </div>
+          </ModalDialog>
       ) : null}
     </div>
   )

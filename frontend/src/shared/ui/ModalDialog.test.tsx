@@ -18,6 +18,32 @@ function Example({ remove = () => undefined }: { remove?: () => void }) {
 }
 
 describe('ModalDialog', () => {
+  it('closes only when the pointer starts and ends outside the dialog', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Example />)
+    await user.click(screen.getByRole('button', { name: 'Удалить запись' }))
+    const dialog = screen.getByRole('alertdialog')
+    fireEvent.pointerDown(dialog, { clientX: 0, clientY: 0 })
+    fireEvent.pointerUp(dialog, { clientX: -10, clientY: -10 })
+    expect(dialog).toBeInTheDocument()
+    fireEvent.pointerDown(dialog, { clientX: -10, clientY: -10 })
+    fireEvent.pointerUp(dialog, { clientX: -10, clientY: -10 })
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Удалить запись' })).toHaveFocus()
+  })
+
+  it('lets a child handle Escape before closing the enclosing dialog', async () => {
+    const user = userEvent.setup()
+    const close = () => { throw new Error('The enclosing dialog must stay open') }
+    renderWithProviders(<ModalDialog labelledBy="child-title" onClose={close}>
+      <h2 id="child-title">Выбор значения</h2>
+      <input aria-label="Поиск" onKeyDown={(event) => { if (event.key === 'Escape') event.preventDefault() }} />
+    </ModalDialog>)
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toHaveFocus()
+  })
+
   it('starts on the safe action, cycles focus in both directions and restores focus after Escape', async () => {
     const user = userEvent.setup()
     renderWithProviders(<Example />)

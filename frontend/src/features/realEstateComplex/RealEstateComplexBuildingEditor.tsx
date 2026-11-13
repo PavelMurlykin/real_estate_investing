@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { SearchableSelect } from '@/shared/ui/SearchableSelect'
 
 import type { BuildingFormRow } from './formTypes'
@@ -44,7 +45,7 @@ export function RealEstateComplexBuildingEditor({
             Добавить корпус
           </button>
         </div>
-        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        {error ? <Notice as="p" tone="error" role="alert" className="form-error">{error}</Notice> : null}
         {rows.length === 0 ? (
           <p className="complex-editor__empty">Корпуса пока не добавлены.</p>
         ) : null}

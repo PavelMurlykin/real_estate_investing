@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useRef, useState } from 'react'
@@ -138,12 +139,9 @@ export function DeveloperMortgageProgramImportPanel() {
       </form>
 
       {importResult ? (
-        <div
-          className={importResult.skipped
+        <Notice as="div" tone={importResult.skipped ? 'warning' : 'success'} role="status" className={importResult.skipped
             ? 'catalog-import-result catalog-import-result--warning'
-            : 'catalog-import-result'}
-          role="status"
-        >
+            : 'catalog-import-result'}>
           <div className="catalog-import-result__heading">
             <div>
               <span className="eyebrow">Результат импорта</span>
@@ -174,7 +172,7 @@ export function DeveloperMortgageProgramImportPanel() {
               </ul>
             </details>
           ) : null}
-        </div>
+        </Notice>
       ) : null}
     </section>
   )

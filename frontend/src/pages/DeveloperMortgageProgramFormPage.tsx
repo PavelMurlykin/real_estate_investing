@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
@@ -408,9 +409,9 @@ export function DeveloperMortgageProgramFormPage() {
             />
           </div>
           {Object.values(options.truncated).some(Boolean) ? (
-            <p className="form-error" role="status">
+            <Notice as="p" tone="info" role="status" className="form-error">
             Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».
-          </p>
+          </Notice>
           ) : null}
         </section>
 
@@ -584,7 +585,7 @@ export function DeveloperMortgageProgramFormPage() {
             </label>
           </div>
         </section>
-        {generalServerError ? <p className="form-error" role="alert">{generalServerError}</p> : null}
+        {generalServerError ? <Notice as="p" tone="error" role="alert" className="form-error">{generalServerError}</Notice> : null}
         <div className="customer-form-actions">
           {backLink}
           <button className="button button--primary" type="submit" disabled={mutation.isPending}>

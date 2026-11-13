@@ -1,0 +1,438 @@
+{
+  "profile": {
+    "firstName": "Анна",
+    "lastName": "Иванова",
+    "email": "anna@example.com",
+    "phoneNumber": "+79991112233",
+    "isRealEstateAgent": true,
+    "agencyName": "Север"
+  },
+  "keyRates": {
+    "page": 1,
+    "pageSize": 20,
+    "totalCount": 2,
+    "totalPages": 1,
+    "currentRate": {
+      "meetingDate": "2026-02-01",
+      "keyRate": "12.00"
+    },
+    "lastSyncedAt": "2026-02-02T10:00:00Z",
+    "legacyUrl": "/bank/key-rate/",
+    "results": [
+      {
+        "id": 2,
+        "meetingDate": "2026-02-01",
+        "keyRate": "12.00",
+        "rateChange": "2.00",
+        "isActive": true,
+        "updatedAt": "2026-02-02T10:00:00Z"
+      },
+      {
+        "id": 1,
+        "meetingDate": "2026-01-01",
+        "keyRate": "10.00",
+        "rateChange": null,
+        "isActive": true,
+        "updatedAt": "2026-01-02T10:00:00Z"
+      }
+    ]
+  },
+  "administrator": {
+    "isAuthenticated": true,
+    "user": {
+      "id": 1,
+      "displayName": "Администратор",
+      "email": "admin@example.com",
+      "agencyName": ""
+    },
+    "capabilities": {
+      "manageCatalogs": true,
+      "syncExternalData": true,
+      "viewPrivateRecords": true,
+      "viewAllPrivateRecords": true
+    }
+  },
+  "banks": {
+    "page": 1,
+    "pageSize": 10,
+    "totalCount": 1,
+    "totalPages": 1,
+    "results": [
+      {
+        "id": 7,
+        "name": "Северный банк",
+        "logoUrl": "https://example.com/bank.svg",
+        "programCount": 1,
+        "programs": [
+          {
+            "id": 1,
+            "mortgageProgramId": 9,
+            "mortgageProgramName": "Семейная ипотека",
+            "interestRate": "5.90",
+            "minimumInitialPaymentPercent": "20.10",
+            "maximumLoanTermYears": 30
+          }
+        ],
+        "minimumInterestRate": "5.90",
+        "isActive": true,
+        "updatedAt": "2026-01-11T10:00:00Z",
+        "detailUrl": "/banks/7",
+        "legacyDetailUrl": "/bank/banks/7/"
+      }
+    ]
+  },
+  "groups": {
+    "page": 1,
+    "pageSize": 20,
+    "totalCount": 1,
+    "totalPages": 1,
+    "results": [
+      {
+        "id": 7,
+        "name": "Группа Север",
+        "developerCount": 3,
+        "legacyEditUrl": "/property/company-groups/7/update/",
+        "legacyDeleteUrl": "/property/company-groups/7/delete/"
+      }
+    ]
+  },
+  "developers": {
+    "page": 1,
+    "pageSize": 20,
+    "totalCount": 1,
+    "totalPages": 1,
+    "results": [
+      {
+        "id": 7,
+        "name": "Северный девелопер",
+        "companyGroup": {
+          "id": 4,
+          "name": "Группа Север"
+        },
+        "regions": [
+          {
+            "id": 8,
+            "name": "Санкт-Петербург"
+          }
+        ],
+        "complexCount": 3,
+        "isActive": true
+      }
+    ]
+  },
+  "developerOptions": {
+    "companyGroups": [
+      {
+        "id": 4,
+        "name": "Группа Север"
+      }
+    ],
+    "regions": [
+      {
+        "id": 8,
+        "name": "Санкт-Петербург"
+      }
+    ],
+    "truncated": {
+      "companyGroups": false,
+      "regions": false
+    }
+  },
+  "programs": {
+    "page": 1,
+    "pageSize": 20,
+    "totalCount": 1,
+    "totalPages": 1,
+    "results": [
+      {
+        "id": 5,
+        "name": "Семейная ипотека",
+        "condition": "Для семей с детьми",
+        "isPreferential": true,
+        "creditLimit": "12000000.00",
+        "bankCount": 2,
+        "developerProgramCount": 1,
+        "regionalLimitCount": 1,
+        "isActive": true,
+        "updatedAt": "2026-01-11T10:00:00Z",
+        "detailUrl": "/mortgage-programs/5",
+        "legacyEditUrl": "/bank/?model=mortgage_program&edit=5"
+      }
+    ]
+  },
+  "developerPrograms": {
+    "page": 1,
+    "pageSize": 20,
+    "totalCount": 1,
+    "totalPages": 1,
+    "results": [
+      {
+        "id": 9,
+        "companyGroupId": 4,
+        "companyGroupName": "Группа Север",
+        "realEstateComplexId": 7,
+        "realEstateComplexName": "ЖК Речной",
+        "complexDeveloperName": "Север Девелопмент",
+        "bankId": 2,
+        "bankName": "Тест Банк",
+        "mortgageProgramId": 5,
+        "mortgageProgramName": "Семейная ипотека",
+        "priceIncreasePercent": "-1.25",
+        "gracePeriodMonths": 24,
+        "gracePeriodInterestRate": "0.10",
+        "minimumInitialPaymentPercent": "20.10",
+        "interestRate": "4.30",
+        "maximumLoanTermYears": 30,
+        "maximumLoanAmount": "12000000.00",
+        "rateDiscountPercent": "0.50",
+        "isActive": true,
+        "createdAt": "2026-01-10T10:00:00Z",
+        "updatedAt": "2026-01-11T10:00:00Z",
+        "detailUrl": "/developer-programs/9",
+        "legacyEditUrl": "/bank/developer-programs/9/edit/",
+        "legacyCatalogUrl": "/bank/developer-programs/"
+      }
+    ]
+  },
+  "developerProgramOptions": {
+    "companyGroups": [
+      {
+        "id": 4,
+        "name": "Группа Север"
+      }
+    ],
+    "realEstateComplexes": [],
+    "banks": [
+      {
+        "id": 2,
+        "name": "Тест Банк"
+      }
+    ],
+    "mortgagePrograms": [
+      {
+        "id": 5,
+        "name": "Семейная ипотека"
+      }
+    ],
+    "truncated": {
+      "companyGroups": false,
+      "realEstateComplexes": false,
+      "banks": false,
+      "mortgagePrograms": false
+    }
+  },
+  "complexes": {
+    "page": 1,
+    "pageSize": 20,
+    "totalCount": 1,
+    "totalPages": 1,
+    "results": [
+      {
+        "id": 7,
+        "name": "Белые ночи",
+        "developer": {
+          "id": 4,
+          "name": "Северный девелопер",
+          "label": "Северный девелопер (Группа Север)"
+        },
+        "city": "Санкт-Петербург",
+        "realEstateClass": "Бизнес",
+        "realEstateType": "Квартира",
+        "buildingCount": 3,
+        "isActive": true
+      }
+    ]
+  },
+  "complexOptions": {
+    "regions": [
+      {
+        "id": 1,
+        "name": "Ленинградская область"
+      }
+    ],
+    "cities": [
+      {
+        "id": 2,
+        "name": "Санкт-Петербург"
+      }
+    ],
+    "districts": [],
+    "developers": [
+      {
+        "id": 4,
+        "label": "Северный девелопер (Группа Север)"
+      }
+    ],
+    "realEstateClasses": [
+      {
+        "id": 5,
+        "name": "Бизнес"
+      }
+    ],
+    "realEstateTypes": [
+      {
+        "id": 6,
+        "name": "Квартира"
+      }
+    ],
+    "transportAccessibilityTypes": [
+      {
+        "id": 8,
+        "name": "Пешком"
+      }
+    ],
+    "metroStations": [],
+    "quarters": [
+      {
+        "value": 1,
+        "label": "I кв."
+      },
+      {
+        "value": 2,
+        "label": "II кв."
+      },
+      {
+        "value": 3,
+        "label": "III кв."
+      },
+      {
+        "value": 4,
+        "label": "IV кв."
+      }
+    ],
+    "truncated": {
+      "regions": false,
+      "cities": false,
+      "districts": false,
+      "developers": false,
+      "realEstateClasses": false,
+      "realEstateTypes": false,
+      "transportAccessibilityTypes": false,
+      "metroStations": false
+    }
+  },
+  "dictionary": {
+    "page": 1,
+    "pageSize": 20,
+    "totalCount": 1,
+    "totalPages": 1,
+    "results": [
+      {
+        "id": 7,
+        "name": "Бизнес",
+        "description": "Повышенный комфорт",
+        "weight": "1.20",
+        "usageCount": 3,
+        "isActive": true,
+        "createdAt": "2026-09-10T10:00:00+03:00",
+        "updatedAt": "2026-09-11T10:00:00+03:00",
+        "legacyEditUrl": "/property/dictionaries/?model=real_estate_class&edit=7"
+      }
+    ]
+  },
+  "region": {
+    "id": 1,
+    "name": "Москва",
+    "code": "77",
+    "region": null,
+    "city": null,
+    "metroLine": null,
+    "usageCount": 4,
+    "isActive": true,
+    "createdAt": "2026-09-10T10:00:00+03:00",
+    "updatedAt": "2026-09-11T10:00:00+03:00",
+    "legacyEditUrl": "/locations/?model=region&edit=1"
+  },
+  "city": {
+    "id": 2,
+    "name": "Москва",
+    "code": null,
+    "region": {
+      "id": 1,
+      "name": "Москва"
+    },
+    "city": null,
+    "metroLine": null,
+    "usageCount": 4,
+    "isActive": true,
+    "createdAt": "2026-09-10T10:00:00+03:00",
+    "updatedAt": "2026-09-11T10:00:00+03:00",
+    "legacyEditUrl": "/locations/?model=city&edit=2"
+  },
+  "district": {
+    "id": 4,
+    "name": "Центральный",
+    "code": null,
+    "region": {
+      "id": 1,
+      "name": "Москва"
+    },
+    "city": {
+      "id": 2,
+      "name": "Москва"
+    },
+    "metroLine": null,
+    "usageCount": 1,
+    "isActive": true,
+    "createdAt": "2026-09-10T10:00:00+03:00",
+    "updatedAt": "2026-09-11T10:00:00+03:00",
+    "legacyEditUrl": "/locations/?model=district&edit=4"
+  },
+  "metro": {
+    "id": 5,
+    "name": "Охотный Ряд",
+    "code": null,
+    "region": {
+      "id": 1,
+      "name": "Москва"
+    },
+    "city": {
+      "id": 2,
+      "name": "Москва"
+    },
+    "metroLine": {
+      "id": 3,
+      "name": "Сокольническая",
+      "color": "#D92B2B"
+    },
+    "usageCount": 2,
+    "isActive": true,
+    "createdAt": "2026-09-10T10:00:00+03:00",
+    "updatedAt": "2026-09-11T10:00:00+03:00",
+    "legacyEditUrl": "/locations/?model=metro&edit=5"
+  },
+  "locationOptions": {
+    "regions": [
+      {
+        "id": 1,
+        "name": "Москва"
+      }
+    ],
+    "cities": [
+      {
+        "id": 2,
+        "name": "Москва",
+        "regionId": 1
+      }
+    ],
+    "metroLines": [
+      {
+        "id": 3,
+        "name": "Сокольническая",
+        "color": "#D92B2B",
+        "cityId": 2
+      },
+      {
+        "id": 7,
+        "name": "Арбатско-Покровская",
+        "color": "#0078BF",
+        "cityId": 2
+      }
+    ],
+    "truncated": {
+      "regions": false,
+      "cities": false,
+      "metroLines": false
+    }
+  }
+}

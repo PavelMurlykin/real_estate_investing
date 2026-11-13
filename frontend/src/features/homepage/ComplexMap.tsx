@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { useEffect, useRef, useState } from 'react'
 
 import type { HomepageComplex } from '@/api/schemas'
@@ -54,9 +55,9 @@ export default function ComplexMap({ complexes, city }: { complexes: Pick<Homepa
   return (
     <div className="complex-map-shell">
       <div ref={element} className="complex-map-canvas" role="region" aria-label={`Карта ЖК: ${city}`} hidden={status === 'error'} />
-      {status === 'loading' ? <p role="status">Загружаем карту и координаты ЖК…</p> : null}
-      {status === 'empty' ? <p role="status">Координаты ЖК не найдены. Прямые ссылки на карты доступны в карточках ниже.</p> : null}
-      {status === 'error' ? <p role="status">Карта временно недоступна. Список ЖК и прямые ссылки доступны ниже.</p> : null}
+      {status === 'loading' ? <Notice as="p" tone="info" role="status" >Загружаем карту и координаты ЖК…</Notice> : null}
+      {status === 'empty' ? <Notice as="p" tone="info" role="status" >Координаты ЖК не найдены. Прямые ссылки на карты доступны в карточках ниже.</Notice> : null}
+      {status === 'error' ? <Notice as="p" tone="info" role="status" >Карта временно недоступна. Список ЖК и прямые ссылки доступны ниже.</Notice> : null}
       {status === 'error' || status === 'empty' ? <button type="button" className="button button--secondary" onClick={() => setRetry((current) => current + 1)}>Повторить загрузку карты</button> : null}
     </div>
   )

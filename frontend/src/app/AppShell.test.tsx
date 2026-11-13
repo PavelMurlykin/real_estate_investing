@@ -119,7 +119,8 @@ describe('AppShell', () => {
     renderWithProviders(shellRoutes())
     const opener = screen.getByRole('button', { name: 'Открыть меню разделов' })
     await user.click(opener)
-    fireEvent.click(screen.getByRole('dialog'))
+    fireEvent.pointerDown(screen.getByRole('dialog'), { clientX: -10, clientY: -10 })
+    fireEvent.pointerUp(screen.getByRole('dialog'), { clientX: -10, clientY: -10 })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(opener).toHaveFocus()
 

@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import type { RealEstateComplexOptions } from '@/api/schemas'
 
@@ -48,7 +49,7 @@ export function RealEstateComplexMetroEditor({
             Выберите город, чтобы получить список станций метро.
           </p>
         ) : null}
-        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        {error ? <Notice as="p" tone="error" role="alert" className="form-error">{error}</Notice> : null}
         <div className="complex-editor-grid complex-editor-grid--metro">
           {rows.map((row, index) => {
             const rowNumber = index + 1

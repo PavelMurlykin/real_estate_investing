@@ -1,3 +1,5 @@
+import { Notice } from '@/shared/ui/Notice'
+import { restoreFocus } from '@/shared/lib/restoreFocus'
 import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
@@ -348,12 +350,12 @@ export function PropertyDetailPage() {
               квартира {property.apartmentNumber}. Это действие нельзя отменить.
             </p>
             {deleteMutation.isError ? (
-              <p className="form-error" role="alert">
+              <Notice as="p" tone="error" role="alert" className="form-error">
                 {deleteMutation.error instanceof ApiError
                   && deleteMutation.error.status === 409
                   ? 'Объект нельзя удалить, пока с ним связаны расчёты.'
                   : 'Не удалось удалить объект. Повторите попытку.'}
-              </p>
+              </Notice>
             ) : null}
             <div className="confirmation-dialog__actions">
               <button
@@ -363,7 +365,7 @@ export function PropertyDetailPage() {
                 disabled={deleteMutation.isPending}
                 onClick={() => {
                   setIsDeleteDialogOpen(false)
-                  window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+                  window.setTimeout(() => restoreFocus(deleteTriggerRef.current), 0)
                 }}
               >
                 Отмена

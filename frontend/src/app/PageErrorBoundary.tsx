@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { Component, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -19,8 +20,8 @@ export class PageErrorBoundary extends Component<
     if (!this.state.hasError) return this.props.children
 
     return (
-      <section className="state-card state-card--error" role="alert">
-        <div className="state-card__icon" aria-hidden="true">!</div>
+      <Notice as="section" tone="error" role="alert" className="state-card state-card--error">
+
         <div>
           <h1>Не удалось открыть страницу</h1>
           <p>
@@ -38,7 +39,7 @@ export class PageErrorBoundary extends Component<
             <Link className="text-link" to="/">На главную</Link>
           </div>
         </div>
-      </section>
+      </Notice>
     )
   }
 }

@@ -365,6 +365,10 @@
   --detail-heading-size: 1.25rem;
   --detail-label-size: 0.75rem;
   --detail-value-size: 0.875rem;
+  --feedback-gap: 0.75rem;
+  --feedback-padding: 1rem;
+  --feedback-radius: 0.75rem;
+  --dialog-backdrop: rgb(7 15 11 / 72%);
 }
 
 :root[data-theme='dark'] {
@@ -3895,21 +3899,6 @@ textarea:focus-visible {
   justify-self: start;
 }
 
-.confirmation-dialog-backdrop {
-  position: fixed;
-  z-index: 110;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-}
-
-.confirmation-dialog-backdrop,
-dialog.confirmation-dialog::backdrop {
-  background: rgb(7 15 11 / 72%);
-  backdrop-filter: blur(5px);
-}
-
 .confirmation-dialog {
   width: min(100%, 470px);
   padding: 28px;
@@ -5456,5 +5445,124 @@ dialog.confirmation-dialog {
 
   .detail-page .mortgage-summary__primary strong {
     font-size: 28px;
+  }
+}
+
+/* All overlays use native modality and the same typography and controls. */
+.modal-dialog:not([open]) { display: none; }
+
+.modal-dialog:not(.sidebar--mobile) {
+  max-width: calc(100% - 32px);
+  max-height: calc(100dvh - 32px);
+  padding: var(--form-padding);
+  margin: auto;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--form-card-radius);
+  box-shadow: none;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.modal-dialog.sidebar--mobile {
+  padding: 0;
+  margin: 0;
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+  border: 0;
+}
+
+.modal-dialog::backdrop,
+dialog.confirmation-dialog::backdrop {
+  background: var(--dialog-backdrop);
+  backdrop-filter: none;
+}
+
+.modal-dialog :is(h2, h3) {
+  margin: 0 0 12px;
+  font: 700 20px/1.4 var(--form-font);
+  letter-spacing: normal;
+  overflow-wrap: anywhere;
+}
+
+.modal-dialog .eyebrow { display: none; }
+.modal-dialog > p { font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+
+.modal-dialog :is(.confirmation-dialog__actions, .delete-confirmation__actions) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--form-action-gap);
+  margin-top: 24px;
+}
+
+.modal-dialog .button {
+  min-height: 48px;
+  padding: 12px 20px;
+  font-size: 14px;
+  border-radius: var(--form-control-radius);
+}
+
+.modal-dialog .icon-button { min-width: 44px; width: 44px; height: 44px; }
+.modal-dialog .property-image-modal__content { max-height: calc(100dvh - 80px); }
+main h1 { scroll-margin-top: calc(var(--header-height) + 16px); }
+
+.notice[role] {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--feedback-gap);
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: var(--feedback-padding);
+  border: 1px solid var(--border);
+  border-radius: var(--feedback-radius);
+  color: var(--text);
+  background: var(--surface-muted);
+  font: 500 14px/1.6 var(--form-font);
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  box-shadow: none;
+}
+
+.notice--error[role] { color: var(--danger); background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 35%, var(--border)); }
+.notice--success[role] { color: var(--brand); background: var(--brand-soft); border-color: color-mix(in srgb, var(--brand) 30%, var(--border)); }
+.notice--warning[role] { border-style: dashed; }
+.notice__icon { width: 20px; height: 20px; flex: 0 0 20px; margin-top: 1px; }
+.notice__content { flex: 1; min-width: 0; }
+.notice__content > :first-child { margin-top: 0; }
+.notice__content > :last-child { margin-bottom: 0; }
+.notice__content :is(p, h1, h2, h3) { color: inherit; }
+.notice__content p { font-size: inherit; line-height: inherit; }
+.notice__content :is(h1, h2, h3) { margin: 0 0 12px; font: 700 20px/1.4 var(--form-font); }
+
+.notice__dismiss {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  margin: -8px -8px -8px 0;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: var(--form-control-radius);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.notice__dismiss:hover { border-color: currentColor; }
+.notice__dismiss svg { width: 22px; height: 22px; }
+.field-error:not(.notice) { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+
+@media (max-width: 600px) {
+  .modal-dialog :is(.confirmation-dialog__actions, .delete-confirmation__actions) {
+    flex-direction: column;
+  }
+  .modal-dialog :is(.confirmation-dialog__actions, .delete-confirmation__actions) > .button {
+    width: 100%;
   }
 }

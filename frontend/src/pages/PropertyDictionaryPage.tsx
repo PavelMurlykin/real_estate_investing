@@ -1,3 +1,6 @@
+import { Notice } from '@/shared/ui/Notice'
+import { restoreFocus } from '@/shared/lib/restoreFocus'
+import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { SelectFilter } from '@/shared/ui/SelectFilter'
 import { TableScrollArea } from '@/shared/ui/TableScrollArea'
 import { Pagination } from '@/shared/ui/Pagination'
@@ -7,7 +10,7 @@ import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { ApiError } from '@/api/client'
@@ -277,7 +280,7 @@ function PropertyDictionaryEditor({
           <span>Запись активна</span>
         </label>
         {fieldErrors.form ? (
-          <p className="form-error" role="alert">{fieldErrors.form}</p>
+          <Notice as="p" tone="error" role="alert" className="form-error">{fieldErrors.form}</Notice>
         ) : null}
         <div className="dictionary-form-actions">
           <button
@@ -359,22 +362,9 @@ export function PropertyDictionaryPage() {
       if (dictionaryEntryIdentifier === deletedEntry.id) {
         navigate(`/dictionaries/${dictionaryKey}`)
       }
-      window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+      window.setTimeout(() => restoreFocus(deleteTriggerRef.current), 0)
     },
   })
-
-  useEffect(() => {
-    if (!selectedEntry) return
-    deleteCancelButtonRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !deleteMutation.isPending) {
-        setSelectedEntry(null)
-        window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [deleteMutation.isPending, selectedEntry])
 
   const updateParameters = (updates: Record<string, string | null>) => {
     const nextParameters = new URLSearchParams(searchParameters)
@@ -409,7 +399,7 @@ export function PropertyDictionaryPage() {
   const closeDeleteDialog = () => {
     if (deleteMutation.isPending) return
     setSelectedEntry(null)
-    window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+    window.setTimeout(() => restoreFocus(deleteTriggerRef.current), 0)
   }
 
   if (!parsedDictionaryKey.success || !hasValidEntryIdentifier) {
@@ -598,21 +588,18 @@ export function PropertyDictionaryPage() {
       </div>
 
       {selectedEntry ? (
-        <div className="confirmation-dialog-backdrop" role="presentation" onMouseDown={(event) => {
-          if (event.currentTarget === event.target) closeDeleteDialog()
-        }}>
-          <section className="confirmation-dialog" role="alertdialog" aria-modal="true" aria-labelledby="dictionary-delete-title" aria-describedby="dictionary-delete-description">
+        <ModalDialog labelledBy="dictionary-delete-title" describedBy="dictionary-delete-description" pending={deleteMutation.isPending} onClose={closeDeleteDialog}>
             <span className="eyebrow">Подтверждение</span>
             <h2 id="dictionary-delete-title">Удалить запись?</h2>
             <p id="dictionary-delete-description">
               «{selectedEntry.name}» будет удалена. Связанных записей: {selectedEntry.usageCount}.
             </p>
             {deleteMutation.isError ? (
-              <p className="form-error" role="alert">
+              <Notice as="p" tone="error" role="alert" className="form-error">
                 {deleteMutation.error instanceof ApiError && deleteMutation.error.status === 409
                   ? 'Запись используется в других разделах и не может быть удалена.'
                   : 'Не удалось удалить запись. Повторите попытку.'}
-              </p>
+              </Notice>
             ) : null}
             <div className="confirmation-dialog__actions">
               <button className="button button--secondary" type="button" ref={deleteCancelButtonRef} disabled={deleteMutation.isPending} onClick={closeDeleteDialog}>Отмена</button>
@@ -620,8 +607,7 @@ export function PropertyDictionaryPage() {
                 {deleteMutation.isPending ? 'Удаляем…' : 'Удалить'}
               </button>
             </div>
-          </section>
-        </div>
+          </ModalDialog>
       ) : null}
     </div>
   )

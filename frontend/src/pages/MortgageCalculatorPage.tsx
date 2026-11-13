@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent, RefObject } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -998,13 +999,13 @@ export function MortgageCalculatorPage({
             </button>
           ))}
         </div>
-        {exportMutation.isError ? <p className="form-error" role="alert">Не удалось подготовить выгрузку. Повторите попытку.</p> : null}
+        {exportMutation.isError ? <Notice as="p" tone="error" role="alert" className="form-error">Не удалось подготовить выгрузку. Повторите попытку.</Notice> : null}
         <span className="eyebrow">История расчётов</span>
         <h2>Сохранить этот сценарий</h2>
         {!isResultCurrent ? (
-          <p className="status-notice" role="status">
+          <Notice as="p" tone="info" role="status" className="status-notice">
             Данные изменены. Повторите расчёт перед сохранением.
-          </p>
+          </Notice>
         ) : null}
         {!sessionQuery.data?.isAuthenticated ? (
           <p>Войдите в аккаунт, чтобы сохранить расчёт.</p>
@@ -1017,9 +1018,9 @@ export function MortgageCalculatorPage({
           <p>Для сохранения выберите готовый объект или заполните его реквизиты в блоке «Данные объекта».</p>
         )}
         {activeSaveMutation.isError ? (
-          <p className="save-calculation-panel__error" role="alert">
+          <Notice as="p" tone="error" role="alert" className="save-calculation-panel__error">
             {extractFieldErrors(activeSaveMutation.error).detail ?? 'Не удалось сохранить расчёт. Проверьте данные и повторите попытку.'}
-          </p>
+          </Notice>
         ) : null}
       </div>
       <div className="save-calculation-panel__actions">
@@ -1104,26 +1105,26 @@ export function MortgageCalculatorPage({
       </header>
 
       {sampleIdentifier && !sessionQuery.data?.isAuthenticated ? (
-        <p className="status-notice" role="status">
+        <Notice as="p" tone="info" role="status" className="status-notice">
           Войдите в аккаунт, чтобы загрузить параметры сохранённого расчёта.
-        </p>
+        </Notice>
       ) : null}
       {activeSampleQuery.isLoading ? (
-        <p className="status-notice" role="status">
+        <Notice as="p" tone="info" role="status" className="status-notice">
           Загружаем параметры сохранённого расчёта…
-        </p>
+        </Notice>
       ) : null}
       {activeSampleQuery.isError ? (
-        <p className="form-error" role="alert">
+        <Notice as="p" tone="error" role="alert" className="form-error">
           Сохранённый расчёт не найден или недоступен. Можно заполнить форму
           вручную.
-        </p>
+        </Notice>
       ) : null}
 
       {optionsQuery.isError ? (
-        <p className="status-notice" role="status">
+        <Notice as="p" tone="info" role="status" className="status-notice">
           Программы банков временно недоступны. Ручной расчёт продолжает работать.
-        </p>
+        </Notice>
       ) : null}
 
       <div className="mortgage-layout">
@@ -1185,13 +1186,13 @@ export function MortgageCalculatorPage({
             />
             {isSelectedPropertyUnresolved ? (
               selectedPropertyQuery.isError && !selectedPropertyQuery.isFetching ? (
-                <div className="form-error" role="alert">
+                <Notice as="div" tone="error" role="alert" className="form-error">
                   <p>Не удалось загрузить выбранный объект.</p>
                   <button className="text-button" type="button" onClick={() => void selectedPropertyQuery.refetch()}>
                     Повторить загрузку объекта
                   </button>
-                </div>
-              ) : <p role="status">Загружаем данные объекта…</p>
+                </Notice>
+              ) : <Notice as="p" tone="info" role="status" >Загружаем данные объекта…</Notice>
             ) : null}
           </section>
 
@@ -1279,21 +1280,21 @@ export function MortgageCalculatorPage({
           </section>
 
           {developerOptionsQuery.isError ? (
-            <div className="form-error" role="alert">
+            <Notice as="div" tone="error" role="alert" className="form-error">
               Не удалось загрузить условия застройщика. Выбор программы требует повторной загрузки.
               <button className="text-button" type="button" onClick={() => void developerOptionsQuery.refetch()}>
                 Повторить
               </button>
-            </div>
+            </Notice>
           ) : null}
           {selectedDeveloperProgram ? (
-            <p className="status-notice" role="status">
+            <Notice as="p" tone="info" role="status" className="status-notice">
               Применена программа застройщика: {selectedDeveloperProgram.bankName} —{' '}
               {selectedDeveloperProgram.mortgageProgramName}.{' '}
               {selectedDeveloperProgram.realEstateComplexName
                 ? `Для ЖК «${selectedDeveloperProgram.realEstateComplexName}».`
                 : 'Для всех ЖК группы компаний.'}
-            </p>
+            </Notice>
           ) : null}
 
           <section className="calculator-section" aria-labelledby="loan-parameters-heading">
@@ -1632,7 +1633,7 @@ export function MortgageCalculatorPage({
             )}
           </section>
 
-          {generalError ? <p className="form-error" role="alert">{generalError}</p> : null}
+          {generalError ? <Notice as="p" tone="error" role="alert" className="form-error">{generalError}</Notice> : null}
           <button
             className="button button--primary calculator-submit"
             type="submit"

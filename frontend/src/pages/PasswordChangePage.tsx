@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useRef, useState } from 'react'
@@ -33,6 +34,7 @@ function PasswordFieldError({
 }
 
 export function PasswordChangePage() {
+  const saveButtonRef = useRef<HTMLButtonElement>(null)
   useDocumentTitle('Смена пароля')
   const sessionQuery = useQuery(sessionQueryOptions)
   const formReference = useRef<HTMLFormElement>(null)
@@ -113,9 +115,9 @@ export function PasswordChangePage() {
         </header>
 
         {isChanged ? (
-          <p className="account-form-status" role="status">
+          <Notice as="p" tone="success" role="status" className="account-form-status" onDismiss={() => setIsChanged(false)} returnFocusRef={saveButtonRef}>
             Пароль успешно изменён.
-          </p>
+          </Notice>
         ) : null}
 
         <form
@@ -172,11 +174,11 @@ export function PasswordChangePage() {
           </div>
 
           {errors.form ? (
-            <p className="form-error" role="alert">{errors.form}</p>
+            <Notice as="p" tone="error" role="alert" className="form-error">{errors.form}</Notice>
           ) : null}
           <button
             className="button button--primary auth-form__submit"
-            type="submit"
+              type="submit" ref={saveButtonRef}
             disabled={passwordChangeMutation.isPending}
           >
             {passwordChangeMutation.isPending

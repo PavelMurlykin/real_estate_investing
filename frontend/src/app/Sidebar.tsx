@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MouseEventHandler } from 'react'
 import { Link, matchPath, useLocation } from 'react-router-dom'
@@ -249,7 +250,7 @@ export function Sidebar({ isOpen, isMobile = false, onClose }: SidebarProps) {
               </button>
             </div>
             {logoutMutation.isError ? (
-              <p className="account-error" role="alert">Не удалось выйти. Повторите попытку.</p>
+              <Notice as="p" tone="error" role="alert" className="account-error">Не удалось выйти. Повторите попытку.</Notice>
             ) : null}
           </>
         ) : (

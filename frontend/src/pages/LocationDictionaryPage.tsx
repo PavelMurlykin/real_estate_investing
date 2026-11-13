@@ -1,3 +1,6 @@
+import { Notice } from '@/shared/ui/Notice'
+import { restoreFocus } from '@/shared/lib/restoreFocus'
+import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { SelectFilter } from '@/shared/ui/SelectFilter'
 import { TableScrollArea } from '@/shared/ui/TableScrollArea'
 import { Pagination } from '@/shared/ui/Pagination'
@@ -8,7 +11,7 @@ import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { ApiError } from '@/api/client'
@@ -269,9 +272,9 @@ function LocationDictionaryEditor({
           : `Добавить ${configuration.singular}`}
       </h2>
       {optionsQuery.isError ? (
-        <p className="form-error" role="alert">
+        <Notice as="p" tone="error" role="alert" className="form-error">
           Не удалось загрузить связанные справочники.
-        </p>
+        </Notice>
       ) : null}
       <form noValidate onSubmit={handleSubmit}>
         <div className="form-field">
@@ -369,7 +372,7 @@ function LocationDictionaryEditor({
           <span>Запись активна</span>
         </label>
         {fieldErrors.form ? (
-          <p className="form-error" role="alert">{fieldErrors.form}</p>
+          <Notice as="p" tone="error" role="alert" className="form-error">{fieldErrors.form}</Notice>
         ) : null}
         <div className="dictionary-form-actions">
           <button
@@ -469,22 +472,9 @@ export function LocationDictionaryPage() {
       if (dictionaryEntryIdentifier === deletedEntry.id) {
         navigate(`/locations/${dictionaryKey}`)
       }
-      window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+      window.setTimeout(() => restoreFocus(deleteTriggerRef.current), 0)
     },
   })
-
-  useEffect(() => {
-    if (!selectedEntry) return
-    deleteCancelButtonRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !deleteMutation.isPending) {
-        setSelectedEntry(null)
-        window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [deleteMutation.isPending, selectedEntry])
 
   const updateParameters = (updates: Record<string, string | null>) => {
     const nextParameters = new URLSearchParams(searchParameters)
@@ -531,7 +521,7 @@ export function LocationDictionaryPage() {
   const closeDeleteDialog = () => {
     if (deleteMutation.isPending) return
     setSelectedEntry(null)
-    window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+    window.setTimeout(() => restoreFocus(deleteTriggerRef.current), 0)
   }
 
   if (!parsedDictionaryKey.success || !hasValidEntryIdentifier) {
@@ -805,20 +795,7 @@ export function LocationDictionaryPage() {
       </div>
 
       {selectedEntry ? (
-        <div
-          className="confirmation-dialog-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.currentTarget === event.target) closeDeleteDialog()
-          }}
-        >
-          <section
-            className="confirmation-dialog"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="location-delete-title"
-            aria-describedby="location-delete-description"
-          >
+        <ModalDialog labelledBy="location-delete-title" describedBy="location-delete-description" pending={deleteMutation.isPending} onClose={closeDeleteDialog}>
             <span className="eyebrow">Подтверждение</span>
             <h2 id="location-delete-title">Удалить локацию?</h2>
             <p id="location-delete-description">
@@ -826,12 +803,12 @@ export function LocationDictionaryPage() {
               {formatInteger(selectedEntry.usageCount)}.
             </p>
             {deleteMutation.isError ? (
-              <p className="form-error" role="alert">
+              <Notice as="p" tone="error" role="alert" className="form-error">
                 {deleteMutation.error instanceof ApiError
                   && deleteMutation.error.status === 409
                   ? 'Локация используется в других разделах и не может быть удалена.'
                   : 'Не удалось удалить локацию. Повторите попытку.'}
-              </p>
+              </Notice>
             ) : null}
             <div className="confirmation-dialog__actions">
               <button
@@ -852,8 +829,7 @@ export function LocationDictionaryPage() {
                 {deleteMutation.isPending ? 'Удаляем…' : 'Удалить'}
               </button>
             </div>
-          </section>
-        </div>
+          </ModalDialog>
       ) : null}
     </div>
   )

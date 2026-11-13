@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
@@ -429,9 +430,9 @@ export function MortgageProgramFormPage() {
           </div>
           <div className="nested-editor-list">
             {optionsQuery.data.truncated ? (
-              <p className="form-error" role="alert">
+              <Notice as="p" tone="error" role="alert" className="form-error">
             Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».
-          </p>
+          </Notice>
             ) : null}
             {formState.regionalCreditLimits.length === 0 ? (
               <div className="bank-program-empty">
@@ -511,10 +512,10 @@ export function MortgageProgramFormPage() {
           </div>
         </section>
         {mutation.isError ? (
-          <p className="form-error" role="alert">
+          <Notice as="p" tone="error" role="alert" className="form-error">
             {apiErrorMessage(mutation.error)
               ?? 'Не удалось сохранить программу. Повторите попытку.'}
-          </p>
+          </Notice>
         ) : null}
         <div className="customer-form-actions">
           {backLink}

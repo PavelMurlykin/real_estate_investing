@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { RemoteMultiSelect } from '@/shared/ui/RemoteMultiSelect'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -368,14 +369,14 @@ export function PropertyFormPage() {
       </header>
 
       {hasTruncatedOptions ? (
-        <p className="status-notice" role="status">
+        <Notice as="p" tone="info" role="status" className="status-notice">
             Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».
-          </p>
+          </Notice>
       ) : null}
       {optionsQuery.isFetching ? (
-        <p className="customer-form-loading" role="status">
+        <Notice as="p" tone="info" role="status" className="customer-form-loading">
           Обновляем связанные справочники…
-        </p>
+        </Notice>
       ) : null}
 
       <form className="customer-form property-form" onSubmit={handleSubmit}>
@@ -577,9 +578,9 @@ export function PropertyFormPage() {
                     </button>
                   ) : null}
                   {isCleared ? (
-                    <p className="property-upload-note" role="status">
+                    <Notice as="p" tone="info" role="status" className="property-upload-note">
                       Текущее изображение будет удалено после сохранения.
-                    </p>
+                    </Notice>
                   ) : null}
                   <label className="form-field">
                     {currentImage?.url ? 'Заменить файлом' : 'Загрузить файл'}
@@ -613,11 +614,11 @@ export function PropertyFormPage() {
         </section>
 
         {hasGeneralError ? (
-          <p className="form-error" role="alert">
+          <Notice as="p" tone="error" role="alert" className="form-error">
             {fieldErrors.non_field_errors
               || fieldErrors.detail
               || 'Не удалось сохранить объект. Проверьте данные и повторите попытку.'}
-          </p>
+          </Notice>
         ) : null}
         <div className="customer-form-actions">
           <Link className="button button--secondary" to={cancelPath}>

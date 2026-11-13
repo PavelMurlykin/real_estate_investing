@@ -1,3 +1,6 @@
+import { Notice } from '@/shared/ui/Notice'
+import { restoreFocus } from '@/shared/lib/restoreFocus'
+import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { SelectFilter } from '@/shared/ui/SelectFilter'
 import { TableScrollArea } from '@/shared/ui/TableScrollArea'
 import { Pagination } from '@/shared/ui/Pagination'
@@ -6,7 +9,7 @@ import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import {
@@ -116,22 +119,9 @@ export function CustomerCalculationsSection({
       await queryClient.invalidateQueries({
         queryKey: ['customer-calculations', customerIdentifier],
       })
-      window.setTimeout(() => unlinkTriggerRef.current?.focus(), 0)
+      window.setTimeout(() => restoreFocus(unlinkTriggerRef.current), 0)
     },
   })
-
-  useEffect(() => {
-    if (!calculationToUnlink) return
-    unlinkConfirmRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      setCalculationToUnlink(null)
-      unlinkMutation.reset()
-      window.setTimeout(() => unlinkTriggerRef.current?.focus(), 0)
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [calculationToUnlink, unlinkMutation])
 
   const updateParameters = (updates: Record<string, string | null>) => {
     const nextParameters = new URLSearchParams(searchParameters)
@@ -175,7 +165,7 @@ export function CustomerCalculationsSection({
   const closeUnlinkConfirmation = () => {
     setCalculationToUnlink(null)
     unlinkMutation.reset()
-    window.setTimeout(() => unlinkTriggerRef.current?.focus(), 0)
+    window.setTimeout(() => restoreFocus(unlinkTriggerRef.current), 0)
   }
 
   const openUnlinkConfirmation = (
@@ -202,7 +192,7 @@ export function CustomerCalculationsSection({
             <h2 id="customer-calculations-title">Связанные расчёты</h2>
           </div>
         </div>
-        <p className="status-notice" role="status">Загружаем расчёты клиента…</p>
+        <Notice as="p" tone="info" role="status" className="status-notice">Загружаем расчёты клиента…</Notice>
       </section>
     )
   }
@@ -227,7 +217,6 @@ export function CustomerCalculationsSection({
   const { results, page, totalCount, totalPages } = calculationsQuery.data
   const selectedCount = selections.length
   const programType = searchParameters.get('calculationProgram') ?? 'all'
-
 
   return (
     <section className="saved-property-card customer-calculations detail-card" aria-labelledby="customer-calculations-title">
@@ -287,9 +276,9 @@ export function CustomerCalculationsSection({
         </div>
       </div>
       {exportMutation.isError ? (
-        <p className="form-error" role="alert">
+        <Notice as="p" tone="error" role="alert" className="form-error">
           Не удалось сформировать Word-отчёт. Повторите попытку.
-        </p>
+        </Notice>
       ) : null}
 
       {results.length === 0 ? (
@@ -420,21 +409,16 @@ export function CustomerCalculationsSection({
       ) : null}
 
       {calculationToUnlink ? (
-        <div
-          className="delete-confirmation"
-          role="alertdialog"
-          aria-labelledby="unlink-calculation-title"
-          aria-describedby="unlink-calculation-description"
-        >
+        <ModalDialog labelledBy="unlink-calculation-title" describedBy="unlink-calculation-description" pending={unlinkMutation.isPending} onClose={closeUnlinkConfirmation}>
           <div>
             <h3 id="unlink-calculation-title">Отвязать расчёт от клиента?</h3>
             <p id="unlink-calculation-description">
               Расчёт останется в истории и его можно будет добавить снова.
             </p>
             {unlinkMutation.isError ? (
-              <p className="form-error" role="alert">
+              <Notice as="p" tone="error" role="alert" className="form-error">
                 Не удалось отвязать расчёт. Повторите попытку.
-              </p>
+              </Notice>
             ) : null}
           </div>
           <div className="delete-confirmation__actions">
@@ -456,7 +440,7 @@ export function CustomerCalculationsSection({
               {unlinkMutation.isPending ? 'Отвязываем…' : 'Отвязать расчёт'}
             </button>
           </div>
-        </div>
+        </ModalDialog>
       ) : null}
     </section>
   )

@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
@@ -534,12 +535,12 @@ export function RealEstateComplexFormPage() {
         />
 
         {optionsTruncated ? (
-          <p className="filter-panel__notice" role="status">
+          <Notice tone="info" className="filter-panel__notice">
             Введите текст в поле выбора для поиска по справочнику. Остальные варианты подгружаются при прокрутке списка.
-          </p>
+          </Notice>
         ) : null}
         {fieldErrors.form ? (
-          <p className="form-error" role="alert">{fieldErrors.form}</p>
+          <Notice as="p" tone="error" role="alert" className="form-error">{fieldErrors.form}</Notice>
         ) : null}
         <div className="customer-form-actions">
           <button

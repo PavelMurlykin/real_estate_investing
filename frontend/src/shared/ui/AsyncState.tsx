@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import type { ReactNode } from 'react'
 
 type ErrorStateProps = {
@@ -10,10 +11,8 @@ export function ErrorState({
   title = 'Не удалось загрузить данные',
 }: ErrorStateProps) {
   return (
-    <section className="state-card state-card--error" role="alert">
-      <div className="state-card__icon" aria-hidden="true">
-        !
-      </div>
+    <Notice as="section" tone="error" role="alert" className="state-card state-card--error">
+
       <div>
         <h2>{title}</h2>
         <p>Проверьте подключение и повторите запрос.</p>
@@ -21,7 +20,7 @@ export function ErrorState({
           Повторить
         </button>
       </div>
-    </section>
+    </Notice>
   )
 }
 

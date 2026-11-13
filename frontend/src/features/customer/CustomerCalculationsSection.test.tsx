@@ -152,7 +152,7 @@ describe('CustomerCalculationsSection', () => {
     const confirmButton = screen.getByRole('button', {
       name: 'Отвязать расчёт',
     })
-    expect(confirmButton).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Отмена' })).toHaveFocus()
 
     await user.click(confirmButton)
 

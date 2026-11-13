@@ -90,6 +90,12 @@ Administrators can click “Обновить из ЦБ РФ” to refresh the da
 
 The list updates as you type a name or description in the search field. The program type filter is to the left of search and moves above it on narrow screens. Select preferential or market programs. The “Сбросить” button sits beside the search field and restores the full list. The table has separate name and description columns, and long descriptions wrap onto multiple lines.
 
+## Dialogs and notices
+
+Deletion and calculation unlink dialogs use consistent headings, spacing and buttons. “Отмена” receives initial focus. Tab and Shift+Tab move within the dialog; Escape, “Отмена” or a click on the shaded backdrop closes it. Dragging from the content onto the backdrop leaves it open. While a request is pending, dismissal and repeated confirmation are blocked. Closing returns focus to the trigger; after deletion, focus moves to the list heading. Image previews and the mobile menu follow the same dismissal and keyboard rules; arrow keys also change photos.
+
+Errors, guidance and operation results share a consistent appearance. Errors are announced immediately; other messages announce without interrupting work. Appearing notices do not take focus. Success messages for profile saving, password changes and key-rate updates provide a “Закрыть уведомление” button that returns focus to the corresponding operation button. Field validation errors appear beside their fields and cannot be dismissed separately. Notices do not expire automatically. On phones, text wraps and confirmation buttons stack vertically.
+
 ## Detail pages
 
 Property, residential complex, customer, bank, mortgage program, developer program and saved calculation detail pages share the same layout: a page title, an action bar below it and consistently spaced sections. On phones, buttons span the available width, facts use one column and long names wrap. Nested tables scroll within their section.

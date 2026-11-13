@@ -73,7 +73,7 @@ try {
             $nodeArguments += @('--import', $codexRegisterUrl)
         }
     }
-    $nodeArguments += @('--test', 'browser-tests/*.test.mjs')
+    $nodeArguments += @('--test', '--test-concurrency=4', 'browser-tests/*.test.mjs')
     & $nodeExecutable @nodeArguments
     if ($LASTEXITCODE -ne 0) {
         throw 'React browser acceptance tests failed.'

@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { useEffect, useRef } from 'react'
 
 import type { RealEstateComplexDetail } from '@/api/schemas'
@@ -76,7 +77,7 @@ export function ComplexPhotoEditor({ complex, files, primarySelection, removedPh
           </div>
         ))}
       </div>
-      {removedPhotoKeys.length ? <p role="status">Будет удалено фото: {removedPhotoKeys.length}. {currentSelection ? 'Главное фото отмечено ниже снимка.' : 'Фотографий не останется.'}</p> : null}
+      {removedPhotoKeys.length ? <Notice as="p" tone="info" role="status" >Будет удалено фото: {removedPhotoKeys.length}. {currentSelection ? 'Главное фото отмечено ниже снимка.' : 'Фотографий не останется.'}</Notice> : null}
       <label className="form-field" htmlFor="complex-photos">Добавить фотографии
         <input id="complex-photos" type="file" multiple accept="image/jpeg,image/png,image/gif,image/webp"
           aria-describedby={'complex-photo-hint' + (error ? ' complex-photo-error' : '')}
@@ -85,7 +86,7 @@ export function ComplexPhotoEditor({ complex, files, primarySelection, removedPh
             onPrimaryChange('')
           }} />
       </label>
-      {error ? <p id="complex-photo-error" className="field-error" role="alert">{error}</p> : null}
+      {error ? <Notice as="p" tone="error" role="alert" id="complex-photo-error" className="field-error">{error}</Notice> : null}
     </fieldset>
   )
 }

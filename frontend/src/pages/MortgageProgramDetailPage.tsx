@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { InteractiveTable } from '@/shared/ui/InteractiveTable'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -191,12 +192,12 @@ export function MortgageProgramDetailPage() {
               «{mortgageProgram.name}», её лимиты будут удалены.
             </p>
             {deleteMutation.isError ? (
-              <p className="form-error" role="alert">
+              <Notice as="p" tone="error" role="alert" className="form-error">
                 {deleteMutation.error instanceof ApiError
                   && deleteMutation.error.status === 409
                   ? 'Программа используется банком или программой застройщика. Сначала переназначьте эти связи.'
                   : 'Не удалось удалить программу. Повторите попытку.'}
-              </p>
+              </Notice>
             ) : null}
             <div className="confirmation-dialog__actions">
               <button

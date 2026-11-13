@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
@@ -179,9 +180,9 @@ export function DeveloperMortgageProgramDetailPage() {
               Условия «{program.companyGroupName} — {program.mortgageProgramName}» будут удалены.
             </p>
             {deleteMutation.isError ? (
-              <p className="form-error" role="alert">
+              <Notice as="p" tone="error" role="alert" className="form-error">
                 Не удалось удалить программу. Повторите попытку.
-              </p>
+              </Notice>
             ) : null}
             <div className="confirmation-dialog__actions">
               <button

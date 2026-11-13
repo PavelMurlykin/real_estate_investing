@@ -1,3 +1,5 @@
+import { Notice } from '@/shared/ui/Notice'
+import { useRef } from 'react'
 import { TableScrollArea } from '@/shared/ui/TableScrollArea'
 import { Pagination } from '@/shared/ui/Pagination'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -30,6 +32,7 @@ function formatRateChange(value: string | null) {
 }
 
 export function KeyRatePage() {
+  const syncButtonRef = useRef<HTMLButtonElement>(null)
   useDocumentTitle('Ключевая ставка')
   const [searchParameters, setSearchParameters] = useSearchParams()
   const tableParameters = new URLSearchParams(searchParameters)
@@ -74,7 +77,7 @@ export function KeyRatePage() {
               className="button button--primary"
               type="button"
               disabled={syncMutation.isPending}
-              onClick={() => syncMutation.mutate()}
+              ref={syncButtonRef} onClick={() => syncMutation.mutate()}
             >
               {syncMutation.isPending ? 'Обновляем…' : 'Обновить из ЦБ РФ'}
             </button>
@@ -90,16 +93,16 @@ export function KeyRatePage() {
       </nav>
 
       {syncMutation.isSuccess ? (
-        <p className="operation-message operation-message--success" role="status">
+        <Notice as="p" tone="success" role="status" className="operation-message operation-message--success" onDismiss={() => syncMutation.reset()} returnFocusRef={syncButtonRef}>
           Обработано {formatInteger(syncMutation.data.processed)}, добавлено{' '}
           {formatInteger(syncMutation.data.created)}, обновлено{' '}
           {formatInteger(syncMutation.data.updated)}.
-        </p>
+        </Notice>
       ) : null}
       {syncMutation.isError ? (
-        <p className="form-error" role="alert">
+        <Notice as="p" tone="error" role="alert" className="form-error">
           Не удалось обновить ключевую ставку из ЦБ РФ. Повторите попытку позже.
-        </p>
+        </Notice>
       ) : null}
 
       {chartQuery.data ? <KeyRateChart history={chartQuery.data} /> : null}

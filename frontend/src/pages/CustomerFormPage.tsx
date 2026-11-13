@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { RemoteMultiSelect } from '@/shared/ui/RemoteMultiSelect'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { SearchableSelect } from '@/shared/ui/SearchableSelect'
@@ -342,14 +343,14 @@ export function CustomerFormPage() {
       </header>
 
       {hasTruncatedOptions ? (
-        <p className="status-notice" role="status">
+        <Notice as="p" tone="info" role="status" className="status-notice">
             Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».
-          </p>
+          </Notice>
       ) : null}
       {optionsQuery.isFetching ? (
-        <p className="customer-form-loading" role="status">
+        <Notice as="p" tone="info" role="status" className="customer-form-loading">
           Обновляем список районов…
-        </p>
+        </Notice>
       ) : null}
 
       <form className="customer-form" onSubmit={handleSubmit}>
@@ -729,14 +730,14 @@ export function CustomerFormPage() {
         </section>
 
         {fieldErrors.nonFieldErrors ? (
-          <p className="form-error" role="alert">
+          <Notice as="p" tone="error" role="alert" className="form-error">
             {fieldErrors.nonFieldErrors}
-          </p>
+          </Notice>
         ) : null}
         {hasGeneralError ? (
-          <p className="form-error" role="alert">
+          <Notice as="p" tone="error" role="alert" className="form-error">
             Не удалось сохранить клиента. Проверьте данные и повторите попытку.
-          </p>
+          </Notice>
         ) : null}
 
         <div className="customer-form-actions">

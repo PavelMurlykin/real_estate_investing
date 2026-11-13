@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
@@ -229,7 +230,7 @@ export function RegistrationPage() {
           </div>
 
           {errors.form ? (
-            <p className="form-error" role="alert">{errors.form}</p>
+            <Notice as="p" tone="error" role="alert" className="form-error">{errors.form}</Notice>
           ) : null}
           <button
             className="button button--primary auth-form__submit"

@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
@@ -130,9 +131,9 @@ export function PasswordResetConfirmPage() {
           </div>
 
           {errors.token || errors.form ? (
-            <p className="form-error" role="alert">
+            <Notice as="p" tone="error" role="alert" className="form-error">
               {errors.token ?? errors.form}
-            </p>
+            </Notice>
           ) : null}
           <button
             className="button button--primary auth-form__submit"

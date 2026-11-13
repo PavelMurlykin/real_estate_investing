@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 
@@ -47,11 +48,11 @@ export function BankCatalogImport({ section }: { section: 'banks' | 'mortgage-pr
           {mutation.isPending ? 'Загружаем…' : 'Импортировать'}
         </button>
       </form>
-      {mutation.isError ? <p className="form-error" role="alert">{error}</p> : null}
+      {mutation.isError ? <Notice as="p" tone="error" role="alert" className="form-error">{error}</Notice> : null}
       {mutation.isSuccess ? (
-        <p role="status">
+        <Notice as="p" tone="success" role="status" >
           Создано {mutation.data.created}, обновлено {mutation.data.updated}, без изменений {mutation.data.unchanged}.
-        </p>
+        </Notice>
       ) : null}
     </details>
   )

@@ -1,3 +1,4 @@
+import { Notice } from '@/shared/ui/Notice'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { lazy, Suspense } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -44,7 +45,7 @@ export function HomepageComplexes() {
           <button type="button" className={`button button--${view === 'map' ? 'primary' : 'secondary'}`} aria-pressed={view === 'map'} onClick={() => update('view', 'map')}>На карте</button>
         </div>
       </div>
-      {complexesQuery.isLoading || complexesQuery.isPlaceholderData ? <p role="status">Загружаем ЖК выбранного города…</p> : null}
+      {complexesQuery.isLoading || complexesQuery.isPlaceholderData ? <Notice as="p" tone="info" role="status" >Загружаем ЖК выбранного города…</Notice> : null}
       {complexesQuery.isError ? <ErrorState title="Не удалось загрузить жилые комплексы" onRetry={() => {
         if (data) void complexesQuery.fetchNextPage()
         else void complexesQuery.refetch()
@@ -52,7 +53,7 @@ export function HomepageComplexes() {
       {data && !complexesQuery.isPlaceholderData ? <>
         <div className="results-heading" aria-live="polite"><p>ЖК в городе {selectedCity?.name ?? '—'}: <strong>{data.totalCount}</strong>. Показано: {complexes.length}.</p></div>
         {view === 'map' && complexes.length && selectedCity ? (
-          <Suspense fallback={<p role="status">Загружаем карту…</p>}>
+          <Suspense fallback={<Notice as="p" tone="info" role="status" >Загружаем карту…</Notice>}>
             <ComplexMap complexes={complexes} city={selectedCity.name} />
           </Suspense>
         ) : null}

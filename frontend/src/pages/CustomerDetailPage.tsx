@@ -1,3 +1,5 @@
+import { Notice } from '@/shared/ui/Notice'
+import { restoreFocus } from '@/shared/lib/restoreFocus'
 import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
@@ -62,7 +64,7 @@ export function CustomerDetailPage() {
   const closeDeleteConfirmation = () => {
     setIsDeleteConfirmationOpen(false)
     deleteMutation.reset()
-    window.setTimeout(() => deleteTriggerRef.current?.focus(), 0)
+    window.setTimeout(() => restoreFocus(deleteTriggerRef.current), 0)
   }
 
   if (!hasValidIdentifier) {
@@ -157,9 +159,9 @@ export function CustomerDetailPage() {
               останутся в вашей истории.
             </p>
             {deleteMutation.isError ? (
-              <p className="form-error" role="alert">
+              <Notice as="p" tone="error" role="alert" className="form-error">
                 Не удалось удалить клиента. Повторите попытку.
-              </p>
+              </Notice>
             ) : null}
           </div>
           <div className="delete-confirmation__actions">
