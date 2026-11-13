@@ -1,6 +1,5 @@
 import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
@@ -119,16 +118,13 @@ export function DeveloperListPage() {
             связанные жилые комплексы.
           </p>
         </div>
-        <div className="page-header__actions">
-          <LegacyLink className="button button--secondary" href="/property/developers/">
-            Прежняя версия
-          </LegacyLink>
-          {canManageCatalogs ? (
+        {canManageCatalogs ? (
+          <div className="page-header__actions">
             <Link className="button button--primary" to="/developers/new">
               Добавить застройщика
             </Link>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </header>
 
       {canSyncExternalData ? <DeveloperRegistryImportPanel /> : null}

@@ -1,5 +1,4 @@
 import { ResetFilters } from '@/shared/ui/ResetFilters'
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
@@ -112,19 +111,13 @@ export function CompanyGroupListPage() {
             группы.
           </p>
         </div>
-        <div className="page-header__actions">
-          <LegacyLink
-            className="button button--secondary"
-            href="/property/company-groups/"
-          >
-            Прежняя версия
-          </LegacyLink>
-          {canManageCatalogs ? (
+        {canManageCatalogs ? (
+          <div className="page-header__actions">
             <Link className="button button--primary" to="/company-groups/new">
               Добавить группу
             </Link>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </header>
 
       <section className="filter-panel" aria-label="Фильтры групп компаний">

@@ -1,4 +1,3 @@
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -147,9 +146,6 @@ export function CompanyGroupFormPage() {
     )
   }
 
-  const legacyFormUrl = isEditing && companyGroupQuery.data
-    ? companyGroupQuery.data.legacyEditUrl
-    : '/property/company-groups/create/'
   const hasGeneralError = mutation.isError && (
     Object.keys(fieldErrors).length === 0
     || Boolean(fieldErrors.non_field_errors)
@@ -174,9 +170,6 @@ export function CompanyGroupFormPage() {
           <Link className="button button--secondary" to="/company-groups">
             Отмена
           </Link>
-          <LegacyLink className="button button--secondary" href={legacyFormUrl}>
-            Django-форма
-          </LegacyLink>
         </div>
       </header>
 

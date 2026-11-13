@@ -215,10 +215,7 @@ describe('DeveloperFormPage', () => {
     )
     expect(screen.getByLabelText('ИНН')).toHaveValue('7812345678')
     expect(screen.getByRole('button', { name: 'Убрать: Санкт-Петербург' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Django-форма' })).toHaveAttribute(
-      'href',
-      "/property/developers/7/update/?legacy=1",
-    )
+    expect(screen.queryByRole('link', { name: 'Django-форма' })).not.toBeInTheDocument()
     await user.clear(nameInput)
     await user.type(nameInput, 'Северо-Западный девелопер')
     await user.click(screen.getByRole('button', {

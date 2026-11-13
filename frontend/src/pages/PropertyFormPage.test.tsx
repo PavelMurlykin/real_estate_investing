@@ -309,10 +309,7 @@ describe('PropertyFormPage', () => {
 
     expect(await screen.findByLabelText('Номер квартиры *')).toHaveValue('101')
     expect(screen.getByRole('button', { name: 'Убрать: Парк' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Django-форма' })).toHaveAttribute(
-      'href',
-      "/property/12/update/?legacy=1",
-    )
+    expect(screen.queryByRole('link', { name: 'Django-форма' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Удалить текущее' }))
     await user.click(
       screen.getByRole('button', { name: 'Сохранить изменения' }),

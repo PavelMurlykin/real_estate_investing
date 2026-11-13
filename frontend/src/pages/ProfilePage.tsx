@@ -1,4 +1,3 @@
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
@@ -272,9 +271,6 @@ export function ProfilePage() {
 
         <ProfileForm profile={profileQuery.data} />
 
-        <div className="auth-card__links">
-          <LegacyLink href="/users/profile/edit/">Прежняя версия профиля</LegacyLink>
-        </div>
       </section>
     </div>
   )

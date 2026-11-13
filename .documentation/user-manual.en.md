@@ -56,7 +56,7 @@ Selecting a property and bank program applies active developer conditions: a spe
 
 ## Current migration limitations
 
-Implementation and verification results are tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. “Django-форма”/“Прежняя версия” fallback links open the legacy screen directly even when redirects are enabled. The map depends on the mapping provider.
+Implementation and verification results are tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. All actions on React pages use the current interface. Links to Django forms and previous versions have been removed from lists, cards, forms and account pages. Use the corresponding current-interface buttons for editing, cancelling, signing in and password recovery. The map depends on the mapping provider.
 
 ## Homepage and complex map
 

@@ -1,4 +1,3 @@
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useRef, useState } from 'react'
@@ -188,7 +187,6 @@ export function PasswordChangePage() {
 
         <div className="auth-card__links">
           <Link to="/profile">Вернуться в профиль</Link>
-          <LegacyLink href="/users/password/change/">Прежняя версия смены пароля</LegacyLink>
         </div>
       </section>
     </div>

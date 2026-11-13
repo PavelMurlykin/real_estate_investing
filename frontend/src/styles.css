@@ -2003,8 +2003,7 @@ textarea:focus-visible {
 }
 
 .status-notice,
-.delete-confirmation,
-.legacy-fallback {
+.delete-confirmation {
   padding: 16px 20px;
   margin: 0;
   border-radius: 14px;
@@ -2047,12 +2046,6 @@ textarea:focus-visible {
   gap: 10px;
 }
 
-.legacy-fallback {
-  color: var(--text-muted);
-  background: var(--surface-muted);
-  font-size: 12px;
-  text-align: center;
-}
 
 .saved-property-grid {
   display: grid;
@@ -2273,11 +2266,6 @@ textarea:focus-visible {
   flex-wrap: wrap;
   gap: 0.65rem;
   align-items: center;
-}
-
-.dictionary-form-actions .text-link {
-  flex-basis: 100%;
-  width: fit-content;
 }
 
 .location-filter-panel {

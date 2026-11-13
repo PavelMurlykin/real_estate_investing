@@ -193,10 +193,7 @@ describe('CustomerFormPage', () => {
     expect(
       screen.getByRole('combobox', { name: 'Желаемый район' }),
     ).toHaveValue('Хамовники')
-    expect(screen.getByRole('link', { name: 'Django-форма' })).toHaveAttribute(
-      'href',
-      "/customers/12/update/?legacy=1",
-    )
+    expect(screen.queryByRole('link', { name: 'Django-форма' })).not.toBeInTheDocument()
   })
 
   it('creates a customer, prevents duplicate submission and opens its card', async () => {

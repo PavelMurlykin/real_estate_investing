@@ -159,10 +159,7 @@ describe('CompanyGroupFormPage', () => {
 
     const nameInput = await screen.findByLabelText('Название *')
     expect(nameInput).toHaveValue('Группа Север')
-    expect(screen.getByRole('link', { name: 'Django-форма' })).toHaveAttribute(
-      'href',
-      "/property/company-groups/7/update/?legacy=1",
-    )
+    expect(screen.queryByRole('link', { name: 'Django-форма' })).not.toBeInTheDocument()
     await user.clear(nameInput)
     await user.type(nameInput, 'Группа Северо-Запад')
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))

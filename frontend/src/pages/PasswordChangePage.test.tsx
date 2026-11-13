@@ -52,7 +52,7 @@ async function fillPasswordFields(
 }
 
 describe('PasswordChangePage', () => {
-  it('renders accessible password fields and preserved Django fallback', () => {
+  it('renders accessible password fields with React profile navigation', () => {
     renderWithProviders(passwordChangeRoutes(), {
       initialRoute: '/password/change',
       queryClient: authenticatedQueryClient(),
@@ -68,9 +68,7 @@ describe('PasswordChangePage', () => {
       'autocomplete',
       'new-password',
     )
-    expect(screen.getByRole('link', {
-      name: 'Прежняя версия смены пароля',
-    })).toHaveAttribute('href', "/users/password/change/?legacy=1")
+    expect(screen.queryByRole('link', { name: 'Прежняя версия смены пароля' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Вернуться в профиль' }))
       .toHaveAttribute('href', '/profile')
   })

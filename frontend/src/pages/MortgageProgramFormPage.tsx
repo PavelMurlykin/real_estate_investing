@@ -1,4 +1,3 @@
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
@@ -298,9 +297,6 @@ export function MortgageProgramFormPage() {
     }
   }
   regions.sort((left, right) => left.name.localeCompare(right.name, 'ru'))
-  const legacyUrl = detailQuery.data?.legacyEditUrl
-    ?? '/bank/?model=mortgage_program'
-
   return (
     <div className="page-stack mortgage-program-form-page">
       <header className="page-header">
@@ -313,9 +309,6 @@ export function MortgageProgramFormPage() {
         </div>
         <div className="page-header__actions">
           {backLink}
-          <LegacyLink className="button button--secondary" href={legacyUrl}>
-            Django-справочник
-          </LegacyLink>
         </div>
       </header>
       <form className="customer-form mortgage-program-form" onSubmit={submit} noValidate>

@@ -57,8 +57,7 @@ describe('MortgageProgramDetailPage', () => {
 
     expect(screen.getAllByText('Семейная ипотека').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Москва').length).toBeGreaterThan(0)
-    expect(screen.getByRole('link', { name: 'Открыть Django-форму' }))
-      .toHaveAttribute('href', "/bank/?model=mortgage_program&edit=5&legacy=1")
+    expect(screen.queryByRole('link', { name: 'Открыть Django-форму' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Редактировать' }))
       .not.toBeInTheDocument()
   })

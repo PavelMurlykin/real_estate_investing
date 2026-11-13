@@ -135,8 +135,7 @@ describe('MortgageProgramFormPage', () => {
 
     expect(await screen.findByLabelText('Условия *')).toHaveValue('Для семей с детьми')
     expect(screen.getByLabelText('Регион *')).toHaveValue('Москва')
-    expect(screen.getByRole('link', { name: 'Django-справочник' }))
-      .toHaveAttribute('href', "/bank/?model=mortgage_program&edit=5&legacy=1")
+    expect(screen.queryByRole('link', { name: 'Django-справочник' })).not.toBeInTheDocument()
     await user.clear(screen.getByLabelText('Условия *'))
     await user.type(screen.getByLabelText('Условия *'), 'Обновлённые условия')
     await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }))

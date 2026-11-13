@@ -1,5 +1,4 @@
 import { ResetFilters } from '@/shared/ui/ResetFilters'
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -199,11 +198,7 @@ export function SavedMortgageCalculationListPage() {
             <Link className="button button--secondary" to={`/customers/${customerIdentifier}`}>
               К клиенту
             </Link>
-          ) : (
-            <LegacyLink className="button button--secondary" href="/mortgage/calculations/">
-              Прежняя версия
-            </LegacyLink>
-          )}
+          ) : null}
           <Link className="button button--primary" to="/mortgage">
             Новый расчёт
           </Link>

@@ -1,4 +1,3 @@
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -413,13 +412,6 @@ export function CustomerDetailPage() {
         <span>Обновлено: {formatDateTime(customer.updatedAt)}</span>
       </section>
 
-      <p className="legacy-fallback">
-        Нужен прежний экран?{' '}
-        <LegacyLink className="text-link" href={customer.legacyDetailUrl}>
-          Открыть Django-версию карточки
-        </LegacyLink>
-        .
-      </p>
     </div>
   )
 }

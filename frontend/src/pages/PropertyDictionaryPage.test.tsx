@@ -157,7 +157,7 @@ describe('PropertyDictionaryPage', () => {
     })
   })
 
-  it('prefills and updates an entry while retaining the Django fallback', async () => {
+  it('prefills and updates an entry within the React interface', async () => {
     const user = userEvent.setup()
     const queryClient = createDictionaryQueryClient(managerSession)
     queryClient.setQueryData(
@@ -198,10 +198,7 @@ describe('PropertyDictionaryPage', () => {
     )
 
     expect(await screen.findByLabelText('Название *')).toHaveValue('Бизнес')
-    expect(screen.getByRole('link', { name: 'Django-форма' })).toHaveAttribute(
-      'href',
-      `${classEntry.legacyEditUrl}&legacy=1`,
-    )
+    expect(screen.queryByRole('link', { name: 'Django-форма' })).not.toBeInTheDocument()
     const description = screen.getByLabelText('Описание')
     await user.clear(description)
     await user.type(description, 'Обновлённое описание')

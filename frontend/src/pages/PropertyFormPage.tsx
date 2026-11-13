@@ -1,4 +1,3 @@
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { RemoteMultiSelect } from '@/shared/ui/RemoteMultiSelect'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -344,9 +343,6 @@ export function PropertyFormPage() {
   const cancelPath = isEditing
     ? `/properties/${propertyIdentifier}${customerQuery}`
     : `/properties${customerQuery}`
-  const legacyFormUrl = isEditing && property
-    ? property.legacyEditUrl
-    : '/property/create/'
   const hasGeneralError = mutation.isError && (
     Object.keys(fieldErrors).length === 0
     || Boolean(fieldErrors.non_field_errors)
@@ -368,9 +364,6 @@ export function PropertyFormPage() {
           <Link className="button button--secondary" to={cancelPath}>
             Отмена
           </Link>
-          <LegacyLink className="button button--secondary" href={legacyFormUrl}>
-            Django-форма
-          </LegacyLink>
         </div>
       </header>
 

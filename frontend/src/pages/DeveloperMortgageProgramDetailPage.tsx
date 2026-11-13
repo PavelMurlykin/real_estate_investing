@@ -1,4 +1,3 @@
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -183,10 +182,6 @@ export function DeveloperMortgageProgramDetailPage() {
         <span>Создано: {formatDateTime(program.createdAt)}</span>
         <span>Обновлено: {formatDateTime(program.updatedAt)}</span>
       </section>
-      <p className="legacy-fallback">
-        Импорт и прежняя форма доступны в{' '}
-        <LegacyLink className="text-link" href={program.legacyEditUrl}>Django-интерфейсе</LegacyLink>.
-      </p>
 
       {isDeleteDialogOpen ? (
         <div

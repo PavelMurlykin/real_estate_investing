@@ -110,13 +110,13 @@ export function RealEstateComplexListPage() {
             доступность.
           </p>
         </div>
-        <div className="page-header__actions">
-          {canManageCatalogs ? (
+        {canManageCatalogs ? (
+          <div className="page-header__actions">
             <Link className="button button--primary" to="/complexes/new">
               Добавить ЖК
             </Link>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </header>
 
       {sessionQuery.data?.capabilities.syncExternalData ? <ComplexImport /> : null}

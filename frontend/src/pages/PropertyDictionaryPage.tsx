@@ -1,5 +1,4 @@
 import { ResetFilters } from '@/shared/ui/ResetFilters'
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
@@ -31,7 +30,6 @@ import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState
 
 type DictionaryConfiguration = {
   key: PropertyDictionaryKey
-  legacyKey: string
   title: string
   singular: string
   description: string
@@ -50,7 +48,6 @@ type FieldErrors = Record<string, string>
 const dictionaryConfigurations: DictionaryConfiguration[] = [
   {
     key: 'real-estate-types',
-    legacyKey: 'real_estate_type',
     title: 'Типы недвижимости',
     singular: 'тип недвижимости',
     description: 'Категории объектов, используемые в жилых комплексах.',
@@ -58,7 +55,6 @@ const dictionaryConfigurations: DictionaryConfiguration[] = [
   },
   {
     key: 'real-estate-classes',
-    legacyKey: 'real_estate_class',
     title: 'Классы ЖК',
     singular: 'класс ЖК',
     description: 'Классы проектов и их коэффициенты для расчётов.',
@@ -66,7 +62,6 @@ const dictionaryConfigurations: DictionaryConfiguration[] = [
   },
   {
     key: 'apartment-layouts',
-    legacyKey: 'apartment_layout',
     title: 'Планировки',
     singular: 'планировку',
     description: 'Варианты планировок объектов недвижимости.',
@@ -74,7 +69,6 @@ const dictionaryConfigurations: DictionaryConfiguration[] = [
   },
   {
     key: 'apartment-decorations',
-    legacyKey: 'apartment_decoration',
     title: 'Отделки',
     singular: 'тип отделки',
     description: 'Варианты отделки объектов недвижимости.',
@@ -82,7 +76,6 @@ const dictionaryConfigurations: DictionaryConfiguration[] = [
   },
   {
     key: 'window-views',
-    legacyKey: 'window_view',
     title: 'Виды из окна',
     singular: 'вид из окна',
     description: 'Характеристики вида из окон объекта.',
@@ -90,7 +83,6 @@ const dictionaryConfigurations: DictionaryConfiguration[] = [
   },
   {
     key: 'transport-accessibility-types',
-    legacyKey: 'transport_accessibility_type',
     title: 'Способы до метро',
     singular: 'способ доступности',
     description: 'Способы добраться от жилого комплекса до метро.',
@@ -293,17 +285,12 @@ function PropertyDictionaryEditor({
             {saveMutation.isPending ? 'Сохраняем…' : 'Сохранить'}
           </button>
           {isEditing ? (
-            <>
-              <Link
-                className="button button--secondary"
-                to={`/dictionaries/${dictionaryKey}`}
-              >
-                Отмена
-              </Link>
-              <LegacyLink className="text-link" href={entry.legacyEditUrl}>
-                Django-форма
-              </LegacyLink>
-            </>
+            <Link
+              className="button button--secondary"
+              to={`/dictionaries/${dictionaryKey}`}
+            >
+              Отмена
+            </Link>
           ) : null}
         </div>
       </form>
@@ -456,9 +443,6 @@ export function PropertyDictionaryPage() {
   }
 
   const { results, page, totalCount, totalPages } = listQuery.data
-  const legacyCatalogUrl = (
-    `/property/dictionaries/?model=${configuration.legacyKey}`
-  )
 
   return (
     <div className="page-stack property-dictionary-page">
@@ -467,11 +451,6 @@ export function PropertyDictionaryPage() {
           <span className="eyebrow">Недвижимость</span>
           <h1>Справочники объектов</h1>
           <p>{configuration.description}</p>
-        </div>
-        <div className="page-header__actions">
-          <LegacyLink className="button button--secondary" href={legacyCatalogUrl}>
-            Прежняя версия
-          </LegacyLink>
         </div>
       </header>
 

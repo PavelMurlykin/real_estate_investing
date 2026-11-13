@@ -1,4 +1,3 @@
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
@@ -103,7 +102,6 @@ export function RegistrationPage() {
           <h1 id="registration-title">Регистрация</h1>
           <p>
             Создайте аккаунт для работы с клиентами и сохранёнными расчётами.
-            Проверку данных и пароля выполняет существующая Django-форма.
           </p>
         </header>
 
@@ -246,7 +244,6 @@ export function RegistrationPage() {
 
         <div className="auth-card__links">
           <p>Уже есть аккаунт? <Link to="/login">Войти</Link></p>
-          <LegacyLink href="/users/register/">Прежняя версия регистрации</LegacyLink>
         </div>
       </section>
     </div>

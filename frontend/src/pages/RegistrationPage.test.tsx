@@ -44,7 +44,7 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('RegistrationPage', () => {
-  it('renders accessible account fields and preserves the Django fallback', () => {
+  it('renders accessible account fields with React login navigation', () => {
     renderWithProviders(registrationRoutes(), { initialRoute: '/register' })
 
     expect(screen.getByRole('heading', { name: 'Регистрация' }))
@@ -57,8 +57,7 @@ describe('RegistrationPage', () => {
       'autocomplete',
       'new-password',
     )
-    expect(screen.getByRole('link', { name: 'Прежняя версия регистрации' }))
-      .toHaveAttribute('href', "/users/register/?legacy=1")
+    expect(screen.queryByRole('link', { name: 'Прежняя версия регистрации' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Войти' }))
       .toHaveAttribute('href', '/login')
   })

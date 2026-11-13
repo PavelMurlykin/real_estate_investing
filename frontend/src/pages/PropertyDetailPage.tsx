@@ -1,4 +1,3 @@
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -334,12 +333,6 @@ export function PropertyDetailPage() {
         <span>Обновлено: {formatDateTime(property.updatedAt)}</span>
       </section>
 
-      <p className="legacy-fallback">
-        Нужен прежний экран?{' '}
-        <LegacyLink className="text-link" href={property.legacyDetailUrl}>
-          Открыть Django-версию
-        </LegacyLink>
-      </p>
 
       {selectedImage ? (
         <div

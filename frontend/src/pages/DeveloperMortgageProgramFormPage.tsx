@@ -1,4 +1,3 @@
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
@@ -342,8 +341,6 @@ export function DeveloperMortgageProgramFormPage() {
       })
     }
   }
-  const legacyUrl = currentProgram?.legacyEditUrl
-    ?? '/bank/developer-programs/create/'
   const generalServerError = mutation.isError
     ? firstError((mutation.error as ApiError).details) ?? mutation.error.message
     : null
@@ -363,7 +360,6 @@ export function DeveloperMortgageProgramFormPage() {
         </div>
         <div className="page-header__actions">
           {backLink}
-          <LegacyLink className="button button--secondary" href={legacyUrl}>Django-форма</LegacyLink>
         </div>
       </header>
 

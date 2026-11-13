@@ -64,8 +64,7 @@ describe('ProfilePage', () => {
     expect(screen.getByLabelText('Название агентства')).toHaveValue('Север')
     expect(screen.getByRole('link', { name: 'Сменить пароль' }))
       .toHaveAttribute('href', '/password/change')
-    expect(screen.getByRole('link', { name: 'Прежняя версия профиля' }))
-      .toHaveAttribute('href', "/users/profile/edit/?legacy=1")
+    expect(screen.queryByRole('link', { name: 'Прежняя версия профиля' })).not.toBeInTheDocument()
   })
 
   it('redirects anonymous visitors to login with a safe return path', () => {

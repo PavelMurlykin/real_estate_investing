@@ -45,7 +45,7 @@ async function fillNewPasswordFields(
 }
 
 describe('PasswordResetConfirmPage', () => {
-  it('renders accessible new-password fields and the Django fallback', () => {
+  it('renders accessible new-password fields and React recovery navigation', () => {
     renderWithProviders(passwordResetConfirmRoutes(), {
       initialRoute: '/password/reset/confirm',
     })
@@ -58,9 +58,7 @@ describe('PasswordResetConfirmPage', () => {
     )
     expect(screen.getByRole('link', { name: 'Запросить новую ссылку' }))
       .toHaveAttribute('href', '/password/reset')
-    expect(screen.getByRole('link', {
-      name: 'Прежняя версия восстановления',
-    })).toHaveAttribute('href', "/users/password/reset/?legacy=1")
+    expect(screen.queryByRole('link', { name: 'Прежняя версия восстановления' })).not.toBeInTheDocument()
   })
 
   it('blocks mismatched passwords before sending a request', async () => {

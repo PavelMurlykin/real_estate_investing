@@ -166,10 +166,7 @@ describe('BankFormPage', () => {
     expect(nameInput).toHaveValue('Северный банк')
     expect(screen.getByLabelText('Ипотечная программа *')).toHaveValue('Семейная ипотека')
     expect(screen.getByLabelText('Ставка, % *')).toHaveValue(5.9)
-    expect(screen.getByRole('link', { name: 'Django-форма' })).toHaveAttribute(
-      'href',
-      "/bank/banks/7/edit/?legacy=1",
-    )
+    expect(screen.queryByRole('link', { name: 'Django-форма' })).not.toBeInTheDocument()
     await user.clear(nameInput)
     await user.type(nameInput, 'Северо-Западный банк')
     await user.click(screen.getByRole('button', {

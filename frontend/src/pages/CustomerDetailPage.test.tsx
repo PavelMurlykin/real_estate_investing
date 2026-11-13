@@ -148,9 +148,7 @@ describe('CustomerDetailPage', () => {
     expect(
       screen.getByRole('link', { name: 'Рассчитать ипотеку' }),
     ).toHaveAttribute('href', '/properties?customerId=12')
-    expect(
-      screen.getByRole('link', { name: 'Открыть Django-версию карточки' }),
-    ).toHaveAttribute('href', "/customers/12/?legacy=1")
+    expect(screen.queryByRole('link', { name: 'Открыть Django-версию карточки' })).not.toBeInTheDocument()
     expect(
       screen.getByRole('table', { name: 'Связанные расчёты клиента' }),
     ).toBeInTheDocument()

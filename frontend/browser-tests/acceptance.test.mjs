@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import { baseUrl, createPage, openPage, screenshot } from './helpers.mjs'
+import { assertReactPageLayout } from './page-layout-helpers.mjs'
 
 const homeHeading = 'Инвестиции в недвижимость — в единой системе'
 const publicPages = [
@@ -21,9 +22,10 @@ const publicPages = [
   ['/app/login', 'Вход'],
   ['/app/register', 'Регистрация'],
   ['/app/password/reset', 'Восстановление пароля'],
+  ['/app/password/reset/confirm', 'Новый пароль'],
 ]
 
-for (const width of [360, 1280]) {
+for (const width of [360, 768, 1280]) {
   for (const [route, heading] of publicPages) {
     test(`public route ${route} loads without errors or overflow at ${width}px`, async (context) => {
       const page = await createPage(context, { width, height: 900 })
@@ -33,6 +35,7 @@ for (const width of [360, 1280]) {
       assert.equal(response?.status(), 200)
       await page.getByRole('main').getByRole('heading', { name: heading, exact: true }).waitFor()
       assert.equal(await page.getByRole('alert').count(), 0)
+      await assertReactPageLayout(page)
       assert.deepEqual(errors, [])
       const primary = page.getByRole('navigation', { name: 'Основная навигация' })
       assert.deepEqual(await primary.getByRole('link').evaluateAll((links) =>

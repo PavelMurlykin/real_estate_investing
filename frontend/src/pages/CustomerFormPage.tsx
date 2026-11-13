@@ -1,4 +1,3 @@
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { RemoteMultiSelect } from '@/shared/ui/RemoteMultiSelect'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { SearchableSelect } from '@/shared/ui/SearchableSelect'
@@ -318,9 +317,6 @@ export function CustomerFormPage() {
 
   const options = optionsQuery.data
   const hasTruncatedOptions = Object.values(options.truncated).some(Boolean)
-  const legacyFormUrl = isEditing && customerQuery.data
-    ? customerQuery.data.legacyEditUrl
-    : '/customers/create/'
   const cancelPath = isEditing
     ? `/customers/${customerIdentifier}`
     : '/customers'
@@ -342,9 +338,6 @@ export function CustomerFormPage() {
           <Link className="button button--secondary" to={cancelPath}>
             Отмена
           </Link>
-          <LegacyLink className="button button--secondary" href={legacyFormUrl}>
-            Django-форма
-          </LegacyLink>
         </div>
       </header>
 

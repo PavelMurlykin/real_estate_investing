@@ -1,5 +1,4 @@
 import { ResetFilters } from '@/shared/ui/ResetFilters'
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
@@ -117,9 +116,6 @@ export function CustomerListPage() {
           </p>
         </div>
         <div className="page-header__actions">
-          <LegacyLink className="button button--secondary" href="/customers/">
-            Прежняя версия
-          </LegacyLink>
           <Link className="button button--primary" to="/customers/new">
             Добавить клиента
           </Link>

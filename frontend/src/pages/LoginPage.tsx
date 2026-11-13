@@ -1,4 +1,3 @@
-import { LegacyLink } from '@/shared/ui/LegacyLink'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
@@ -15,13 +14,8 @@ import type { Session } from '@/api/schemas'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 
-type SafeNextPath = {
-  browserPath: string
-  routerPath: string
-}
-
-function safeNextPath(requestedPath: string | null): SafeNextPath {
-  const fallback = { browserPath: '/app/', routerPath: '/' }
+function safeNextPath(requestedPath: string | null) {
+  const fallback = '/'
   if (!requestedPath) return fallback
 
   try {
@@ -42,10 +36,7 @@ function safeNextPath(requestedPath: string | null): SafeNextPath {
       return fallback
     }
     const suffix = `${requestedUrl.search}${requestedUrl.hash}`
-    return {
-      browserPath: `${applicationPath}${suffix}`,
-      routerPath: `${routerPath}${suffix}`,
-    }
+    return `${routerPath}${suffix}`
   } catch {
     return fallback
   }
@@ -97,7 +88,7 @@ export function LoginPage() {
     mutationFn: loginUser,
     onSuccess: (session: Session) => {
       queryClient.setQueryData(['session'], session)
-      navigate(nextPath.routerPath, { replace: true })
+      navigate(nextPath, { replace: true })
     },
   })
 
@@ -120,15 +111,11 @@ export function LoginPage() {
     return <ErrorState onRetry={() => void sessionQuery.refetch()} />
   }
   if (sessionQuery.data?.isAuthenticated) {
-    return <Navigate replace to={nextPath.routerPath} />
+    return <Navigate replace to={nextPath} />
   }
 
   const errorMessage = clientError
     ?? (loginMutation.isError ? loginErrorMessage(loginMutation.error) : null)
-  const legacyLoginUrl = (
-    `/users/login/?next=${encodeURIComponent(nextPath.browserPath)}`
-  )
-
   return (
     <div className="auth-page">
       <section className="auth-card" aria-labelledby="login-title">
@@ -205,7 +192,6 @@ export function LoginPage() {
             Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
           </p>
           <Link to="/password/reset">Забыли пароль?</Link>
-          <LegacyLink href={legacyLoginUrl}>Прежняя версия входа</LegacyLink>
         </div>
       </section>
     </div>

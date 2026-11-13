@@ -35,7 +35,7 @@ function loginRoutes() {
 }
 
 describe('LoginPage', () => {
-  it('renders an accessible form and preserves Django fallbacks', () => {
+  it('renders an accessible form with React account navigation', () => {
     renderWithProviders(loginRoutes(), { initialRoute: '/login' })
 
     expect(screen.getByRole('heading', { name: 'Вход' })).toBeInTheDocument()
@@ -51,8 +51,7 @@ describe('LoginPage', () => {
       .toHaveAttribute('href', '/register')
     expect(screen.getByRole('link', { name: 'Забыли пароль?' }))
       .toHaveAttribute('href', '/password/reset')
-    expect(screen.getByRole('link', { name: 'Прежняя версия входа' }))
-      .toHaveAttribute('href', "/users/login/?next=%2Fapp%2F&legacy=1")
+    expect(screen.queryByRole('link', { name: 'Прежняя версия входа' })).not.toBeInTheDocument()
   })
 
   it('announces successful registration before login', () => {
