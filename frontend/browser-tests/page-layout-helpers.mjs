@@ -4,6 +4,7 @@ import { assertTableStyles } from './table-style-helpers.mjs'
 import { assertDetailStyles } from './detail-style-helpers.mjs'
 import { assertFeedbackStyles } from './feedback-style-helpers.mjs'
 import { assertAsyncStates } from './async-state-helpers.mjs'
+import { assertNavigationStyles } from './navigation-style-helpers.mjs'
 
 export async function assertReactPageLayout(page) {
   const issues = await page.getByRole('main').evaluate((main) => {
@@ -48,4 +49,5 @@ export async function assertReactPageLayout(page) {
   await assertDetailStyles(page)
   await assertFeedbackStyles(page)
   await assertAsyncStates(page)
+  await assertNavigationStyles(page)
 }

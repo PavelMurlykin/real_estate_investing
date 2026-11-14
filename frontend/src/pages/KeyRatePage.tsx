@@ -1,10 +1,11 @@
+import { BankCatalogNavigation } from '@/features/bank/BankCatalogNavigation'
 import { retryFailedQueries } from '@/shared/lib/retryFailedQueries'
 import { Notice } from '@/shared/ui/Notice'
 import { useRef } from 'react'
 import { TableScrollArea } from '@/shared/ui/TableScrollArea'
 import { Pagination } from '@/shared/ui/Pagination'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 
 import {
   keyRateChartQueryOptions,
@@ -86,12 +87,7 @@ export function KeyRatePage() {
         ) : null}
       </header>
 
-      <nav className="dictionary-tabs" aria-label="Разделы банков">
-        <Link to="/banks">Банки</Link>
-        <Link to="/mortgage-programs">Ипотечные программы</Link>
-        <Link to="/developer-programs">Программы застройщиков</Link>
-        <Link to="/key-rate" aria-current="page">Ключевая ставка</Link>
-      </nav>
+      <BankCatalogNavigation />
 
       {syncMutation.isSuccess ? (
         <Notice as="p" tone="success" role="status" className="operation-message operation-message--success" onDismiss={() => syncMutation.reset()} returnFocusRef={syncButtonRef}>

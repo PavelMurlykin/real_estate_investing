@@ -1,8 +1,10 @@
 import { Notice } from '@/shared/ui/Notice'
 import { ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { MouseEventHandler } from 'react'
-import { Link, matchPath, useLocation } from 'react-router-dom'
+import { useEffect, useRef, type MouseEventHandler } from 'react'
+import { useLocation } from 'react-router-dom'
+import { NavigationLink, type NavigationItem } from '@/shared/ui/NavigationLink'
+import { NavigationIcon, type NavigationIconName } from './NavigationIcon'
 
 import { requestWithoutResponse } from '@/api/client'
 import { sessionQueryOptions } from '@/api/queries'
@@ -15,187 +17,154 @@ type SidebarProps = {
   onClose: () => void
 }
 
-type NavigationItem = {
-  label: string
-  href: string
-  symbol: string
-  reactRoute?: boolean
-  activePath?: string
-  excludedPaths?: string[]
-}
+type SidebarNavigationItem = NavigationItem & { icon: NavigationIconName }
 
 type NavigationGroupProps = {
   title: string
-  items: NavigationItem[]
+  items: SidebarNavigationItem[]
   onNavigate: MouseEventHandler<HTMLAnchorElement>
 }
 
-const primaryItems: NavigationItem[] = [
+const primaryItems: SidebarNavigationItem[] = [
   {
     label: 'Главная',
-    href: '/',
-    activePath: '/',
-    symbol: 'Г',
-    reactRoute: true,
+    to: '/',
+    end: true,
+    icon: 'home',
   },
 ]
 
-const realEstateItems: NavigationItem[] = [
+const realEstateItems: SidebarNavigationItem[] = [
   {
     label: 'Объекты недвижимости',
-    href: '/properties',
-    symbol: 'Н',
-    reactRoute: true,
+    to: '/properties',
+    icon: 'property',
   },
   {
     label: 'Группы компаний',
-    href: '/company-groups',
-    symbol: 'Г',
-    reactRoute: true,
+    to: '/company-groups',
+    icon: 'company',
   },
   {
     label: 'Застройщики',
-    href: '/developers',
-    symbol: 'З',
-    reactRoute: true,
+    to: '/developers',
+    icon: 'developer',
   },
   {
     label: 'Жилые комплексы',
-    href: '/complexes',
-    symbol: 'Ж',
-    reactRoute: true,
+    to: '/complexes',
+    icon: 'complex',
   },
   {
     label: 'Справочники объектов',
-    href: '/dictionaries/real-estate-types',
-    activePath: '/dictionaries/*',
-    symbol: 'О',
-    reactRoute: true,
+    to: '/dictionaries/real-estate-types',
+    activePaths: ['/dictionaries/*'],
+    icon: 'dictionary',
   },
 ]
 
-const catalogItems: NavigationItem[] = [
+const catalogItems: SidebarNavigationItem[] = [
   {
     label: 'Локации',
-    href: '/locations/regions',
-    activePath: '/locations/*',
-    symbol: 'Л',
-    reactRoute: true,
+    to: '/locations/regions',
+    activePaths: ['/locations/*'],
+    icon: 'location',
   },
   {
     label: 'Банки',
-    href: '/banks',
-    symbol: 'Б',
-    reactRoute: true,
+    to: '/banks',
+    icon: 'bank',
   },
   {
     label: 'Ипотечные программы',
-    href: '/mortgage-programs',
-    symbol: 'И',
-    reactRoute: true,
+    to: '/mortgage-programs',
+    icon: 'program',
   },
   {
     label: 'Программы застройщиков',
-    href: '/developer-programs',
-    symbol: 'П',
-    reactRoute: true,
+    to: '/developer-programs',
+    icon: 'offer',
   },
   {
     label: 'Ключевая ставка',
-    href: '/key-rate',
-    symbol: '%',
-    reactRoute: true,
+    to: '/key-rate',
+    icon: 'rate',
   },
 ]
 
-const calculationItems: NavigationItem[] = [
+const calculationItems: SidebarNavigationItem[] = [
   {
     label: 'Ипотечный калькулятор',
-    href: '/mortgage',
-    activePath: '/mortgage',
-    symbol: 'И',
-    reactRoute: true,
+    to: '/mortgage',
+    end: true,
+    icon: 'calculator',
   },
   {
     label: 'Траншевая ипотека',
-    href: '/mortgage/trench',
-    activePath: '/mortgage/trench',
-    symbol: 'Т',
-    reactRoute: true,
+    to: '/mortgage/trench',
+    end: true,
+    icon: 'trench',
   },
 ]
 
-const privateItems: NavigationItem[] = [
+const privateItems: SidebarNavigationItem[] = [
   {
     label: 'Добавить клиента',
-    href: '/customers/new',
-    activePath: '/customers/new',
-    symbol: '+',
-    reactRoute: true,
+    to: '/customers/new',
+    end: true,
+    icon: 'addCustomer',
   },
   {
     label: 'Клиенты',
-    href: '/customers',
+    to: '/customers',
     excludedPaths: ['/customers/new'],
-    symbol: 'К',
-    reactRoute: true,
+    icon: 'customer',
   },
   {
     label: 'Расчёты ипотеки',
-    href: '/mortgage/calculations',
-    symbol: 'И',
-    reactRoute: true,
+    to: '/mortgage/calculations',
+    icon: 'history',
   },
   {
     label: 'История траншей',
-    href: '/mortgage/trench/calculations',
-    symbol: 'Э',
-    reactRoute: true,
+    to: '/mortgage/trench/calculations',
+    icon: 'history',
   },
 ]
 
 function NavigationGroup({ title, items, onNavigate }: NavigationGroupProps) {
-  const { pathname } = useLocation()
-  return (
-    <section className="sidebar-group">
-      <h2>{title}</h2>
-      <ul>
-        {items.map((item) => (
-          <li key={item.href}>
-            {item.reactRoute ? (
-              <Link
-                to={item.href}
-                onClick={onNavigate}
-                aria-current={
-                  !item.excludedPaths?.some((path) => matchPath(path, pathname))
-                  && matchPath(item.activePath ?? `${item.href}/*`, pathname)
-                    ? 'page'
-                    : undefined
-                }
-              >
-                <span className="sidebar-link__symbol" aria-hidden="true">
-                  {item.symbol}
-                </span>
-                <span>{item.label}</span>
-              </Link>
-            ) : (
-              <a href={item.href} onClick={onNavigate}>
-                <span className="sidebar-link__symbol" aria-hidden="true">
-                  {item.symbol}
-                </span>
-                <span>{item.label}</span>
-              </a>
-            )}
-          </li>
-        ))}
-      </ul>
-    </section>
-  )
+  return <section className="sidebar-group">
+    <h2>{title}</h2>
+    <ul>{items.map(({ icon, ...item }) => <li key={item.to}>
+      <NavigationLink {...item} icon={<NavigationIcon name={icon} />} onNavigate={onNavigate} />
+    </li>)}</ul>
+  </section>
 }
 
 export function Sidebar({ isOpen, isMobile = false, onClose }: SidebarProps) {
+  const navigationRef = useRef<HTMLElement>(null)
+  const { pathname } = useLocation()
   const queryClient = useQueryClient()
   const sessionQuery = useQuery(sessionQueryOptions)
+  useEffect(() => {
+    if (isMobile && !isOpen) return
+    let frame = 0
+    const revealCurrent = () => {
+      window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(() => {
+        const navigation = navigationRef.current
+        const current = navigation?.querySelector<HTMLElement>('[aria-current="page"]')
+        if (!navigation || !current) return
+        const bounds = navigation.getBoundingClientRect()
+        const item = current.getBoundingClientRect()
+        if (item.top < bounds.top + 6) navigation.scrollTop += item.top - bounds.top - 6
+        else if (item.bottom > bounds.bottom - 6) navigation.scrollTop += item.bottom - bounds.bottom + 6
+      })
+    }
+    revealCurrent()
+    window.addEventListener('resize', revealCurrent)
+    return () => { window.cancelAnimationFrame(frame); window.removeEventListener('resize', revealCurrent) }
+  }, [pathname, isOpen, isMobile, sessionQuery.data?.capabilities.viewPrivateRecords])
   const logoutMutation = useMutation({
     mutationFn: () =>
       requestWithoutResponse('/api/v1/auth/logout/', { method: 'POST' }),
@@ -211,12 +180,12 @@ export function Sidebar({ isOpen, isMobile = false, onClose }: SidebarProps) {
         <div className="sidebar__mobile-header">
           <span>Разделы</span>
           <button className="icon-button" type="button" onClick={onClose} aria-label="Закрыть меню">
-            ×
+            <NavigationIcon name="close" />
           </button>
         </div>
       ) : null}
 
-      <nav className="sidebar__content" aria-label="Разделы приложения">
+      <nav ref={navigationRef} className="sidebar__content" aria-label="Разделы приложения">
         <NavigationGroup title="Основное" items={primaryItems} onNavigate={onClose} />
         <NavigationGroup title="Недвижимость" items={realEstateItems} onNavigate={onClose} />
         <NavigationGroup title="Справочники" items={catalogItems} onNavigate={onClose} />
@@ -243,8 +212,9 @@ export function Sidebar({ isOpen, isMobile = false, onClose }: SidebarProps) {
               </div>
             </div>
             <div className="account-actions">
-              <Link to="/profile" onClick={onClose}>Профиль</Link>
+              <NavigationLink to="/profile" label="Профиль" activePaths={['/password/change']} onNavigate={onClose} />
               <button
+                className="navigation-link"
                 type="button"
                 disabled={logoutMutation.isPending}
                 onClick={() => logoutMutation.mutate()}
@@ -258,14 +228,8 @@ export function Sidebar({ isOpen, isMobile = false, onClose }: SidebarProps) {
           </>
         ) : (
           <div className="account-actions account-actions--anonymous">
-            <Link to="/login" onClick={onClose}>Войти</Link>
-            <Link
-              className="account-actions__primary"
-              to="/register"
-              onClick={onClose}
-            >
-              Регистрация
-            </Link>
+            <NavigationLink to="/login" label="Войти" onNavigate={onClose} />
+            <NavigationLink className="account-actions__primary" to="/register" label="Регистрация" onNavigate={onClose} />
           </div>
         )}
       </div>

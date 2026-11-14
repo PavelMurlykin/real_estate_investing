@@ -6,6 +6,15 @@ import { renderWithProviders } from '@/test/render'
 import { TopNavigation } from './TopNavigation'
 
 describe('TopNavigation', () => {
+  it.each([
+    ['/properties/3/edit', 'Объекты недвижимости'],
+    ['/mortgage/trench', 'Ипотечный калькулятор'],
+    ['/mortgage/calculations/7', 'Ипотечный калькулятор'],
+    ['/mortgage/trench/calculations/8', 'Ипотечный калькулятор'],
+  ])('marks the parent section on %s', (initialRoute, name) => {
+    renderWithProviders(<TopNavigation onOpenSidebar={vi.fn()} theme="system" onCycleTheme={vi.fn()} />, { initialRoute })
+    expect(screen.getByRole('link', { name })).toHaveAttribute('aria-current', 'page')
+  })
   it('keeps only catalog and calculator links in the top panel', () => {
     renderWithProviders(
       <TopNavigation

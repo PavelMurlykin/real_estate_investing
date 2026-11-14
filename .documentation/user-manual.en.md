@@ -24,6 +24,14 @@ The customer section requires authentication. A customer profile contains contac
 
 Forms use consistent single-line field and primary button dimensions, typography and spacing. Section headings sit above their fields; hints and errors appear beside the relevant field. On narrow screens, fields and actions stack in one column. Tab and Shift+Tab move focus between available controls; the active control has a contrasting outline in both light and dark themes.
 
+## Navigation
+
+The top panel, sidebar and section links share consistent sizing, spacing and current-page indicators. The current section is underlined and has a highlighted background; detail and edit pages highlight their parent section. On phones, primary links occupy a second header row and retain readable text.
+
+Tab and Shift+Tab move through links. In the top panel and section links, Left/Right arrows, Home and End move focus; Enter opens the focused section. Long section rows scroll horizontally. The current link remains visible when opening a page, going Back/Forward or resizing the window.
+
+On narrow screens, “Открыть меню разделов” opens the sidebar. Its current item is visible within the scrollable area. Tab stays inside the menu; Escape and the close button return focus to the opener. Ordinary navigation closes the menu and focuses page content. Ctrl/Cmd+click opens a link separately and retains the menu. Customer and calculation-history links require the corresponding permissions.
+
 ## Mortgage calculations
 
 Select a property and enter its price, discount/markup, down payment, date, term and rate. Percentages and rubles synchronize using the most recently edited value. Market mortgages support a grace period; tranche mortgages support one to five tranches, with the last receiving the remaining amount. A button expands the schedule beyond the first 12 payments.

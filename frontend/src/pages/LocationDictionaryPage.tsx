@@ -1,3 +1,4 @@
+import { SectionNavigation } from '@/shared/ui/SectionNavigation'
 import { retryFailedQueries } from '@/shared/lib/retryFailedQueries'
 import { Notice } from '@/shared/ui/Notice'
 import { restoreFocus } from '@/shared/lib/restoreFocus'
@@ -590,17 +591,9 @@ export function LocationDictionaryPage() {
         </div>
       </header>
 
-      <nav className="dictionary-tabs" aria-label="Справочники локаций">
-        {locationDictionaryConfigurations.map((item) => (
-          <Link
-            key={item.key}
-            to={`/locations/${item.key}`}
-            aria-current={item.key === dictionaryKey ? 'page' : undefined}
-          >
-            {item.title}
-          </Link>
-        ))}
-      </nav>
+      <SectionNavigation label="Справочники локаций" items={locationDictionaryConfigurations.map((item) => ({
+        to: `/locations/${item.key}`, label: item.title,
+      }))} />
 
       <section
         className="filter-panel location-filter-panel"

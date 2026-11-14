@@ -1,3 +1,4 @@
+import { BankCatalogNavigation } from '@/features/bank/BankCatalogNavigation'
 import { Notice } from '@/shared/ui/Notice'
 import { restoreFocus } from '@/shared/lib/restoreFocus'
 import { ModalDialog } from '@/shared/ui/ModalDialog'
@@ -137,14 +138,7 @@ export function BankListPage() {
         ) : null}
       </header>
 
-      <nav className="dictionary-tabs" aria-label="Разделы банков">
-        <Link to="/banks" aria-current="page">Банки</Link>
-        <Link to="/mortgage-programs">Ипотечные программы</Link>
-        <Link to="/developer-programs">
-          Программы застройщиков
-        </Link>
-        <Link to="/key-rate">Ключевая ставка</Link>
-      </nav>
+      <BankCatalogNavigation />
 
       {sessionQuery.data?.capabilities.syncExternalData ? <BankCatalogImport section="banks" /> : null}
 

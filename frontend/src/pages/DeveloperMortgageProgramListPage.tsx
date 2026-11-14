@@ -1,3 +1,4 @@
+import { BankCatalogNavigation } from '@/features/bank/BankCatalogNavigation'
 import { retryFailedQueries } from '@/shared/lib/retryFailedQueries'
 import { Notice } from '@/shared/ui/Notice'
 import { restoreFocus } from '@/shared/lib/restoreFocus'
@@ -116,14 +117,7 @@ export function DeveloperMortgageProgramListPage() {
         ) : null}
       </header>
 
-      <nav className="dictionary-tabs" aria-label="Разделы банков">
-        <Link to="/banks">Банки</Link>
-        <Link to="/mortgage-programs">Ипотечные программы</Link>
-        <Link to="/developer-programs" aria-current="page">
-          Программы застройщиков
-        </Link>
-        <Link to="/key-rate">Ключевая ставка</Link>
-      </nav>
+      <BankCatalogNavigation />
 
       {canManage ? <DeveloperMortgageProgramImportPanel /> : null}
 

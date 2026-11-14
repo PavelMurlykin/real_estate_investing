@@ -24,6 +24,16 @@ const authenticatedSession: Session = {
 
 describe('Sidebar', () => {
   it.each([
+    ['/', 'Главная'],
+    ['/properties/7/edit', 'Объекты недвижимости'],
+    ['/company-groups/7/edit', 'Группы компаний'],
+    ['/developers/7/edit', 'Застройщики'],
+    ['/complexes/7', 'Жилые комплексы'],
+    ['/mortgage-programs/7/edit', 'Ипотечные программы'],
+    ['/developer-programs/7/edit', 'Программы застройщиков'],
+    ['/key-rate', 'Ключевая ставка'],
+    ['/mortgage/?propertyId=7', 'Ипотечный калькулятор'],
+    ['/customers/7/edit', 'Клиенты'],
     ['/banks/7/edit', 'Банки'],
     ['/locations/metro', 'Локации'],
     ['/dictionaries/window-views/3/edit', 'Справочники объектов'],
@@ -42,6 +52,13 @@ describe('Sidebar', () => {
     const currentLinks = within(navigation).getAllByRole('link', { current: 'page' })
     expect(currentLinks).toHaveLength(1)
     expect(currentLinks[0]).toHaveAccessibleName(sectionName)
+  })
+
+  it('marks profile navigation while changing a password', () => {
+    const queryClient = createTestQueryClient()
+    queryClient.setQueryData(['session'], authenticatedSession)
+    renderWithProviders(<Sidebar isOpen onClose={vi.fn()} />, { initialRoute: '/password/change', queryClient })
+    expect(screen.getByRole('link', { name: 'Профиль' })).toHaveAttribute('aria-current', 'page')
   })
 
   it('keeps private navigation hidden for anonymous visitors', () => {

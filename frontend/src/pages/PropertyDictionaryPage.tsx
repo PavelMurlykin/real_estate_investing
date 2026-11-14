@@ -1,3 +1,4 @@
+import { SectionNavigation } from '@/shared/ui/SectionNavigation'
 import { retryFailedQueries } from '@/shared/lib/retryFailedQueries'
 import { Notice } from '@/shared/ui/Notice'
 import { restoreFocus } from '@/shared/lib/restoreFocus'
@@ -449,17 +450,9 @@ export function PropertyDictionaryPage() {
         </div>
       </header>
 
-      <nav className="dictionary-tabs" aria-label="Справочники объектов">
-        {dictionaryConfigurations.map((item) => (
-          <Link
-            key={item.key}
-            to={`/dictionaries/${item.key}`}
-            aria-current={item.key === dictionaryKey ? 'page' : undefined}
-          >
-            {item.title}
-          </Link>
-        ))}
-      </nav>
+      <SectionNavigation label="Справочники объектов" items={dictionaryConfigurations.map((item) => ({
+        to: `/dictionaries/${item.key}`, label: item.title,
+      }))} />
 
       <section className="filter-panel dictionary-filter-panel" aria-label={`Фильтры: ${configuration.title}`}>
         <form className="search-form" role="search" onSubmit={handleSearch}>

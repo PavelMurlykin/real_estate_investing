@@ -1,4 +1,6 @@
 import { NavLink } from 'react-router-dom'
+import { SectionNavigation } from '@/shared/ui/SectionNavigation'
+import { NavigationIcon } from './NavigationIcon'
 
 import type { ThemePreference } from './theme'
 
@@ -64,7 +66,7 @@ export function TopNavigation({
         aria-haspopup="dialog"
         onClick={onOpenSidebar}
       >
-        <span aria-hidden="true">☰</span>
+        <NavigationIcon name="menu" />
       </button>
 
       <NavLink className="brand" to="/" end aria-label="RealtyFlow — на главную">
@@ -72,10 +74,10 @@ export function TopNavigation({
         <span className="brand__name">RealtyFlow</span>
       </NavLink>
 
-      <nav className="top-navigation" aria-label="Основная навигация">
-        <NavLink to="/properties">Объекты недвижимости</NavLink>
-        <NavLink to="/mortgage">Ипотечный калькулятор</NavLink>
-      </nav>
+      <SectionNavigation className="top-navigation" label="Основная навигация" items={[
+        { to: '/properties', label: 'Объекты недвижимости' },
+        { to: '/mortgage', label: 'Ипотечный калькулятор' },
+      ]} />
 
       <button
         className="icon-button theme-toggle"
