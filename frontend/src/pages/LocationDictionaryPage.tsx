@@ -35,6 +35,7 @@ import type {
 import { formatInteger } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
+import { LocationImportPanel } from './LocationImportPanel'
 
 type LocationDictionaryConfiguration = {
   key: LocationDictionaryKey
@@ -595,6 +596,15 @@ export function LocationDictionaryPage() {
         to: `/locations/${item.key}`, label: item.title,
       }))} />
 
+      {sessionQuery.data?.capabilities.syncExternalData === true ? (
+        <LocationImportPanel
+          key={`${dictionaryKey}:${searchParameters.get('regionId')}:${searchParameters.get('cityId')}`}
+          dictionaryKey={dictionaryKey}
+          regionId={searchParameters.get('regionId') ?? ''}
+          cityId={searchParameters.get('cityId') ?? ''}
+        />
+      ) : null}
+
       <section
         className="filter-panel location-filter-panel"
         aria-label={`Фильтры: ${configuration.title}`}
@@ -788,6 +798,10 @@ export function LocationDictionaryPage() {
           />
         ) : null}
       </div>
+
+      <p className="field-hint">
+        Данные импорта: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors, ODbL</a>.
+      </p>
 
       {selectedEntry ? (
         <ModalDialog labelledBy="location-delete-title" describedBy="location-delete-description" pending={deleteMutation.isPending} onClose={closeDeleteDialog}>

@@ -1,6 +1,54 @@
-from property.views import BaseCatalogView, CatalogModelConfig
+from urllib.parse import urlencode
 
+from django import forms
+from django.contrib import messages
+from django.shortcuts import redirect
+from django.urls import reverse
+from django.views import View
+
+from property.views import BaseCatalogView, CatalogModelConfig
+from users.roles import ExternalDataSyncRequiredMixin, can_sync_external_data
+
+from .import_forms import LocationImportForm
 from .models import City, District, Metro, MetroLine, Region
+from .osm_import import LocationImportError, import_locations
+
+
+class LocationImportView(ExternalDataSyncRequiredMixin, View):
+    """Provide the same administrator import on fallback Django pages."""
+
+    def post(self, request):
+        """Validate the selected hierarchy, import and report the result."""
+        if request.POST.get('action') == 'choose-city':
+            parameters = urlencode({
+                key: request.POST.get(key, '')
+                for key in ('dictionary', 'regionId')
+            })
+            catalog_url = reverse('location:location_catalog')
+            return redirect(f'{catalog_url}?{parameters}')
+        import_form = LocationImportForm(request.POST)
+        if not import_form.is_valid():
+            messages.error(request, ' '.join(
+                str(error) for errors in import_form.errors.values()
+                for error in errors
+            ))
+        else:
+            try:
+                result = import_locations(
+                    import_form.cleaned_data['dictionary'],
+                    import_form.cleaned_data.get('region'),
+                    import_form.cleaned_data.get('city'),
+                )
+            except LocationImportError as error:
+                messages.error(request, str(error))
+            else:
+                messages.success(request, (
+                    f'Импорт завершён: добавлено {result["created"]}, '
+                    f'обновлено {result["updated"]}, '
+                    f'без изменений {result["unchanged"]}, '
+                    f'пропущено {result["skipped"]}.'
+                ))
+        return redirect('location:location_catalog')
 
 
 class LocationCatalogView(BaseCatalogView):
@@ -86,6 +134,28 @@ class LocationCatalogView(BaseCatalogView):
             edit_object=edit_object,
             delete_error=delete_error,
         )
+
+        if can_sync_external_data(self.request.user):
+            selected_region = self.request.GET.get('regionId', '')
+            import_form = LocationImportForm(initial={
+                'dictionary': self.request.GET.get('dictionary', 'regions'),
+                'regionId': selected_region,
+            })
+            import_form.fields['regionId'].widget = forms.Select(choices=[
+                ('', 'Выберите регион'),
+                *Region.objects.filter(source_identifier__isnull=False)
+                .order_by('name').values_list('pk', 'name')[:200],
+            ])
+            cities = City.objects.none()
+            if selected_region.isdecimal():
+                cities = City.objects.filter(
+                    region_id=int(selected_region),
+                    source_identifier__isnull=False,
+                ).order_by('name')
+            import_form.fields['cityId'].widget = forms.Select(choices=[
+                ('', 'Выберите город'), *cities.values_list('pk', 'name')[:1000],
+            ])
+            context['location_import_form'] = import_form
 
         if config.key == 'metro':
             context['metro_filters'] = {

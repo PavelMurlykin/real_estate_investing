@@ -36,4 +36,4 @@ USER django
 EXPOSE 8000
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["gunicorn", "real_estate_investing.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+CMD ["gunicorn", "real_estate_investing.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "60"]

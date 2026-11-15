@@ -172,6 +172,18 @@ function renderLocationPage(
 }
 
 describe('LocationDictionaryPage', () => {
+  it('shows external import only for application administrators', () => {
+    renderLocationPage('regions', regionEntry, {
+      ...managerSession,
+      capabilities: { ...managerSession.capabilities, syncExternalData: true },
+    })
+    expect(screen.getByRole('button', { name: 'Импортировать из API' })).toBeEnabled()
+  })
+
+  it('hides external import from catalog moderators', () => {
+    renderLocationPage('regions', regionEntry, managerSession)
+    expect(screen.queryByRole('button', { name: 'Импортировать из API' })).not.toBeInTheDocument()
+  })
   it('renders the public metro hierarchy and all location tabs', () => {
     const queryClient = createTestQueryClient()
     queryClient.setQueryData(['session'], anonymousSession)
@@ -202,6 +214,8 @@ describe('LocationDictionaryPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Локации' }))
       .toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '© OpenStreetMap contributors, ODbL' }))
+      .toHaveAttribute('href', 'https://www.openstreetmap.org/copyright')
     expect(screen.getByRole('link', { name: 'Метро' })).toHaveAttribute(
       'aria-current',
       'page',

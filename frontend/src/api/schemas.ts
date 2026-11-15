@@ -237,6 +237,20 @@ export const locationDictionaryOptionsSchema = z.object({
   }),
 })
 
+export const locationImportResultSchema = z.object({
+  created: z.number().int().nonnegative(),
+  updated: z.number().int().nonnegative(),
+  unchanged: z.number().int().nonnegative(),
+  skipped: z.number().int().nonnegative(),
+  lines: z.object({
+    created: z.number().int().nonnegative(),
+    updated: z.number().int().nonnegative(),
+    unchanged: z.number().int().nonnegative(),
+  }),
+  source: z.literal('OpenStreetMap'),
+  sourceUrl: z.literal('https://www.openstreetmap.org/copyright'),
+})
+
 export const customerListItemSchema = z.object({
   id: z.number().int().positive(),
   fullName: z.string(),

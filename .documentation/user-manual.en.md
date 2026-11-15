@@ -20,6 +20,28 @@ The catalog contains properties, developers, company groups and residential comp
 
 When adding or editing a city, district or metro station, type directly in the region, city or line field and choose a match from its dropdown. Changing the region clears dependent city and line fields. Changing the city in the station form clears the line. The Metro dictionary lists each station, its city and its line. The list can be filtered by region.
 
+### Importing Russian locations
+
+Application administrators (`application_administrators`) and superusers see “Импортировать из API” on the Locations tabs. Regular users, staff with only `is_staff`, and moderators cannot import. Moderators retain manual dictionary editing rights. The server enforces these restrictions; POST requests require a session and CSRF protection.
+
+1. On Regions, import regions with a `RU-*` ISO code.
+2. On Cities, select an imported region in the filter and import its cities and towns (`city`/`town`).
+3. On Districts and Metro, select an imported region and city, then import the corresponding dictionary. Metro lines are imported together with stations.
+
+The source is the free [VK Maps Overpass API](https://maps.mail.ru/osm/tools/overpass/) serving OpenStreetMap data, with [Private.coffee](https://overpass.private.coffee/) as backup. No API key or registration is required. Data is provided by [© OpenStreetMap contributors under ODbL](https://www.openstreetmap.org/copyright). Region coverage and completeness of urban districts and metro follow the source; this is not an official government address register. District and metro imports require an unambiguous city administrative boundary. If none exists, the import reports an error instead of substituting the entire region.
+
+Repeating an import adds new entries and refreshes names, relationships and line colors by stable source identifiers. Matching existing entries are linked to the source while preserving their primary keys and dependencies. Existing region codes and manually chosen active status are retained. Entries missing from the source are not deleted. Node and boundary representations of one city are combined; ambiguous city homonyms are skipped without merging. Results report created, updated, unchanged and skipped entries; metro results also report lines separately.
+
+Imports are serialized across all application users. An unavailable API, partial response or conflict saves no changes from the current import; resolve conflicts or retry later. The button is disabled while a request runs. Containerized Gunicorn allows up to 60 seconds per request; each of the two sources allows up to 20 seconds per network operation. After updating, run `docker compose up -d --build --wait`: the migration adds source fields without deleting data.
+
+The fallback Django Locations page offers the same import and access rules. Choose the dictionary and region; “Показать города” loads that region’s cities for the next step.
+
+To verify in a separate PostgreSQL database and browser, run `./scripts/run-react-browser-acceptance.ps1 -TestPath browser-tests/location-import.test.mjs -LiveLocationImport`. `-LiveLocationImport` enables external API calls; without it, permissions and import controls are tested. The stack uses port `18081` and does not connect to working data.
+
+The live scenario checks Saint Petersburg by default. To check Moscow, set `$env:BROWSER_TEST_LOCATION_CITY = 'Москва'` before running it. An external API failure fails this scenario and is not treated as a successful check.
+
+### Customers and forms
+
 The customer section requires authentication. A customer profile contains contacts, preferences, budget and linked market/tranche calculations. Financial capacity is an initial estimate. Select linked calculations for a combined Word report or unlink them; deleting a customer does not delete the calculations themselves.
 
 Forms use consistent single-line field and primary button dimensions, typography and spacing. Section headings sit above their fields; hints and errors appear beside the relevant field. On narrow screens, fields and actions stack in one column. Tab and Shift+Tab move focus between available controls; the active control has a contrasting outline in both light and dark themes.

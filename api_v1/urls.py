@@ -27,6 +27,7 @@ from .views import (
     CustomerListAPIView,
     LoginAPIView,
     LocationDictionaryDetailAPIView,
+    LocationDictionaryImportAPIView,
     LocationDictionaryListCreateAPIView,
     LocationDictionaryOptionsAPIView,
     LogoutAPIView,
@@ -182,6 +183,11 @@ urlpatterns = [
         'location-dictionaries/options/',
         LocationDictionaryOptionsAPIView.as_view(),
         name='location_dictionary_options',
+    ),
+    path(
+        'location-dictionaries/<slug:dictionary_key>/import/',
+        LocationDictionaryImportAPIView.as_view(),
+        name='location_dictionary_import',
     ),
     path(
         'location-dictionaries/<slug:dictionary_key>/',

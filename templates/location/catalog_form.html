@@ -62,6 +62,24 @@
     <div class="alert alert-danger">{{ delete_error }}</div>
     {% endif %}
 
+    {% if can_sync_external_data %}
+    <section class="card mb-4" aria-labelledby="location-import-title">
+        <div class="card-body">
+            <h2 id="location-import-title">Импорт локаций России</h2>
+            <p>Сначала импортируйте регионы, затем города региона и районы или метро города.
+                Для выбора города выберите регион и нажмите «Показать города».
+                Повторный импорт добавляет и обновляет записи; отсутствующие в источнике записи не удаляются.</p>
+            <form method="post" action="{% url 'location:location_import' %}">
+                {% csrf_token %}
+                {{ location_import_form.as_p }}
+                <button type="submit" class="btn btn-secondary" name="action" value="choose-city">Показать города</button>
+                <button type="submit" class="btn btn-primary">Импортировать из API</button>
+            </form>
+            <p class="mt-2 mb-0">Источник: <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>.</p>
+        </div>
+    </section>
+    {% endif %}
+
     <div class="row g-4">
         <div class="col-lg-8">
             <div class="card">
@@ -261,6 +279,7 @@
         </div>
         {% endif %}
     </div>
+    <p class="mt-3">Данные импорта: <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>.</p>
 </div>
 {% endblock %}
 

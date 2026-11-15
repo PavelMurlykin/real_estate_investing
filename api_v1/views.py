@@ -78,7 +78,9 @@ from customer.views import (
     _export_single_customer_word_calculation,
     _get_selected_customer_calculation_links,
 )
+from location.import_forms import LocationImportForm
 from location.models import City, District, Metro, MetroLine, Region
+from location.osm_import import LocationImportError, import_locations
 from mortgage.excel import export_saved_mortgage_calculation_excel
 from mortgage.models import MortgageCalculation
 from mortgage.word import (
@@ -1575,6 +1577,39 @@ LOCATION_DICTIONARY_CONFIGURATIONS = {
         ),
     },
 }
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class LocationDictionaryImportAPIView(APIView):
+    """Synchronize Russian locations for application administrators only."""
+
+    permission_classes = (IsAuthenticated, CanSyncExternalData)
+
+    def post(self, request, dictionary_key):
+        """Validate parent selection and return an atomic import summary."""
+        if dictionary_key not in LOCATION_DICTIONARY_CONFIGURATIONS:
+            raise NotFound('Справочник локаций не найден.')
+        if (
+            not isinstance(request.data, dict)
+            or set(request.data) - {'regionId', 'cityId'}
+        ):
+            raise ValidationError({'detail': 'Передайте только регион и город.'})
+        import_form = LocationImportForm({
+            **request.data, 'dictionary': dictionary_key,
+        })
+        if not import_form.is_valid():
+            raise ValidationError(dict(import_form.errors))
+        try:
+            result = import_locations(
+                dictionary_key,
+                import_form.cleaned_data.get('region'),
+                import_form.cleaned_data.get('city'),
+            )
+        except LocationImportError as error:
+            return Response(
+                {'detail': str(error)}, status=status.HTTP_502_BAD_GATEWAY,
+            )
+        return Response(result)
 
 
 class LocationDictionaryAPIViewMixin:

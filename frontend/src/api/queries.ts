@@ -29,6 +29,7 @@ import {
   locationDictionaryEntrySchema,
   locationDictionaryListResponseSchema,
   locationDictionaryOptionsSchema,
+  locationImportResultSchema,
   mortgageCalculationResponseSchema,
   mortgageOptionsSchema,
   mortgageProgramDetailSchema,
@@ -89,6 +90,17 @@ export const sessionQueryOptions = queryOptions({
     requestJson('/api/v1/auth/session/', sessionSchema, { signal }),
   staleTime: 60_000,
 })
+
+export function importLocationDictionary(
+  dictionaryKey: LocationDictionaryKey,
+  parents: { regionId?: number, cityId?: number },
+) {
+  return requestJson(
+    `/api/v1/location-dictionaries/${dictionaryKey}/import/`,
+    locationImportResultSchema,
+    { method: 'POST', body: JSON.stringify(parents) },
+  )
+}
 
 export function loginUser(payload: LoginRequest) {
   return requestJson('/api/v1/auth/login/', sessionSchema, {

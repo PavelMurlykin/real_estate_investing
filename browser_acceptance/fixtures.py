@@ -87,13 +87,25 @@ def seed_acceptance_fixtures():
     from customer.models import Customer
     from location.models import MetroLine
     from property.models import CompanyGroup, Developer
-    from users.roles import MODERATOR_GROUP_NAME
+    from users.roles import (
+        APPLICATION_ADMINISTRATOR_GROUP_NAME,
+        MODERATOR_GROUP_NAME,
+    )
 
     with transaction.atomic():
         user_model = get_user_model()
         moderator_group, _ = Group.objects.get_or_create(name=MODERATOR_GROUP_NAME)
+        administrator_group, _ = Group.objects.get_or_create(
+            name=APPLICATION_ADMINISTRATOR_GROUP_NAME,
+        )
+        role_groups = {
+            'moderator': [moderator_group],
+            'administrator': [administrator_group],
+        }
         accounts = {}
-        for account_index, role in enumerate(('moderator', 'owner', 'other'), start=1):
+        for account_index, role in enumerate(
+            ('moderator', 'owner', 'other', 'administrator'), start=1,
+        ):
             user, _ = user_model.objects.get_or_create(
                 email=f'{role}@react-browser.invalid',
                 defaults={
@@ -107,7 +119,7 @@ def seed_acceptance_fixtures():
             user.is_superuser = False
             user.set_password(password)
             user.save()
-            user.groups.set([moderator_group] if role == 'moderator' else [])
+            user.groups.set(role_groups.get(role, []))
             accounts[role] = {'id': user.pk, 'email': user.email}
 
         other_customer, _ = Customer.objects.get_or_create(

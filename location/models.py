@@ -4,7 +4,25 @@ from django.db import models
 from core.models import BaseModel
 
 
-class Region(BaseModel):
+class ImportedLocation(BaseModel):
+    """Keep stable source identities without changing existing primary keys."""
+
+    source_identifier = models.CharField(
+        max_length=200,
+        unique=True,
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name='Идентификатор OpenStreetMap',
+    )
+
+    class Meta(BaseModel.Meta):
+        """Keep source metadata abstract for location dictionaries."""
+
+        abstract = True
+
+
+class Region(ImportedLocation):
     """
     Справочник регионов.
     """
@@ -29,7 +47,7 @@ class Region(BaseModel):
         return self.name
 
 
-class City(BaseModel):
+class City(ImportedLocation):
     """
     Справочник городов.
     """
@@ -60,7 +78,7 @@ class City(BaseModel):
         return self.name
 
 
-class District(BaseModel):
+class District(ImportedLocation):
     """
     Справочник районов городов.
     """
@@ -91,7 +109,7 @@ class District(BaseModel):
         return self.name
 
 
-class MetroLine(BaseModel):
+class MetroLine(ImportedLocation):
     """
     Справочник линий метро.
     """
@@ -133,7 +151,7 @@ class MetroLine(BaseModel):
         return f'{self.line} ({self.city})'
 
 
-class Metro(BaseModel):
+class Metro(ImportedLocation):
     """
     Справочник станций метро.
     """

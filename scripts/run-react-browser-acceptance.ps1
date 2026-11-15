@@ -1,3 +1,8 @@
+param(
+    [string[]]$TestPath = @('browser-tests/*.test.mjs'),
+    [switch]$LiveLocationImport
+)
+
 $ErrorActionPreference = 'Stop'
 
 function New-RandomSecret {
@@ -32,6 +37,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 $env:BROWSER_TEST_ALLOW_WRITES = 'isolated'
 $env:BROWSER_TEST_BASE_URL = 'http://127.0.0.1:18081'
+$env:BROWSER_TEST_LOCATION_LIVE = if ($LiveLocationImport) { '1' } else { '0' }
 
 if (-not $env:CHROMIUM_EXECUTABLE_PATH) {
     $env:CHROMIUM_EXECUTABLE_PATH = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
@@ -73,7 +79,7 @@ try {
             $nodeArguments += @('--import', $codexRegisterUrl)
         }
     }
-    $nodeArguments += @('--test', '--test-concurrency=4', 'browser-tests/*.test.mjs')
+    $nodeArguments += @('--test', '--test-concurrency=4') + $TestPath
     & $nodeExecutable @nodeArguments
     if ($LASTEXITCODE -ne 0) {
         throw 'React browser acceptance tests failed.'

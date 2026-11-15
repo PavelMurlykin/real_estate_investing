@@ -1053,6 +1053,20 @@ textarea:focus-visible {
   box-shadow: var(--shadow-sm);
 }
 
+.location-import-panel > button {
+  align-self: start;
+}
+
+.location-import-panel h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.location-import-panel__feedback {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
 .search-form > label,
 .sort-control label {
   display: block;

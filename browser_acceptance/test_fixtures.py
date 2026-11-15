@@ -10,7 +10,11 @@ from browser_acceptance import fixtures
 from customer.models import Customer
 from location.models import MetroLine
 from property.models import CompanyGroup, Property
-from users.roles import can_manage_catalogs, can_view_all_private_records
+from users.roles import (
+    can_manage_catalogs,
+    can_sync_external_data,
+    can_view_all_private_records,
+)
 
 
 @pytest.mark.parametrize(
@@ -84,15 +88,16 @@ def test_seed_is_idempotent_and_assigns_least_privilege(monkeypatch):
     metro_line = MetroLine.objects.get(pk=manifest['metroLineId'])
     assert metro_line.city_id == real_estate_complex.district.city_id
     assert metro_line.line_color == '#336699'
-    assert get_user_model().objects.count() == 3
+    assert get_user_model().objects.count() == 4
     assert password not in str(manifest)
     for role, account in manifest['accounts'].items():
         user = get_user_model().objects.get(pk=account['id'])
         assert user.check_password(password)
         assert not user.is_staff
         assert not user.is_superuser
-        assert can_manage_catalogs(user) == (role == 'moderator')
-        assert not can_view_all_private_records(user)
+        assert can_manage_catalogs(user) == (role in ('moderator', 'administrator'))
+        assert can_sync_external_data(user) == (role == 'administrator')
+        assert can_view_all_private_records(user) == (role == 'administrator')
     assert Customer.objects.get(pk=manifest['otherCustomerId']).user_id == (
         manifest['accounts']['other']['id']
     )
