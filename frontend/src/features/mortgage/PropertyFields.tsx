@@ -42,8 +42,12 @@ export function PropertyFields({ value, onChange, errors }: {
         onChange={(buildingId) => update({ buildingId })} />
       {([['apartmentNumber', 'Номер квартиры', 'text'], ['area', 'Площадь, м²', 'number'], ['floor', 'Этаж', 'number']] as const).map(([field, label, type]) => (
         type === 'number' ? <NumberField key={field} label={label} value={value[field]}
+          min={field === 'area' ? '0.01' : '0'}
           increment={field === 'area' ? 0.01 : 1} step={field === 'area' ? '0.01' : '1'}
-          onValueChange={(newValue) => update({ [field]: newValue })}
+          onValueChange={(newValue) => update({
+            [field]: newValue !== '' && Number(newValue) < (field === 'area' ? 0.01 : 0)
+              ? (field === 'area' ? '0.01' : '0') : newValue,
+          })}
           aria-invalid={Boolean(errors[`manualProperty.${field}`])}
           aria-describedby={errors[`manualProperty.${field}`] ? `${identifier}-${field}-error` : undefined}>
           {errors[`manualProperty.${field}`] ? <span className="field-error" id={`${identifier}-${field}-error`}>{errors[`manualProperty.${field}`]}</span> : null}

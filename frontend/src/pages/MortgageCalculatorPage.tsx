@@ -1266,7 +1266,7 @@ export function MortgageCalculatorPage({
               >
                 <small>{formState.priceAdjustmentSource === 'percent' ? 'Изменяемое значение' : 'Рассчитывается автоматически'}</small>
               </NumberField>
-              <NumberField label={formState.priceAdjustmentType === 'discount' ? 'Скидка, ₽' : 'Удорожание, ₽'} increment={modifiers.amount}
+              <NumberField label={formState.priceAdjustmentType === 'discount' ? 'Скидка, ₽' : 'Удорожание, ₽'} increment={modifiers.smallAmount}
                 min="0"
                 step="0.01"
                 required
@@ -1355,7 +1355,7 @@ export function MortgageCalculatorPage({
                 <small>{formState.initialPaymentSource === 'rubles' ? 'Изменяемое значение' : 'Рассчитывается автоматически'}</small>
                 <FieldError fieldName="initialPaymentValue" errors={fieldErrors} />
               </NumberField>
-              <label className="form-field form-field--wide">
+              <label className="form-field">
                 <span>Дата первоначального взноса</span>
                 <input
                   type="date"
@@ -1367,6 +1367,18 @@ export function MortgageCalculatorPage({
                 />
                 <FieldError fieldName="initialPaymentDate" errors={fieldErrors} />
               </label>
+              <NumberField label="Годовая ставка, %" increment={modifiers.percent}
+                min="0"
+                max="100"
+                step="0.01"
+                required
+                value={formState.annualRate}
+                aria-invalid={Boolean(fieldErrors.annualRate)}
+                aria-describedby={fieldErrors.annualRate ? 'annualRate-error' : undefined}
+                onValueChange={(value) => updateAnnualRate(value)}
+              >
+                <FieldError fieldName="annualRate" errors={fieldErrors} />
+              </NumberField>
               <NumberField label="Срок ипотеки, лет" increment={1}
                 min="0"
                 max="50"
@@ -1386,18 +1398,6 @@ export function MortgageCalculatorPage({
                 onValueChange={(value) => updateMortgageTermMonths(value)}
               >
                 <FieldError fieldName="mortgageTermMonths" errors={fieldErrors} />
-              </NumberField>
-              <NumberField label="Годовая ставка, %" className="form-field--wide" increment={modifiers.percent}
-                min="0"
-                max="100"
-                step="0.01"
-                required
-                value={formState.annualRate}
-                aria-invalid={Boolean(fieldErrors.annualRate)}
-                aria-describedby={fieldErrors.annualRate ? 'annualRate-error' : undefined}
-                onValueChange={(value) => updateAnnualRate(value)}
-              >
-                <FieldError fieldName="annualRate" errors={fieldErrors} />
               </NumberField>
             </div>
           </section>

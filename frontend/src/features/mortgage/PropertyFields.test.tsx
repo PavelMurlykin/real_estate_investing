@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -40,6 +40,22 @@ function renderFields(value = initial, errors: Record<string, string> = {}) {
 }
 
 describe('PropertyFields', () => {
+  it.each([['Площадь, м²', 0.01], ['Этаж', 0]] as const)('keeps %s nonnegative for typing, buttons and arrow keys', async (label, minimum) => {
+    const user = userEvent.setup()
+    renderFields()
+    const field = screen.getByRole('spinbutton', { name: label })
+    fireEvent.change(field, { target: { value: '-5' } })
+    expect(field).toHaveValue(minimum)
+    expect(screen.getByRole('button', { name: `Уменьшить: ${label}` })).toBeDisabled()
+    field.focus()
+    await user.keyboard('{ArrowDown}')
+    expect(field).toHaveValue(minimum)
+    await user.clear(field)
+    expect(field).toHaveValue(null)
+    await user.keyboard('{ArrowDown}')
+    expect(field).toHaveValue(minimum)
+  })
+
   it('renders eight unified selectors immediately and connects validation errors', () => {
     const { container } = renderFields({ ...emptyManualProperty }, {
       'manualProperty.area': 'Укажите положительную площадь.',

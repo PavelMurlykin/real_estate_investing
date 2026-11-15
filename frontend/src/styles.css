@@ -1696,6 +1696,8 @@ textarea:focus-visible {
   border: 0;
   border-left: 1px solid var(--border);
   cursor: pointer;
+  touch-action: none;
+  user-select: none;
 }
 
 .number-field__buttons button:last-child {

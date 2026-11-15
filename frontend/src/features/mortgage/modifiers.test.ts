@@ -13,8 +13,18 @@ describe('mortgage modifiers', () => {
   )
 
   it('restores valid saved settings', () => {
+    localStorage.setItem(mortgageModifiersStorageKey, '{"amount":25000,"smallAmount":500,"percent":0.01}')
+    expect(loadMortgageModifiers()).toEqual({ amount: 25000, smallAmount: 500, percent: 0.01 })
+  })
+
+  it('preserves previous settings and adds the mobile default for small amounts', () => {
     localStorage.setItem(mortgageModifiersStorageKey, '{"amount":25000,"percent":0.01}')
-    expect(loadMortgageModifiers()).toEqual({ amount: 25000, percent: 0.01 })
+    expect(loadMortgageModifiers()).toEqual({ amount: 25000, smallAmount: 10000, percent: 0.01 })
+  })
+
+  it.each([0, -1, 0.5, 1e100, '500'])('falls back for invalid small increments: %s', (smallAmount) => {
+    localStorage.setItem(mortgageModifiersStorageKey, JSON.stringify({ amount: 20000, smallAmount, percent: 1 }))
+    expect(loadMortgageModifiers()).toEqual({ amount: 20000, smallAmount: 10000, percent: 1 })
   })
 
   it('works when browser storage is unavailable', () => {

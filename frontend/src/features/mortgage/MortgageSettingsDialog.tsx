@@ -10,30 +10,40 @@ export function MortgageSettingsDialog({ modifiers, onSave, onClose }: {
   onClose: () => void
 }) {
   const [amount, setAmount] = useState(String(modifiers.amount))
+  const [smallAmount, setSmallAmount] = useState(String(modifiers.smallAmount))
   const [percent, setPercent] = useState(modifiers.percent)
-  const [error, setError] = useState('')
+  const [errors, setErrors] = useState<{ amount?: string; smallAmount?: string }>({})
 
   const save = (event: FormEvent) => {
     event.preventDefault()
-    if (!isValidAmountIncrement(Number(amount))) {
-      setError('Укажите целое число от 1 до 1 000 000 000 ₽.')
-      return
+    const message = 'Укажите целое число от 1 до 1 000 000 000 ₽.'
+    const nextErrors = {
+      ...(!isValidAmountIncrement(Number(amount)) ? { amount: message } : {}),
+      ...(!isValidAmountIncrement(Number(smallAmount)) ? { smallAmount: message } : {}),
     }
-    onSave({ amount: Number(amount), percent })
+    setErrors(nextErrors)
+    if (Object.keys(nextErrors).length) return
+    onSave({ amount: Number(amount), smallAmount: Number(smallAmount), percent })
   }
 
   return (
     <ModalDialog role="dialog" className="mortgage-settings" labelledBy="mortgage-settings-heading"
       describedBy="mortgage-settings-description" onClose={onClose}>
       <h2 id="mortgage-settings-heading">Настройки калькулятора</h2>
-      <p id="mortgage-settings-description">Задайте шаг кнопок −/+ и клавиш ↑/↓ для числовых полей калькулятора.</p>
+      <p id="mortgage-settings-description">Задайте шаг кнопок −/+ и клавиш ↑/↓. Удерживайте кнопку, чтобы менять значение непрерывно.</p>
       <form noValidate onSubmit={save}>
         <h3>Модификаторы</h3>
-        <NumberField label="Шаг изменения суммы, ₽" value={amount} min="1" max="1000000000"
-          step="1" increment={10_000} required onValueChange={(value) => { setAmount(value); setError('') }}
-          aria-invalid={Boolean(error)} aria-describedby={error ? 'modifier-amount-help modifier-amount-error' : 'modifier-amount-help'}>
-          <small id="modifier-amount-help">Стоимость объекта, взнос, скидка или удорожание и суммы траншей.</small>
-          {error ? <span className="field-error" id="modifier-amount-error" role="alert">{error}</span> : null}
+        <NumberField label="Шаг изменения больших сумм, ₽" value={amount} min="1" max="1000000000"
+          step="1" increment={10_000} required onValueChange={(value) => { setAmount(value); setErrors((current) => ({ ...current, amount: undefined })) }}
+          aria-invalid={Boolean(errors.amount)} aria-describedby={errors.amount ? 'modifier-amount-help modifier-amount-error' : 'modifier-amount-help'}>
+          <small id="modifier-amount-help">Стоимость объекта, первоначальный взнос и суммы траншей.</small>
+          {errors.amount ? <span className="field-error" id="modifier-amount-error" role="alert">{errors.amount}</span> : null}
+        </NumberField>
+        <NumberField label="Шаг изменения небольших сумм, ₽" value={smallAmount} min="1" max="1000000000"
+          step="1" increment={1000} required onValueChange={(value) => { setSmallAmount(value); setErrors((current) => ({ ...current, smallAmount: undefined })) }}
+          aria-invalid={Boolean(errors.smallAmount)} aria-describedby={errors.smallAmount ? 'modifier-small-amount-help modifier-small-amount-error' : 'modifier-small-amount-help'}>
+          <small id="modifier-small-amount-help">Скидка и удорожание в рублях.</small>
+          {errors.smallAmount ? <span className="field-error" id="modifier-small-amount-error" role="alert">{errors.smallAmount}</span> : null}
         </NumberField>
         <fieldset className="mortgage-settings__percent">
           <legend>Шаг изменения взноса и ставки</legend>
