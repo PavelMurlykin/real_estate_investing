@@ -2,6 +2,7 @@ import { useId } from 'react'
 
 import type { CatalogOption } from '@/api/schemas'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
+import { NumberField } from '@/shared/ui/NumberField'
 
 import type { ManualPropertyState } from './manualProperty'
 
@@ -40,9 +41,15 @@ export function PropertyFields({ value, onChange, errors }: {
         error={errors['manualProperty.buildingId']}
         onChange={(buildingId) => update({ buildingId })} />
       {([['apartmentNumber', 'Номер квартиры', 'text'], ['area', 'Площадь, м²', 'number'], ['floor', 'Этаж', 'number']] as const).map(([field, label, type]) => (
-        <div className="form-field" key={field}>
+        type === 'number' ? <NumberField key={field} label={label} value={value[field]}
+          increment={field === 'area' ? 0.01 : 1} step={field === 'area' ? '0.01' : '1'}
+          onValueChange={(newValue) => update({ [field]: newValue })}
+          aria-invalid={Boolean(errors[`manualProperty.${field}`])}
+          aria-describedby={errors[`manualProperty.${field}`] ? `${identifier}-${field}-error` : undefined}>
+          {errors[`manualProperty.${field}`] ? <span className="field-error" id={`${identifier}-${field}-error`}>{errors[`manualProperty.${field}`]}</span> : null}
+        </NumberField> : <div className="form-field" key={field}>
           <label htmlFor={`${identifier}-${field}`}>{label}</label>
-          <input id={`${identifier}-${field}`} type={type} value={value[field]} step={field === 'area' ? '0.01' : undefined}
+          <input id={`${identifier}-${field}`} type={type} value={value[field]}
             onChange={(event) => update({ [field]: event.target.value })}
             aria-invalid={Boolean(errors[`manualProperty.${field}`])}
             aria-describedby={errors[`manualProperty.${field}`] ? `${identifier}-${field}-error` : undefined} />

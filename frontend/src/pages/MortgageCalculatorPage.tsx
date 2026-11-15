@@ -29,6 +29,9 @@ import type {
   TrenchMortgageCalculationResponse,
   TrenchMortgageEntryRequest,
 } from '@/api/schemas'
+import { MortgageSettingsDialog } from '@/features/mortgage/MortgageSettingsDialog'
+import { loadMortgageModifiers, mortgageModifiersStorageKey, type MortgageModifiers } from '@/features/mortgage/modifiers'
+import { NumberField } from '@/shared/ui/NumberField'
 import { MortgageResult } from '@/features/mortgage/MortgageResult'
 import { TrenchMortgageResult } from '@/features/mortgage/TrenchMortgageResult'
 import { getProgramConditions, getProgramCreditLimit, matchDeveloperProgram } from '@/features/mortgage/programs'
@@ -394,6 +397,19 @@ export function MortgageCalculatorPage({
   initialCalculationType?: CalculationType
 }) {
   useDocumentTitle('Ипотечный калькулятор')
+  const [modifiers, setModifiers] = useState(loadMortgageModifiers)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsStorageError, setSettingsStorageError] = useState(false)
+  const saveModifiers = (value: MortgageModifiers) => {
+    setModifiers(value)
+    try {
+      localStorage.setItem(mortgageModifiersStorageKey, JSON.stringify(value))
+      setSettingsStorageError(false)
+    } catch {
+      setSettingsStorageError(true)
+    }
+    setSettingsOpen(false)
+  }
   const [searchParameters] = useSearchParams()
   const location = useLocation()
   const queryClient = useQueryClient()
@@ -1098,12 +1114,18 @@ export function MortgageCalculatorPage({
           </p>
         </div>
         <div className="page-header__actions">
+          <button className="button button--secondary" type="button" onClick={() => setSettingsOpen(true)}>
+            Настройки
+          </button>
           <Link className="button button--secondary" to={calculationType === 'market'
             ? '/mortgage/calculations' : '/mortgage/trench/calculations'}>
             История расчётов
           </Link>
         </div>
       </header>
+
+      {settingsOpen ? <MortgageSettingsDialog modifiers={modifiers} onSave={saveModifiers} onClose={() => setSettingsOpen(false)} /> : null}
+      {settingsStorageError ? <Notice as="p" tone="info" role="status">Браузер не разрешил сохранить настройки. Они действуют до перезагрузки страницы.</Notice> : null}
 
       {sessionQuery.isError ? <ErrorState compact title="Не удалось проверить вход"
         isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} /> : null}
@@ -1199,21 +1221,18 @@ export function MortgageCalculatorPage({
               </div>
             </div>
             <div className="field-grid">
-              <label className="form-field form-field--wide">
-                <span>Базовая стоимость, ₽</span>
-                <input
-                  name="propertyCost"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  required
-                  value={formState.propertyCost}
-                  aria-invalid={Boolean(fieldErrors.propertyCost)}
-                  aria-describedby={fieldErrors.propertyCost ? 'propertyCost-error' : undefined}
-                  onChange={(event) => updatePropertyCost(event.target.value)}
-                />
+              <NumberField label="Базовая стоимость, ₽" className="form-field--wide" increment={modifiers.amount}
+                name="propertyCost"
+                min="0.01"
+                step="0.01"
+                required
+                value={formState.propertyCost}
+                aria-invalid={Boolean(fieldErrors.propertyCost)}
+                aria-describedby={fieldErrors.propertyCost ? 'propertyCost-error' : undefined}
+                onValueChange={(value) => updatePropertyCost(value)}
+              >
                 <FieldError fieldName="propertyCost" errors={fieldErrors} />
-              </label>
+              </NumberField>
               <fieldset className="form-field form-field--wide segmented-field">
                 <legend>Тип корректировки</legend>
                 <div className="segmented-control">
@@ -1237,35 +1256,27 @@ export function MortgageCalculatorPage({
                   </label>
                 </div>
               </fieldset>
-              <label className="form-field">
-                <span>{formState.priceAdjustmentType === 'discount' ? 'Скидка, %' : 'Удорожание, %'}</span>
-                <input
-                  aria-label={formState.priceAdjustmentType === 'discount' ? 'Скидка, %' : 'Удорожание, %'}
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  required
-                  value={formState.priceAdjustmentPercent}
-                  aria-invalid={Boolean(fieldErrors.priceAdjustmentValue)}
-                  onChange={(event) => updateAdjustment('percent', event.target.value)}
-                />
+              <NumberField label={formState.priceAdjustmentType === 'discount' ? 'Скидка, %' : 'Удорожание, %'} increment={modifiers.percent}
+                min="0"
+                step="0.01"
+                required
+                value={formState.priceAdjustmentPercent}
+                aria-invalid={Boolean(fieldErrors.priceAdjustmentValue)}
+                onValueChange={(value) => updateAdjustment('percent', value)}
+              >
                 <small>{formState.priceAdjustmentSource === 'percent' ? 'Изменяемое значение' : 'Рассчитывается автоматически'}</small>
-              </label>
-              <label className="form-field">
-                <span>{formState.priceAdjustmentType === 'discount' ? 'Скидка, ₽' : 'Удорожание, ₽'}</span>
-                <input
-                  aria-label={formState.priceAdjustmentType === 'discount' ? 'Скидка, ₽' : 'Удорожание, ₽'}
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  required
-                  value={formState.priceAdjustmentRubles}
-                  aria-invalid={Boolean(fieldErrors.priceAdjustmentValue)}
-                  onChange={(event) => updateAdjustment('rubles', event.target.value)}
-                />
+              </NumberField>
+              <NumberField label={formState.priceAdjustmentType === 'discount' ? 'Скидка, ₽' : 'Удорожание, ₽'} increment={modifiers.amount}
+                min="0"
+                step="0.01"
+                required
+                value={formState.priceAdjustmentRubles}
+                aria-invalid={Boolean(fieldErrors.priceAdjustmentValue)}
+                onValueChange={(value) => updateAdjustment('rubles', value)}
+              >
                 <small>{formState.priceAdjustmentSource === 'rubles' ? 'Изменяемое значение' : 'Рассчитывается автоматически'}</small>
                 <FieldError fieldName="priceAdjustmentValue" errors={fieldErrors} />
-              </label>
+              </NumberField>
               <div className="calculated-value form-field--wide" role="status">
                 <span>Итоговая стоимость объекта</span>
                 <strong>{formatCalculatedValue(finalPropertyCost)} ₽</strong>
@@ -1322,36 +1333,28 @@ export function MortgageCalculatorPage({
                   if (value !== formState.bankProgramId) selectProgram(value)
                 }}
               />
-              <label className="form-field">
-                <span>Первоначальный взнос, %</span>
-                <input
-                  aria-label="Первоначальный взнос, %"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  required
-                  value={formState.initialPaymentPercent}
-                  aria-invalid={Boolean(fieldErrors.initialPaymentValue)}
-                  onChange={(event) => updateInitialPayment('percent', event.target.value)}
-                />
+              <NumberField label="Первоначальный взнос, %" increment={modifiers.percent}
+                min="0"
+                max="100"
+                step="0.01"
+                required
+                value={formState.initialPaymentPercent}
+                aria-invalid={Boolean(fieldErrors.initialPaymentValue)}
+                onValueChange={(value) => updateInitialPayment('percent', value)}
+              >
                 <small>{formState.initialPaymentSource === 'percent' ? 'Изменяемое значение' : 'Рассчитывается автоматически'}</small>
-              </label>
-              <label className="form-field">
-                <span>Первоначальный взнос, ₽</span>
-                <input
-                  aria-label="Первоначальный взнос, ₽"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  required
-                  value={formState.initialPaymentRubles}
-                  aria-invalid={Boolean(fieldErrors.initialPaymentValue)}
-                  onChange={(event) => updateInitialPayment('rubles', event.target.value)}
-                />
+              </NumberField>
+              <NumberField label="Первоначальный взнос, ₽" increment={modifiers.amount}
+                min="0"
+                step="0.01"
+                required
+                value={formState.initialPaymentRubles}
+                aria-invalid={Boolean(fieldErrors.initialPaymentValue)}
+                onValueChange={(value) => updateInitialPayment('rubles', value)}
+              >
                 <small>{formState.initialPaymentSource === 'rubles' ? 'Изменяемое значение' : 'Рассчитывается автоматически'}</small>
                 <FieldError fieldName="initialPaymentValue" errors={fieldErrors} />
-              </label>
+              </NumberField>
               <label className="form-field form-field--wide">
                 <span>Дата первоначального взноса</span>
                 <input
@@ -1364,48 +1367,38 @@ export function MortgageCalculatorPage({
                 />
                 <FieldError fieldName="initialPaymentDate" errors={fieldErrors} />
               </label>
-              <label className="form-field">
-                <span>Срок ипотеки, лет</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="50"
-                  step="1"
-                  required
-                  value={formState.mortgageTermYears}
-                  onChange={(event) => updateMortgageTermYears(event.target.value)}
-                />
-              </label>
-              <label className="form-field">
-                <span>Срок ипотеки, месяцев</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="600"
-                  step="1"
-                  required
-                  value={formState.mortgageTermMonths}
-                  aria-invalid={Boolean(fieldErrors.mortgageTermMonths)}
-                  aria-describedby={fieldErrors.mortgageTermMonths ? 'mortgageTermMonths-error' : undefined}
-                  onChange={(event) => updateMortgageTermMonths(event.target.value)}
-                />
+              <NumberField label="Срок ипотеки, лет" increment={1}
+                min="0"
+                max="50"
+                step="1"
+                required
+                value={formState.mortgageTermYears}
+                onValueChange={(value) => updateMortgageTermYears(value)}
+              />
+              <NumberField label="Срок ипотеки, месяцев" increment={1}
+                min="1"
+                max="600"
+                step="1"
+                required
+                value={formState.mortgageTermMonths}
+                aria-invalid={Boolean(fieldErrors.mortgageTermMonths)}
+                aria-describedby={fieldErrors.mortgageTermMonths ? 'mortgageTermMonths-error' : undefined}
+                onValueChange={(value) => updateMortgageTermMonths(value)}
+              >
                 <FieldError fieldName="mortgageTermMonths" errors={fieldErrors} />
-              </label>
-              <label className="form-field form-field--wide">
-                <span>Годовая ставка, %</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  required
-                  value={formState.annualRate}
-                  aria-invalid={Boolean(fieldErrors.annualRate)}
-                  aria-describedby={fieldErrors.annualRate ? 'annualRate-error' : undefined}
-                  onChange={(event) => updateAnnualRate(event.target.value)}
-                />
+              </NumberField>
+              <NumberField label="Годовая ставка, %" className="form-field--wide" increment={modifiers.percent}
+                min="0"
+                max="100"
+                step="0.01"
+                required
+                value={formState.annualRate}
+                aria-invalid={Boolean(fieldErrors.annualRate)}
+                aria-describedby={fieldErrors.annualRate ? 'annualRate-error' : undefined}
+                onValueChange={(value) => updateAnnualRate(value)}
+              >
                 <FieldError fieldName="annualRate" errors={fieldErrors} />
-              </label>
+              </NumberField>
             </div>
           </section>
 
@@ -1481,45 +1474,35 @@ export function MortgageCalculatorPage({
                 </label>
                 {formState.hasGracePeriod ? (
                   <div className="field-grid grace-fields">
-                    <label className="form-field">
-                      <span>Льготный период, лет</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="50"
-                        step="1"
-                        required
-                        value={formState.gracePeriodTermYears}
-                        onChange={(event) => updateGracePeriodYears(event.target.value)}
-                      />
-                    </label>
-                    <label className="form-field">
-                      <span>Льготный период, месяцев</span>
-                      <input
-                        type="number"
-                        min="1"
-                        max="599"
-                        required
-                        value={formState.gracePeriodTermMonths}
-                        aria-invalid={Boolean(fieldErrors.gracePeriodTermMonths)}
-                        onChange={(event) => updateGracePeriodMonths(event.target.value)}
-                      />
+                    <NumberField label="Льготный период, лет" increment={1}
+                      min="0"
+                      max="50"
+                      step="1"
+                      required
+                      value={formState.gracePeriodTermYears}
+                      onValueChange={(value) => updateGracePeriodYears(value)}
+                    />
+                    <NumberField label="Льготный период, месяцев" increment={1}
+                      min="1"
+                      max="599"
+                      required
+                      value={formState.gracePeriodTermMonths}
+                      aria-invalid={Boolean(fieldErrors.gracePeriodTermMonths)}
+                      onValueChange={(value) => updateGracePeriodMonths(value)}
+                    >
                       <FieldError fieldName="gracePeriodTermMonths" errors={fieldErrors} />
-                    </label>
-                    <label className="form-field form-field--wide">
-                      <span>Ставка льготного периода, %</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        required
-                        value={formState.gracePeriodRate}
-                        aria-invalid={Boolean(fieldErrors.gracePeriodRate)}
-                        onChange={(event) => updateField('gracePeriodRate', event.target.value)}
-                      />
+                    </NumberField>
+                    <NumberField label="Ставка льготного периода, %" className="form-field--wide" increment={modifiers.percent}
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      required
+                      value={formState.gracePeriodRate}
+                      aria-invalid={Boolean(fieldErrors.gracePeriodRate)}
+                      onValueChange={(value) => updateField('gracePeriodRate', value)}
+                    >
                       <FieldError fieldName="gracePeriodRate" errors={fieldErrors} />
-                    </label>
+                    </NumberField>
                   </div>
                 ) : null}
               </div>
@@ -1568,52 +1551,41 @@ export function MortgageCalculatorPage({
                             />
                             <FieldError fieldName={dateFieldName} errors={fieldErrors} />
                           </label>
-                          <label className="form-field">
-                            <span>Сумма транша, %</span>
-                            <input
-                              aria-label="Сумма транша, %"
-                              type="number"
-                              min="0"
-                              max="100"
-                              step="0.01"
-                              required
-                              readOnly={isLast}
-                              value={isLast ? formatCalculatedValue(remainderPercent) : trench.amountPercent}
-                              aria-invalid={Boolean(fieldErrors[amountFieldName])}
-                              onChange={(event) => updateTrenchAmount(index, 'percent', event.target.value)}
-                            />
+                          <NumberField label="Сумма транша, %" increment={modifiers.percent}
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            required
+                            readOnly={isLast}
+                            value={isLast ? formatCalculatedValue(remainderPercent) : trench.amountPercent}
+                            aria-invalid={Boolean(fieldErrors[amountFieldName])}
+                            onValueChange={(value) => updateTrenchAmount(index, 'percent', value)}
+                          >
                             {!isLast ? <small>{trench.amountSource === 'percent' ? 'Изменяемое значение' : 'Рассчитывается автоматически'}</small> : null}
-                          </label>
-                          <label className="form-field">
-                            <span>Сумма транша, ₽</span>
-                            <input
-                              aria-label="Сумма транша, ₽"
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              required
-                              readOnly={isLast}
-                              value={isLast ? formatCalculatedValue(remainderRubles) : trench.amountRubles}
-                              aria-invalid={Boolean(fieldErrors[amountFieldName])}
-                              onChange={(event) => updateTrenchAmount(index, 'rubles', event.target.value)}
-                            />
+                          </NumberField>
+                          <NumberField label="Сумма транша, ₽" increment={modifiers.amount}
+                            min="0"
+                            step="0.01"
+                            required
+                            readOnly={isLast}
+                            value={isLast ? formatCalculatedValue(remainderRubles) : trench.amountRubles}
+                            aria-invalid={Boolean(fieldErrors[amountFieldName])}
+                            onValueChange={(value) => updateTrenchAmount(index, 'rubles', value)}
+                          >
                             {!isLast ? <small>{trench.amountSource === 'rubles' ? 'Изменяемое значение' : 'Рассчитывается автоматически'}</small> : null}
                             <FieldError fieldName={amountFieldName} errors={fieldErrors} />
-                          </label>
-                          <label className="form-field">
-                            <span>Годовая ставка, %</span>
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              step="0.01"
-                              required
-                              value={trench.annualRate}
-                              aria-invalid={Boolean(fieldErrors[rateFieldName])}
-                              onChange={(event) => updateTrench(index, 'annualRate', event.target.value)}
-                            />
+                          </NumberField>
+                          <NumberField label="Годовая ставка, %" increment={modifiers.percent}
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            required
+                            value={trench.annualRate}
+                            aria-invalid={Boolean(fieldErrors[rateFieldName])}
+                            onValueChange={(value) => updateTrench(index, 'annualRate', value)}
+                          >
                             <FieldError fieldName={rateFieldName} errors={fieldErrors} />
-                          </label>
+                          </NumberField>
                         </div>
                       </fieldset>
                     )

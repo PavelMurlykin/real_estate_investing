@@ -214,6 +214,7 @@ function renderCalculator({
 }
 
 afterEach(() => {
+  localStorage.clear()
   vi.unstubAllGlobals()
 })
 
@@ -226,6 +227,79 @@ async function chooseBankOrProgram(
 }
 
 describe('MortgageCalculatorPage', () => {
+  it.each(['market', 'trench'] as const)('saves modifiers and synchronizes %s money fields when stepping', async (mode) => {
+    const user = userEvent.setup()
+    renderCalculator({ initialCalculationType: mode, session: authenticatedSession })
+    const cost = screen.getByLabelText('Базовая стоимость, ₽')
+    const originalCost = Number((cost as HTMLInputElement).value)
+    await user.click(screen.getByRole('button', { name: 'Настройки' }))
+    const dialog = screen.getByRole('dialog', { name: 'Настройки калькулятора' })
+    const amount = within(dialog).getByLabelText('Шаг изменения суммы, ₽')
+    await user.clear(amount)
+    await user.type(amount, '25000')
+    await user.click(within(dialog).getByRole('radio', { name: '0,01 п.п.' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Сохранить' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Настройки' })).toHaveFocus()
+    expect(cost).toHaveValue(originalCost)
+    expect(JSON.parse(localStorage.getItem('mortgage-calculator-modifiers')!)).toEqual({ amount: 25000, percent: 0.01 })
+    await user.click(screen.getByRole('button', { name: 'Увеличить: Базовая стоимость, ₽' }))
+    expect(cost).toHaveValue(originalCost + 25000)
+    await user.click(screen.getByRole('button', { name: 'Увеличить: Первоначальный взнос, %' }))
+    expect(screen.getByLabelText('Первоначальный взнос, %')).toHaveValue(20.01)
+    expect(screen.getByLabelText('Первоначальный взнос, ₽')).toHaveValue(Number(((originalCost + 25000) * 0.2001).toFixed(2)))
+    await user.click(screen.getByRole('button', { name: 'Увеличить: Скидка, ₽' }))
+    expect(screen.getByLabelText('Скидка, ₽')).toHaveValue(25000)
+    if (mode === 'market') {
+      await user.click(screen.getByRole('button', { name: 'Увеличить: Годовая ставка, %' }))
+      expect(screen.getByLabelText('Годовая ставка, %')).toHaveValue(15.01)
+      await user.click(screen.getByLabelText('Использовать льготный период'))
+      await user.click(screen.getByRole('button', { name: 'Увеличить: Ставка льготного периода, %' }))
+      expect(screen.getByLabelText('Ставка льготного периода, %')).toHaveValue(6.01)
+    } else {
+      await user.selectOptions(screen.getByLabelText('Количество траншей'), '2')
+      const first = screen.getByRole('group', { name: 'Транш 1' })
+      await user.click(within(first).getByRole('button', { name: 'Увеличить: Сумма транша, %' }))
+      expect(within(first).getByLabelText('Сумма транша, %')).toHaveValue(50.01)
+      await user.click(within(first).getByRole('button', { name: 'Увеличить: Годовая ставка, %' }))
+      expect(within(first).getByLabelText('Годовая ставка, %')).toHaveValue(15.01)
+      const residual = screen.getByRole('group', { name: /Транш 2/ })
+      expect(within(residual).getByRole('button', { name: 'Увеличить: Сумма транша, ₽' })).toBeDisabled()
+    }
+    await user.click(screen.getByRole('button', { name: 'Уменьшить: Срок ипотеки, месяцев' }))
+    expect(screen.getByLabelText('Срок ипотеки, месяцев')).toHaveValue(359)
+  })
+
+  it('validates settings, cancels edits and restores stored modifiers after remount', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem('mortgage-calculator-modifiers', '{"amount":40000,"percent":1}')
+    renderCalculator({ session: authenticatedSession })
+    await user.click(screen.getByRole('button', { name: 'Настройки' }))
+    const dialog = screen.getByRole('dialog')
+    const amount = within(dialog).getByLabelText('Шаг изменения суммы, ₽')
+    expect(amount).toHaveValue(40000)
+    expect(within(dialog).getByRole('radio', { name: '1 п.п.' })).toBeChecked()
+    await user.clear(amount)
+    await user.type(amount, '-1')
+    await user.click(within(dialog).getByRole('button', { name: 'Сохранить' }))
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('Укажите целое число')
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: 'Увеличить: Годовая ставка, %' }))
+    expect(screen.getByLabelText('Годовая ставка, %')).toHaveValue(16)
+  })
+
+  it('applies settings with a notice if browser storage rejects saving', async () => {
+    const user = userEvent.setup()
+    renderCalculator({ session: authenticatedSession })
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Storage full') })
+    await user.click(screen.getByRole('button', { name: 'Настройки' }))
+    await user.click(screen.getByRole('radio', { name: '1 п.п.' }))
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(screen.getByText(/Браузер не разрешил сохранить настройки/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Увеличить: Годовая ставка, %' }))
+    expect(screen.getByLabelText('Годовая ставка, %')).toHaveValue(16)
+  })
+
   it.each(['market', 'trench'] as const)('recovers bank options without replacing manual %s inputs', async (mode) => {
     const user = userEvent.setup()
     let failed = true
