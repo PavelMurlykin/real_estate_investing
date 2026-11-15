@@ -159,11 +159,13 @@
   top: 100%;
   left: 0;
   right: 0;
-  max-height: min(18rem, 45vh);
+  max-height: min(18rem, 45dvh, calc(100dvh - var(--header-height) - 96px));
   margin: 0.35rem 0 0;
   padding: 0.35rem;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -176,10 +178,11 @@
 }
 
 .searchable-select__list {
-  min-height: 0;
+  min-height: 44px;
   margin: 0;
   padding: 0;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
   list-style: none;
 }
 
@@ -320,6 +323,8 @@
 }
 
 :root {
+  scroll-padding-block-start: calc(var(--header-height) + 16px);
+  scroll-padding-block-end: 16px;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     'Segoe UI', sans-serif;
   color: #1b2520;

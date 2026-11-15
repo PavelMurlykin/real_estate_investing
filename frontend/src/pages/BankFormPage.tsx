@@ -421,7 +421,7 @@ export function BankFormPage() {
                 aria-invalid={Boolean(
                   clientErrors.name || serverFieldError(mutation.error, 'name'),
                 )}
-                aria-describedby="bank-name-error"
+                aria-describedby={clientErrors.name || serverFieldError(mutation.error, 'name') ? 'bank-name-error' : undefined}
               />
               {(clientErrors.name
                 || serverFieldError(mutation.error, 'name')) ? (
@@ -444,7 +444,8 @@ export function BankFormPage() {
                   clientErrors.logoUrl
                   || serverFieldError(mutation.error, 'logoUrl'),
                 )}
-                aria-describedby="bank-logo-url-hint bank-logoUrl-error"
+                aria-describedby={clientErrors.logoUrl || serverFieldError(mutation.error, 'logoUrl')
+                  ? 'bank-logo-url-hint bank-logoUrl-error' : 'bank-logo-url-hint'}
               />
               <small id="bank-logo-url-hint">
                 Используйте HTTPS-адрес официального логотипа банка.
@@ -557,7 +558,7 @@ export function BankFormPage() {
                         )}
                         required
                         aria-invalid={Boolean(errorFor('interestRate'))}
-                        aria-describedby={`bank-program-${rowIndex}-interestRate-error`}
+                        aria-describedby={errorFor('interestRate') ? `bank-program-${rowIndex}-interestRate-error` : undefined}
                       />
                       {errorFor('interestRate') ? (
                         <span
@@ -587,7 +588,7 @@ export function BankFormPage() {
                         aria-invalid={Boolean(
                           errorFor('minimumInitialPaymentPercent'),
                         )}
-                        aria-describedby={`bank-program-${rowIndex}-minimumInitialPaymentPercent-error`}
+                        aria-describedby={errorFor('minimumInitialPaymentPercent') ? `bank-program-${rowIndex}-minimumInitialPaymentPercent-error` : undefined}
                       />
                       {errorFor('minimumInitialPaymentPercent') ? (
                         <span
@@ -616,7 +617,7 @@ export function BankFormPage() {
                         aria-invalid={Boolean(
                           errorFor('maximumLoanTermYears'),
                         )}
-                        aria-describedby={`bank-program-${rowIndex}-maximumLoanTermYears-error`}
+                        aria-describedby={errorFor('maximumLoanTermYears') ? `bank-program-${rowIndex}-maximumLoanTermYears-error` : undefined}
                       />
                       {errorFor('maximumLoanTermYears') ? (
                         <span

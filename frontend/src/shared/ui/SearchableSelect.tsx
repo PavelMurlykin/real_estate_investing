@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { Notice } from './Notice'
 
 export type SelectChoice = { value: string; label: string }
 
@@ -16,7 +17,7 @@ type SearchableChoicesProps = {
   hasMore?: boolean
   onLoadMore?: () => void
   error?: boolean
-  onRetry?: () => void
+  onRetry?: () => void | Promise<unknown>
 }
 
 type SearchableSelectProps = SearchableChoicesProps & {
@@ -50,10 +51,20 @@ function SearchableChoices({ label, values, options, selectedOptions, onChange, 
   const [query, setQuery] = useState('')
   const [active, setActive] = useState<number | null>(null)
   const [chosen, setChosen] = useState<SelectChoice[]>([])
+  const [retrying, setRetrying] = useState(false)
+  const retryInFlight = useRef(false)
+  const busy = loading || retrying
+  const selectionKey = values.join(',')
   useEffect(() => {
-    if (open) popup.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
-  }, [open])
+    const frame = window.requestAnimationFrame(() => {
+      if (open) popup.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+      const field = input.current
+      if (field && document.activeElement === field) field.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [open, selectionKey])
   const value = values[0] ?? ''
+  const missingLabel = error && !busy ? 'Не удалось загрузить выбранное значение' : 'Загрузка выбранного значения…'
   const selected = (identifier: string) => options.find((option) => option.value === identifier)
     ?? selectedOptions?.find((option) => option.value === identifier)
     ?? chosen.find((option) => option.value === identifier)
@@ -75,6 +86,14 @@ function SearchableChoices({ label, values, options, selectedOptions, onChange, 
     setActive(next)
     document.getElementById(`${identifier}-option-${next}`)?.scrollIntoView?.({ block: 'nearest' })
   }
+  const retry = async () => {
+    if (!onRetry || retryInFlight.current || loading) return
+    retryInFlight.current = true
+    setRetrying(true)
+    input.current?.focus()
+    try { await onRetry() } catch { /* The parent retains the lookup error for another attempt. */ }
+    finally { retryInFlight.current = false; setRetrying(false) }
+  }
   return (
     <div className={`form-field searchable-select${multiple ? ' form-field--wide' : ''}`} onBlur={(event) => {
       if (!event.currentTarget.contains(event.relatedTarget)) close()
@@ -82,7 +101,7 @@ function SearchableChoices({ label, values, options, selectedOptions, onChange, 
       <label htmlFor={identifier}>{label}</label>
       {multiple && values.length ? <ul className="searchable-select__values" aria-label={`Выбрано: ${label}`}>
         {values.map((value) => <li key={value}>
-          <span>{selected(value)?.label ?? 'Загрузка выбранного значения…'}</span>
+          <span>{selected(value)?.label ?? missingLabel}</span>
           <button type="button" className="text-button" disabled={disabled}
             aria-label={`Убрать: ${selected(value)?.label ?? value}`}
             onClick={() => { input.current?.focus(); onChange(values.filter((item) => item !== value)) }}>
@@ -92,12 +111,12 @@ function SearchableChoices({ label, values, options, selectedOptions, onChange, 
       </ul> : null}
       <div className="searchable-select__control">
         <input id={identifier} ref={input} role="combobox" type="text" autoComplete="off" maxLength={100}
-          aria-autocomplete="list" aria-expanded={open} aria-controls={`${identifier}-list`}
+          aria-autocomplete="list" aria-expanded={open} aria-controls={open ? `${identifier}-list` : undefined}
           aria-activedescendant={open && choices[activeIndex] ? `${identifier}-option-${activeIndex}` : undefined}
-          aria-busy={loading || undefined} disabled={disabled} required={required}
+          aria-busy={busy || undefined} disabled={disabled} required={required}
           aria-invalid={Boolean(validationError)}
-          aria-describedby={validationError ? `${identifier}-error` : undefined}
-          value={open ? query : !multiple && value ? selected(value)?.label ?? 'Загрузка выбранного значения…' : ''}
+          aria-describedby={[validationError ? `${identifier}-error` : '', open && error ? `${identifier}-lookup-error` : ''].filter(Boolean).join(' ') || undefined}
+          value={open ? query : !multiple && value ? selected(value)?.label ?? missingLabel : ''}
           placeholder={placeholder ?? (open ? 'Введите значение' : emptyLabel)}
           onFocus={(event) => { if (!event.currentTarget.hasAttribute('data-restoring-focus')) setOpen(true) }}
           onClick={() => setOpen(true)}
@@ -110,7 +129,7 @@ function SearchableChoices({ label, values, options, selectedOptions, onChange, 
               else setActive(null)
             } else if (event.key === 'Enter' && open) {
               event.preventDefault()
-              if (query.trim() && (loading || choices.length === 1)) return
+              if (active === null && (busy || error || (query.trim() && choices.length === 1))) return
               choose(choices[activeIndex])
             }
           }} />
@@ -124,19 +143,21 @@ function SearchableChoices({ label, values, options, selectedOptions, onChange, 
             onMouseDown={(event) => event.preventDefault()}
             onScroll={(event) => {
               const element = event.currentTarget
-              if (hasMore && !loading && element.scrollHeight - element.scrollTop - element.clientHeight < 48) onLoadMore?.()
+              if (hasMore && !busy && !error && element.scrollHeight - element.scrollTop - element.clientHeight < 48) onLoadMore?.()
             }}>
             {choices.map((option, index) => <li id={`${identifier}-option-${index}`} key={option.value} role="option"
-              aria-selected={option.value ? values.includes(option.value) : !values.length} className={index === activeIndex ? 'is-highlighted' : undefined}
+              aria-selected={option.value ? values.includes(option.value) : !values.length}
+              className={index === activeIndex ? 'is-highlighted' : undefined}
               onMouseMove={() => setActive(index)} onClick={() => choose(option)}>
               {option.label}
             </li>)}
-            {loading ? <li role="presentation" className="searchable-select__notice">Загрузка…</li> : null}
-            {!loading && !error && choices.length === 1 ? (
+            {busy ? <li role="presentation" className="searchable-select__notice">Загрузка…</li> : null}
+            {!busy && !error && choices.length === 1 ? (
               <li role="presentation" className="searchable-select__notice">Нет подходящих вариантов</li>
             ) : null}
           </ul>
-          {hasMore && !error && onLoadMore ? <button type="button" className="text-button searchable-select__retry" disabled={loading}
+          {error ? <Notice id={`${identifier}-lookup-error`} tone="error">Не удалось загрузить варианты. Повторите запрос.</Notice> : null}
+          {hasMore && !error && onLoadMore ? <button type="button" className="text-button searchable-select__retry" disabled={busy}
             onClick={() => { input.current?.focus(); onLoadMore() }}>
             Показать ещё варианты
           </button> : null}
@@ -144,7 +165,9 @@ function SearchableChoices({ label, values, options, selectedOptions, onChange, 
             <button
               type="button"
               className="text-button searchable-select__retry"
-              onClick={() => { input.current?.focus(); onRetry() }}
+              disabled={busy}
+              aria-busy={busy || undefined}
+              onClick={() => void retry()}
               onKeyDown={(event) => {
                 if (event.key === 'Escape') {
                   event.preventDefault()
@@ -153,7 +176,7 @@ function SearchableChoices({ label, values, options, selectedOptions, onChange, 
                 }
               }}
             >
-              Повторить загрузку справочника
+              {busy ? 'Повторяем…' : 'Повторить загрузку справочника'}
             </button>
           ) : null}
         </div>

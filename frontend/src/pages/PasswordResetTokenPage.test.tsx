@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -26,6 +27,27 @@ function passwordResetTokenRoutes() {
 }
 
 describe('PasswordResetTokenPage', () => {
+  it.each([503, 'network', 'malformed'] as const)('offers retry after a temporary validation failure (%s)', async (failure) => {
+    const user = userEvent.setup()
+    let attempts = 0
+    const fetchMock = vi.fn(async () => {
+      attempts++
+      if (attempts === 1) {
+        if (failure === 'network') throw new TypeError('Failed to fetch')
+        return Response.json(failure === 'malformed' ? {} : { detail: 'Временный сбой.' }, { status: failure === 'malformed' ? 200 : 503 })
+      }
+      return Response.json({ valid: true })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderWithProviders(passwordResetTokenRoutes(), { initialRoute: '/password/reset/encoded-user/safe-token' })
+    const retry = await screen.findByRole('button', { name: 'Повторить' })
+    expect(screen.getByRole('heading', { name: 'Не удалось проверить ссылку' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Ссылка не работает' })).not.toBeInTheDocument()
+    retry.focus()
+    await user.keyboard('{Enter}')
+    expect(await screen.findByRole('heading', { name: 'Форма нового пароля' })).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
   it('exchanges the URL token and replaces it with the clean form route', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(
       JSON.stringify({ valid: true }),

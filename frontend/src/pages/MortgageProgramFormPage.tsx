@@ -334,7 +334,7 @@ export function MortgageProgramFormPage() {
                 required
                 autoFocus
                 aria-invalid={Boolean(errors.name)}
-                aria-describedby="program-name-error"
+                aria-describedby={errors.name ? 'program-name-error' : undefined}
               />
               {errors.name ? (
                 <span className="field-error" id="program-name-error">
@@ -357,7 +357,7 @@ export function MortgageProgramFormPage() {
                   event.target.value,
                 )}
                 aria-invalid={Boolean(errors.creditLimit)}
-                aria-describedby="program-limit-hint program-limit-error"
+                aria-describedby={errors.creditLimit ? 'program-limit-hint program-limit-error' : 'program-limit-hint'}
               />
               <small id="program-limit-hint">
                 Оставьте пустым, если единого лимита нет.
@@ -377,7 +377,7 @@ export function MortgageProgramFormPage() {
                 onChange={(event) => setField('condition', event.target.value)}
                 required
                 aria-invalid={Boolean(errors.condition)}
-                aria-describedby="program-condition-error"
+                aria-describedby={errors.condition ? 'program-condition-error' : undefined}
               />
               {errors.condition ? (
                 <span className="field-error" id="program-condition-error">

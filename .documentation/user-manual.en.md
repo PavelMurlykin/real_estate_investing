@@ -106,6 +106,8 @@ The keyboard-accessible “Повторить” button reloads the section and 
 
 Empty results are distinct from failures and suggest the next action. In a nested table, “Сбросить поиск” clears an unsuccessful search while retaining sorting. If a map fails or has no coordinates, “Повторить загрузку карты” offers recovery; the complex list and direct links remain available.
 
+If validating a password-reset link temporarily fails, use “Повторить”. This does not mean the link has expired. Successful validation opens the new-password form without the token in its address. A genuinely invalid link offers “Запросить новую ссылку”.
+
 ## Dialogs and notices
 
 Deletion and calculation unlink dialogs use consistent headings, spacing and buttons. “Отмена” receives initial focus. Tab and Shift+Tab move within the dialog; Escape, “Отмена” or a click on the shaded backdrop closes it. Dragging from the content onto the backdrop leaves it open. While a request is pending, dismissal and repeated confirmation are blocked. Closing returns focus to the trigger; after deletion, focus moves to the list heading. Image previews and the mobile menu follow the same dismissal and keyboard rules; arrow keys also change photos.
@@ -145,6 +147,10 @@ Numeric filters apply while typing with a 250 ms delay and reset pagination. Bou
 ## Large form dictionaries
 
 If an editable dropdown fails to load its choices, press Tab from the field to reach “Повторить загрузку справочника”, then press Enter. Focus returns to the search field when the retry starts.
+
+During loading or after an error, pressing Enter alone retains the previous selection, including multiple values. The error appears beside the field and is announced to screen readers. An active retry cannot be restarted. To clear explicitly, use an arrow key to reach “Все”, “Не выбрано” or “Очистить выбор” and press Enter; this remains available after a failed request.
+
+When moving with Tab and Shift+Tab, the field remains visible below the top panel. Dropdowns use a reduced height on short screens; their choices and actions scroll internally, including through touch.
 
 All React property, complex, customer, developer, bank, mortgage/developer program, regional limit and location forms combine dictionary search and selection in one field. The homepage city selector works the same way. Type a name and select a match with the mouse or arrow keys and Enter. Escape or leaving the field cancels unfinished search and retains the previous selection. Choose “Не выбрано” to clear a single value, or “Все” in filters. Search respects the selected parent. Reselecting the same parent preserves dependent values; changing the region, city, developer, complex or company group clears dependent fields.
 

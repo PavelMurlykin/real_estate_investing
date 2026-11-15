@@ -1,5 +1,5 @@
 import { chooseOption } from '@/test/chooseOption'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
@@ -63,6 +63,21 @@ function renderCreate() {
 }
 
 describe('MortgageProgramFormPage', () => {
+  it('connects fields only to existing hints and validation errors', () => {
+    renderCreate()
+    const name = screen.getByRole('textbox', { name: 'Название *' })
+    expect(name).not.toHaveAttribute('aria-describedby')
+    const checkReferences = () => {
+      for (const field of document.querySelectorAll('input[aria-describedby], textarea[aria-describedby]')) {
+        for (const id of field.getAttribute('aria-describedby')!.split(/\s+/)) expect(document.getElementById(id)).not.toBeNull()
+      }
+    }
+    checkReferences()
+    fireEvent.submit(name.closest('form')!)
+    expect(name).toHaveAttribute('aria-invalid', 'true')
+    expect(document.getElementById(name.getAttribute('aria-describedby')!)).toBeInTheDocument()
+    checkReferences()
+  })
   it('does not request protected form data for an anonymous visitor', () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)

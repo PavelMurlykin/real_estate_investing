@@ -104,18 +104,16 @@ describe('RealEstateComplexListPage', () => {
 
   it('keeps filters in URL state and requests the selected city', async () => {
     const user = userEvent.setup()
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(directory), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
+    const fetchMock = vi.fn<typeof fetch>(async (path) => Response.json(String(path).includes('/catalog-options/')
+      ? { page: 1, nextPage: null, totalCount: 1, selected: [], results: [{ id: 2, label: 'Санкт-Петербург' }] }
+      : directory))
     vi.stubGlobal('fetch', fetchMock)
     renderWithProviders(<RealEstateComplexListPage />, {
       queryClient: createDirectoryQueryClient(),
     })
 
     await user.click(screen.getByRole('combobox', { name: 'Город' }))
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Город' })).not.toHaveAttribute('aria-busy', 'true'))
     await user.click(screen.getByRole('option', { name: 'Санкт-Петербург' }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(

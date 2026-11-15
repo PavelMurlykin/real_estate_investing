@@ -27,8 +27,8 @@ after(async () => {
   await browser?.close()
 })
 
-export async function createPage(testContext, viewport) {
-  const context = await browser.newContext({ viewport })
+export async function createPage(testContext, viewport, { touch = false } = {}) {
+  const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch })
   const unexpectedWrites = []
   // These acceptance tests must never create or change application records.
   await context.route('**/api/**', async (route) => {

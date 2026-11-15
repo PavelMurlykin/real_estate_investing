@@ -99,18 +99,16 @@ describe('DeveloperListPage', () => {
 
   it('filters through URL state and requests the selected company group', async () => {
     const user = userEvent.setup()
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(directory), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
+    const fetchMock = vi.fn<typeof fetch>(async (path) => Response.json(String(path).includes('/catalog-options/')
+      ? { page: 1, nextPage: null, totalCount: 1, selected: [], results: [{ id: 4, label: 'Группа Север' }] }
+      : directory))
     vi.stubGlobal('fetch', fetchMock)
     renderWithProviders(<DeveloperListPage />, {
       queryClient: createDirectoryQueryClient(),
     })
 
     await user.click(screen.getByRole('combobox', { name: 'Группа компаний' }))
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Группа компаний' })).not.toHaveAttribute('aria-busy', 'true'))
     await user.click(screen.getByRole('option', { name: 'Группа Север' }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(

@@ -2,6 +2,7 @@ import { Notice } from '@/shared/ui/Notice'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ApiError } from '@/api/client'
 
 import {
   sessionQueryOptions,
@@ -27,10 +28,12 @@ export function PasswordResetTokenPage() {
       navigate('/password/reset/confirm', { replace: true })
     },
     onError: (error) => {
-      setErrors(accountFormErrors(
-        error,
-        'Ссылка для восстановления недействительна или устарела.',
-      ))
+      if (error instanceof ApiError && error.status === 400) {
+        setErrors(accountFormErrors(
+          error,
+          'Ссылка для восстановления недействительна или устарела.',
+        ))
+      }
     },
   })
 
@@ -54,6 +57,11 @@ export function PasswordResetTokenPage() {
 
   if (sessionQuery.isError) {
     return <ErrorState isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
+  }
+  if (tokenMutation.isError && !(tokenMutation.error instanceof ApiError && tokenMutation.error.status === 400)) {
+    return <ErrorState title="Не удалось проверить ссылку" onRetry={async () => {
+      if (userIdentifier && token) await tokenMutation.mutateAsync({ userIdentifier, token })
+    }} />
   }
   if (errors.token || errors.form) {
     return (

@@ -1,5 +1,5 @@
 import { chooseOption } from '@/test/chooseOption'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
@@ -76,6 +76,24 @@ function renderCreateForm() {
 }
 
 describe('BankFormPage', () => {
+  it('connects fields only to mounted hints and validation messages', async () => {
+    const user = userEvent.setup()
+    renderCreateForm()
+    const name = screen.getByRole('textbox', { name: 'Название *' })
+    expect(name).not.toHaveAttribute('aria-describedby')
+    expect(screen.getByRole('textbox', { name: /^URL логотипа/ })).toHaveAttribute('aria-describedby', 'bank-logo-url-hint')
+    await user.click(screen.getByRole('button', { name: 'Добавить программу' }))
+    const checkReferences = () => {
+      for (const field of document.querySelectorAll('input[aria-describedby]')) {
+        for (const id of field.getAttribute('aria-describedby')!.split(/\s+/)) expect(document.getElementById(id)).not.toBeNull()
+      }
+    }
+    checkReferences()
+    fireEvent.submit(name.closest('form')!)
+    expect(name).toHaveAttribute('aria-invalid', 'true')
+    expect(document.getElementById(name.getAttribute('aria-describedby')!)).toBeInTheDocument()
+    checkReferences()
+  })
   it('does not request form data for anonymous visitors', () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)

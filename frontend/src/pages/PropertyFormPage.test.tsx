@@ -1,5 +1,5 @@
 import { chooseOption } from '@/test/chooseOption'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
@@ -198,6 +198,7 @@ describe('PropertyFormPage', () => {
     optionQueryStrings.forEach((queryString) => queryClient.setQueryData(['property-form-options', queryString], { ...formOptions, truncated: { ...formOptions.truncated, layouts: true } }))
     await user.click(screen.getByRole('combobox', { name: 'Планировка *' }))
     await user.type(screen.getByRole('combobox', { name: 'Планировка *' }), 'Редкая')
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Планировка *' })).not.toHaveAttribute('aria-busy', 'true'))
     await user.click(await screen.findByRole('option', { name: 'Редкая планировка' }))
     await user.click(screen.getByRole('button', { name: 'Создать объект' }))
     expect(await screen.findByRole('heading', { name: 'Объект сохранён' })).toBeInTheDocument()

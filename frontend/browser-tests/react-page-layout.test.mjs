@@ -8,6 +8,7 @@ import {
 import { screenshot } from './helpers.mjs'
 import { assertReactPageLayout } from './page-layout-helpers.mjs'
 import { assertFormKeyboard } from './form-style-helpers.mjs'
+import { assertFormTraversal } from './final-audit-helpers.mjs'
 
 for (const width of [360, 768, 1280]) {
   test(`React forms and cards have clear spacing and no Django links at ${width}px`, {
@@ -58,6 +59,7 @@ for (const width of [360, 768, 1280]) {
       await page.waitForFunction(() => !document.querySelector('main .async-state--loading'))
       await assertReactPageLayout(page)
       await assertFormKeyboard(page)
+      await assertFormTraversal(page)
       if (checkRecovery && dataRequests.size) {
         const title = await page.getByRole('main').getByRole('heading', { level: 1 }).innerText()
         phase = 'loading'

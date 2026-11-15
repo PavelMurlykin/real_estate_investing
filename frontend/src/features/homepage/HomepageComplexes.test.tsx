@@ -57,6 +57,7 @@ describe('HomepageComplexes', () => {
     expect(await screen.findByRole('region', { name: 'Карта ЖК: Санкт-Петербург' })).toBeInTheDocument()
     await user.click(screen.getByRole('combobox', { name: 'Город на главной' }))
     await user.type(screen.getByRole('combobox', { name: 'Город на главной' }), 'Москва')
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Город на главной' })).not.toHaveAttribute('aria-busy', 'true'))
     await user.click(await screen.findByRole('option', { name: 'Москва' }))
     expect(await screen.findByRole('heading', { name: 'ЖК Москва' })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('region', { name: 'Карта ЖК: Москва' })).toBeInTheDocument())
