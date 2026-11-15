@@ -1,0 +1,30 @@
+{
+  "entities": {
+    "Q649": {"id":"Q649","labels":{"ru":{"value":"Москва"}},"claims":{
+      "P17":[{"mainsnak":{"datavalue":{"value":{"id":"Q159"}}}}],
+      "P31":[{"mainsnak":{"datavalue":{"value":{"id":"Q515"}}}}],
+      "P625":[{"mainsnak":{"datavalue":{"value":{"latitude":55.75,"longitude":37.61}}}}],
+      "P150":[{"mainsnak":{"datavalue":{"value":{"id":"Q201"}}}},{"mainsnak":{"datavalue":{"value":{"id":"Q202"}}}},{"mainsnak":{"datavalue":{"value":{"id":"Q203"}}}},{"mainsnak":{"datavalue":{"value":{"id":"Q204"}}}}]
+    }},
+    "Q656": {"id":"Q656","labels":{"ru":{"value":"Санкт-Петербург"}},"claims":{
+      "P17":[{"mainsnak":{"datavalue":{"value":{"id":"Q159"}}}}],
+      "P31":[{"mainsnak":{"datavalue":{"value":{"id":"Q515"}}}}],
+      "P625":[{"mainsnak":{"datavalue":{"value":{"latitude":59.95,"longitude":30.316}}}}],
+      "P150":[{"mainsnak":{"datavalue":{"value":{"id":"Q201"}}}}]
+    }},
+    "Q666": {"id":"Q666","labels":{"ru":{"value":"Москва"}},"claims":{
+      "P17":[{"mainsnak":{"datavalue":{"value":{"id":"Q159"}}}}],
+      "P31":[{"mainsnak":{"datavalue":{"value":{"id":"Q901"}}}}],
+      "P625":[{"mainsnak":{"datavalue":{"value":{"latitude":55.75,"longitude":37.61}}}}]
+    }},
+    "Q515":{"id":"Q515","labels":{"ru":{"value":"город"}},"claims":{}},
+    "Q900":{"id":"Q900","labels":{"ru":{"value":"район Москвы"}},"claims":{}},
+    "Q901":{"id":"Q901","labels":{"ru":{"value":"корабль"}},"claims":{}},
+    "Q902":{"id":"Q902","labels":{"ru":{"value":"муниципальный округ"}},"claims":{}},
+    "Q201":{"id":"Q201","labels":{"ru":{"value":"Тверской район"}},"claims":{"P31":[{"mainsnak":{"datavalue":{"value":{"id":"Q900"}}}}]}},
+    "Q202":{"id":"Q202","labels":{"ru":{"value":"Арбат"}},"claims":{"P31":[{"mainsnak":{"datavalue":{"value":{"id":"Q900"}}}}]}},
+    "Q203":{"id":"Q203","labels":{"ru":{"value":"Упразднённый район"}},"claims":{"P31":[{"mainsnak":{"datavalue":{"value":{"id":"Q900"}}}}],"P576":[{"mainsnak":{"datavalue":{"value":{"time":"+2000-01-01T00:00:00Z"}}}}]}},
+    "Q204":{"id":"Q204","labels":{"ru":{"value":"Муниципальный округ"}},"claims":{"P31":[{"mainsnak":{"datavalue":{"value":{"id":"Q902"}}}}]}}
+  },
+  "metro": {"lines":[{"number":"1","article":"Сокольническая линия","color":{"fillStyle":"rgba(237, 27, 53, 0.36)"},"stations":[{"article":"Охотный Ряд (станция метро)"},{"article":"Лубянка (станция метро)"},{"article":"Будущая (станция метро)","future":true}]}]}
+}

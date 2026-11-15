@@ -13,7 +13,7 @@ class ImportedLocation(BaseModel):
         null=True,
         blank=True,
         editable=False,
-        verbose_name='Идентификатор OpenStreetMap',
+        verbose_name='Идентификатор источника',
     )
 
     class Meta(BaseModel.Meta):

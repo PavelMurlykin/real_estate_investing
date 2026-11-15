@@ -10,8 +10,8 @@ from property.views import BaseCatalogView, CatalogModelConfig
 from users.roles import ExternalDataSyncRequiredMixin, can_sync_external_data
 
 from .import_forms import LocationImportForm
+from .import_service import LocationImportError, import_locations
 from .models import City, District, Metro, MetroLine, Region
-from .osm_import import LocationImportError, import_locations
 
 
 class LocationImportView(ExternalDataSyncRequiredMixin, View):
@@ -143,14 +143,12 @@ class LocationCatalogView(BaseCatalogView):
             })
             import_form.fields['regionId'].widget = forms.Select(choices=[
                 ('', 'Выберите регион'),
-                *Region.objects.filter(source_identifier__isnull=False)
-                .order_by('name').values_list('pk', 'name')[:200],
+                *Region.objects.order_by('name').values_list('pk', 'name')[:200],
             ])
             cities = City.objects.none()
             if selected_region.isdecimal():
                 cities = City.objects.filter(
                     region_id=int(selected_region),
-                    source_identifier__isnull=False,
                 ).order_by('name')
             import_form.fields['cityId'].widget = forms.Select(choices=[
                 ('', 'Выберите город'), *cities.values_list('pk', 'name')[:1000],

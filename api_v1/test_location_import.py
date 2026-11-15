@@ -1,7 +1,6 @@
 """Verify administrator-only location import and its shared Django fallback."""
 
-import json
-from pathlib import Path
+from functools import partial
 from unittest.mock import patch
 
 import pytest
@@ -10,8 +9,9 @@ from django.contrib.auth.models import Group
 from django.test import Client
 from django.urls import reverse
 
+from location.import_service import LocationImportError
 from location.models import City, District, Metro, MetroLine, Region
-from location.osm_import import LocationImportError
+from location.tests.source_fixtures import load_sources, source_reply
 from users.roles import (
     APPLICATION_ADMINISTRATOR_GROUP_NAME,
     MODERATOR_GROUP_NAME,
@@ -166,21 +166,7 @@ def test_fallback_parent_selection_does_not_expose_csrf_in_redirect(client, impo
 @pytest.mark.django_db
 def test_full_api_import_pipeline_with_session_and_valid_csrf(import_user):
     """Run every real import handler and loader with only transport replaced."""
-    fixture_path = (
-        Path(__file__).resolve().parent.parent
-        / 'location' / 'tests' / 'data' / 'overpass.json'
-    )
-    payload = json.loads(fixture_path.read_text(encoding='utf-8'))
-
-    def fetch_source(query):
-        """Return representative Overpass output for the requested hierarchy."""
-        if '->.region;' not in query:
-            return payload['regions']
-        dictionary = (
-            'metro' if '->.routes;' in query
-            else 'districts' if '->.items;' in query else 'cities'
-        )
-        return [payload['regions'][0], *payload[dictionary]]
+    payload = load_sources()
 
     client = Client(enforce_csrf_checks=True)
     client.force_login(import_user('administrator'))
@@ -196,10 +182,13 @@ def test_full_api_import_pipeline_with_session_and_valid_csrf(import_user):
         assert response.status_code == 200, response.json()
         return response.json()
 
-    with patch('location.osm_import.download_overpass', side_effect=fetch_source):
-        assert import_dictionary('regions')['created'] == 2
+    with patch(
+        'location.open_data.OpenLocationSource.download',
+        side_effect=partial(source_reply, payload),
+    ):
+        assert import_dictionary('regions')['created'] == 3
         region = Region.objects.get(name='Москва')
-        assert import_dictionary('cities', {'regionId': region.pk})['created'] == 3
+        assert import_dictionary('cities', {'regionId': region.pk})['created'] == 1
         city = City.objects.get(name='Москва')
         parents = {'regionId': region.pk, 'cityId': city.pk}
         assert import_dictionary('districts', parents)['created'] == 2
@@ -212,13 +201,11 @@ def test_full_api_import_pipeline_with_session_and_valid_csrf(import_user):
         ):
             repeated = import_dictionary(dictionary, selection)
             assert repeated['created'] == repeated['updated'] == 0
-        payload['metro'][0]['tags']['colour'] = '#112233'
-        payload['metro'][3]['tags']['name'] = 'Новое название'
-        payload['metro'][6]['tags']['name'] = 'Новое название'
+        payload['metro']['lines'][0]['color']['fillStyle'] = '#112233'
         updated = import_dictionary('metro', parents)
-        assert updated['updated'] == 1
+        assert updated['updated'] == 0
         assert updated['lines']['updated'] == 1
 
     assert District.objects.filter(city=city).count() == 2
-    assert Metro.objects.get(station='Новое название').metro_line.city_id == city.pk
+    assert Metro.objects.get(station='Охотный Ряд').metro_line.city_id == city.pk
     assert MetroLine.objects.get(city=city).line_color == '#112233'

@@ -8,7 +8,7 @@ import { LocationImportPanel } from './LocationImportPanel'
 const result = {
   created: 2, updated: 1, unchanged: 4, skipped: 0,
   lines: { created: 1, updated: 0, unchanged: 0 },
-  source: 'OpenStreetMap', sourceUrl: 'https://www.openstreetmap.org/copyright',
+  source: 'Wikimedia / HFLabs', sourceUrl: 'https://www.wikidata.org/wiki/Wikidata:Data_access',
 }
 
 describe('LocationImportPanel', () => {

@@ -800,7 +800,10 @@ export function LocationDictionaryPage() {
       </div>
 
       <p className="field-hint">
-        Данные импорта: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors, ODbL</a>.
+        Данные: <a href="https://github.com/hflabs/city" target="_blank" rel="noreferrer">HFLabs, CC BY-SA 4.0</a>;{' '}
+        <a href="https://www.wikidata.org/wiki/Wikidata:Licensing" target="_blank" rel="noreferrer">Wikidata, CC0</a>;{' '}
+        <a href="https://ru.wikipedia.org/wiki/Википедия:Условия_использования" target="_blank" rel="noreferrer">Википедия, CC BY-SA 4.0</a>.
+        {' '}Ранее импортированные данные: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors, ODbL</a>.
       </p>
 
       {selectedEntry ? (

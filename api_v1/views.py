@@ -80,7 +80,7 @@ from customer.views import (
 )
 from location.import_forms import LocationImportForm
 from location.models import City, District, Metro, MetroLine, Region
-from location.osm_import import LocationImportError, import_locations
+from location.import_service import LocationImportError, import_locations
 from mortgage.excel import export_saved_mortgage_calculation_excel
 from mortgage.models import MortgageCalculation
 from mortgage.word import (

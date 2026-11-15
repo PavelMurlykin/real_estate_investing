@@ -247,8 +247,8 @@ export const locationImportResultSchema = z.object({
     updated: z.number().int().nonnegative(),
     unchanged: z.number().int().nonnegative(),
   }),
-  source: z.literal('OpenStreetMap'),
-  sourceUrl: z.literal('https://www.openstreetmap.org/copyright'),
+  source: z.literal('Wikimedia / HFLabs'),
+  sourceUrl: z.literal('https://www.wikidata.org/wiki/Wikidata:Data_access'),
 })
 
 export const customerListItemSchema = z.object({

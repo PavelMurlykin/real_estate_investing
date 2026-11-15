@@ -40,13 +40,14 @@ export function LocationImportPanel({ dictionaryKey, regionId, cityId }: Props) 
           {dictionaryKey === 'regions'
             ? 'Загрузите регионы России, затем перейдите к городам выбранного региона.'
             : needsCity
-              ? 'Выберите регион и город в фильтрах ниже. Сначала импортируйте их на вкладках «Регионы» и «Города».'
-              : 'Выберите регион в фильтре ниже. Сначала загрузите его на вкладке «Регионы».'}
+              ? 'Выберите российские регион и город в фильтрах ниже. При необходимости загрузите их на вкладках «Регионы» и «Города».'
+              : 'Выберите российский регион в фильтре ниже. При необходимости загрузите его на вкладке «Регионы».'}
           {' '}Повторный импорт добавляет новые записи и обновляет существующие.
         </p>
         <p className="field-hint">
-          Источник: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors, ODbL</a>.
-          {' '}Полнота районов и метро зависит от данных карты. Записи не удаляются; выбранный вручную статус сохраняется.
+          Источники: <a href="https://github.com/hflabs/city" target="_blank" rel="noreferrer">HFLabs</a>,{' '}
+          <a href="https://www.wikidata.org/wiki/Wikidata:Data_access" target="_blank" rel="noreferrer">Wikidata</a> и Википедия.
+          {' '}Полнота зависит от открытых справочников. Записи не удаляются; выбранный вручную статус сохраняется.
         </p>
       </div>
       <button
@@ -58,7 +59,7 @@ export function LocationImportPanel({ dictionaryKey, regionId, cityId }: Props) 
         {mutation.isPending ? 'Импортируем…' : 'Импортировать из API'}
       </button>
       <div className="location-import-panel__feedback" aria-live="polite" aria-atomic="true" hidden={!mutation.isPending && !mutation.data && !mutation.isError}>
-        {mutation.isPending ? <p role="status">Получаем данные OpenStreetMap…</p> : null}
+        {mutation.isPending ? <p role="status">Получаем данные открытых справочников…</p> : null}
         {mutation.data ? (
           <Notice as="p" tone="success" role="status">
             Импорт завершён. Добавлено: {mutation.data.created}; обновлено: {mutation.data.updated};

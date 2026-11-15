@@ -53,6 +53,7 @@ test('administrator imports Russian regions, city districts and metro without du
 }, async (context) => {
   const { page } = await createAuthenticatedPage(context, 'administrator', { width: 1280, height: 1000 })
   const cityName = process.env.BROWSER_TEST_LOCATION_CITY || 'Санкт-Петербург'
+  const regionName = process.env.BROWSER_TEST_LOCATION_REGION || cityName
   const results = []
   async function importDictionary(key, parents = {}) {
     const parameters = new URLSearchParams(parents)
@@ -86,12 +87,15 @@ test('administrator imports Russian regions, city districts and metro without du
   assert.equal(regionsAgain.created, 0)
   assert.equal(regionsAgain.updated, 0)
   const regionResponse = await page.context().request.get(new URL(
-    `/api/v1/location-dictionaries/regions/?q=${encodeURIComponent(cityName)}`, isolatedBaseUrl,
+    `/api/v1/location-dictionaries/regions/?q=${encodeURIComponent(regionName)}`, isolatedBaseUrl,
   ).href)
-  const region = (await regionResponse.json()).results.find((row) => row.name === cityName)
+  const region = (await regionResponse.json()).results.find((row) => row.name === regionName)
   assert.ok(region)
   const cities = await importDictionary('cities', { regionId: String(region.id) })
   assert.ok(cities.created + cities.updated + cities.unchanged > 0)
+  const citiesAgain = await importDictionary('cities', { regionId: String(region.id) })
+  assert.equal(citiesAgain.created, 0)
+  assert.equal(citiesAgain.updated, 0)
   const cityResponse = await page.context().request.get(new URL(
     `/api/v1/location-dictionaries/cities/?q=${encodeURIComponent(cityName)}&regionId=${region.id}`, isolatedBaseUrl,
   ).href)
@@ -100,12 +104,21 @@ test('administrator imports Russian regions, city districts and metro without du
   const parents = { regionId: String(region.id), cityId: String(city.id) }
   const districts = await importDictionary('districts', parents)
   assert.ok(districts.created + districts.updated + districts.unchanged > 0)
+  const districtsAgain = await importDictionary('districts', parents)
+  assert.equal(districtsAgain.created, 0)
+  assert.equal(districtsAgain.updated, 0)
   const metro = await importDictionary('metro', parents)
   assert.ok(metro.created + metro.updated + metro.unchanged > 0)
   const metroAgain = await importDictionary('metro', parents)
   assert.equal(metroAgain.created, 0)
   assert.equal(metroAgain.updated, 0)
   assert.equal(metroAgain.lines.created, 0)
+  assert.equal(metroAgain.lines.updated, 0)
+  assert.equal(metroAgain.unchanged, metro.created + metro.updated + metro.unchanged)
+  const stationTable = await page.context().request.get(new URL(
+    `/api/v1/location-dictionaries/metro/?cityId=${city.id}&pageSize=100`, isolatedBaseUrl,
+  ).href)
+  assert.equal((await stationTable.json()).totalCount, metroAgain.unchanged)
   if (process.env.BROWSER_TEST_SCREENSHOTS) {
     await page.screenshot({ path: `${process.env.BROWSER_TEST_SCREENSHOTS}/location-import-desktop.png`, fullPage: true })
   }

@@ -6,7 +6,7 @@ from .models import City, Region
 
 
 class LocationImportForm(forms.Form):
-    """Require an imported Russian parent for each dependent dictionary."""
+    """Validate selected parents before the source verifies Russian scope."""
 
     dictionary = forms.ChoiceField(label='Справочник', choices=(
         ('regions', 'Регионы России'),
@@ -28,9 +28,9 @@ class LocationImportForm(forms.Form):
         if dictionary not in ('cities', 'districts', 'metro'):
             return cleaned
         region = Region.objects.filter(pk=cleaned.get('regionId')).first()
-        if region is None or not region.source_identifier:
+        if region is None:
             self.add_error(
-                'regionId', 'Выберите регион, полученный импортом России.',
+                'regionId', 'Выберите регион России.',
             )
             return cleaned
         cleaned['region'] = region
@@ -41,9 +41,9 @@ class LocationImportForm(forms.Form):
         city = City.objects.filter(
             pk=cleaned.get('cityId'), region=region,
         ).first()
-        if city is None or not city.source_identifier:
+        if city is None:
             self.add_error(
-                'cityId', 'Выберите импортированный город этого региона.',
+                'cityId', 'Выберите город этого региона.',
             )
         else:
             cleaned['city'] = city
