@@ -40,12 +40,6 @@ async function selectComplexChoice(page, name, label) {
   await page.getByRole('option', { name: label, exact: true }).click()
 }
 
-async function selectLocation(page) {
-  await chooseDictionary(page, /^Регион \*/, 'E2E регион')
-  await chooseDictionary(page, /^Город \*/, 'E2E город')
-  await chooseDictionary(page, /^Район \*/, 'E2E район')
-}
-
 async function deleteDetailRecord(page, apiPath, status = 204) {
   await page.getByRole('button', { name: 'Удалить', exact: true }).click()
   const responsePromise = page.waitForResponse((response) => (
@@ -114,9 +108,9 @@ for (const width of [360, 1280]) {
     await selectComplexChoice(page, /^Застройщик \*/, developerName)
     await selectComplexChoice(page, /^Класс ЖК/, 'E2E комфорт')
     await selectComplexChoice(page, /^Тип недвижимости/, 'E2E квартира')
-    await selectComplexChoice(page, /^Регион \*/, 'E2E регион')
-    await selectComplexChoice(page, /^Город \*/, 'E2E город')
-    await selectComplexChoice(page, /^Район \*/, 'E2E район')
+    const localityChoice = page.getByRole('combobox', { name: 'Населённый пункт *', exact: true })
+    await localityChoice.fill('E2E город')
+    await page.getByRole('option', { name: /E2E город/ }).click()
     await page.getByRole('button', { name: 'Добавить корпус' }).click()
     await page.getByLabel(/^Номер корпуса 1/).fill('E2E-1')
     await page.getByLabel(/^Номер корпуса 2/).fill('E2E-2')
@@ -131,7 +125,6 @@ for (const width of [360, 1280]) {
     await page.getByRole('heading', { name: complexName, level: 1, exact: true }).waitFor()
 
     await openRoute(page, 'properties/new')
-    await selectLocation(page)
     await chooseDictionary(page, /^Застройщик \*/, developerName)
     await chooseDictionary(page, /^Жилой комплекс/, complexName)
     await chooseDictionary(page, /^Корпус \*/, 'E2E-1')

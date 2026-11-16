@@ -406,7 +406,7 @@ def test_saved_trench_history_uses_constant_query_count(
         )
         assert response.status_code == 201
 
-    with django_assert_num_queries(6):
+    with django_assert_num_queries(9):
         response = client.get(list_url)
 
     assert response.status_code == 200

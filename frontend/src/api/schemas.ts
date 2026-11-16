@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { geographicLocationSchema } from '@/features/locations/geography'
 
 export const capabilitiesSchema = z.object({
   manageCatalogs: z.boolean(),
@@ -10,9 +11,9 @@ export const capabilitiesSchema = z.object({
 export const catalogOptionSchema = z.object({
   id: z.number().int().positive(),
   label: z.string(),
-  regionId: z.number().int().positive().optional(),
-  cityId: z.number().int().positive().optional(),
-  districtId: z.number().int().positive().optional(),
+  regionId: z.number().int().positive().nullable().optional(),
+  cityId: z.number().int().positive().nullable().optional(),
+  districtId: z.number().int().positive().nullable().optional(),
   developerId: z.number().int().positive().optional(),
   realEstateComplexId: z.number().int().positive().optional(),
 })
@@ -111,10 +112,10 @@ export const propertyListItemSchema = z.object({
   id: z.number().int().positive(),
   developerId: z.number().int().positive().optional(),
   realEstateComplexId: z.number().int().positive().optional(),
-  regionId: z.number().int().positive().optional(),
+  regionId: z.number().int().positive().nullable().optional(),
   district: z.string().optional(),
-  cityId: z.number().int().positive().optional(),
-  districtId: z.number().int().positive().optional(),
+  cityId: z.number().int().positive().nullable().optional(),
+  districtId: z.number().int().positive().nullable().optional(),
   buildingId: z.number().int().positive().optional(),
   layoutId: z.number().int().positive().optional(),
   decorationId: z.number().int().positive().optional(),
@@ -678,16 +679,17 @@ const realEstateComplexMetroAvailabilitySchema = z.object({
 })
 
 export const realEstateComplexDetailSchema = z.object({
+  location: geographicLocationSchema.nullable().optional(),
   id: z.number().int().positive(),
   name: z.string(),
   description: z.string().nullable(),
   developerId: z.number().int().positive(),
   developer: realEstateComplexDeveloperSchema,
-  regionId: z.number().int().positive(),
+  regionId: z.number().int().positive().nullable(),
   region: z.string(),
-  cityId: z.number().int().positive(),
+  cityId: z.number().int().positive().nullable(),
   city: z.string(),
-  districtId: z.number().int().positive(),
+  districtId: z.number().int().positive().nullable(),
   district: z.string(),
   realEstateClassId: z.number().int().positive(),
   realEstateClass: z.string(),
@@ -779,9 +781,9 @@ export const customerMutationResponseSchema = z.object({
 export const propertyDetailSchema = z.object({
   id: z.number().int().positive(),
   apartmentNumber: z.string(),
-  regionId: z.number().int().positive(),
-  cityId: z.number().int().positive(),
-  districtId: z.number().int().positive(),
+  regionId: z.number().int().positive().nullable(),
+  cityId: z.number().int().positive().nullable(),
+  districtId: z.number().int().positive().nullable(),
   developerId: z.number().int().positive(),
   realEstateComplexId: z.number().int().positive(),
   buildingId: z.number().int().positive(),
@@ -1102,8 +1104,8 @@ export const customerCalculationLinkResponseSchema = z.object({
 })
 
 export type ManualCalculationProperty = {
-  cityId: number
-  districtId: number
+  cityId: number | null
+  districtId: number | null
   developerId: number
   realEstateComplexId: number
   buildingId: number

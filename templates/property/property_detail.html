@@ -100,9 +100,9 @@
                         <div class="col-md-6">
                             <p><strong>Класс ЖК:</strong> {{ property.building.real_estate_complex.real_estate_class.name }}</p>
                             <p><strong>Тип недвижимости:</strong> {{ property.building.real_estate_complex.real_estate_type.name }}</p>
-                            <p><strong>Район:</strong> {{ property.building.real_estate_complex.district.name }}</p>
-                            <p><strong>Город:</strong> {{ property.building.real_estate_complex.district.city.name }}</p>
-                            <p><strong>Регион:</strong> {{ property.building.real_estate_complex.district.city.region.name }}</p>
+                            <p><strong>Район:</strong> {{ property.building.geography.district }}</p>
+                            <p><strong>Город:</strong> {{ property.building.geography.city }}</p>
+                            <p><strong>Регион:</strong> {{ property.building.geography.region }}</p>
                         </div>
                         <div class="col-md-6">
                             {% if property.building.real_estate_complex.map_link %}

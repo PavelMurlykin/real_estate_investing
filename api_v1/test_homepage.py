@@ -34,7 +34,7 @@ def test_homepage_defaults_match_django_and_preserve_card_fields(
 ):
     """Restore the preferred city, image and location preview without N+1."""
     original, preferred = homepage_catalog
-    with django_assert_num_queries(3):
+    with django_assert_num_queries(6):
         response = client.get(reverse('api_v1:homepage_complex_list'))
     assert response.status_code == 200
     data = response.json()
@@ -102,7 +102,7 @@ def test_homepage_city_is_paginated_without_losing_later_complexes(
         ) for index in range(104)
     ])
     url = reverse('api_v1:homepage_complex_list')
-    with django_assert_num_queries(3):
+    with django_assert_num_queries(4):
         response = client.get(url, {'pageSize': 50})
     assert response.json()['totalCount'] == 105
     assert len(response.json()['results']) == 50

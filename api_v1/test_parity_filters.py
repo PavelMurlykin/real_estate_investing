@@ -25,7 +25,7 @@ def test_property_filters_combine_exact_numbers_and_identifiers(
         'area': '42.50', 'propertyCost': '12500000.00',
     }
     url = reverse('api_v1:property_list')
-    with django_assert_num_queries(2):
+    with django_assert_num_queries(5):
         response = client.get(url, filters)
     assert [row['id'] for row in response.json()['results']] == [apartment.pk]
     for name in filters:

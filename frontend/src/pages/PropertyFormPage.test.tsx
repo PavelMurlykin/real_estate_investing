@@ -137,9 +137,9 @@ function renderCreateForm() {
 }
 
 async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
-  await chooseOption(user, 'Регион *', 'Ленинградская область')
-  await chooseOption(user, 'Город *', 'Санкт-Петербург')
-  await chooseOption(user, 'Район *', 'Петроградский')
+  await chooseOption(user, 'Регион', 'Ленинградская область')
+  await chooseOption(user, 'Город', 'Санкт-Петербург')
+  await chooseOption(user, 'Район', 'Петроградский')
   await chooseOption(user, 'Застройщик *', 'Северный девелопер')
   await chooseOption(user, 'Жилой комплекс *', 'Белые ночи')
   await chooseOption(user, 'Корпус *', '1')
@@ -154,9 +154,9 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
 
 describe('PropertyFormPage', () => {
   it.each([
-    ['Регион *', ['Город *', 'Район *', 'Жилой комплекс *', 'Корпус *']],
-    ['Город *', ['Район *', 'Жилой комплекс *', 'Корпус *']],
-    ['Район *', ['Жилой комплекс *', 'Корпус *']],
+    ['Регион', ['Город', 'Район', 'Жилой комплекс *', 'Корпус *']],
+    ['Город', ['Район', 'Жилой комплекс *', 'Корпус *']],
+    ['Район', ['Жилой комплекс *', 'Корпус *']],
     ['Застройщик *', ['Жилой комплекс *', 'Корпус *']],
     ['Жилой комплекс *', ['Корпус *']],
   ])('clears dependent choices after clearing %s and preserves them on reselect', async (parent, children) => {
@@ -172,7 +172,11 @@ describe('PropertyFormPage', () => {
     await chooseOption(user, parent, 'Не выбрано')
     for (const child of children) {
       expect(screen.getByRole('combobox', { name: child })).toHaveValue('')
-      expect(screen.getByRole('combobox', { name: child })).toBeDisabled()
+      if (child === 'Жилой комплекс *' && parent !== 'Застройщик *') {
+        expect(screen.getByRole('combobox', { name: child })).toBeEnabled()
+      } else {
+        expect(screen.getByRole('combobox', { name: child })).toBeDisabled()
+      }
     }
     expect(screen.getByRole('combobox', { name: 'Планировка *' })).toHaveValue('Евродвушка')
     expect(screen.getByRole('combobox', { name: 'Отделка *' })).toHaveValue('Чистовая')

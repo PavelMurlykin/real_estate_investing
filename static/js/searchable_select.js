@@ -293,6 +293,40 @@
 
     function handleInput(state) {
         state.searchQuery = state.input.value;
+        if (state.select.dataset.remoteOptions) {
+            window.clearTimeout(state.remoteTimer);
+            if (state.remoteController) state.remoteController.abort();
+            state.remoteTimer = window.setTimeout(async function () {
+                const controller = new AbortController();
+                state.remoteController = controller;
+                const query = state.input.value;
+                const url = new URL(state.select.dataset.remoteOptions, window.location.origin);
+                if (url.origin !== window.location.origin) return;
+                url.searchParams.set('q', query);
+                const region = document.getElementById(state.select.dataset.remoteRegionField);
+                if (region && region.value) url.searchParams.set('legacyRegionId', region.value);
+                try {
+                    const response = await fetch(url, {credentials: 'same-origin', signal: controller.signal});
+                    if (!response.ok) throw new Error('Не удалось загрузить населённые пункты.');
+                    const data = await response.json();
+                    if (state.input.value !== query) return;
+                    const selected = state.select.selectedOptions[0];
+                    state.observer.disconnect();
+                    state.select.replaceChildren(new Option('Не выбрано', ''));
+                    if (selected && selected.value) state.select.add(selected);
+                    data.results.forEach(function (row) {
+                        if (!selected || String(row.id) !== selected.value) state.select.add(new Option(row.label, row.id));
+                    });
+                    state.observer.observe(state.select, {attributes: true, childList: true, subtree: true});
+                    state.searchQuery = query;
+                    openMenu(state, {resetSearch: false});
+                } catch (error) {
+                    if (error.name !== 'AbortError') {
+                        state.menu.textContent = 'Не удалось загрузить варианты. Повторите поиск.';
+                    }
+                }
+            }, 300);
+        }
         const selectedText = getInputValue(state.select);
         if (
             state.select.value

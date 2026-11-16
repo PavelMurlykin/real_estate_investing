@@ -861,9 +861,11 @@ def _export_trench_excel(calculation):
             floor=0,
             building=SimpleNamespace(
                 number=empty_value,
+                geography=SimpleNamespace(city=empty_value, district=empty_value),
                 real_estate_complex=SimpleNamespace(
                     name=empty_value,
                     developer=SimpleNamespace(name=empty_value),
+                    geography=SimpleNamespace(city=empty_value, district=empty_value),
                     district=SimpleNamespace(
                         city=SimpleNamespace(name=empty_value)
                     ),
@@ -877,7 +879,7 @@ def _export_trench_excel(calculation):
         ],
         [
             'Город',
-            property_obj.building.real_estate_complex.district.city.name,
+            property_obj.building.geography.city,
         ],
         ['Название ЖК', property_obj.building.real_estate_complex.name],
         ['Корпус', property_obj.building.number],

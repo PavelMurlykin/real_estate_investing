@@ -267,8 +267,8 @@ def serialize_saved_property(property_object):
     real_estate_complex = property_object.building.real_estate_complex
     return {
         'id': property_object.pk,
-        'city': real_estate_complex.district.city.name,
-        'district': real_estate_complex.district.name,
+        'city': property_object.building.geography.city,
+        'district': property_object.building.geography.district,
         'layoutImageUrl': (
             property_object.layout_image.url
             if property_object.layout_image else ''

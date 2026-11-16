@@ -86,10 +86,9 @@ def _get_customer_calculation_property(calculation):
 
 def _get_customer_calculation_city(calculation):
     """Return the city object used by a saved calculation."""
-    return (
-        _get_customer_calculation_property(calculation)
-        .building.real_estate_complex.district.city
-    )
+    complex_object = _get_customer_calculation_property(calculation).building.real_estate_complex
+    return (complex_object.district.city if complex_object.district_id
+            else complex_object.primary_location)
 
 
 def _get_customer_calculation_object_name(calculation):

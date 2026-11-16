@@ -373,8 +373,8 @@ def _get_property_initial(property_obj):
     district = real_estate_complex.district
 
     return {
-        'OBJECT_CITY': district.city_id,
-        'OBJECT_DISTRICT': district.pk,
+        'OBJECT_CITY': property_obj.building.geography.city_id,
+        'OBJECT_DISTRICT': real_estate_complex.district_id,
         'OBJECT_DEVELOPER': real_estate_complex.developer_id,
         'OBJECT_COMPLEX': real_estate_complex.pk,
         'OBJECT_BUILDING': property_obj.building_id,
@@ -404,8 +404,8 @@ def _get_property_payload(property_obj):
     return {
         'id': property_obj.pk,
         'property_cost': str(property_obj.property_cost),
-        'city_id': district.city_id,
-        'district_id': district.pk,
+        'city_id': property_obj.building.geography.city_id,
+        'district_id': real_estate_complex.district_id,
         'developer_id': real_estate_complex.developer_id,
         'complex_id': real_estate_complex.pk,
         'building_id': property_obj.building_id,

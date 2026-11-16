@@ -117,6 +117,21 @@ const savedComplex: RealEstateComplexDetail = {
 function createManagerQueryClient() {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['session'], managerSession)
+  for (const filters of ['category=region', 'activeOnly=true&category=locality']) {
+    for (const selected of ['', '501']) {
+      queryClient.setQueryData(['catalog-options', 'locations', filters, '', selected], {
+        pages: [{ results: [{ id: 501, label: 'г. Пушкин · Санкт-Петербург' }], selected: [], page: 1, totalCount: 1, nextPage: null }],
+        pageParams: [1],
+      })
+    }
+  }
+  queryClient.setQueryData(['catalog-options', 'metro', 'locationId=501', '', ''], {
+    pages: [{ results: [{ id: 7, label: 'Петроградская · Синяя' }], selected: [], page: 1, totalCount: 1, nextPage: null }], pageParams: [1],
+  })
+  queryClient.setQueryData(['catalog-options', 'metro', 'locationId=501', '', '7'], {
+    pages: [{ results: [{ id: 7, label: 'Петроградская · Синяя' }], selected: [], page: 1, totalCount: 1, nextPage: null }], pageParams: [1],
+  })
+
   for (const queryString of ['', 'regionId=1', 'regionId=1&cityId=2']) {
     queryClient.setQueryData(
       ['real-estate-complex-options', queryString],
@@ -167,9 +182,7 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await chooseOption(user, 'Застройщик *', 'Северный девелопер')
   await chooseOption(user, 'Класс ЖК *', 'Бизнес')
   await chooseOption(user, 'Тип недвижимости *', 'Квартира')
-  await chooseOption(user, 'Регион *', 'Ленинградская область')
-  await chooseOption(user, 'Город *', 'Санкт-Петербург')
-  await chooseOption(user, 'Район *', 'Петроградский')
+  await chooseOption(user, 'Населённый пункт *', 'г. Пушкин · Санкт-Петербург')
   await user.type(screen.getByLabelText('Номер корпуса 1 *'), '1')
   await user.click(screen.getByRole('button', { name: 'Добавить станцию' }))
   await chooseOption(user, 'Станция метро 1 *', 'Петроградская · Синяя')
@@ -178,23 +191,12 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('RealEstateComplexFormPage', () => {
-  it('uses one searchable control per dictionary and clears dependent values on a region change', async () => {
+  it('keeps existing metro and legacy bindings while adding a precise locality', async () => {
     const user = userEvent.setup()
     renderEditForm()
-    expect(screen.queryByRole('link', { name: 'Django-форма' })).not.toBeInTheDocument()
-    expect(screen.queryAllByRole('searchbox')).toHaveLength(0)
-    expect(screen.getByRole('combobox', { name: 'Застройщик *' })).toHaveValue('Северный девелопер')
+    expect(screen.queryByRole('combobox', { name: 'Район *' })).not.toBeInTheDocument()
+    await chooseOption(user, 'Населённый пункт', 'г. Пушкин · Санкт-Петербург')
     expect(screen.getByRole('combobox', { name: 'Станция метро 1 *' })).toHaveValue('Петроградская · Синяя')
-    expect(screen.getByRole('combobox', { name: 'Квартал ввода' })).toHaveAttribute('type', 'text')
-    await chooseOption(user, 'Регион *', 'Ленинградская область')
-    expect(screen.getByRole('combobox', { name: 'Город *' })).toHaveValue('Санкт-Петербург')
-    expect(screen.getByRole('combobox', { name: 'Станция метро 1 *' })).toHaveValue('Петроградская · Синяя')
-    await chooseOption(user, 'Регион *', 'Не выбрано')
-    expect(screen.getByRole('combobox', { name: 'Город *' })).toBeDisabled()
-    expect(screen.getByRole('combobox', { name: 'Город *' })).toHaveValue('')
-    expect(screen.getByRole('combobox', { name: 'Район *' })).toBeDisabled()
-    expect(screen.queryByRole('combobox', { name: 'Станция метро 1 *' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Добавить станцию' })).toBeDisabled()
   })
 
   it('filters and saves a quarter using the same editable dropdown', async () => {

@@ -128,6 +128,12 @@
         <div class="card mb-4">
             <div class="card-header">Локация</div>
             <div class="card-body">
+                <div class="mb-3">
+                    <label for="{{ form.location.id_for_label }}" class="form-label">{{ form.location.label }}</label>
+                    {{ form.location }}
+                    {% for error in form.location.errors %}<div class="text-danger">{{ error }}</div>{% endfor %}
+                    <div class="form-text">Выберите город, посёлок, село или деревню. Прежний район необязателен.</div>
+                </div>
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">

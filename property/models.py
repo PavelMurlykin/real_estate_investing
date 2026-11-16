@@ -2,6 +2,7 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils.functional import cached_property
 from django.urls import reverse
 
 from core.models import BaseModel
@@ -227,7 +228,7 @@ class RealEstateComplex(BaseModel):
         Developer, on_delete=models.PROTECT, verbose_name='Застройщик'
     )
     district = models.ForeignKey(
-        District, on_delete=models.PROTECT, verbose_name='Район'
+        District, null=True, blank=True, on_delete=models.PROTECT, verbose_name='Район'
     )
     real_estate_class = models.ForeignKey(
         RealEstateClass, on_delete=models.PROTECT, verbose_name='Класс ЖК'
@@ -259,6 +260,20 @@ class RealEstateComplex(BaseModel):
         if not self.photo:
             return ''
         return self.photo.name.rsplit('/', 1)[-1]
+
+    @cached_property
+    def primary_location(self):
+        """Return the primary territory through its single source of truth."""
+        from .location_context import primary_location
+
+        return primary_location(self)
+
+    @cached_property
+    def geography(self):
+        """Resolve locality labels and optional original catalog identities."""
+        from .location_context import location_context
+
+        return location_context(self)
 
     def __str__(self):
         """Возвращает название ЖК."""
@@ -443,6 +458,15 @@ class RealEstateComplexBuilding(BaseModel):
         RealEstateComplexLocation, null=True, blank=True, on_delete=models.PROTECT,
         related_name='buildings', verbose_name='Территория корпуса',
     )
+
+    @cached_property
+    def geography(self):
+        """Resolve an explicit territory or inherit the complex's primary location."""
+        from .location_context import location_context
+
+        if self.complex_location_id:
+            return location_context(self.real_estate_complex, self.complex_location.location)
+        return self.real_estate_complex.geography
 
     class Meta(BaseModel.Meta):
         """

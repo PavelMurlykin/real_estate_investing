@@ -98,7 +98,7 @@ export function RealEstateComplexDetailPage() {
           <span className="eyebrow">Карточка жилого комплекса</span>
           <h1>{realEstateComplex.name}</h1>
           <p>
-            {realEstateComplex.city}, {realEstateComplex.district} ·{' '}
+            {realEstateComplex.location?.label ?? [realEstateComplex.city, realEstateComplex.district].filter(Boolean).join(', ')} ·{' '}
             {realEstateComplex.developer.label}
           </p>
         </div>

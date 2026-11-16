@@ -591,7 +591,7 @@ def _build_complex_template_values(property_obj, fallback_complex_rows=None):
 
     real_estate_complex = property_obj.building.real_estate_complex
     return {
-        'Локация': real_estate_complex.district.name,
+        'Локация': property_obj.building.geography.district,
         'Метро': _get_complex_metro_text(real_estate_complex),
         'Доступность': _get_complex_metro_availability_text(
             real_estate_complex
@@ -1080,8 +1080,8 @@ def _build_trench_property_sections(calculation):
 
     real_estate_complex = property_obj.building.real_estate_complex
     complex_rows = [
-        ['Город', real_estate_complex.district.city.name],
-        ['Район', real_estate_complex.district.name],
+        ['Город', property_obj.building.geography.city],
+        ['Район', property_obj.building.geography.district],
         ['Застройщик', real_estate_complex.developer.name],
         ['Жилой комплекс', real_estate_complex.name],
         ['Класс ЖК', real_estate_complex.real_estate_class.name],

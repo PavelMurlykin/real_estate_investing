@@ -36,6 +36,8 @@ type ComplexFormState = {
   regionId: string
   cityId: string
   districtId: string
+  locationId: string
+  locationRegionId: string
   realEstateClassId: string
   realEstateTypeId: string
   mapLink: string
@@ -53,6 +55,8 @@ const emptyFormState: ComplexFormState = {
   regionId: '',
   cityId: '',
   districtId: '',
+  locationId: '',
+  locationRegionId: '',
   realEstateClassId: '',
   realEstateTypeId: '',
   mapLink: '',
@@ -110,9 +114,7 @@ function validateForm(
   const errors: FieldErrors = {}
   if (!formState.name.trim()) errors.name = 'Укажите название ЖК.'
   if (!formState.developerId) errors.developerId = 'Выберите застройщика.'
-  if (!formState.regionId) errors.regionId = 'Выберите регион.'
-  if (!formState.cityId) errors.cityId = 'Выберите город.'
-  if (!formState.districtId) errors.districtId = 'Выберите район.'
+  if (!formState.locationId && !formState.districtId) errors.locationId = 'Выберите населённый пункт.'
   if (!formState.realEstateClassId) {
     errors.realEstateClassId = 'Выберите класс ЖК.'
   }
@@ -206,9 +208,11 @@ export function RealEstateComplexFormPage() {
       name: realEstateComplex.name,
       description: realEstateComplex.description ?? '',
       developerId: realEstateComplex.developerId.toString(),
-      regionId: realEstateComplex.regionId.toString(),
-      cityId: realEstateComplex.cityId.toString(),
-      districtId: realEstateComplex.districtId.toString(),
+      regionId: realEstateComplex.regionId?.toString() ?? '',
+      cityId: realEstateComplex.cityId?.toString() ?? '',
+      districtId: realEstateComplex.districtId?.toString() ?? '',
+      locationId: realEstateComplex.location && (realEstateComplex.location.category === 'locality' || realEstateComplex.location.category === 'region' && realEstateComplex.location.type.toLowerCase().includes('город')) ? String(realEstateComplex.location.id) : '',
+      locationRegionId: realEstateComplex.location?.regionId?.toString() ?? '',
       realEstateClassId: realEstateComplex.realEstateClassId.toString(),
       realEstateTypeId: realEstateComplex.realEstateTypeId.toString(),
       mapLink: realEstateComplex.mapUrl ?? '',
@@ -240,7 +244,8 @@ export function RealEstateComplexFormPage() {
     formData.append('name', formState.name.trim())
     formData.append('description', formState.description.trim())
     formData.append('developerId', formState.developerId)
-    formData.append('districtId', formState.districtId)
+    if (formState.districtId) formData.append('districtId', formState.districtId)
+    if (formState.locationId) formData.append('locationId', formState.locationId)
     formData.append('realEstateClassId', formState.realEstateClassId)
     formData.append('realEstateTypeId', formState.realEstateTypeId)
     formData.append('mapLink', formState.mapLink.trim())
@@ -411,62 +416,16 @@ export function RealEstateComplexFormPage() {
             <div><h2>Локация и материалы</h2><p>Адресная и презентационная информация.</p></div>
           </div>
           <div className="field-grid customer-form-grid">
-            <RemoteSelect searchable
-              dictionary="regions" label={"Регион"}
-              value={formState.regionId} onChange={(value) => {
-                  setFormState((current) => ({
-                    ...current,
-                    regionId: value,
-                    cityId: '',
-                    districtId: '',
-                  }))
-                  setMetroRows([])
-                  setFieldErrors((current) => ({
-                    ...current,
-                    regionId: '',
-                    cityId: '',
-                    districtId: '',
-                    metroAvailability: '',
-                  }))
-                }}
-              initialOptions={(options.regions ?? []).map((option) => ({ id: option.id, label: option.name }))}
-              truncated={options.truncated.regions}
-              error={fieldErrors.regionId}
-              required
-            />
-            <RemoteSelect searchable
-              dictionary="cities" label={"Город"}
-              value={formState.cityId} onChange={(value) => {
-                  setFormState((current) => ({
-                    ...current,
-                    cityId: value,
-                    districtId: '',
-                  }))
-                  setMetroRows([])
-                  setFieldErrors((current) => ({
-                    ...current,
-                    cityId: '',
-                    districtId: '',
-                    metroAvailability: '',
-                  }))
-                }}
-              initialOptions={(options.cities ?? []).map((option) => ({ id: option.id, label: option.name }))}
-              truncated={options.truncated.cities}
-              filters={{ regionId: formState.regionId }}
-              disabled={!formState.regionId}
-              error={fieldErrors.cityId}
-              required
-            />
-            <RemoteSelect searchable
-              dictionary="districts" label={"Район"}
-              value={formState.districtId} onChange={(value) => updateField('districtId', value)}
-              initialOptions={(options.districts ?? []).map((option) => ({ id: option.id, label: option.name }))}
-              truncated={options.truncated.districts}
-              filters={{ cityId: formState.cityId }}
-              disabled={!formState.cityId}
-              error={fieldErrors.districtId}
-              required
-            />
+            <RemoteSelect dictionary="locations" label="Регион населённого пункта"
+              filters={{ category: 'region' }} value={formState.locationRegionId}
+              onChange={(value) => setFormState((current) => ({ ...current, locationRegionId: value, locationId: '' }))} />
+            <RemoteSelect dictionary="locations" label="Населённый пункт"
+              filters={{ category: 'locality', regionId: formState.locationRegionId || undefined, activeOnly: 'true' }}
+              value={formState.locationId} onChange={(value) => updateField('locationId', value)}
+              error={fieldErrors.locationId} required={!isEditing || !formState.districtId} />
+            {isEditing && !formState.locationId && formState.districtId ? <p className="field-hint">
+              Населённый пункт ещё не уточнён. При сохранении прежний административный район и связи ЖК сохранятся.
+            </p> : null}
             <label className="form-field" htmlFor="complex-map-link">
               Ссылка на карте
               <input
@@ -519,6 +478,7 @@ export function RealEstateComplexFormPage() {
         />
         <RealEstateComplexMetroEditor
           cityId={selectedCityIdentifier}
+          locationId={selectedIdentifier(formState.locationId)}
           rows={metroRows}
           options={options}
           error={fieldErrors.metroAvailability}

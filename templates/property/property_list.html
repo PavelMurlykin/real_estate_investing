@@ -55,7 +55,7 @@
                     <select name="filter_complex" class="form-select" data-property-filter-complex data-catalog-filter-control data-dependent-source="[data-property-filter-city]" data-dependent-option-attribute="city-id">
                         <option value="">Все</option>
                         {% for complex in complexes_for_filter %}
-                        <option value="{{ complex.id }}" data-city-id="{{ complex.district.city_id }}" data-developer-id="{{ complex.developer_id }}" {% if filters.complex == complex.id|stringformat:'s' %}selected{% endif %}>{{ complex.name }}</option>
+                        <option value="{{ complex.id }}" data-city-id="{{ complex.geography.city_id }}" data-developer-id="{{ complex.developer_id }}" {% if filters.complex == complex.id|stringformat:'s' %}selected{% endif %}>{{ complex.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -123,7 +123,7 @@
                                 {% for column in columns %}
                                 <td{% if column.key == 'developer' %} class="property-list-table__developer-cell"{% endif %}>
                                     {% if column.key == 'city' %}
-                                        {{ property.building.real_estate_complex.district.city.name }}
+                                        {{ property.building.geography.city }}
                                     {% elif column.key == 'developer' %}
                                         {{ property.building.real_estate_complex.developer.get_display_name_with_company_group }}
                                     {% elif column.key == 'complex' %}

@@ -7,6 +7,9 @@ from rest_framework.views import APIView
 
 from bank.models import Bank, MortgageProgram
 from location.models import City, District, Metro, MetroLine, Region
+from location.models import LegacyLocationMapping, Location
+from property.location_context import geography_prefetch
+from django.db.models import prefetch_related_objects
 from property.models import (
     ApartmentDecoration, ApartmentLayout, CompanyGroup, Developer,
     RealEstateClass, RealEstateComplex, RealEstateComplexBuilding,
@@ -27,6 +30,7 @@ class CatalogOptionQuerySerializer(serializers.Serializer):
     )
     regionId = serializers.IntegerField(required=False, min_value=1)
     cityId = serializers.IntegerField(required=False, min_value=1)
+    locationId = serializers.IntegerField(required=False, min_value=1)
     districtId = serializers.IntegerField(required=False, min_value=1)
     developerId = serializers.IntegerField(required=False, min_value=1)
     realEstateComplexId = serializers.IntegerField(required=False, min_value=1)
@@ -42,13 +46,13 @@ CATALOG_OPTIONS = {
     'developers': (Developer, 'name', ('company_group',),
                    {'companyGroupId': 'company_group_id'}),
     'company-groups': (CompanyGroup, 'name', (), {}),
-    'complexes': (RealEstateComplex, 'name', ('district__city', 'developer'), {
+    'complexes': (RealEstateComplex, 'name', ('district__city__region', 'developer'), {
         'cityId': 'district__city_id', 'districtId': 'district_id',
         'developerId': 'developer_id',
         'companyGroupId': 'developer__company_group_id',
     }),
     'buildings': (RealEstateComplexBuilding, 'number',
-                  ('real_estate_complex__district__city',),
+                  ('real_estate_complex__district__city__region',),
                   {'realEstateComplexId': 'real_estate_complex_id'}),
     'layouts': (ApartmentLayout, 'name', (), {}),
     'decorations': (ApartmentDecoration, 'name', (), {}),
@@ -87,8 +91,8 @@ def serialize_catalog_option(item, label_field):
             realEstateComplexId=complex_object.pk,
             developerId=complex_object.developer_id,
             districtId=complex_object.district_id,
-            cityId=complex_object.district.city_id,
-            regionId=complex_object.district.city.region_id,
+            cityId=complex_object.geography.city_id,
+            regionId=complex_object.geography.region_id,
         )
     return option
 
@@ -115,6 +119,15 @@ class CatalogOptionsAPIView(APIView):
         if related:
             base_queryset = base_queryset.select_related(*related)
         queryset = base_queryset
+        if dictionary_key in {'metro', 'metro-lines'} and parameters.get('locationId'):
+            location = Location.objects.filter(pk=parameters['locationId']).first()
+            regions = LegacyLocationMapping.objects.filter(
+                model_name='region', location_id=location.region_id if location else None,
+            ).values_list('legacy_id', flat=True)
+            queryset = queryset.filter(**{
+                'metro_line__city__region_id__in' if dictionary_key == 'metro'
+                else 'city__region_id__in': regions,
+            })
         for name, field in filters.items():
             if parameters.get(name):
                 queryset = queryset.filter(**{field: parameters[name]})
@@ -130,6 +143,9 @@ class CatalogOptionsAPIView(APIView):
         page_size = parameters['pageSize']
         offset = (page - 1) * page_size
         items = list(queryset[offset:offset + page_size])
+        if model in {RealEstateComplex, RealEstateComplexBuilding}:
+            complexes = [row if model is RealEstateComplex else row.real_estate_complex for row in items]
+            prefetch_related_objects(complexes, geography_prefetch())
         selected_identifiers = set(parameters.get('selectedIds', []))
         if parameters.get('selected'):
             selected_identifiers.add(parameters['selected'])
@@ -140,6 +156,11 @@ class CatalogOptionsAPIView(APIView):
             selected.update({item.pk: item for item in base_queryset.filter(
                 pk__in=missing,
             ).order_by(label_field, 'pk')})
+        if model in {RealEstateComplex, RealEstateComplexBuilding}:
+            prefetch_related_objects([
+                row if model is RealEstateComplex else row.real_estate_complex
+                for row in selected.values()
+            ], geography_prefetch())
         return Response({
             'results': [serialize_catalog_option(item, label_field)
                         for item in items],

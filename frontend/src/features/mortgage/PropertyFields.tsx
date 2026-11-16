@@ -14,9 +14,9 @@ export function PropertyFields({ value, onChange, errors }: {
   const identifier = useId()
   const update = (changes: Partial<ManualPropertyState>) => onChange({ ...value, ...changes })
   const context = (option?: CatalogOption) => option ? {
-    regionId: String(option.regionId ?? value.regionId),
-    cityId: String(option.cityId ?? value.cityId),
-    districtId: String(option.districtId ?? value.districtId),
+    regionId: option.regionId === undefined ? value.regionId : String(option.regionId ?? ''),
+    cityId: option.cityId === undefined ? value.cityId : String(option.cityId ?? ''),
+    districtId: option.districtId === undefined ? value.districtId : String(option.districtId ?? ''),
     developerId: String(option.developerId ?? value.developerId),
   } : {}
   return (

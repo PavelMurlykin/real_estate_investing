@@ -1,7 +1,9 @@
 from django.shortcuts import render
+from django.db.models import Q
 
 from location.models import City
 from property.models import RealEstateComplex
+from property.location_context import geography_prefetch
 
 CITY_PREPOSITIONAL_CASE = {
     'Санкт-Петербург': 'Санкт-Петербурге',
@@ -37,10 +39,12 @@ def index(request):
     if selected_city:
         complexes = list(
             RealEstateComplex.objects.filter(
+                Q(district__is_active=True, district__city=selected_city,
+                  district__city__is_active=True)
+                | Q(district__isnull=True, location_links__is_primary=True,
+                    location_links__location__ancestor_links__ancestor__legacy_mappings__model_name='city',
+                    location_links__location__ancestor_links__ancestor__legacy_mappings__legacy_id=selected_city.pk),
                 is_active=True,
-                district__is_active=True,
-                district__city=selected_city,
-                district__city__is_active=True,
             )
             .select_related(
                 'developer',
@@ -48,7 +52,8 @@ def index(request):
                 'real_estate_class',
                 'real_estate_type',
             )
-            .order_by('name')
+            .prefetch_related(geography_prefetch())
+            .distinct().order_by('name')
         )
 
     complexes_map_data = [

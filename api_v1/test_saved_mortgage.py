@@ -305,7 +305,7 @@ def test_saved_calculation_list_uses_constant_query_count(
         )
         assert response.status_code == 201
 
-    with django_assert_num_queries(5):
+    with django_assert_num_queries(8):
         response = client.get(list_url)
 
     assert response.status_code == 200

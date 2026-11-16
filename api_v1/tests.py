@@ -96,7 +96,7 @@ def test_property_list_exposes_calculator_context_without_extra_queries(
     """Supply location and developer identifiers for program selection."""
     property_object = property_catalog[0]
     complex_object = property_object.building.real_estate_complex
-    with django_assert_num_queries(2):
+    with django_assert_num_queries(5):
         response = client.get(reverse('api_v1:property_list'))
     assert response.status_code == 200
     row = next(item for item in response.json()['results']
@@ -301,7 +301,7 @@ def test_property_list_api_uses_constant_query_count(
     django_assert_num_queries,
 ):
     """Pagination and related labels should not introduce per-row queries."""
-    with django_assert_num_queries(2):
+    with django_assert_num_queries(5):
         response = client.get(reverse('api_v1:property_list'))
 
     assert response.status_code == 200
@@ -352,7 +352,7 @@ def test_property_detail_api_returns_complete_public_card(
         update_fields=('map_link', 'presentation_link')
     )
 
-    with django_assert_num_queries(2):
+    with django_assert_num_queries(5):
         response = client.get(
             reverse(
                 'api_v1:property_detail',

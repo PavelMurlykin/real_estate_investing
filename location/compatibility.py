@@ -61,7 +61,7 @@ def canonical_legacy_location(row):
 
 def bind_new_complex(sender, instance, created, raw=False, **kwargs):
     """Initialize new complexes with the same district binding as the migration."""
-    if not created or raw:
+    if not created or raw or not instance.district_id:
         return
     from property.models import RealEstateComplexLocation
 

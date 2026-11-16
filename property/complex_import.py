@@ -261,7 +261,7 @@ def _import_complex(row, summary, saved_files):
             'district__city',
         )
         if normalized_name(candidate.name) in matching_names
-        and normalized_name(candidate.district.city.name) == matching_city
+        and normalized_name(candidate.geography.city) == matching_city
     ]
     if len(matches) > 1 or (existing and matches and existing.pk != matches[0].pk):
         raise JsonImportError(f'Неоднозначное сопоставление ЖК «{row["name"]}».')
@@ -285,7 +285,7 @@ def _import_complex(row, summary, saved_files):
     buildings = _merged_import_buildings(existing, row['buildings'], row['name'])
 
     metro_rows = {}
-    if existing and existing.district.city_id == city.pk:
+    if existing:
         for entry in existing.metro_availability.all():
             metro_rows[entry.metro_id] = {
                 'id': entry.pk, 'metroId': entry.metro_id,

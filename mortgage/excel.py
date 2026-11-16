@@ -217,8 +217,8 @@ def _build_property_rows(excel_data):
         real_estate_complex = property_obj.building.real_estate_complex
         property_rows.extend(
             [
-                ['Город', real_estate_complex.district.city.name],
-                ['Район', real_estate_complex.district.name],
+                ['Город', property_obj.building.geography.city],
+                ['Район', property_obj.building.geography.district],
                 ['Застройщик', real_estate_complex.developer.name],
                 ['Жилой комплекс', real_estate_complex.name],
                 ['Корпус', property_obj.building.number],

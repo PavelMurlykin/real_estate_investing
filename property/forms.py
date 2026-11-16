@@ -1,7 +1,8 @@
 ﻿from django import forms
 from django.forms import BaseInlineFormSet, inlineformset_factory
 
-from location.models import City, District, Metro, Region
+from location.models import City, District, Location, Metro, Region
+from .location_context import locality_filter, set_primary_location
 
 from .form_fields import (
     DeveloperModelChoiceField,
@@ -284,6 +285,15 @@ class RealEstateComplexForm(forms.ModelForm):
     в данном модуле.
     """
 
+    location = forms.ModelChoiceField(
+        queryset=Location.objects.filter(locality_filter()).select_related('region'),
+        required=False, label='Населённый пункт',
+        widget=forms.Select(attrs={
+            'class': 'form-control', 'data-searchable-select': '',
+            'data-remote-options': '/api/v1/catalog-options/locations/?category=locality&activeOnly=true',
+            'data-remote-region-field': 'id_region',
+        }),
+    )
     clear_photo = forms.BooleanField(
         required=False,
         widget=forms.CheckboxInput(attrs={'class': 'd-none'}),
@@ -324,6 +334,7 @@ class RealEstateComplexForm(forms.ModelForm):
             'region',
             'city',
             'district',
+            'location',
             'map_link',
             'presentation_link',
             'investment_potential',
@@ -378,6 +389,14 @@ class RealEstateComplexForm(forms.ModelForm):
         if district:
             self.fields['city'].initial = district.city_id
             self.fields['region'].initial = district.city.region_id
+        location = self.instance.primary_location if self.instance.pk else None
+        if location and location.location_type.category != 'district':
+            self.fields['location'].initial = location.pk
+        selected = self.data.get('location') if self.is_bound else self.fields['location'].initial
+        selected_rows = self.fields['location'].queryset.filter(pk=selected) if str(selected or '').isdigit() else []
+        self.fields['location'].widget.choices = [('', 'Не выбрано')] + [
+            (row.pk, f'{row.name} · {row.region.name if row.region_id else ""}') for row in selected_rows
+        ]
 
     def clean(self):
         """Keep region, city, and district hierarchy consistent."""
@@ -385,6 +404,16 @@ class RealEstateComplexForm(forms.ModelForm):
         region = cleaned_data.get('region')
         city = cleaned_data.get('city')
         district = cleaned_data.get('district')
+        location = cleaned_data.get('location')
+        if location and not location.is_active and (
+            not self.instance.pk or self.instance.primary_location is None
+            or self.instance.primary_location.pk != location.pk
+        ):
+            self.add_error('location', 'Выберите действующий населённый пункт.')
+        if not location and not district and not (
+            self.instance.pk and self.instance.primary_location
+        ):
+            self.add_error('location', 'Выберите населённый пункт.')
 
         if district:
             district_city = district.city
@@ -430,6 +459,8 @@ class RealEstateComplexForm(forms.ModelForm):
 
         if commit:
             instance.save()
+            if self.cleaned_data.get('location'):
+                set_primary_location(instance, self.cleaned_data['location'])
             sync_legacy_complex_photo(instance)
             self.delete_saved_photo(photo_name_to_delete, instance)
 

@@ -191,9 +191,9 @@ export function PropertyFormPage() {
       return
     }
     setFormState({
-      regionId: String(property.regionId),
-      cityId: String(property.cityId),
-      districtId: String(property.districtId),
+      regionId: String(property.regionId ?? ''),
+      cityId: String(property.cityId ?? ''),
+      districtId: String(property.districtId ?? ''),
       developerId: String(property.developerId),
       realEstateComplexId: String(property.realEstateComplexId),
       buildingId: String(property.buildingId),
@@ -359,7 +359,7 @@ export function PropertyFormPage() {
           <span className="eyebrow">Управление каталогом</span>
           <h1>{isEditing ? 'Редактирование объекта' : 'Новый объект'}</h1>
           <p>
-            Выберите локацию по порядку, затем заполните параметры квартиры
+            Выберите застройщика, ЖК и корпус, затем заполните параметры квартиры
             и при необходимости добавьте изображения.
           </p>
         </div>
@@ -397,7 +397,6 @@ export function PropertyFormPage() {
               value={formState.regionId} onChange={(value) => updateRegion(value)}
               initialOptions={(options.regions ?? []).map((option) => ({ id: option.id, label: option.name }))}
               truncated={options.truncated.regions}
-              required
             />
             <RemoteSelect
               dictionary="cities" label={"Город"}
@@ -406,7 +405,6 @@ export function PropertyFormPage() {
               truncated={options.truncated.cities}
               filters={{ regionId: formState.regionId }}
               disabled={!formState.regionId}
-              required
             />
             <RemoteSelect
               dictionary="districts" label={"Район"}
@@ -415,7 +413,6 @@ export function PropertyFormPage() {
               truncated={options.truncated.districts}
               filters={{ cityId: formState.cityId }}
               disabled={!formState.cityId}
-              required
             />
             <RemoteSelect
               dictionary="developers" label={"Застройщик"}
@@ -430,7 +427,7 @@ export function PropertyFormPage() {
               initialOptions={(options.realEstateComplexes ?? []).map((option) => ({ id: option.id, label: option.name }))}
               truncated={options.truncated.realEstateComplexes}
               filters={{ districtId: formState.districtId, developerId: formState.developerId }}
-              disabled={!formState.districtId || !formState.developerId}
+              disabled={!formState.developerId}
               required
             />
             <RemoteSelect

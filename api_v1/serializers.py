@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import URLValidator
 from django.db import transaction
+from django.db.models import prefetch_related_objects
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import serializers
@@ -18,7 +19,10 @@ from bank.models import (
     MortgageProgramRegionalCreditLimit,
 )
 from customer.models import Customer
-from location.models import City, District, Metro, MetroLine, Region
+from location.models import City, District, Location, Metro, MetroLine, Region
+from property.location_context import (
+    building_geography_prefetch, geography_prefetch, locality_filter, set_primary_location,
+)
 from mortgage.validators import (
     MORTGAGE_DATE_RANGE_ERROR,
     is_mortgage_end_date_supported,
@@ -2459,11 +2463,39 @@ class RealEstateComplexOptionsQuerySerializer(serializers.Serializer):
     cityId = serializers.IntegerField(required=False, min_value=1)
 
 
-class RealEstateComplexListItemSerializer(serializers.ModelSerializer):
+class GeographicListSerializer(serializers.ListSerializer):
+    """Batch geography after pagination rather than querying once per row."""
+
+    def to_representation(self, data):
+        """Load the location graph for the current bounded page."""
+        rows = list(data.all() if hasattr(data, 'all') else data)
+        complexes = [row if isinstance(row, RealEstateComplex)
+                     else row.building.real_estate_complex for row in rows]
+        prefetch_related_objects(complexes, geography_prefetch())
+        buildings = [row.building for row in rows if isinstance(row, Property)]
+        prefetch_related_objects(buildings, building_geography_prefetch())
+        return super().to_representation(rows)
+
+
+class GeographicModelSerializer(serializers.ModelSerializer):
+    """Share the same location loading path for list and detail serializers."""
+
+    def to_representation(self, instance):
+        """Reuse page prefetches and bound detail location queries."""
+        complex_object = (instance if isinstance(instance, RealEstateComplex)
+                          else instance.building.real_estate_complex)
+        if not hasattr(complex_object, 'primary_location_links'):
+            prefetch_related_objects([complex_object], geography_prefetch())
+        if isinstance(instance, Property):
+            prefetch_related_objects([instance.building], building_geography_prefetch())
+        return super().to_representation(instance)
+
+
+class RealEstateComplexListItemSerializer(GeographicModelSerializer):
     """Serialize one residential-complex directory row."""
 
     developer = serializers.SerializerMethodField()
-    city = serializers.CharField(source='district.city.name', read_only=True)
+    city = serializers.CharField(source='geography.city', read_only=True)
     realEstateClass = serializers.CharField(
         source='real_estate_class.name',
         read_only=True,
@@ -2481,6 +2513,7 @@ class RealEstateComplexListItemSerializer(serializers.ModelSerializer):
     class Meta:
         """Define the public residential-complex list contract."""
 
+        list_serializer_class = GeographicListSerializer
         model = RealEstateComplex
         fields = (
             'id',
@@ -2603,21 +2636,22 @@ class RealEstateComplexPhotoSerializer(serializers.ModelSerializer):
         return photo.image.name == self.context['primary_photo']
 
 
-class RealEstateComplexDetailSerializer(serializers.ModelSerializer):
+class RealEstateComplexDetailSerializer(GeographicModelSerializer):
     """Serialize the complete public residential-complex card."""
 
     developerId = serializers.IntegerField(source='developer_id', read_only=True)
     developer = serializers.SerializerMethodField()
+    location = serializers.SerializerMethodField()
     regionId = serializers.IntegerField(
-        source='district.city.region_id', read_only=True
+        source='geography.region_id', read_only=True
     )
     region = serializers.CharField(
-        source='district.city.region.name', read_only=True
+        source='geography.region', read_only=True
     )
-    cityId = serializers.IntegerField(source='district.city_id', read_only=True)
-    city = serializers.CharField(source='district.city.name', read_only=True)
+    cityId = serializers.IntegerField(source='geography.city_id', read_only=True)
+    city = serializers.CharField(source='geography.city', read_only=True)
     districtId = serializers.IntegerField(source='district_id', read_only=True)
-    district = serializers.CharField(source='district.name', read_only=True)
+    district = serializers.CharField(source='geography.district', read_only=True)
     realEstateClassId = serializers.IntegerField(
         source='real_estate_class_id', read_only=True
     )
@@ -2661,7 +2695,7 @@ class RealEstateComplexDetailSerializer(serializers.ModelSerializer):
 
         model = RealEstateComplex
         fields = (
-            'id', 'name', 'description', 'developerId', 'developer',
+            'id', 'name', 'description', 'developerId', 'developer', 'location',
             'regionId', 'region', 'cityId', 'city', 'districtId', 'district',
             'realEstateClassId', 'realEstateClass', 'realEstateTypeId',
             'realEstateType', 'mapUrl', 'presentationUrl',
@@ -2678,6 +2712,13 @@ class RealEstateComplexDetailSerializer(serializers.ModelSerializer):
             'name': developer.name,
             'label': developer.get_display_name_with_company_group(),
         }
+
+    def get_location(self, real_estate_complex):
+        """Expose the primary identity even if it is still a coarse legacy district."""
+        from .geography_views import serialize_location
+
+        location = real_estate_complex.primary_location
+        return serialize_location(location) if location else None
 
     def get_map_url(self, real_estate_complex):
         """Return a validated external map URL or omit an unsafe value."""
@@ -2831,6 +2872,11 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
     districtId = serializers.PrimaryKeyRelatedField(
         source='district',
         queryset=District.objects.select_related('city__region'),
+        required=False, allow_null=True,
+    )
+    locationId = serializers.PrimaryKeyRelatedField(
+        queryset=Location.objects.filter(locality_filter()).select_related('region'),
+        required=False, write_only=True,
     )
     realEstateClassId = serializers.PrimaryKeyRelatedField(
         source='real_estate_class', queryset=RealEstateClass.objects.all()
@@ -2879,7 +2925,7 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
 
         model = RealEstateComplex
         fields = (
-            'name', 'description', 'developerId', 'districtId',
+            'name', 'description', 'developerId', 'districtId', 'locationId',
             'realEstateClassId', 'realEstateTypeId', 'mapLink',
             'presentationLink', 'investmentPotential', 'photo', 'clearPhoto',
             'photos', 'primaryPhotoId', 'primaryPhotoIndex', 'removedPhotoIds',
@@ -2987,7 +3033,16 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
             'district',
             real_estate_complex.district if real_estate_complex else None,
         )
-        if 'metroAvailability' in attributes and district:
+        location = attributes.get('locationId')
+        if location is not None:
+            previous = real_estate_complex.primary_location if real_estate_complex else None
+            if not location.is_active and (previous is None or previous.pk != location.pk):
+                raise serializers.ValidationError({'locationId': 'Выберите действующий населённый пункт.'})
+        if not real_estate_complex and location is None and district is None:
+            raise serializers.ValidationError({'locationId': 'Выберите населённый пункт.'})
+        if real_estate_complex and location is None and district is None and real_estate_complex.primary_location is None:
+            raise serializers.ValidationError({'locationId': 'Выберите населённый пункт.'})
+        if location is None and 'metroAvailability' in attributes and district:
             for row in attributes['metroAvailability']:
                 if row['metro'].metro_line.city_id != district.city_id:
                     raise serializers.ValidationError(
@@ -3149,12 +3204,15 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """Create a complex and all submitted child rows atomically."""
+        location = validated_data.pop('locationId', None)
         buildings = validated_data.pop('buildings', [])
         metro_availability = validated_data.pop('metroAvailability', [])
         validated_data.pop('clearPhoto', None)
         gallery = self._pop_gallery_data(validated_data)
         with complex_photo_transaction() as saved_files:
             real_estate_complex = super().create(validated_data)
+            if location is not None:
+                set_primary_location(real_estate_complex, location)
             sync_legacy_complex_photo(real_estate_complex)
             self._sync_buildings(real_estate_complex, buildings)
             self._sync_metro_availability(
@@ -3165,6 +3223,7 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         """Update a complex and optional replacement child lists atomically."""
+        location = validated_data.pop('locationId', None)
         missing_related_rows = object()
         buildings = validated_data.pop('buildings', missing_related_rows)
         metro_availability = validated_data.pop(
@@ -3185,6 +3244,8 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
 
         with complex_photo_transaction() as saved_files:
             real_estate_complex = super().update(instance, validated_data)
+            if location is not None:
+                set_primary_location(real_estate_complex, location)
             if buildings is not missing_related_rows:
                 self._sync_buildings(real_estate_complex, buildings)
             if metro_availability is not missing_related_rows:
@@ -3392,7 +3453,7 @@ class PropertyFormOptionsQuerySerializer(serializers.Serializer):
     )
 
 
-class PropertyListItemSerializer(serializers.ModelSerializer):
+class PropertyListItemSerializer(GeographicModelSerializer):
     """Serialize one property row without triggering per-row queries."""
 
     developerId = serializers.IntegerField(
@@ -3402,14 +3463,14 @@ class PropertyListItemSerializer(serializers.ModelSerializer):
         source='building.real_estate_complex_id', read_only=True,
     )
     regionId = serializers.IntegerField(
-        source='building.real_estate_complex.district.city.region_id',
+        source='building.geography.region_id',
         read_only=True,
     )
     district = serializers.CharField(
-        source='building.real_estate_complex.district.name', read_only=True,
+        source='building.geography.district', read_only=True,
     )
     cityId = serializers.IntegerField(
-        source='building.real_estate_complex.district.city_id', read_only=True,
+        source='building.geography.city_id', read_only=True,
     )
     districtId = serializers.IntegerField(
         source='building.real_estate_complex.district_id', read_only=True,
@@ -3419,7 +3480,7 @@ class PropertyListItemSerializer(serializers.ModelSerializer):
     decorationId = serializers.IntegerField(source='decoration_id', read_only=True)
 
     city = serializers.CharField(
-        source='building.real_estate_complex.district.city.name',
+        source='building.geography.city',
         read_only=True,
     )
     developer = serializers.SerializerMethodField()
@@ -3453,6 +3514,7 @@ class PropertyListItemSerializer(serializers.ModelSerializer):
     class Meta:
         """Define the public fields used by property list screens."""
 
+        list_serializer_class = GeographicListSerializer
         model = Property
         fields = (
             'id',
@@ -3509,7 +3571,7 @@ def _validate_external_url(value):
     return value
 
 
-class PropertyDetailSerializer(serializers.ModelSerializer):
+class PropertyDetailSerializer(GeographicModelSerializer):
     """Serialize the complete public property card without extra queries."""
 
     apartmentNumber = serializers.CharField(
@@ -3517,11 +3579,11 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
         read_only=True,
     )
     regionId = serializers.IntegerField(
-        source='building.real_estate_complex.district.city.region_id',
+        source='building.geography.region_id',
         read_only=True,
     )
     cityId = serializers.IntegerField(
-        source='building.real_estate_complex.district.city_id',
+        source='building.geography.city_id',
         read_only=True,
     )
     districtId = serializers.IntegerField(
@@ -3559,15 +3621,15 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
         read_only=True,
     )
     district = serializers.CharField(
-        source='building.real_estate_complex.district.name',
+        source='building.geography.district',
         read_only=True,
     )
     city = serializers.CharField(
-        source='building.real_estate_complex.district.city.name',
+        source='building.geography.city',
         read_only=True,
     )
     region = serializers.CharField(
-        source='building.real_estate_complex.district.city.region.name',
+        source='building.geography.region',
         read_only=True,
     )
     building = serializers.CharField(
@@ -3911,8 +3973,8 @@ class PropertyWriteSerializer(serializers.ModelSerializer):
 class ManualCalculationPropertySerializer(serializers.Serializer):
     """Validate calculator object data through the existing Django form."""
 
-    cityId = serializers.IntegerField(min_value=1)
-    districtId = serializers.IntegerField(min_value=1)
+    cityId = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+    districtId = serializers.IntegerField(min_value=1, required=False, allow_null=True)
     developerId = serializers.IntegerField(min_value=1)
     realEstateComplexId = serializers.IntegerField(min_value=1)
     buildingId = serializers.IntegerField(min_value=1)

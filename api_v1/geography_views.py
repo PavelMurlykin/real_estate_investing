@@ -10,7 +10,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from location.models import Location
+from location.models import LegacyLocationMapping, Location
 from property.models import RealEstateComplex, RealEstateComplexLocation
 from .catalog_options import CatalogOptionQuerySerializer
 from .views import CanManageCatalogs
@@ -50,6 +50,7 @@ class GeographyQuerySerializer(CatalogOptionQuerySerializer):
         choices=['region', 'district', 'locality', 'area'], required=False,
     )
     ancestorId = serializers.IntegerField(min_value=1, required=False)
+    legacyRegionId = serializers.IntegerField(min_value=1, required=False)
 
 
 class GeographyAPIView(APIView):
@@ -75,6 +76,10 @@ class GeographyAPIView(APIView):
             queryset = queryset.filter(location_type__category=parameters['category'])
         if parameters.get('regionId'):
             queryset = queryset.filter(region_id=parameters['regionId'])
+        if parameters.get('legacyRegionId'):
+            queryset = queryset.filter(region_id__in=LegacyLocationMapping.objects.filter(
+                model_name='region', legacy_id=parameters['legacyRegionId'],
+            ).values_list('location_id', flat=True))
         if parameters.get('ancestorId'):
             queryset = queryset.filter(ancestor_links__ancestor_id=parameters['ancestorId'])
         if parameters['activeOnly']:

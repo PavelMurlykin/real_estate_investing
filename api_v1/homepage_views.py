@@ -1,4 +1,4 @@
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.utils.text import Truncator
 from rest_framework import serializers
 from rest_framework.generics import ListAPIView
@@ -24,7 +24,7 @@ class HomepageQuerySerializer(serializers.Serializer):
 class HomepageComplexSerializer(RealEstateComplexListItemSerializer):
     """Return the legacy homepage's photo, location and public complex links."""
 
-    district = serializers.CharField(source='district.name', read_only=True)
+    district = serializers.CharField(source='geography.district', read_only=True)
     description = serializers.SerializerMethodField()
     photoUrl = serializers.SerializerMethodField(method_name='get_photo_url')
     mapUrl = serializers.SerializerMethodField(method_name='get_map_url')
@@ -78,10 +78,13 @@ class HomepageComplexListAPIView(ListAPIView):
         if self.selected_city is None:
             return RealEstateComplex.objects.none()
         return RealEstateComplex.objects.filter(
-            is_active=True, district__is_active=True,
-            district__city=self.selected_city,
+            Q(district__is_active=True, district__city=self.selected_city)
+            | Q(district__isnull=True, location_links__is_primary=True,
+                location_links__location__ancestor_links__ancestor__legacy_mappings__model_name='city',
+                location_links__location__ancestor_links__ancestor__legacy_mappings__legacy_id=self.selected_city.pk),
+            is_active=True,
         ).select_related(
-            'developer__company_group', 'district__city',
+            'developer__company_group', 'district__city__region',
             'real_estate_class', 'real_estate_type',
         ).annotate(
             building_count=Count('realestatecomplexbuilding', distinct=True)

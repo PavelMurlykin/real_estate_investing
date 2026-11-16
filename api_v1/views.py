@@ -1,3 +1,4 @@
+from property.location_context import building_geography_prefetch, geography_prefetch
 from django.conf import settings
 from django.contrib.auth import (
     get_user_model,
@@ -614,7 +615,7 @@ class OverviewAPIView(APIView):
         recent_properties = (
             Property.objects.select_related(
                 'building__real_estate_complex__developer__company_group',
-                'building__real_estate_complex__district__city',
+                'building__real_estate_complex__district__city__region',
                 'layout',
                 'decoration',
             )
@@ -826,9 +827,13 @@ def _saved_trench_mortgage_calculation_queryset(user):
         'property__building',
         'property__building__real_estate_complex',
         'property__building__real_estate_complex__developer__company_group',
-        'property__building__real_estate_complex__district__city',
+        'property__building__real_estate_complex__district__city__region',
         'property__building__real_estate_complex__real_estate_class',
     ).prefetch_related('trenches')
+    queryset = queryset.prefetch_related(
+        geography_prefetch('property__building__real_estate_complex__'),
+        building_geography_prefetch('property__building__'),
+    )
     if can_view_all_private_records(user):
         return queryset
     return queryset.filter(user=user)
@@ -1010,8 +1015,12 @@ def _saved_mortgage_calculation_queryset(user):
         'property__building',
         'property__building__real_estate_complex',
         'property__building__real_estate_complex__developer__company_group',
-        'property__building__real_estate_complex__district__city',
+        'property__building__real_estate_complex__district__city__region',
         'property__building__real_estate_complex__real_estate_class',
+    )
+    queryset = queryset.prefetch_related(
+        geography_prefetch('property__building__real_estate_complex__'),
+        building_geography_prefetch('property__building__'),
     )
     if can_view_all_private_records(user):
         return queryset
@@ -2855,7 +2864,7 @@ def _real_estate_complex_list_queryset():
     """Return complexes with list labels and building counts preloaded."""
     return RealEstateComplex.objects.select_related(
         'developer__company_group',
-        'district__city',
+        'district__city__region',
         'real_estate_class',
         'real_estate_type',
     ).annotate(
@@ -2940,6 +2949,7 @@ class RealEstateComplexListCreateAPIView(ListCreateAPIView):
                 Q(name__icontains=search)
                 | Q(developer__name__icontains=search)
                 | Q(district__city__name__icontains=search)
+                | Q(location_links__is_primary=True, location_links__location__name__icontains=search)
             )
         filter_fields = {
             'developerId': 'developer_id',
@@ -3235,7 +3245,7 @@ class PropertyListAPIView(ListCreateAPIView):
 
         queryset = Property.objects.select_related(
             'building__real_estate_complex__developer__company_group',
-            'building__real_estate_complex__district__city',
+            'building__real_estate_complex__district__city__region',
             'layout',
             'decoration',
         )
@@ -3246,6 +3256,8 @@ class PropertyListAPIView(ListCreateAPIView):
                 Q(apartment_number__icontains=search)
                 | Q(building__number__icontains=search)
                 | Q(building__real_estate_complex__name__icontains=search)
+                | Q(building__real_estate_complex__location_links__is_primary=True,
+                    building__real_estate_complex__location_links__location__name__icontains=search)
                 | Q(
                     building__real_estate_complex__developer__name__icontains=(
                         search
@@ -3256,7 +3268,7 @@ class PropertyListAPIView(ListCreateAPIView):
                         search
                     )
                 )
-            )
+            ).distinct()
 
         filter_fields = {
             'city': 'building__real_estate_complex__district__city_id',
@@ -3416,11 +3428,12 @@ class PropertyFormOptionsAPIView(APIView):
         developers_truncated = len(developer_objects) > maximum_results
 
         complexes_queryset = RealEstateComplex.objects.none()
-        if filters.get('districtId') and filters.get('developerId'):
+        if filters.get('developerId'):
             complexes_queryset = RealEstateComplex.objects.filter(
-                district_id=filters['districtId'],
                 developer_id=filters['developerId'],
             ).order_by('name', 'pk')
+            if filters.get('districtId'):
+                complexes_queryset = complexes_queryset.filter(district_id=filters['districtId'])
         real_estate_complexes, complexes_truncated = (
             _build_bounded_option_rows(
                 complexes_queryset,

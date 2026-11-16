@@ -1827,14 +1827,11 @@ class PropertyFormContextMixin:
             return
 
         real_estate_complex = selected_building.real_estate_complex
-        district = real_estate_complex.district
-        city = district.city
-        region = city.region
         developer = real_estate_complex.developer
 
-        context['current_region'] = region.id
-        context['current_city'] = city.id
-        context['current_district'] = district.id
+        context['current_region'] = real_estate_complex.geography.region_id
+        context['current_city'] = real_estate_complex.geography.city_id
+        context['current_district'] = real_estate_complex.district_id
         context['current_developer'] = developer.id
         context['current_complex'] = real_estate_complex.id
         context['current_building'] = selected_building.id
