@@ -2195,9 +2195,37 @@ textarea:focus-visible {
 }
 
 .location-filter-panel {
-  grid-template-columns:
-    minmax(260px, 1.4fr)
-    repeat(4, minmax(135px, 0.45fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.location-filter-panel .search-form {
+  grid-column: 1 / -1;
+}
+
+.location-national-import {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.location-national-import h2,
+.location-national-import p {
+  margin: 0;
+}
+
+.location-national-import > button {
+  justify-self: start;
+  max-width: 100%;
+}
+
+.location-national-import > div {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.location-national-import progress {
+  width: 100%;
 }
 
 .location-line-label {
@@ -2224,7 +2252,7 @@ textarea:focus-visible {
 
 @media (max-width: 1350px) {
   .location-filter-panel {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .location-filter-panel .search-form {

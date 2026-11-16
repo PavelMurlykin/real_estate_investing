@@ -1,7 +1,39 @@
+import uuid
+
 from django.core.validators import RegexValidator
 from django.db import models
 
 from core.models import BaseModel
+
+
+class LocationImportJob(models.Model):
+    """Persist a resumable national import independently of browser requests."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    scope = models.CharField(max_length=20, default='russia', editable=False)
+    status = models.CharField(max_length=20, default='queued', choices=[
+        ('queued', 'В очереди'), ('running', 'Выполняется'),
+        ('completed', 'Завершён'), ('failed', 'Ошибка'),
+    ])
+    phase = models.CharField(max_length=20, default='catalog')
+    catalog = models.JSONField(default=list)
+    counts = models.JSONField(default=dict)
+    coverage = models.JSONField(default=dict)
+    processed_cities = models.PositiveIntegerField(default=0)
+    total_cities = models.PositiveIntegerField(default=0)
+    current_city = models.CharField(max_length=100, blank=True)
+    error_message = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        """Allow only one queued or running national import at a time."""
+
+        ordering = ['-created_at']
+        constraints = [models.UniqueConstraint(
+            fields=['scope'], condition=models.Q(status__in=['queued', 'running']),
+            name='unique_active_location_import',
+        )]
 
 
 class ImportedLocation(BaseModel):

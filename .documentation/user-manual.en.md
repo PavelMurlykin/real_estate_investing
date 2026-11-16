@@ -24,6 +24,14 @@ When adding or editing a city, district or metro station, type directly in the r
 
 Application administrators (`application_administrators`) and superusers see “Импортировать из API” on the Locations tabs. Regular users, staff with only `is_staff`, and moderators cannot import. Moderators retain manual dictionary editing rights. The server enforces these restrictions; POST requests require a session and CSRF protection.
 
+“Импортировать все города и районы России” starts a background import of regions, every city in the Russian catalog, and available urban districts. No region or city selection is required; list filters do not restrict the import. All cities load first, then their districts are checked. Preparation and processing can take several minutes or longer depending on the APIs. The interface shows progress, the current city and separate region, city and district counters.
+
+Closing the tab or reloading does not interrupt the national import. Repeated clicks during a run reuse the same job. After an error, “Продолжить импорт России” resumes from the last committed city; completed cities remain in the database. A restarted worker also resumes an unfinished job. Once complete, the button starts a new catalog refresh. Missing district data and ambiguous Wikidata matches are reported separately: they describe source coverage rather than proving that a city has no districts.
+
+List search updates while typing; the “Найти” button has been removed. Region and city controls are wider; phone filters use one column.
+
+The selected-parent import remains available for individual dictionaries:
+
 1. On Regions, import regions from the Russian city catalog.
 2. On Cities, select a Russian region in the filter and import its cities.
 3. On Districts and Metro, select a Russian region and city, then import the corresponding dictionary. Metro lines are imported together with stations. Existing manually created or previously imported parent records are supported.
@@ -36,13 +44,17 @@ Repeating an import adds new entries and refreshes names, relationships and line
 
 Imports are serialized across all application users. An unavailable API, partial response or conflict saves no changes from the current import; resolve conflicts or retry later. The button is disabled while a request runs. Containerized Gunicorn allows up to 60 seconds per request; extraction is limited to 45 seconds and each network operation to 8 seconds. A transient network failure is retried once after a pause. After updating, run `docker compose up -d --build --wait`: the migration changes the source field label without deleting data.
 
-The fallback Django Locations page offers the same import and access rules. Choose the dictionary and region; “Показать города” loads that region’s cities for the next step.
+The fallback Django Locations page offers both national background imports and selected-parent imports with the same permissions. Reload the page to update national progress. For an individual import choose the dictionary and region; “Показать города” loads that region’s cities for the next step.
+
+`docker compose up -d --build --wait` also starts `location-import-worker`, using the same PostgreSQL database. No separate Redis/Celery service is needed. It processes queued jobs and recovers after restart. When running without Compose, start the worker with `.venv\Scripts\python.exe manage.py process_location_imports`; `--once` processes one available job and exits. Verify the new interface with `./scripts/run-react-browser-acceptance.ps1 -TestPath browser-tests/national-location-import.test.mjs`.
 
 To verify in a separate PostgreSQL database and browser, run `./scripts/run-react-browser-acceptance.ps1 -TestPath browser-tests/location-import.test.mjs -LiveLocationImport`. `-LiveLocationImport` enables external API calls; without it, permissions and import controls are tested. The stack uses port `18081` and does not connect to working data.
 
 The live scenario checks Saint Petersburg by default. To check Moscow, set `$env:BROWSER_TEST_LOCATION_CITY = 'Москва'` before running it. An external API failure fails this scenario and is not treated as a successful check.
 
 For a regional city also set its region: for example, `$env:BROWSER_TEST_LOCATION_CITY = 'Казань'` and `$env:BROWSER_TEST_LOCATION_REGION = 'Республика Татарстан'`.
+
+The worker with `--once` returns a nonzero exit code if its job fails due to a source or data error. Progress remains saved; the normal background worker continues serving the queue.
 
 ### Customers and forms
 

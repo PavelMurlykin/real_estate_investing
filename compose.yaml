@@ -47,6 +47,33 @@ services:
       retries: 5
       start_period: 30s
 
+  location-import-worker:
+    build: .
+    restart: unless-stopped
+    entrypoint: []
+    command: ["python", "manage.py", "process_location_imports"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DJANGO_SETTINGS_MODULE: real_estate_investing.settings
+      DISABLE_KEY_RATE_SCHEDULER: "1"
+      SECRET_KEY: ${SECRET_KEY:-unsafe-compose-development-secret-key-change-me}
+      DB_NAME: ${DB_NAME:-real_estate_investing}
+      DB_USER: ${DB_USER:-real_estate_investing}
+      DB_PASSWORD: ${DB_PASSWORD:-real_estate_investing_password}
+      DB_HOST: db
+      DB_PORT: 5432
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,time; assert time.time()-os.path.getmtime('/tmp/location-import-worker-heartbeat') < 120"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped

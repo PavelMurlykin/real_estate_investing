@@ -21,8 +21,8 @@ export function LocationImportPanel({ dictionaryKey, regionId, cityId }: Props) 
       ...(needsRegion ? { regionId: Number(regionId) } : {}),
       ...(needsCity ? { cityId: Number(cityId) } : {}),
     }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
         predicate: (query) => [
           'location-dictionaries', 'location-dictionary',
           'location-dictionary-options', 'catalog-options',

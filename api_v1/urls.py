@@ -1,5 +1,7 @@
 from django.urls import path
 
+from .location_import_views import LocationImportJobAPIView
+
 from .calculation_export_views import UnsavedCalculationExportAPIView
 from .catalog_options import CatalogOptionsAPIView
 from .homepage_views import HomepageComplexListAPIView
@@ -184,6 +186,7 @@ urlpatterns = [
         LocationDictionaryOptionsAPIView.as_view(),
         name='location_dictionary_options',
     ),
+    path('location-imports/', LocationImportJobAPIView.as_view(), name='location_import_job'),
     path(
         'location-dictionaries/<slug:dictionary_key>/import/',
         LocationDictionaryImportAPIView.as_view(),

@@ -284,6 +284,54 @@ def test_transport_rejects_arbitrary_urls():
     download.assert_not_called()
 
 
+def test_city_names_use_settlement_and_city_area_before_region():
+    """Keep Alupka distinct from Yalta and read cities encoded as areas."""
+    source = OpenLocationSource()
+    catalog = (
+        'country,region_type,region,area_type,area,city,settlement,kladr_id,fias_id\n'
+        'Россия,Респ,Крым,,,Ялта,Алупка,9100000800100,'
+        'daa6815b-0cf0-44c7-981c-84d72d51f2b1\n'
+        'Россия,обл,Московская,г,Дмитров,,,5004500000000,'
+        '0d8a246f-6446-403e-91c6-3aec9cdbfc32\n'
+    )
+    with patch.object(source, 'download', return_value=catalog):
+        assert [row['city_name'] for row in source.city_catalog()] == ['Алупка', 'Дмитров']
+
+
+def test_region_type_is_not_duplicated_in_extended_names():
+    """Keep official extended names from receiving a second type suffix."""
+    source = OpenLocationSource()
+    catalog = (
+        'country,region_type,region,city,kladr_id,fias_id\n'
+        'Россия,обл,Кемеровская область - Кузбасс,Кемерово,4200000900000,'
+        'a5b44f7f-4ae6-400d-bc51-160d1843403a\n'
+        'Россия,Респ,Чувашская Республика - Чувашия,Чебоксары,2100000100000,'
+        'dd8caeab-c685-4f2a-bf5f-550aca1bbc48\n'
+    )
+    with patch.object(source, 'download', return_value=catalog):
+        assert [row['region_name'] for row in source.city_catalog()] == [
+            'Кемеровская область - Кузбасс', 'Чувашская Республика - Чувашия',
+        ]
+
+
+def test_bulk_city_resolution_reuses_verified_candidates():
+    """Prime a redirected article and avoid an extra per-city search."""
+    source = OpenLocationSource()
+    data = load_sources()
+    with patch.object(source, 'download', side_effect=partial(source_reply, data)):
+        row = next(row for row in source.city_catalog() if row['city_name'] == 'Москва')
+    with patch.object(source, 'api', return_value={'query': {
+        'redirects': [{'from': 'Москва', 'to': 'Москва (город)'}],
+        'pages': [{'title': 'Москва (город)', 'pageprops': {'wikibase_item': 'Q649'}}],
+    }}):
+        with patch.object(source, 'get_entities', return_value={}):
+            source.prime_cities([row])
+    source.entities = data['entities']
+    with patch.object(source, 'api') as external_api:
+        assert source.resolve_city(row)['id'] == 'Q649'
+    external_api.assert_not_called()
+
+
 @pytest.mark.parametrize('payload', ['[]', '{"error":{"code":"maxlag"}}', 'not json'])
 def test_api_errors_or_malformed_payloads_are_not_imported(payload):
     """Do not interpret empty or failed API envelopes as successful catalogs."""

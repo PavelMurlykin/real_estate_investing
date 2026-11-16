@@ -30,6 +30,7 @@ import {
   locationDictionaryListResponseSchema,
   locationDictionaryOptionsSchema,
   locationImportResultSchema,
+  locationImportJobResponseSchema,
   mortgageCalculationResponseSchema,
   mortgageOptionsSchema,
   mortgageProgramDetailSchema,
@@ -98,8 +99,21 @@ export function importLocationDictionary(
   return requestJson(
     `/api/v1/location-dictionaries/${dictionaryKey}/import/`,
     locationImportResultSchema,
-    { method: 'POST', body: JSON.stringify(parents) },
+    { method: 'POST', body: JSON.stringify(parents), signal: AbortSignal.timeout(55_000) },
   )
+}
+
+export const locationImportJobQueryOptions = queryOptions({
+  queryKey: ['location-import-job'],
+  queryFn: () => requestJson('/api/v1/location-imports/', locationImportJobResponseSchema, {
+    signal: AbortSignal.timeout(15_000),
+  }),
+})
+
+export function startNationalLocationImport() {
+  return requestJson('/api/v1/location-imports/', locationImportJobResponseSchema, {
+    method: 'POST', body: '{}', signal: AbortSignal.timeout(15_000),
+  })
 }
 
 export function loginUser(payload: LoginRequest) {

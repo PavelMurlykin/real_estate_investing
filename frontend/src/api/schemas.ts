@@ -247,8 +247,31 @@ export const locationImportResultSchema = z.object({
     updated: z.number().int().nonnegative(),
     unchanged: z.number().int().nonnegative(),
   }),
-  source: z.literal('Wikimedia / HFLabs'),
-  sourceUrl: z.literal('https://www.wikidata.org/wiki/Wikidata:Data_access'),
+  source: z.string().min(1),
+  sourceUrl: z.url(),
+})
+
+const locationImportCountsSchema = z.object({
+  created: z.number().int().nonnegative(), updated: z.number().int().nonnegative(),
+  unchanged: z.number().int().nonnegative(),
+})
+
+export const locationImportJobResponseSchema = z.object({
+  job: z.object({
+    id: z.uuid(), status: z.enum(['queued', 'running', 'completed', 'failed']),
+    phase: z.string(), processedCities: z.number().int().nonnegative(),
+    totalCities: z.number().int().nonnegative(), currentCity: z.string(),
+    counts: z.object({
+      regions: locationImportCountsSchema.optional(),
+      cities: locationImportCountsSchema.optional(),
+      districts: locationImportCountsSchema.optional(),
+    }),
+    coverage: z.object({
+      withoutDistricts: z.number().int().nonnegative().optional(),
+      unresolvedCities: z.array(z.object({ name: z.string(), region: z.string() })).optional(),
+    }),
+    errorMessage: z.string(), updatedAt: z.iso.datetime({ offset: true }),
+  }).nullable(),
 })
 
 export const customerListItemSchema = z.object({

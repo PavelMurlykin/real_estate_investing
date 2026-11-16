@@ -37,6 +37,10 @@ class OpenDataError(Exception):
     """Report an unavailable or unrecognized public data response."""
 
 
+class CityNotFoundError(OpenDataError):
+    """Distinguish missing city coverage from an unavailable public API."""
+
+
 def location_key(name, kind=None):
     """Compare explicit names while allowing established type suffixes."""
     value = name.casefold().replace('ё', 'е')
@@ -106,6 +110,7 @@ class OpenLocationSource:
         """Limit one user import to less than the application worker timeout."""
         self.deadline = time.monotonic() + 45
         self.entities = {}
+        self.city_candidates = {}
         self.skipped = 0
 
     def download(self, endpoint, parameters=None):
@@ -176,7 +181,7 @@ class OpenLocationSource:
                 raise OpenDataError('Неверный идентификатор города в справочнике HFLabs.')
             region_name = clean_name(row['region'])
             region_type = row['region_type']
-            if region_type == 'Респ':
+            if region_type == 'Респ' and 'республика' not in region_name.casefold():
                 region_name = (
                     f'{region_name} Республика' if region_name.endswith('ая')
                     else f'Республика {region_name}'
@@ -186,10 +191,15 @@ class OpenLocationSource:
                     'обл': 'область', 'край': 'край',
                     'АО': 'автономный округ', 'Аобл': 'автономная область',
                 }[region_type]
-                region_name = f'{region_name} {suffix}'
+                if suffix not in region_name.casefold():
+                    region_name = f'{region_name} {suffix}'
             row['region_name'] = clean_name(region_name)
             row['region_code'] = row['kladr_id'][:2]
-            row['city_name'] = clean_name(row['city'] or row.get('settlement') or row['region'])
+            row['city_name'] = clean_name(
+                row.get('settlement') or row['city']
+                or (row.get('area') if row.get('area_type') == 'г' else None)
+                or (row['region'] if region_type == 'г' else None)
+            )
             rows.append(row)
         if not rows:
             raise OpenDataError('Справочник HFLabs не содержит городов России.')
@@ -216,19 +226,58 @@ class OpenLocationSource:
             self.entities.update(entities)
         return {identifier: self.entities[identifier] for identifier in identifiers}
 
-    def resolve_city(self, city_row):
-        """Resolve Russian homonyms by country and the city catalog coordinates."""
-        payload = self.api(WIKIDATA_API_URL, {
-            'action': 'wbsearchentities', 'search': city_row['city_name'],
-            'language': 'ru', 'limit': 10, 'type': 'item',
+    def prime_cities(self, rows, heartbeat=lambda: None):
+        """Resolve common city articles in batches instead of 1117 searches."""
+        names = sorted({row['city_name'] for row in rows})
+        for offset in range(0, len(names), 50):
+            self.deadline = time.monotonic() + 45
+            heartbeat()
+            payload = self.api(WIKIPEDIA_API_URL, {
+                'action': 'query', 'titles': '|'.join(names[offset:offset + 50]),
+                'prop': 'pageprops', 'ppprop': 'wikibase_item',
+                'redirects': 1, 'formatversion': 2,
+            })
+            pages = payload.get('query', {}).get('pages')
+            if not isinstance(pages, list):
+                raise OpenDataError('Википедия вернула неполный каталог городов.')
+            aliases = {
+                row['from']: row['to'] for row in
+                payload['query'].get('normalized', []) + payload['query'].get('redirects', [])
+            }
+            by_title = {page['title']: page for page in pages}
+            for name in names[offset:offset + 50]:
+                title, seen = name, set()
+                while title in aliases and title not in seen:
+                    seen.add(title)
+                    title = aliases[title]
+                identifier = by_title.get(title, {}).get('pageprops', {}).get('wikibase_item')
+                if identifier:
+                    self.city_candidates[name] = [identifier]
+        identifiers = sorted({
+            identifier for candidates in self.city_candidates.values()
+            for identifier in candidates
         })
-        search_results = payload.get('search')
-        if not isinstance(search_results, list) or any(
-            not isinstance(row, dict) or not isinstance(row.get('id'), str)
-            for row in search_results
-        ):
-            raise OpenDataError('Wikidata вернула неполный ответ поиска.')
-        identifiers = [row['id'] for row in search_results]
+        self.prefetch_entities(identifiers, heartbeat)
+        part_identifiers = set().union(*[
+            entity_references(self.entities.get(identifier, {}), 'P150')
+            for identifier in identifiers
+        ])
+        self.prefetch_entities(sorted(part_identifiers), heartbeat)
+        class_identifiers = set().union(*[
+            entity_references(self.entities.get(identifier, {}), 'P31')
+            for identifier in set(identifiers) | part_identifiers
+        ])
+        self.prefetch_entities(sorted(class_identifiers), heartbeat)
+
+    def prefetch_entities(self, identifiers, heartbeat):
+        """Warm bounded entity batches so district loading avoids per-city HTTP."""
+        for offset in range(0, len(identifiers), 50):
+            self.deadline = time.monotonic() + 45
+            heartbeat()
+            self.get_entities(identifiers[offset:offset + 50])
+
+    def city_matches(self, identifiers, city_row):
+        """Verify country, class, label and coordinates for city candidates."""
         candidates = self.get_entities(identifiers)
         classes = self.get_entities(set().union(*[
             entity_references(entity, 'P31') for entity in candidates.values()
@@ -261,8 +310,26 @@ class OpenLocationSource:
                 if distance <= 25:
                     matches.append(entity)
                     break
+        return matches
+
+    def resolve_city(self, city_row):
+        """Use primed candidates, then resolve homonyms by country and coordinates."""
+        matches = self.city_matches(self.city_candidates.get(city_row['city_name'], []), city_row)
+        if len(matches) == 1:
+            return matches[0]
+        payload = self.api(WIKIDATA_API_URL, {
+            'action': 'wbsearchentities', 'search': city_row['city_name'],
+            'language': 'ru', 'limit': 10, 'type': 'item',
+        })
+        search_results = payload.get('search')
+        if not isinstance(search_results, list) or any(
+            not isinstance(row, dict) or not isinstance(row.get('id'), str)
+            for row in search_results
+        ):
+            raise OpenDataError('Wikidata вернула неполный ответ поиска.')
+        matches = self.city_matches([row['id'] for row in search_results], city_row)
         if len(matches) != 1:
-            raise OpenDataError('В Wikidata не найден однозначный российский город.')
+            raise CityNotFoundError('В Wikidata не найден однозначный российский город.')
         return matches[0]
 
     def districts(self, city_row):

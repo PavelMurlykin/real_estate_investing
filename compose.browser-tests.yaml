@@ -21,7 +21,7 @@ services:
 
   web:
     build: .
-    environment:
+    environment: &test_web_environment
       DJANGO_SETTINGS_MODULE: real_estate_investing.settings
       DEBUG: "False"
       SECRET_KEY: ${BROWSER_TEST_SECRET_KEY:?Generate a test Django secret}
@@ -49,6 +49,23 @@ services:
       timeout: 5s
       retries: 20
       start_period: 30s
+
+  location-import-worker:
+    build: .
+    entrypoint: []
+    command: ["python", "manage.py", "process_location_imports"]
+    environment:
+      <<: *test_web_environment
+      DISABLE_KEY_RATE_SCHEDULER: "1"
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,time; assert time.time()-os.path.getmtime('/tmp/location-import-worker-heartbeat') < 120"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   nginx:
     image: nginx:1.27-alpine

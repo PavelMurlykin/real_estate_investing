@@ -12,6 +12,7 @@ import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { NationalLocationImportPanel } from './NationalLocationImportPanel'
 import type { FormEvent } from 'react'
 import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -503,15 +504,6 @@ export function LocationDictionaryPage() {
     updateParameters({ cityId, ...(cityId && cityId !== searchParameters.get('cityId') ? { metroLineId: null } : {}), page: null })
   }
 
-  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const searchInput = event.currentTarget.elements.namedItem('q')
-    const searchValue = searchInput instanceof HTMLInputElement
-      ? searchInput.value.trim()
-      : ''
-    updateParameters({ q: searchValue || null, page: null })
-  }
-
   const openDeleteDialog = (
     entry: LocationDictionaryEntry,
     trigger: HTMLButtonElement,
@@ -597,6 +589,9 @@ export function LocationDictionaryPage() {
       }))} />
 
       {sessionQuery.data?.capabilities.syncExternalData === true ? (
+        <NationalLocationImportPanel />
+      ) : null}
+      {sessionQuery.data?.capabilities.syncExternalData === true ? (
         <LocationImportPanel
           key={`${dictionaryKey}:${searchParameters.get('regionId')}:${searchParameters.get('cityId')}`}
           dictionaryKey={dictionaryKey}
@@ -609,10 +604,9 @@ export function LocationDictionaryPage() {
         className="filter-panel location-filter-panel"
         aria-label={`Фильтры: ${configuration.title}`}
       >
-        <form className="search-form" role="search" onSubmit={handleSearch}>
+        <form className="search-form" role="search" onSubmit={(event) => event.preventDefault()}>
           <div className="live-search-control">
             <LiveFilterInput label="Поиск" id="location-search" parameter="q" placeholder="Название или связанная локация" />
-            <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
         {showRegion ? (

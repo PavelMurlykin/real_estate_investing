@@ -12,6 +12,31 @@ const result = {
 }
 
 describe('LocationImportPanel', () => {
+  it('accepts source metadata changes and allows retry after an invalid result', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json({ ...result, created: 'bad' }))
+      .mockResolvedValueOnce(Response.json({ ...result, source: 'OpenStreetMap', sourceUrl: 'https://www.openstreetmap.org/copyright' })))
+    renderWithProviders(<LocationImportPanel dictionaryKey="regions" regionId="" cityId="" />)
+    const button = screen.getByRole('button', { name: 'Импортировать из API' })
+    await user.click(button)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Сервер вернул данные в неожиданном формате.')
+    expect(button).toBeEnabled()
+    await user.click(button)
+    expect(await screen.findByText(/Импорт завершён/)).toBeInTheDocument()
+    expect(button).toBeEnabled()
+  })
+
+  it('releases the button without waiting for list refresh', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockResolvedValue(Response.json(result)))
+    const { queryClient } = renderWithProviders(<LocationImportPanel dictionaryKey="regions" regionId="" cityId="" />)
+    vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(() => new Promise(() => undefined))
+    const button = screen.getByRole('button', { name: 'Импортировать из API' })
+    await user.click(button)
+    expect(await screen.findByText(/Импорт завершён/)).toBeInTheDocument()
+    expect(button).toBeEnabled()
+  })
   it.each([
     { dictionaryKey: 'cities' as const, regionId: '', cityId: '' },
     { dictionaryKey: 'districts' as const, regionId: '1', cityId: '' },

@@ -11,7 +11,8 @@ from users.roles import ExternalDataSyncRequiredMixin, can_sync_external_data
 
 from .import_forms import LocationImportForm
 from .import_service import LocationImportError, import_locations
-from .models import City, District, Metro, MetroLine, Region
+from .jobs import serialize_import_job, start_import_job
+from .models import City, District, LocationImportJob, Metro, MetroLine, Region
 
 
 class LocationImportView(ExternalDataSyncRequiredMixin, View):
@@ -19,6 +20,10 @@ class LocationImportView(ExternalDataSyncRequiredMixin, View):
 
     def post(self, request):
         """Validate the selected hierarchy, import and report the result."""
+        if request.POST.get('action') == 'national':
+            start_import_job()
+            messages.success(request, 'Общий импорт поставлен в очередь. Прогресс сохранён.')
+            return redirect('location:location_catalog')
         if request.POST.get('action') == 'choose-city':
             parameters = urlencode({
                 key: request.POST.get(key, '')
@@ -136,6 +141,7 @@ class LocationCatalogView(BaseCatalogView):
         )
 
         if can_sync_external_data(self.request.user):
+            context['national_import'] = serialize_import_job(LocationImportJob.objects.first())
             selected_region = self.request.GET.get('regionId', '')
             import_form = LocationImportForm(initial={
                 'dictionary': self.request.GET.get('dictionary', 'regions'),
