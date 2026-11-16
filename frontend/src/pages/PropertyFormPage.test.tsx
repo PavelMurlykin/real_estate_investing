@@ -58,6 +58,9 @@ const propertyDetail: PropertyDetail = {
   regionId: 1,
   cityId: 2,
   districtId: 3,
+  regionLocationId: 101,
+  districtLocationId: 103,
+  localityId: 102,
   developerId: 4,
   realEstateComplexId: 5,
   buildingId: 6,
@@ -103,15 +106,34 @@ const propertyDetail: PropertyDetail = {
 
 const optionQueryStrings = [
   '',
-  'regionId=1',
-  'regionId=1&cityId=2',
-  'regionId=1&cityId=2&districtId=3',
-  'regionId=1&cityId=2&districtId=3&developerId=4',
+  'regionLocationId=101',
+  'regionLocationId=101&districtLocationId=103',
+  'regionLocationId=101&districtLocationId=103&localityId=102',
+  'regionLocationId=101&districtLocationId=103&localityId=102&developerId=4',
   (
-    'regionId=1&cityId=2&districtId=3&developerId=4'
+    'regionLocationId=101&districtLocationId=103&localityId=102&developerId=4'
     + '&realEstateComplexId=5'
   ),
 ]
+
+function mockLocationCatalogs() {
+  const original = globalThis.fetch
+  vi.stubGlobal('fetch', vi.fn(async (path: string, options?: RequestInit) => {
+    const url = new URL(String(path), 'http://localhost')
+    if (url.pathname === '/api/v1/properties/options/') return Response.json(formOptions)
+    const dictionary = url.pathname.match(/\/catalog-options\/([^/]+)\//)?.[1]
+    const geography = { regionLocationId: 101, districtLocationId: 103, localityId: 102, developerId: 4, realEstateComplexId: 5 }
+    const location = url.searchParams.get('category') === 'region'
+      ? { id: 101, label: 'Ленинградская область' }
+      : url.searchParams.get('category') === 'district'
+        ? { id: 103, label: 'Петроградский' } : { id: 102, label: 'Санкт-Петербург' }
+    const choice = dictionary === 'locations' ? location
+      : dictionary === 'complexes' ? { id: 5, label: 'Белые ночи', ...geography }
+        : dictionary === 'buildings' ? { id: 6, label: '1', ...geography } : null
+    if (choice) return Response.json({ results: [choice], selected: [choice], totalCount: 1, page: 1, nextPage: null })
+    return original(path, options)
+  }))
+}
 
 function createManagerQueryClient() {
   const queryClient = createTestQueryClient()
@@ -126,6 +148,7 @@ function createManagerQueryClient() {
 }
 
 function renderCreateForm() {
+  mockLocationCatalogs()
   const queryClient = createManagerQueryClient()
   return renderWithProviders(
     <Routes>
@@ -138,8 +161,8 @@ function renderCreateForm() {
 
 async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await chooseOption(user, 'Регион', 'Ленинградская область')
-  await chooseOption(user, 'Город', 'Санкт-Петербург')
-  await chooseOption(user, 'Район', 'Петроградский')
+  await chooseOption(user, 'Административный район', 'Петроградский')
+  await chooseOption(user, 'Населённый пункт', 'Санкт-Петербург')
   await chooseOption(user, 'Застройщик *', 'Северный девелопер')
   await chooseOption(user, 'Жилой комплекс *', 'Белые ночи')
   await chooseOption(user, 'Корпус *', '1')
@@ -153,10 +176,24 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('PropertyFormPage', () => {
+  it('allows locality selection without parents and fills geography only after choosing a building', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('fetch', vi.fn())
+    renderCreateForm()
+    expect(screen.getByRole('combobox', { name: 'Населённый пункт' })).toBeEnabled()
+    await chooseOption(user, 'Застройщик *', 'Северный девелопер')
+    await chooseOption(user, 'Жилой комплекс *', 'Белые ночи')
+    expect(screen.getByRole('combobox', { name: 'Населённый пункт' })).toHaveValue('')
+    await chooseOption(user, 'Корпус *', '1')
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Населённый пункт' })).toHaveValue('Санкт-Петербург'))
+    expect(screen.getByRole('combobox', { name: 'Административный район' })).toHaveValue('Петроградский')
+    expect(screen.getByRole('combobox', { name: 'Регион' })).toHaveValue('Ленинградская область')
+  })
+
   it.each([
-    ['Регион', ['Город', 'Район', 'Жилой комплекс *', 'Корпус *']],
-    ['Город', ['Район', 'Жилой комплекс *', 'Корпус *']],
-    ['Район', ['Жилой комплекс *', 'Корпус *']],
+    ['Регион', ['Административный район', 'Населённый пункт', 'Жилой комплекс *', 'Корпус *']],
+    ['Административный район', ['Населённый пункт', 'Жилой комплекс *', 'Корпус *']],
+    ['Населённый пункт', ['Жилой комплекс *', 'Корпус *']],
     ['Застройщик *', ['Жилой комплекс *', 'Корпус *']],
     ['Жилой комплекс *', ['Корпус *']],
   ])('clears dependent choices after clearing %s and preserves them on reselect', async (parent, children) => {
@@ -172,7 +209,7 @@ describe('PropertyFormPage', () => {
     await chooseOption(user, parent, 'Не выбрано')
     for (const child of children) {
       expect(screen.getByRole('combobox', { name: child })).toHaveValue('')
-      if (child === 'Жилой комплекс *' && parent !== 'Застройщик *') {
+      if (child !== 'Корпус *' && !(child === 'Жилой комплекс *' && parent === 'Застройщик *')) {
         expect(screen.getByRole('combobox', { name: child })).toBeEnabled()
       } else {
         expect(screen.getByRole('combobox', { name: child })).toBeDisabled()
@@ -240,8 +277,9 @@ describe('PropertyFormPage', () => {
     expect(
       await screen.findByRole('heading', { name: 'Объект сохранён' }),
     ).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    const [requestPath, requestOptions] = fetchMock.mock.calls[0] as [
+    const writes = fetchMock.mock.calls.filter(([, options]) => options?.method === 'POST')
+    expect(writes).toHaveLength(1)
+    const [requestPath, requestOptions] = writes[0] as [
       string,
       RequestInit,
     ]
@@ -304,6 +342,7 @@ describe('PropertyFormPage', () => {
       ),
     )
     vi.stubGlobal('fetch', fetchMock)
+    mockLocationCatalogs()
     renderWithProviders(
       <Routes>
         <Route path="/properties/:propertyId/edit" element={<PropertyFormPage />} />
@@ -321,9 +360,32 @@ describe('PropertyFormPage', () => {
     )
 
     await screen.findByRole('heading', { name: 'Объект сохранён' })
-    const requestOptions = fetchMock.mock.calls[0][1] as RequestInit
+    const requestOptions = fetchMock.mock.calls.find(([, options]) => options?.method === 'PATCH')?.[1] as RequestInit
     const formData = requestOptions.body as FormData
     expect(requestOptions.method).toBe('PATCH')
     expect(formData.get('clearLayoutImage')).toBe('true')
+  })
+
+  it('preserves an existing building when its canonical locality is still unknown', async () => {
+    const user = userEvent.setup()
+    const unknown = { ...propertyDetail, regionLocationId: null, districtLocationId: null, localityId: null }
+    const queryClient = createManagerQueryClient()
+    queryClient.setQueryData(['property', 12], unknown)
+    const writes = vi.fn().mockResolvedValue(Response.json(unknown))
+    vi.stubGlobal('fetch', writes)
+    mockLocationCatalogs()
+    renderWithProviders(<Routes>
+      <Route path="/properties/:propertyId/edit" element={<PropertyFormPage />} />
+      <Route path="/properties/:propertyId" element={<h1>Объект сохранён</h1>} />
+    </Routes>, { initialRoute: '/properties/12/edit', queryClient })
+    await screen.findByText(/Населённый пункт корпуса ещё не уточнён/)
+    expect(screen.getByRole('combobox', { name: 'Населённый пункт' })).toHaveValue('')
+    await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }))
+    await screen.findByRole('heading', { name: 'Объект сохранён' })
+    const submitted = writes.mock.calls.find(([, options]) => options?.method === 'PATCH')
+    const payload = submitted?.[1].body as FormData
+    expect(payload.get('buildingId')).toBe('6')
+    expect(payload.has('localityId')).toBe(false)
+    expect(payload.has('regionId')).toBe(false)
   })
 })

@@ -66,6 +66,14 @@ For a regional city also set its region: for example, `$env:BROWSER_TEST_LOCATIO
 
 The worker with `--once` returns a nonzero exit code if its job fails due to a source or data error. Progress remains saved; the normal background worker continues serving the queue.
 
+### Creating and editing apartments
+
+Apartment forms use the complete Russian catalog for “Регион”, “Административный район” and “Населённый пункт”, including Pushkin, Strelna and villages. A locality can be searched without first choosing a region. These fields filter complexes and buildings; apartments do not store a separate territory. Changing the region clears district, locality, complex and building; changing the district clears locality, complex and building; changing the locality clears complex and building. The developer and other apartment details are retained.
+
+Selecting a building fills its effective location: an explicit building territory, otherwise the complex primary. Selecting a complex alone does not automatically restrict buildings to its primary territory. If an old building's locality is still unknown, other apartment details can be saved while retaining the current building. Refine its territory in the complex card. Editing retains existing links, images, window views and other values unless explicitly changed. Mortgage limit region IDs remain unchanged.
+
+The fallback Django form uses the same territories and server-side checks that the building belongs to the selected complex, developer and territory. Large catalogs support remote search; initial choices are bounded to 50 records plus the current selection. The complete GAR is not embedded in HTML.
+
 ### Customers and forms
 
 The customer section requires authentication. A customer profile contains contacts, preferences, budget and linked market/tranche calculations. Financial capacity is an initial estimate. Select linked calculations for a combined Word report or unlink them; deleting a customer does not delete the calculations themselves.

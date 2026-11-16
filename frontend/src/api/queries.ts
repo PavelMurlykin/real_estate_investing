@@ -1306,9 +1306,12 @@ export function propertyDetailQueryOptions(propertyIdentifier: number) {
 }
 
 export type PropertyFormOptionFilters = {
-  regionId: number | null
-  cityId: number | null
-  districtId: number | null
+  regionId?: number | null
+  cityId?: number | null
+  districtId?: number | null
+  regionLocationId?: number | null
+  districtLocationId?: number | null
+  localityId?: number | null
   developerId: number | null
   realEstateComplexId: number | null
 }

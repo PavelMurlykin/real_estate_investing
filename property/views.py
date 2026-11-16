@@ -68,7 +68,6 @@ from .services.developer_registry_upload import (
 
 FORM_DATA_CACHE_TIMEOUT = 600
 COMPLEX_FORM_LOCATION_CACHE_KEY = 'property:complex_form_location:v1'
-PROPERTY_FORM_LOCATION_CACHE_KEY = 'property:property_form_location:v1'
 DEVELOPER_REGISTRY_UPLOAD_FIELD_NAME = 'source_file'
 
 
@@ -95,50 +94,6 @@ def build_complex_form_location_payload():
                 'station',
                 'metro_line__line_color',
                 'metro_line__city_id',
-            )
-        ),
-    }
-
-
-def build_property_form_location_payload():
-    """Build reusable cascade payload for property forms."""
-    cities = City.objects.select_related('region').order_by('name')
-    districts = District.objects.select_related(
-        'city__region'
-    ).order_by('name')
-    complexes = RealEstateComplex.objects.select_related(
-        'developer',
-        'district__city__region',
-    ).order_by('name')
-    buildings = RealEstateComplexBuilding.objects.select_related(
-        'real_estate_complex'
-    ).order_by('real_estate_complex__name', 'number')
-
-    return {
-        'cities': list(cities.values('id', 'name', 'region_id')),
-        'districts': list(
-            districts.values(
-                'id',
-                'name',
-                'city_id',
-                'city__region_id',
-            )
-        ),
-        'complexes': list(
-            complexes.values(
-                'id',
-                'name',
-                'developer_id',
-                'district_id',
-                'district__city_id',
-                'district__city__region_id',
-            )
-        ),
-        'buildings': list(
-            buildings.values(
-                'id',
-                'number',
-                'real_estate_complex_id',
             )
         ),
     }
@@ -1784,34 +1739,11 @@ class PropertyFormContextMixin:
         )
 
     def get_location_context(self):
-        """Build reusable querysets for property location controls."""
-        regions = Region.objects.order_by('name')
-        cities = City.objects.select_related('region').order_by('name')
-        districts = District.objects.select_related(
-            'city__region'
-        ).order_by('name')
-        developers = get_developers_with_company_groups_queryset()
-        complexes = RealEstateComplex.objects.select_related(
-            'developer',
-            'district__city__region',
-        ).order_by('name')
+        """Keep selected-building context without serializing whole catalogs."""
         buildings = RealEstateComplexBuilding.objects.select_related(
             'real_estate_complex'
         ).order_by('real_estate_complex__name', 'number')
-
-        return {
-            'regions': regions,
-            'cities': cities,
-            'districts': districts,
-            'developers': developers,
-            'complexes': complexes,
-            'all_buildings': buildings,
-            'property_form_data': cache.get_or_set(
-                PROPERTY_FORM_LOCATION_CACHE_KEY,
-                build_property_form_location_payload,
-                FORM_DATA_CACHE_TIMEOUT,
-            ),
-        }
+        return {'all_buildings': buildings}
 
     def apply_current_location_context(self, context, selected_building):
         """Add current selector values and filtered buildings to context."""
@@ -1829,8 +1761,8 @@ class PropertyFormContextMixin:
         real_estate_complex = selected_building.real_estate_complex
         developer = real_estate_complex.developer
 
-        context['current_region'] = real_estate_complex.geography.region_id
-        context['current_city'] = real_estate_complex.geography.city_id
+        context['current_region'] = selected_building.geography.region_id
+        context['current_city'] = selected_building.geography.city_id
         context['current_district'] = real_estate_complex.district_id
         context['current_developer'] = developer.id
         context['current_complex'] = real_estate_complex.id

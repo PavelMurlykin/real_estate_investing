@@ -3,6 +3,8 @@ from django.forms import BaseInlineFormSet, inlineformset_factory
 
 from location.models import City, District, Location, Metro, Region
 from .location_context import locality_filter, set_primary_location
+from .location_form_fields import configure_property_location_fields
+from .location_filters import apply_location_scopes
 
 from .form_fields import (
     DeveloperModelChoiceField,
@@ -136,6 +138,7 @@ class PropertyForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         """Prepare dictionary fields and current image names."""
         super().__init__(*args, **kwargs)
+        configure_property_location_fields(self)
         self.fields['window_views'].queryset = WindowView.objects.order_by(
             'name'
         )
@@ -144,6 +147,31 @@ class PropertyForm(forms.ModelForm):
         for _, image_field in self.IMAGE_CLEAR_FIELDS:
             image = getattr(self.instance, image_field, None)
             self.initial_image_names[image_field] = image.name if image else ''
+
+    @property
+    def location_fields(self):
+        """Expose location filters and the authoritative building selector in order."""
+        return [self[name] for name in [
+            'region_location', 'district_location', 'locality', 'developer', 'complex', 'building',
+        ]]
+
+    def clean(self):
+        """Validate helper selections against the actual building without storing them."""
+        data = super().clean()
+        building = data.get('building')
+        if building:
+            scopes = {parameter: data[name].pk for name, parameter in [
+                ('region_location', 'regionLocationId'), ('district_location', 'districtLocationId'),
+                ('locality', 'localityId'),
+            ] if data.get(name)}
+            matches = apply_location_scopes(
+                RealEstateComplexBuilding.objects.filter(pk=building.pk), scopes, buildings=True, prefix='',
+            )
+            if ((data.get('complex') and data['complex'].pk != building.real_estate_complex_id)
+                    or (data.get('developer') and data['developer'].pk != building.real_estate_complex.developer_id)
+                    or not matches.exists()):
+                self.add_error('building', 'Выберите корпус выбранного ЖК и территории.')
+        return data
 
     def save(self, commit=True):
         """Save property fields and remove images marked for deletion."""

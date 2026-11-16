@@ -2029,18 +2029,13 @@ class PropertyFormCascadeTests(TestCase):
         response = self.client.get(reverse('property:create'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'static/js/dependent_selects.js')
-        self.assertContains(response, 'data-cascade-selects')
-        self.assertContains(response, 'property-form-data')
+        self.assertContains(response, 'static/js/property_location_form.js')
+        self.assertContains(response, 'data-property-location-form')
+        self.assertNotContains(response, 'property-form-data')
         self.assertFalse(response.context['buildings'].exists())
         self.assertEqual(response.context['current_complex'], '')
-        self.assertEqual(
-            {
-                item['id']
-                for item in response.context['property_form_data']['buildings']
-            },
-            {self.building.pk, self.other_building.pk},
-        )
+        self.assertContains(response, 'Населённый пункт')
+        self.assertContains(response, 'Административный район')
         self.assertContains(response, 'enctype="multipart/form-data"')
         self.assertContains(response, 'id_layout_image')
         self.assertContains(response, 'id_floor_plan_image')

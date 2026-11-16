@@ -305,17 +305,25 @@
                 url.searchParams.set('q', query);
                 const region = document.getElementById(state.select.dataset.remoteRegionField);
                 if (region && region.value) url.searchParams.set('legacyRegionId', region.value);
+                const filterFields = JSON.parse(state.select.dataset.remoteFilters || '{}');
+                const parentValues = () => Object.fromEntries(Object.entries(filterFields).map(([name, id]) => [name, document.getElementById(id)?.value || '']));
+                const filters = parentValues();
+                Object.entries(filters).forEach(([name, value]) => { if (value) url.searchParams.set(name, value); });
                 try {
                     const response = await fetch(url, {credentials: 'same-origin', signal: controller.signal});
                     if (!response.ok) throw new Error('Не удалось загрузить населённые пункты.');
                     const data = await response.json();
-                    if (state.input.value !== query) return;
+                    if (state.input.value !== query || JSON.stringify(parentValues()) !== JSON.stringify(filters)) return;
                     const selected = state.select.selectedOptions[0];
                     state.observer.disconnect();
                     state.select.replaceChildren(new Option('Не выбрано', ''));
                     if (selected && selected.value) state.select.add(selected);
                     data.results.forEach(function (row) {
-                        if (!selected || String(row.id) !== selected.value) state.select.add(new Option(row.label, row.id));
+                        if (!selected || String(row.id) !== selected.value) {
+                            const option = new Option(row.label, row.id);
+                            option.dataset.catalogContext = JSON.stringify(row);
+                            state.select.add(option);
+                        }
                     });
                     state.observer.observe(state.select, {attributes: true, childList: true, subtree: true});
                     state.searchQuery = query;
@@ -449,6 +457,7 @@
         document.body.appendChild(menu);
 
         select.classList.add('searchable-select-source');
+        select.setAttribute('aria-hidden', 'true');
         select.tabIndex = -1;
         select.required = false;
 

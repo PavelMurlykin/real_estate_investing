@@ -13,109 +13,22 @@
 
     <div class="card">
         <div class="card-body">
-            <form method="post" enctype="multipart/form-data" data-cascade-selects data-cascade-data="#property-form-data">
+            <form method="post" enctype="multipart/form-data" data-property-location-form>
                 {% csrf_token %}
 
                 <h4 class="mb-3 mt-4">Местоположение</h4>
 
+                <p class="text-muted">Территория помогает найти ЖК и корпус. Локация квартиры определяется выбранным корпусом. Начните вводить название для поиска по полному справочнику.</p>
                 <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label">Регион</label>
-                            <select class="form-control" id="region-select" data-cascade-field="region">
-                                <option value="">Выберите регион</option>
-                                {% for region in regions %}
-                                <option value="{{ region.id }}" {% if current_region == region.id %}selected{% endif %}>{{ region.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                     </div>
-
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label">Город</label>
-                            <select class="form-control" id="city-select" data-cascade-field="city" data-cascade-data-key="cities" data-cascade-empty-label="Выберите город" data-cascade-parent-region="region_id" data-cascade-autofill-region="region_id">
-                                <option value="">Выберите город</option>
-                                {% if filtered_cities %}
-                                    {% for city in filtered_cities %}
-                                    <option value="{{ city.id }}" {% if current_city == city.id %}selected{% endif %}>{{ city.name }}</option>
-                                    {% endfor %}
-                                {% else %}
-                                    {% for city in cities %}
-                                    <option value="{{ city.id }}" {% if current_city == city.id %}selected{% endif %}>{{ city.name }}</option>
-                                    {% endfor %}
-                                {% endif %}
-                            </select>
-                        </div>
+                    {% for field in form.location_fields %}
+                    <div class="col-md-6 mb-3">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.errors %}<div class="text-danger">{{ field.errors }}</div>{% endif %}
                     </div>
+                    {% endfor %}
                 </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label">Район</label>
-                            <select class="form-control" id="district-select" data-cascade-field="district" data-cascade-data-key="districts" data-cascade-empty-label="Выберите район" data-cascade-parent-region="city__region_id" data-cascade-parent-city="city_id" data-cascade-autofill-region="city__region_id" data-cascade-autofill-city="city_id">
-                                <option value="">Выберите район</option>
-                                {% if filtered_districts %}
-                                    {% for district in filtered_districts %}
-                                    <option value="{{ district.id }}" {% if current_district == district.id %}selected{% endif %}>{{ district.name }}</option>
-                                    {% endfor %}
-                                {% else %}
-                                    {% for district in districts %}
-                                    <option value="{{ district.id }}" {% if current_district == district.id %}selected{% endif %}>{{ district.name }}</option>
-                                    {% endfor %}
-                                {% endif %}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label">Застройщик</label>
-                            <select class="form-control" id="developer-select" data-cascade-field="developer">
-                                <option value="">Выберите застройщика</option>
-                                {% for developer in developers %}
-                                <option value="{{ developer.id }}" {% if current_developer == developer.id %}selected{% endif %}>{{ developer.get_display_name_with_company_group }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label">Жилой комплекс</label>
-                            <select class="form-control" id="complex-select" data-cascade-field="complex" data-cascade-data-key="complexes" data-cascade-empty-label="Выберите ЖК" data-cascade-parent-region="district__city__region_id" data-cascade-parent-city="district__city_id" data-cascade-parent-district="district_id" data-cascade-parent-developer="developer_id" data-cascade-autofill-region="district__city__region_id" data-cascade-autofill-city="district__city_id" data-cascade-autofill-district="district_id" data-cascade-autofill-developer="developer_id">
-                                <option value="">Выберите ЖК</option>
-                                {% if filtered_complexes %}
-                                    {% for complex in filtered_complexes %}
-                                    <option value="{{ complex.id }}" {% if current_complex == complex.id %}selected{% endif %}>{{ complex.name }}</option>
-                                    {% endfor %}
-                                {% else %}
-                                    {% for complex in complexes %}
-                                    <option value="{{ complex.id }}" {% if current_complex == complex.id %}selected{% endif %}>{{ complex.name }}</option>
-                                    {% endfor %}
-                                {% endif %}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="{{ form.building.id_for_label }}" class="form-label">{{ form.building.label }}</label>
-                            <select class="form-control" id="id_building" name="building" data-cascade-field="building" data-cascade-data-key="buildings" data-cascade-label-key="number" data-cascade-empty-label="Выберите корпус" data-cascade-parent-complex="real_estate_complex_id" data-cascade-required-parents="complex">
-                                <option value="">Выберите корпус</option>
-                                {% for building in buildings %}
-                                <option value="{{ building.id }}" {% if current_building == building.id %}selected{% endif %}>{{ building.number }}</option>
-                                {% endfor %}
-                            </select>
-                            {% if form.building.errors %}
-                            <div class="text-danger">{{ form.building.errors }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
+                <p class="text-muted" role="status" data-property-location-status></p>
 
                 <br>
 
@@ -252,7 +165,6 @@
     </div>
 </div>
 
-{{ property_form_data|json_script:"property-form-data" }}
 {% endblock %}
 
 {% block extra_scripts %}
@@ -276,6 +188,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
-<script src="{% static 'js/dependent_selects.js' %}"></script>
+<script src="{% static 'js/property_location_form.js' %}"></script>
 {% endblock %}
 

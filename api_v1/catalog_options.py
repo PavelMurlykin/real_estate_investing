@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from bank.models import Bank, MortgageProgram
 from location.models import City, District, Metro, MetroLine, Region
 from location.models import LegacyLocationMapping, Location
-from property.location_context import geography_prefetch
+from property.location_context import building_geography_prefetch, geography_prefetch
 from property.location_filters import apply_location_scopes
 from property.models import (
     ApartmentDecoration, ApartmentLayout, CompanyGroup, Developer,
@@ -156,6 +156,8 @@ class CatalogOptionsAPIView(APIView):
         if model in {RealEstateComplex, RealEstateComplexBuilding}:
             complexes = [row if model is RealEstateComplex else row.real_estate_complex for row in items]
             prefetch_related_objects(complexes, geography_prefetch())
+        if model is RealEstateComplexBuilding:
+            prefetch_related_objects(items, building_geography_prefetch())
         selected_identifiers = set(parameters.get('selectedIds', []))
         if parameters.get('selected'):
             selected_identifiers.add(parameters['selected'])
@@ -171,6 +173,8 @@ class CatalogOptionsAPIView(APIView):
                 row if model is RealEstateComplex else row.real_estate_complex
                 for row in selected.values()
             ], geography_prefetch())
+        if model is RealEstateComplexBuilding:
+            prefetch_related_objects(list(selected.values()), building_geography_prefetch())
         return Response({
             'results': [serialize_catalog_option(item, label_field)
                         for item in items],

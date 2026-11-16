@@ -15,14 +15,14 @@ import {
   sessionQueryOptions,
   updateProperty,
 } from '@/api/queries'
-import type { PropertyDetail } from '@/api/schemas'
+import type { CatalogOption, PropertyDetail } from '@/api/schemas'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 
 type PropertyFormState = {
-  regionId: string
-  cityId: string
-  districtId: string
+  regionLocationId: string
+  districtLocationId: string
+  localityId: string
   developerId: string
   realEstateComplexId: string
   buildingId: string
@@ -45,9 +45,9 @@ type ClearImageFieldName = (
 type FieldErrors = Record<string, string>
 
 const emptyFormState: PropertyFormState = {
-  regionId: '',
-  cityId: '',
-  districtId: '',
+  regionLocationId: '',
+  districtLocationId: '',
+  localityId: '',
   developerId: '',
   realEstateComplexId: '',
   buildingId: '',
@@ -155,13 +155,8 @@ export function PropertyFormPage() {
   const [files, setFiles] = useState<Partial<Record<ImageFieldName, File>>>({})
   const optionsQuery = useQuery({
     ...propertyFormOptionsQueryOptions({
-      regionId: selectedIdentifier(formState.regionId),
-      cityId: selectedIdentifier(formState.cityId),
-      districtId: selectedIdentifier(formState.districtId),
-      developerId: selectedIdentifier(formState.developerId),
-      realEstateComplexId: selectedIdentifier(
-        formState.realEstateComplexId,
-      ),
+      developerId: null,
+      realEstateComplexId: null,
     }),
     enabled: hasValidIdentifier && canManageCatalogs,
   })
@@ -174,6 +169,7 @@ export function PropertyFormPage() {
     onSuccess: async (property) => {
       await queryClient.invalidateQueries({ queryKey: ['properties'] })
       await queryClient.invalidateQueries({ queryKey: ['overview'] })
+      await queryClient.invalidateQueries({ queryKey: ['property-form-options'] })
       queryClient.setQueryData(['property', property.id], property)
       navigate(`/properties/${property.id}${customerQuery}`)
     },
@@ -191,9 +187,9 @@ export function PropertyFormPage() {
       return
     }
     setFormState({
-      regionId: String(property.regionId ?? ''),
-      cityId: String(property.cityId ?? ''),
-      districtId: String(property.districtId ?? ''),
+      regionLocationId: String(property.regionLocationId ?? ''),
+      districtLocationId: String(property.districtLocationId ?? ''),
+      localityId: String(property.localityId ?? ''),
       developerId: String(property.developerId),
       realEstateComplexId: String(property.realEstateComplexId),
       buildingId: String(property.buildingId),
@@ -223,20 +219,19 @@ export function PropertyFormPage() {
     if (mutation.isError) mutation.reset()
     setFormState((current) => ({
       ...current,
-      regionId: value,
-      cityId: '',
-      districtId: '',
+      regionLocationId: value,
+      districtLocationId: '',
+      localityId: '',
       realEstateComplexId: '',
       buildingId: '',
     }))
   }
 
-  const updateCity = (value: string) => {
+  const updateLocality = (value: string) => {
     if (mutation.isError) mutation.reset()
     setFormState((current) => ({
       ...current,
-      cityId: value,
-      districtId: '',
+      localityId: value,
       realEstateComplexId: '',
       buildingId: '',
     }))
@@ -246,7 +241,8 @@ export function PropertyFormPage() {
     if (mutation.isError) mutation.reset()
     setFormState((current) => ({
       ...current,
-      districtId: value,
+      districtLocationId: value,
+      localityId: '',
       realEstateComplexId: '',
       buildingId: '',
     }))
@@ -268,6 +264,21 @@ export function PropertyFormPage() {
       ...current,
       realEstateComplexId: value,
       buildingId: '',
+    }))
+  }
+
+  const updateBuilding = (value: string, option?: CatalogOption) => {
+    if (mutation.isError) mutation.reset()
+    setFormState((current) => ({
+      ...current,
+      buildingId: value,
+      ...(value && option ? {
+        regionLocationId: String(option.regionLocationId ?? ''),
+        districtLocationId: String(option.districtLocationId ?? ''),
+        localityId: String(option.localityId ?? ''),
+        developerId: String(option.developerId ?? current.developerId),
+        realEstateComplexId: String(option.realEstateComplexId ?? current.realEstateComplexId),
+      } : {}),
     }))
   }
 
@@ -388,31 +399,24 @@ export function PropertyFormPage() {
             <span aria-hidden="true">01</span>
             <div>
               <h2 id="property-location-section">Локация</h2>
-              <p>Регион, адресная и девелоперская иерархия объекта.</p>
+              <p>Выберите территорию для поиска ЖК и корпуса. Локация квартиры определяется выбранным корпусом.</p>
             </div>
           </div>
           <div className="field-grid customer-form-grid">
             <RemoteSelect
-              dictionary="regions" label={"Регион"}
-              value={formState.regionId} onChange={(value) => updateRegion(value)}
-              initialOptions={(options.regions ?? []).map((option) => ({ id: option.id, label: option.name }))}
-              truncated={options.truncated.regions}
+              dictionary="locations" label="Регион"
+              value={formState.regionLocationId} onChange={(value) => updateRegion(value)}
+              filters={{ category: 'region' }}
             />
             <RemoteSelect
-              dictionary="cities" label={"Город"}
-              value={formState.cityId} onChange={(value) => updateCity(value)}
-              initialOptions={(options.cities ?? []).map((option) => ({ id: option.id, label: option.name }))}
-              truncated={options.truncated.cities}
-              filters={{ regionId: formState.regionId }}
-              disabled={!formState.regionId}
+              dictionary="locations" label="Административный район"
+              value={formState.districtLocationId} onChange={(value) => updateDistrict(value)}
+              filters={{ category: 'district', regionId: formState.regionLocationId }}
             />
             <RemoteSelect
-              dictionary="districts" label={"Район"}
-              value={formState.districtId} onChange={(value) => updateDistrict(value)}
-              initialOptions={(options.districts ?? []).map((option) => ({ id: option.id, label: option.name }))}
-              truncated={options.truncated.districts}
-              filters={{ cityId: formState.cityId }}
-              disabled={!formState.cityId}
+              dictionary="locations" label="Населённый пункт"
+              value={formState.localityId} onChange={(value) => updateLocality(value)}
+              filters={{ category: 'locality', regionId: formState.regionLocationId, relatedToId: formState.districtLocationId }}
             />
             <RemoteSelect
               dictionary="developers" label={"Застройщик"}
@@ -424,23 +428,22 @@ export function PropertyFormPage() {
             <RemoteSelect
               dictionary="complexes" label={"Жилой комплекс"}
               value={formState.realEstateComplexId} onChange={(value) => updateComplex(value)}
-              initialOptions={(options.realEstateComplexes ?? []).map((option) => ({ id: option.id, label: option.name }))}
-              truncated={options.truncated.realEstateComplexes}
-              filters={{ districtId: formState.districtId, developerId: formState.developerId }}
+              filters={{ regionLocationId: formState.regionLocationId, districtLocationId: formState.districtLocationId, localityId: formState.localityId, developerId: formState.developerId }}
               disabled={!formState.developerId}
               required
             />
             <RemoteSelect
               dictionary="buildings" label={"Корпус"}
-              value={formState.buildingId} onChange={(value) => updateField('buildingId', value)}
-              initialOptions={(options.buildings ?? []).map((option) => ({ id: option.id, label: option.number }))}
-              truncated={options.truncated.buildings}
-              filters={{ realEstateComplexId: formState.realEstateComplexId }}
+              value={formState.buildingId} onChange={updateBuilding}
+              filters={{ realEstateComplexId: formState.realEstateComplexId, regionLocationId: formState.regionLocationId, districtLocationId: formState.districtLocationId, localityId: formState.localityId }}
               disabled={!formState.realEstateComplexId}
               error={fieldErrors.buildingId}
               required
             />
           </div>
+          {isEditing && property && !property.localityId ? <Notice tone="info">
+            Населённый пункт корпуса ещё не уточнён. Можно сохранить изменения квартиры, сохранив текущий корпус.
+          </Notice> : null}
         </section>
 
         <section

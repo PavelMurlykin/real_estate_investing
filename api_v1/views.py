@@ -3427,6 +3427,7 @@ class PropertyFormOptionsAPIView(APIView):
             ).order_by('name', 'pk')
             if filters.get('districtId'):
                 complexes_queryset = complexes_queryset.filter(district_id=filters['districtId'])
+            complexes_queryset = apply_location_scopes(complexes_queryset, filters)
         real_estate_complexes, complexes_truncated = (
             _build_bounded_option_rows(
                 complexes_queryset,
@@ -3439,6 +3440,9 @@ class PropertyFormOptionsAPIView(APIView):
             buildings_queryset = RealEstateComplexBuilding.objects.filter(
                 real_estate_complex_id=filters['realEstateComplexId']
             ).order_by('number', 'pk')
+            buildings_queryset = apply_location_scopes(
+                buildings_queryset, filters, buildings=True, prefix='',
+            )
         building_objects = list(
             buildings_queryset[:maximum_results + 1]
         )

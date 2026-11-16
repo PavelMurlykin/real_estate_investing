@@ -3446,7 +3446,7 @@ class PropertyListQuerySerializer(LocationScopeQuerySerializer):
     )
 
 
-class PropertyFormOptionsQuerySerializer(serializers.Serializer):
+class PropertyFormOptionsQuerySerializer(LocationScopeQuerySerializer):
     """Validate the hierarchy selected in the React property form."""
 
     regionId = serializers.IntegerField(required=False, min_value=1)

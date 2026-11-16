@@ -11,19 +11,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from location.models import LegacyLocationMapping, Location
+from location.presentation import geographic_label
 from property.models import RealEstateComplex, RealEstateComplexLocation
 from .catalog_options import CatalogOptionQuerySerializer
 from .views import CanManageCatalogs
-
-
-def geographic_label(location):
-    """Disambiguate homonyms with type, parent and subject in a bounded query."""
-    parts = [f'{location.location_type.abbreviation} {location.name}'.strip()]
-    if location.parent_id and location.parent_id != location.region_id:
-        parts.append(location.parent.name)
-    if location.region_id and location.region_id != location.pk:
-        parts.append(location.region.name)
-    return ' · '.join(parts)
 
 
 def serialize_location(location):
