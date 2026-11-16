@@ -26,7 +26,7 @@ function CustomerMobileCard({ customer }: { customer: CustomerListItem }) {
     <article className="property-mobile-card customer-mobile-card">
       <div className="property-mobile-card__heading">
         <div>
-          <span>{customer.residenceCity || 'Город не указан'}</span>
+          <span>{customer.residenceCity || 'Населённый пункт не указан'}</span>
           <h2>{getCustomerName(customer)}</h2>
         </div>
 
@@ -164,7 +164,7 @@ export function CustomerListPage() {
                   <SortableHeader field="name" defaultOrdering="-createdAt">Клиент</SortableHeader>
                   <SortableHeader field="phone" defaultOrdering="-createdAt">Телефон</SortableHeader>
                   <SortableHeader field="email" defaultOrdering="-createdAt">Email</SortableHeader>
-                  <SortableHeader field="city" defaultOrdering="-createdAt">Город</SortableHeader>
+                  <SortableHeader field="city" defaultOrdering="-createdAt">Населённый пункт</SortableHeader>
 
 
                   <th scope="col">

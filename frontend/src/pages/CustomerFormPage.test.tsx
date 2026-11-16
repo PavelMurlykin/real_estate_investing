@@ -55,6 +55,10 @@ const formOptions: CustomerFormOptions = {
 
 const customerDetail: CustomerDetail = {
   id: 12,
+  residenceLocalityId: 101, residenceLocality: 'Химки', residenceUsesCanonicalLocation: true,
+  desiredRegionLocationId: 900, desiredRegionLocation: 'Москва',
+  desiredDistrictLocationId: 104, desiredDistrictLocation: 'Хамовники',
+  desiredLocalityId: 102, desiredLocality: 'Москва', purchaseUsesCanonicalLocations: true,
   firstName: 'Иван',
   lastName: 'Петров',
   fullName: 'Иван Петров',
@@ -100,6 +104,21 @@ const customerDetail: CustomerDetail = {
   legacyMortgageUrl: '/mortgage/?customer=12',
 }
 
+function mockLocationCatalogs() {
+  const original = globalThis.fetch
+  vi.stubGlobal('fetch', vi.fn(async (path: string, options?: RequestInit) => {
+    const url = new URL(String(path), 'http://localhost')
+    if (url.pathname.includes('/catalog-options/locations/')) {
+      const choices = url.searchParams.get('category') === 'region'
+        ? [{ id: 900, label: 'Москва' }, { id: 901, label: 'Московская область' }]
+        : url.searchParams.get('category') === 'district' ? [{ id: 104, label: 'Хамовники' }]
+          : [{ id: 101, label: 'Химки' }, { id: 102, label: 'Москва' }]
+      return Response.json({ results: choices, selected: choices, totalCount: choices.length, page: 1, nextPage: null })
+    }
+    return original(path, options)
+  }))
+}
+
 function createAuthenticatedQueryClient() {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['session'], authenticatedSession)
@@ -108,6 +127,7 @@ function createAuthenticatedQueryClient() {
 }
 
 function renderCreateForm() {
+  mockLocationCatalogs()
   const queryClient = createAuthenticatedQueryClient()
   return renderWithProviders(
     <Routes>
@@ -126,6 +146,51 @@ afterEach(() => {
 })
 
 describe('CustomerFormPage', () => {
+  it('preserves unresolved legacy locations when only a comment changes', async () => {
+    const user = userEvent.setup()
+    const queryClient = createAuthenticatedQueryClient()
+    queryClient.setQueryData(['customer', 12], { ...customerDetail,
+      residenceUsesCanonicalLocation: false, purchaseUsesCanonicalLocations: false,
+      residenceLocalityId: null, desiredRegionLocationId: null, desiredDistrictLocationId: null, desiredLocalityId: null,
+    })
+    const writes = vi.fn().mockResolvedValue(Response.json({ id: 12 }))
+    vi.stubGlobal('fetch', writes)
+    mockLocationCatalogs()
+    renderWithProviders(<Routes>
+      <Route path="/customers/:customerId/edit" element={<CustomerFormPage />} />
+      <Route path="/customers/:customerId" element={<h1>Сохранён</h1>} />
+    </Routes>, { initialRoute: '/customers/12/edit', queryClient })
+    await screen.findByText(/Сохранённые прежние локации/)
+    await user.click(screen.getByRole('button', { name: 'Сохранить клиента' }))
+    await screen.findByRole('heading', { name: 'Сохранён' })
+    const payload = JSON.parse(writes.mock.calls.find(([, options]) => options?.method === 'PATCH')?.[1].body as string)
+    expect(payload).not.toHaveProperty('residenceLocalityId')
+    expect(payload).not.toHaveProperty('desiredRegionLocationId')
+    expect(payload).not.toHaveProperty('desiredCityId')
+    expect(payload.preferentialProgramIds).toEqual([3])
+  })
+
+  it('submits explicit null territories after clearing canonical preferences', async () => {
+    const user = userEvent.setup()
+    const queryClient = createAuthenticatedQueryClient()
+    queryClient.setQueryData(['customer', 12], customerDetail)
+    const writes = vi.fn().mockResolvedValue(Response.json({ id: 12 }))
+    vi.stubGlobal('fetch', writes)
+    mockLocationCatalogs()
+    renderWithProviders(<Routes>
+      <Route path="/customers/:customerId/edit" element={<CustomerFormPage />} />
+      <Route path="/customers/:customerId" element={<h1>Сохранён</h1>} />
+    </Routes>, { initialRoute: '/customers/12/edit', queryClient })
+    await screen.findByLabelText('Имя *')
+    await chooseOption(user, 'Регион покупки', 'Не выбрано')
+    await chooseOption(user, 'Населённый пункт проживания', 'Не выбрано')
+    await user.click(screen.getByRole('button', { name: 'Сохранить клиента' }))
+    await screen.findByRole('heading', { name: 'Сохранён' })
+    const payload = JSON.parse(writes.mock.calls.find(([, options]) => options?.method === 'PATCH')?.[1].body as string)
+    expect(payload).toMatchObject({ residenceLocalityId: null, desiredRegionLocationId: null, desiredDistrictLocationId: null, desiredLocalityId: null })
+    expect(payload).not.toHaveProperty('desiredDistrictId')
+  })
+
   it('preserves district on city reselect, clears it on city change, and submits searched choices', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (_path, options) =>
@@ -134,14 +199,14 @@ describe('CustomerFormPage', () => {
     const { queryClient } = renderCreateForm()
     for (const city of ['1', '2']) queryClient.setQueryData(['customer-form-options', city], formOptions)
     await user.type(screen.getByLabelText('Имя *'), 'Мария')
-    await chooseOption(user, 'Желаемый город покупки', 'Москва')
-    await chooseOption(user, 'Желаемый район', 'Хамовники')
-    await chooseOption(user, 'Желаемый город покупки', 'Москва')
-    expect(screen.getByRole('combobox', { name: 'Желаемый район' })).toHaveValue('Хамовники')
-    await chooseOption(user, 'Желаемый город покупки', 'Химки')
-    expect(screen.getByRole('combobox', { name: 'Желаемый район' })).toHaveValue('')
-    await chooseOption(user, 'Желаемый город покупки', 'Не выбрано')
-    expect(screen.getByRole('combobox', { name: 'Желаемый район' })).toBeDisabled()
+    await chooseOption(user, 'Регион покупки', 'Москва')
+    await chooseOption(user, 'Административный район покупки', 'Хамовники')
+    await chooseOption(user, 'Регион покупки', 'Москва')
+    expect(screen.getByRole('combobox', { name: 'Административный район покупки' })).toHaveValue('Хамовники')
+    await chooseOption(user, 'Регион покупки', 'Московская область')
+    expect(screen.getByRole('combobox', { name: 'Административный район покупки' })).toHaveValue('')
+    await chooseOption(user, 'Регион покупки', 'Не выбрано')
+    expect(screen.getByRole('combobox', { name: 'Административный район покупки' })).toBeEnabled()
     await chooseOption(user, 'Цель покупки', 'Для инвестиций')
     await chooseOption(user, 'Планировки', 'Евро-3')
     await chooseOption(user, 'Доступные льготные программы', 'Семейная ипотека')
@@ -149,7 +214,7 @@ describe('CustomerFormPage', () => {
     await user.click(screen.getByRole('button', { name: 'Сохранить клиента' }))
     expect(await screen.findByRole('heading', { name: 'Карточка клиента сохранена' })).toBeInTheDocument()
     expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string)).toMatchObject({
-      desiredCityId: null, desiredDistrictId: null, purchaseGoal: 'investment', desiredLayoutIds: [5], preferentialProgramIds: [3],
+      desiredRegionLocationId: null, desiredLocalityId: null, desiredDistrictLocationId: null, purchaseGoal: 'investment', desiredLayoutIds: [5], preferentialProgramIds: [3],
     })
   })
 
@@ -175,7 +240,7 @@ describe('CustomerFormPage', () => {
   it('prefills every relation-backed field for editing', async () => {
     const queryClient = createAuthenticatedQueryClient()
     queryClient.setQueryData(['customer', 12], customerDetail)
-    queryClient.setQueryData(['customer-form-options', '2'], formOptions)
+    mockLocationCatalogs()
 
     renderWithProviders(
       <Routes>
@@ -190,9 +255,7 @@ describe('CustomerFormPage', () => {
     expect(await screen.findByLabelText('Имя *')).toHaveValue('Иван')
     expect(screen.getByRole('button', { name: 'Убрать: Семейная ипотека' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Убрать: Евро-3' })).toBeInTheDocument()
-    expect(
-      screen.getByRole('combobox', { name: 'Желаемый район' }),
-    ).toHaveValue('Хамовники')
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Административный район покупки' })).toHaveValue('Хамовники'))
     expect(screen.queryByRole('link', { name: 'Django-форма' })).not.toBeInTheDocument()
   })
 

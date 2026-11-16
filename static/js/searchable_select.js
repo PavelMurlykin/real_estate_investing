@@ -111,13 +111,24 @@
 
     function positionMenu(state) {
         const rect = state.wrapper.getBoundingClientRect();
-        state.menu.style.left = `${rect.left}px`;
-        state.menu.style.top = `${rect.bottom + 4}px`;
-        state.menu.style.width = `${rect.width}px`;
+        const availableBelow = Math.max(0, window.innerHeight - rect.bottom - 8);
+        const availableAbove = Math.max(0, rect.top - 8);
+        const desiredHeight = Math.min(256, state.menu.scrollHeight || 256);
+        const above = availableBelow < desiredHeight && availableAbove > availableBelow;
+        const height = Math.min(desiredHeight, above ? availableAbove : availableBelow);
+        const width = Math.min(rect.width, document.documentElement.clientWidth - 8);
+        state.menu.style.left = `${Math.max(4, Math.min(rect.left, window.innerWidth - width - 4))}px`;
+        state.menu.style.top = `${Math.max(4, above ? rect.top - height - 4 : rect.bottom + 4)}px`;
+        state.menu.style.width = `${width}px`;
+        state.menu.style.maxHeight = `${height}px`;
     }
 
     function closeMenu(state) {
+        window.clearTimeout(state.remoteTimer);
+        if (state.remoteController) state.remoteController.abort();
         state.menu.classList.add('d-none');
+        state.menu.hidden = true;
+        state.menu.setAttribute('aria-hidden', 'true');
         state.input.setAttribute('aria-expanded', 'false');
         state.activeIndex = -1;
         if (openState === state) {
@@ -239,8 +250,11 @@
             state.input.value = '';
         }
         renderOptions(state);
-        positionMenu(state);
         state.menu.classList.remove('d-none');
+        state.menu.hidden = false;
+        state.menu.setAttribute('aria-hidden', 'false');
+        positionMenu(state);
+        setActiveOption(state, state.activeIndex);
         state.input.setAttribute('aria-expanded', 'true');
     }
 
@@ -296,10 +310,10 @@
         if (state.select.dataset.remoteOptions) {
             window.clearTimeout(state.remoteTimer);
             if (state.remoteController) state.remoteController.abort();
+            const query = state.input.value;
             state.remoteTimer = window.setTimeout(async function () {
                 const controller = new AbortController();
                 state.remoteController = controller;
-                const query = state.input.value;
                 const url = new URL(state.select.dataset.remoteOptions, window.location.origin);
                 if (url.origin !== window.location.origin) return;
                 url.searchParams.set('q', query);
@@ -313,7 +327,7 @@
                     const response = await fetch(url, {credentials: 'same-origin', signal: controller.signal});
                     if (!response.ok) throw new Error('Не удалось загрузить населённые пункты.');
                     const data = await response.json();
-                    if (state.input.value !== query || JSON.stringify(parentValues()) !== JSON.stringify(filters)) return;
+                    if (document.activeElement !== state.input || state.input.value !== query || JSON.stringify(parentValues()) !== JSON.stringify(filters)) return;
                     const selected = state.select.selectedOptions[0];
                     state.observer.disconnect();
                     state.select.replaceChildren(new Option('Не выбрано', ''));
@@ -447,6 +461,8 @@
         menu.className = 'searchable-select-menu d-none';
         menu.id = `searchable-select-menu-${nextId}`;
         menu.setAttribute('role', 'listbox');
+        menu.hidden = true;
+        menu.setAttribute('aria-hidden', 'true');
         nextId += 1;
 
         input.setAttribute('aria-controls', menu.id);

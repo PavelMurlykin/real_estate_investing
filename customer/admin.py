@@ -1,6 +1,15 @@
 from django.contrib import admin
 
 from .models import Customer, CustomerCalculation, CustomerTrenchCalculation
+from .forms import CustomerForm
+
+
+class CustomerAdminForm(CustomerForm):
+    """Use the same geographic normalization while retaining admin owner controls."""
+
+    class Meta(CustomerForm.Meta):
+        """Allow the admin to include ownership and its configured read-only fields."""
+        fields = '__all__'
 
 
 class CustomerCalculationInline(admin.TabularInline):
@@ -27,6 +36,11 @@ class CustomerAdmin(admin.ModelAdmin):
     в данном модуле.
     """
 
+    form = CustomerAdminForm
+    readonly_fields = (
+        'residence_city', 'desired_city', 'desired_district', 'desired_financial_region',
+        'residence_uses_canonical_location', 'purchase_uses_canonical_locations',
+    )
     list_display = (
         'id',
         'first_name',
@@ -34,7 +48,7 @@ class CustomerAdmin(admin.ModelAdmin):
         'phone',
         'user',
         'age',
-        'residence_city',
+        'residence_locality',
         'created_at',
         'is_active',
     )
@@ -42,8 +56,8 @@ class CustomerAdmin(admin.ModelAdmin):
         'is_active',
         'purchase_goal',
         'has_owned_property',
-        'residence_city',
-        'desired_city',
+        ('residence_locality', admin.RelatedOnlyFieldListFilter),
+        ('desired_region_location', admin.RelatedOnlyFieldListFilter),
     )
     search_fields = (
         'first_name',
@@ -54,9 +68,7 @@ class CustomerAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = (
         'user',
-        'residence_city',
-        'desired_city',
-        'desired_district',
+        'residence_locality', 'desired_region_location', 'desired_district_location', 'desired_locality',
         'desired_layouts',
         'preferential_programs',
     )

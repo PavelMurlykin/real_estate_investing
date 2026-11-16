@@ -16,7 +16,7 @@ import {
   sessionQueryOptions,
   updateCustomer,
 } from '@/api/queries'
-import type { CustomerWriteRequest } from '@/api/schemas'
+import type { CustomerDetail, CustomerWriteRequest } from '@/api/schemas'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 
@@ -28,14 +28,15 @@ type CustomerFormState = {
   age: string
   birthDate: string
   birthYear: string
-  residenceCityId: string
+  residenceLocalityId: string
   initialPaymentAmount: string
   maximumMonthlyPayment: string
   preferentialProgramIds: string[]
   hasOwnedProperty: 'true' | 'false' | 'unknown'
   purchaseGoal: string
-  desiredCityId: string
-  desiredDistrictId: string
+  desiredRegionLocationId: string
+  desiredLocalityId: string
+  desiredDistrictLocationId: string
   desiredLayoutIds: string[]
   areaMinimum: string
   areaMaximum: string
@@ -54,14 +55,15 @@ const emptyFormState: CustomerFormState = {
   age: '',
   birthDate: '',
   birthYear: '',
-  residenceCityId: '',
+  residenceLocalityId: '',
   initialPaymentAmount: '',
   maximumMonthlyPayment: '',
   preferentialProgramIds: [],
   hasOwnedProperty: 'unknown',
   purchaseGoal: '',
-  desiredCityId: '',
-  desiredDistrictId: '',
+  desiredRegionLocationId: '',
+  desiredLocalityId: '',
+  desiredDistrictLocationId: '',
   desiredLayoutIds: [],
   areaMinimum: '',
   areaMaximum: '',
@@ -119,8 +121,8 @@ function selectedIdentifier(value: string) {
     : null
 }
 
-function buildPayload(formState: CustomerFormState): CustomerWriteRequest {
-  return {
+function buildPayload(formState: CustomerFormState, existing?: CustomerDetail): CustomerWriteRequest {
+  const payload: CustomerWriteRequest = {
     firstName: formState.firstName,
     lastName: formState.lastName,
     phone: formState.phone,
@@ -128,7 +130,7 @@ function buildPayload(formState: CustomerFormState): CustomerWriteRequest {
     age: optionalInteger(formState.age),
     birthDate: formState.birthDate || null,
     birthYear: optionalInteger(formState.birthYear),
-    residenceCityId: selectedIdentifier(formState.residenceCityId),
+    residenceLocalityId: selectedIdentifier(formState.residenceLocalityId),
     initialPaymentAmount: optionalDecimal(formState.initialPaymentAmount),
     maximumMonthlyPayment: optionalDecimal(formState.maximumMonthlyPayment),
     preferentialProgramIds: formState.preferentialProgramIds.map(Number),
@@ -136,8 +138,9 @@ function buildPayload(formState: CustomerFormState): CustomerWriteRequest {
       ? null
       : formState.hasOwnedProperty === 'true',
     purchaseGoal: formState.purchaseGoal,
-    desiredCityId: selectedIdentifier(formState.desiredCityId),
-    desiredDistrictId: selectedIdentifier(formState.desiredDistrictId),
+    desiredRegionLocationId: selectedIdentifier(formState.desiredRegionLocationId),
+    desiredLocalityId: selectedIdentifier(formState.desiredLocalityId),
+    desiredDistrictLocationId: selectedIdentifier(formState.desiredDistrictLocationId),
     desiredLayoutIds: formState.desiredLayoutIds.map(Number),
     areaMinimum: optionalDecimal(formState.areaMinimum),
     areaMaximum: optionalDecimal(formState.areaMaximum),
@@ -145,6 +148,13 @@ function buildPayload(formState: CustomerFormState): CustomerWriteRequest {
     cardinalDirections: formState.cardinalDirections,
     comment: formState.comment,
   }
+  if (existing && !existing.residenceUsesCanonicalLocation && formState.residenceLocalityId === String(existing.residenceLocalityId ?? '')) {
+    delete payload.residenceLocalityId
+  }
+  if (existing && !existing.purchaseUsesCanonicalLocations && (['desiredRegionLocationId', 'desiredDistrictLocationId', 'desiredLocalityId'] as const).every((name) => formState[name] === String(existing[name] ?? ''))) {
+    delete payload.desiredRegionLocationId; delete payload.desiredDistrictLocationId; delete payload.desiredLocalityId
+  }
+  return payload
 }
 
 export function CustomerFormPage() {
@@ -166,9 +176,8 @@ export function CustomerFormPage() {
   const [formState, setFormState] = useState<CustomerFormState>(
     emptyFormState,
   )
-  const desiredCityIdentifier = selectedIdentifier(formState.desiredCityId)
   const optionsQuery = useQuery({
-    ...customerFormOptionsQueryOptions(desiredCityIdentifier),
+    ...customerFormOptionsQueryOptions(null),
     enabled: hasValidIdentifier
       && sessionQuery.data?.isAuthenticated === true,
   })
@@ -206,7 +215,7 @@ export function CustomerFormPage() {
       age: customer.age?.toString() ?? '',
       birthDate: customer.birthDate ?? '',
       birthYear: customer.birthYear?.toString() ?? '',
-      residenceCityId: customer.residenceCityId?.toString() ?? '',
+      residenceLocalityId: customer.residenceLocalityId?.toString() ?? '',
       initialPaymentAmount: customer.initialPaymentAmount ?? '',
       maximumMonthlyPayment: customer.maximumMonthlyPayment ?? '',
       preferentialProgramIds: customer.preferentialPrograms.map(
@@ -216,8 +225,9 @@ export function CustomerFormPage() {
         ? 'unknown'
         : customer.hasOwnedProperty.toString() as 'true' | 'false',
       purchaseGoal: customer.purchaseGoal,
-      desiredCityId: customer.desiredCityId?.toString() ?? '',
-      desiredDistrictId: customer.desiredDistrictId?.toString() ?? '',
+      desiredRegionLocationId: customer.desiredRegionLocationId?.toString() ?? '',
+      desiredLocalityId: customer.desiredLocalityId?.toString() ?? '',
+      desiredDistrictLocationId: customer.desiredDistrictLocationId?.toString() ?? '',
       desiredLayoutIds: customer.desiredLayouts.map(
         (layout) => layout.id.toString(),
       ),
@@ -259,7 +269,7 @@ export function CustomerFormPage() {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    mutation.mutate(buildPayload(formState))
+    mutation.mutate(buildPayload(formState, customerQuery.data))
   }
 
   if (!hasValidIdentifier) {
@@ -353,6 +363,9 @@ export function CustomerFormPage() {
         <PageLoadingState compact title="Обновляем список районов…" />
       ) : null}
 
+      {customerQuery.data && ((!customerQuery.data.residenceUsesCanonicalLocation && customerQuery.data.residenceCity) || (!customerQuery.data.purchaseUsesCanonicalLocations && (customerQuery.data.desiredCity || customerQuery.data.desiredDistrict))) ? <Notice tone="info">
+        Сохранённые прежние локации: {customerQuery.data.residenceCity || '—'}; покупка: {customerQuery.data.desiredCity || '—'}, {customerQuery.data.desiredDistrict || '—'}. Выберите новые территории для уточнения. Остальные изменения сохранят прежние данные и лимиты.
+      </Notice> : null}
       <form className="customer-form" onSubmit={handleSubmit}>
         <section
           className="customer-form-section"
@@ -478,14 +491,12 @@ export function CustomerFormPage() {
               <FieldError fieldName="birthYear" errors={fieldErrors} />
             </label>
             <RemoteSelect
-              dictionary="cities" label={"Город проживания"}
-              value={formState.residenceCityId} onChange={(value) => updateField(
-                  'residenceCityId',
+              dictionary="locations" label="Населённый пункт проживания" filters={{ category: 'locality' }}
+              value={formState.residenceLocalityId} onChange={(value) => updateField(
+                  'residenceLocalityId',
                   value,
                 )}
-              initialOptions={(options.cities ?? []).map((option) => ({ id: option.id, label: option.name }))}
-              truncated={options.truncated.cities}
-              error={fieldErrors.residenceCityId}
+              error={fieldErrors.residenceLocalityId}
             />
           </div>
         </section>
@@ -600,32 +611,15 @@ export function CustomerFormPage() {
               options={options.purchaseGoals} emptyLabel="Не указана"
               onChange={(value) => updateField('purchaseGoal', value)}
               validationError={fieldErrors.purchaseGoal} />
-            <RemoteSelect
-              dictionary="cities" label={"Желаемый город покупки"}
-              value={formState.desiredCityId} onChange={(value) => {
-                  if (mutation.isError) mutation.reset()
-                  setFormState((current) => ({
-                    ...current,
-                    desiredCityId: value,
-                    desiredDistrictId: '',
-                  }))
-                }}
-              initialOptions={(options.cities ?? []).map((option) => ({ id: option.id, label: option.name }))}
-              truncated={options.truncated.cities}
-              error={fieldErrors.desiredCityId}
-            />
-            <RemoteSelect
-              dictionary="districts" label={"Желаемый район"}
-              value={formState.desiredDistrictId} onChange={(value) => updateField(
-                  'desiredDistrictId',
-                  value,
-                )}
-              initialOptions={(options.districts ?? []).map((option) => ({ id: option.id, label: option.name }))}
-              truncated={options.truncated.districts}
-              filters={{ cityId: formState.desiredCityId }}
-              disabled={!desiredCityIdentifier || optionsQuery.isFetching}
-              error={fieldErrors.desiredDistrictId}
-            />
+            <RemoteSelect dictionary="locations" label="Регион покупки" value={formState.desiredRegionLocationId}
+              filters={{ category: 'region' }} error={fieldErrors.desiredRegionLocationId}
+              onChange={(value) => { if (mutation.isError) mutation.reset(); setFormState((current) => ({ ...current, desiredRegionLocationId: value, desiredDistrictLocationId: '', desiredLocalityId: '' })) }} />
+            <RemoteSelect dictionary="locations" label="Административный район покупки" value={formState.desiredDistrictLocationId}
+              filters={{ category: 'district', regionId: formState.desiredRegionLocationId }} error={fieldErrors.desiredDistrictLocationId}
+              onChange={(value) => { if (mutation.isError) mutation.reset(); setFormState((current) => ({ ...current, desiredDistrictLocationId: value, desiredLocalityId: '' })) }} />
+            <RemoteSelect dictionary="locations" label="Населённый пункт покупки" value={formState.desiredLocalityId}
+              filters={{ category: 'locality', regionId: formState.desiredRegionLocationId, relatedToId: formState.desiredDistrictLocationId }} error={fieldErrors.desiredLocalityId}
+              onChange={(value) => updateField('desiredLocalityId', value)} />
             <label className="form-field">
               Этаж
               <input

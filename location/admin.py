@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import City, District, Metro, MetroLine, Region
+from .models import City, District, Location, Metro, MetroLine, Region
 
 
 @admin.register(Region)
@@ -88,3 +88,25 @@ class MetroLineAdmin(admin.ModelAdmin):
     search_fields = ('line', 'city__name')
     list_editable = ('is_active',)
     ordering = ('city__name', 'line')
+
+
+
+@admin.register(Location)
+class LocationAdmin(admin.ModelAdmin):
+    """Provide bounded geographic lookup for customer autocomplete fields."""
+
+    search_fields = ('name',)
+    list_display = ('name', 'location_type', 'parent', 'region')
+    list_select_related = ('location_type', 'parent', 'region')
+
+    def has_add_permission(self, request):
+        """Keep canonical source creation in the import workflow."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Keep canonical hierarchy changes in the geographic workflow."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Preserve identifiers and existing geographic references."""
+        return False

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}{% if object %}Редактирование клиента{% else %}Новый клиент{% endif %}{% endblock %}
 
@@ -16,6 +17,13 @@
 
     <form method="post" novalidate>
         {% csrf_token %}
+
+        {% if object and not object.residence_uses_canonical_location and object.residence_city %}
+        <p class="text-muted">Сохранённое место проживания: {{ object.residence_city }}. Выберите населённый пункт для уточнения; другие изменения сохранят прежнее значение.</p>
+        {% endif %}
+        {% if object and not object.purchase_uses_canonical_locations and object.desired_city %}
+        <p class="text-muted">Сохранённая территория покупки: {{ object.desired_city }}, {{ object.desired_district|default:"—" }}. Прежние данные и региональные лимиты сохраняются до уточнения.</p>
+        {% endif %}
 
         {% if form.non_field_errors %}
         <div class="alert alert-danger">
@@ -68,9 +76,9 @@
                         <div class="text-danger small">{{ form.birth_year.errors }}</div>
                     </div>
                     <div class="col-md-8">
-                        <label class="form-label" for="{{ form.residence_city.id_for_label }}">{{ form.residence_city.label }}</label>
-                        {{ form.residence_city }}
-                        <div class="text-danger small">{{ form.residence_city.errors }}</div>
+                        <label class="form-label" for="{{ form.residence_locality.id_for_label }}">{{ form.residence_locality.label }}</label>
+                        {{ form.residence_locality }}
+                        <div class="text-danger small">{{ form.residence_locality.errors }}</div>
                     </div>
                 </div>
             </div>
@@ -138,15 +146,20 @@
                         <div class="text-danger small">{{ form.purchase_goal.errors }}</div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label" for="{{ form.desired_city.id_for_label }}">{{ form.desired_city.label }}</label>
-                        {{ form.desired_city }}
-                        <div class="text-danger small">{{ form.desired_city.errors }}</div>
+                        {{ form.desired_region_location.label_tag }}
+                        {{ form.desired_region_location }}
+                        <div class="text-danger small">{{ form.desired_region_location.errors }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ form.desired_locality.id_for_label }}">{{ form.desired_locality.label }}</label>
+                        {{ form.desired_locality }}
+                        <div class="text-danger small">{{ form.desired_locality.errors }}</div>
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label" for="{{ form.desired_district.id_for_label }}">{{ form.desired_district.label }}</label>
-                        {{ form.desired_district }}
-                        <div class="text-danger small">{{ form.desired_district.errors }}</div>
+                        <label class="form-label" for="{{ form.desired_district_location.id_for_label }}">{{ form.desired_district_location.label }}</label>
+                        {{ form.desired_district_location }}
+                        <div class="text-danger small">{{ form.desired_district_location.errors }}</div>
                     </div>
                     <div class="col-md-6">
                         <fieldset>
@@ -212,3 +225,5 @@
     </form>
 </div>
 {% endblock %}
+
+{% block extra_scripts %}<script src="{% static 'js/customer_location_form.js' %}"></script>{% endblock %}

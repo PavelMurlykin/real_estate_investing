@@ -113,6 +113,15 @@ export function CustomerDetailPage() {
   }
 
   const customer = customerQuery.data
+  const residence = customer.residenceUsesCanonicalLocation ? customer.residenceLocalityLabel ?? customer.residenceLocality : customer.residenceCity
+  const purchaseLocality = customer.purchaseUsesCanonicalLocations ? customer.desiredLocalityLabel ?? customer.desiredLocality : customer.desiredCity
+  const purchaseDistrict = customer.purchaseUsesCanonicalLocations ? customer.desiredDistrictLocation : customer.desiredDistrict
+  const selection = new URLSearchParams({ customerId: String(customer.id) })
+  if (customer.purchaseUsesCanonicalLocations) {
+    for (const [parameter, value] of [['regionLocationId', customer.desiredRegionLocationId], ['districtLocationId', customer.desiredDistrictLocationId], ['localityId', customer.desiredLocalityId]] as const) {
+      if (value) selection.set(parameter, String(value))
+    }
+  }
   const customerName = customer.fullName || `Клиент #${customer.id}`
   const birthValue = customer.birthDate
     ? formatDate(customer.birthDate)
@@ -125,7 +134,7 @@ export function CustomerDetailPage() {
           <span className="eyebrow">Карточка клиента</span>
           <h1>{customerName}</h1>
           <p>
-            {customer.residenceCity || 'Город проживания не указан'}
+            {residence || 'Населённый пункт проживания не указан'}
             {' · '}
             {customer.isActive ? 'Активный клиент' : 'Неактивный клиент'}
           </p>
@@ -217,7 +226,7 @@ export function CustomerDetailPage() {
         </dl>
         <Link
           className="button button--primary"
-          to={`/properties?customerId=${customer.id}`}
+          to={`/properties?${selection}`}
         >
           Рассчитать ипотеку
         </Link>
@@ -291,8 +300,8 @@ export function CustomerDetailPage() {
             <div><dt>Возраст</dt><dd>{customer.age ?? '—'}</dd></div>
             <div><dt>Дата или год рождения</dt><dd>{birthValue}</dd></div>
             <div>
-              <dt>Город проживания</dt>
-              <dd>{customer.residenceCity || '—'}</dd>
+              <dt>Населённый пункт проживания</dt>
+              <dd>{residence || '—'}</dd>
             </div>
             <div>
               <dt>Есть недвижимость</dt>
@@ -349,13 +358,14 @@ export function CustomerDetailPage() {
               <dd>{customer.purchaseGoalLabel || '—'}</dd>
             </div>
             <div>
-              <dt>Город</dt>
-              <dd>{customer.desiredCity || '—'}</dd>
+              <dt>Населённый пункт</dt>
+              <dd>{purchaseLocality || '—'}</dd>
             </div>
             <div>
-              <dt>Район</dt>
-              <dd>{customer.desiredDistrict || '—'}</dd>
+              <dt>Административный район</dt>
+              <dd>{purchaseDistrict || '—'}</dd>
             </div>
+            <div><dt>Регион покупки</dt><dd>{customer.desiredRegionLocation || '—'}</dd></div>
             <div>
               <dt>Планировки</dt>
               <dd>

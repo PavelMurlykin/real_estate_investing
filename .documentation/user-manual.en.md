@@ -76,6 +76,12 @@ The fallback Django form uses the same territories and server-side checks that t
 
 ### Customers and forms
 
+Residence is selected in “Населённый пункт проживания” from the complete Russian catalog, including Pushkin, Strelna and villages. Purchase preferences use “Регион покупки”, “Административный район покупки” and “Населённый пункт покупки”. Select a region or district alone, or search for a locality directly. The region is inferred from the selected territory if omitted. Choice and profile labels include type, parent and region to distinguish homonyms. Changing the region clears district and locality; changing the district clears locality. “Рассчитать ипотеку” opens property selection with the saved territory and customer context.
+
+Migration uses existing legacy ID mappings and retains original cities, districts, owners, calculations and associations. The mortgage limit region is stored separately from canonical geography and retains its original value during migration, including an originally absent financial region. Saving unrelated profile fields does not change the limit. Changing the purchase territory resolves the financial region through the legacy mapping; without a mapping, the program's general limit applies. Ambiguous mappings require review and are never chosen automatically.
+
+If a legacy value cannot be mapped, the form displays its retained description. Other fields can be edited while keeping the original locations and limits, or new territories can be explicitly selected. Clearing a canonical field persists an empty selection and does not revive the old value. The fallback Django form follows the same rules. Profiles and linked calculations remain available only to their owner and appropriately authorized users.
+
 The customer section requires authentication. A customer profile contains contacts, preferences, budget and linked market/tranche calculations. Financial capacity is an initial estimate. Select linked calculations for a combined Word report or unlink them; deleting a customer does not delete the calculations themselves.
 
 Forms use consistent single-line field and primary button dimensions, typography and spacing. Section headings sit above their fields; hints and errors appear beside the relevant field. On narrow screens, fields and actions stack in one column. Tab and Shift+Tab move focus between available controls; the active control has a contrasting outline in both light and dark themes.

@@ -53,7 +53,7 @@
                             <td>{{ customer.full_name }}</td>
                             <td>{{ customer.phone|default:"-" }}</td>
                             <td>{{ customer.email|default:"-" }}</td>
-                            <td>{{ customer.residence_city|default:"-" }}</td>
+                            <td>{{ customer.residence_display_name|default:"-" }}</td>
                             <td>{{ customer.created_at|date:"d.m.Y H:i" }}</td>
                             <td class="text-nowrap">
                                 <div class="d-flex gap-2 flex-nowrap">

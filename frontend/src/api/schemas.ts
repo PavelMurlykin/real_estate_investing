@@ -303,6 +303,19 @@ export const customerListResponseSchema = z.object({
 })
 
 export const customerDetailSchema = z.object({
+  residenceLocalityId: z.number().int().positive().nullable().optional(),
+  residenceLocality: z.string().nullable().optional(),
+  residenceLocalityLabel: z.string().nullable().optional(),
+  desiredRegionLocationId: z.number().int().positive().nullable().optional(),
+  desiredRegionLocation: z.string().nullable().optional(),
+  desiredDistrictLocationId: z.number().int().positive().nullable().optional(),
+  desiredDistrictLocation: z.string().nullable().optional(),
+  desiredLocalityId: z.number().int().positive().nullable().optional(),
+  desiredLocality: z.string().nullable().optional(),
+  desiredLocalityLabel: z.string().nullable().optional(),
+  desiredFinancialRegionId: z.number().int().positive().nullable().optional(),
+  residenceUsesCanonicalLocation: z.boolean().optional(),
+  purchaseUsesCanonicalLocations: z.boolean().optional(),
   id: z.number().int().positive(),
   firstName: z.string(),
   lastName: z.string(),
@@ -1317,14 +1330,18 @@ export type CustomerWriteRequest = {
   age: number | null
   birthDate: string | null
   birthYear: number | null
-  residenceCityId: number | null
+  residenceCityId?: number | null
+  residenceLocalityId?: number | null
+  desiredRegionLocationId?: number | null
+  desiredDistrictLocationId?: number | null
+  desiredLocalityId?: number | null
   initialPaymentAmount: string | null
   maximumMonthlyPayment: string | null
   preferentialProgramIds: number[]
   hasOwnedProperty: boolean | null
   purchaseGoal: string
-  desiredCityId: number | null
-  desiredDistrictId: number | null
+  desiredCityId?: number | null
+  desiredDistrictId?: number | null
   desiredLayoutIds: number[]
   areaMinimum: string | null
   areaMaximum: string | null

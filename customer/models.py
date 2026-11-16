@@ -7,7 +7,8 @@ from django.utils import timezone
 
 from bank.models import KeyRate, MortgageProgram
 from core.models import BaseModel
-from location.models import City, District
+from location.models import City, District, Location, Region
+from location.presentation import geographic_label
 from property.models import ApartmentLayout
 
 
@@ -93,6 +94,28 @@ class Customer(BaseModel):
         blank=True,
         related_name='residence_customers',
         verbose_name='Город проживания',
+    )
+    residence_locality = models.ForeignKey(
+        Location, on_delete=models.PROTECT, null=True, blank=True,
+        related_name='resident_customers', verbose_name='Населённый пункт проживания',
+    )
+    residence_uses_canonical_location = models.BooleanField(default=False)
+    desired_region_location = models.ForeignKey(
+        Location, on_delete=models.PROTECT, null=True, blank=True,
+        related_name='interested_region_customers', verbose_name='Регион покупки',
+    )
+    desired_district_location = models.ForeignKey(
+        Location, on_delete=models.PROTECT, null=True, blank=True,
+        related_name='interested_district_customers', verbose_name='Административный район покупки',
+    )
+    desired_locality = models.ForeignKey(
+        Location, on_delete=models.PROTECT, null=True, blank=True,
+        related_name='interested_locality_customers', verbose_name='Населённый пункт покупки',
+    )
+    purchase_uses_canonical_locations = models.BooleanField(default=False)
+    desired_financial_region = models.ForeignKey(
+        Region, on_delete=models.PROTECT, null=True, blank=True,
+        related_name='interested_financial_customers', verbose_name='Регион ипотечных лимитов',
     )
 
     # Платежеспособность
@@ -254,6 +277,8 @@ class Customer(BaseModel):
         от контекста.
         """
         super().clean()
+        from .location_service import validate_customer_locations
+        validate_customer_locations(self)
 
         if not self.first_name or not self.first_name.strip():
             raise ValidationError(
@@ -302,7 +327,8 @@ class Customer(BaseModel):
             )
 
         if (
-            self.desired_city
+            not self.purchase_uses_canonical_locations
+            and self.desired_city
             and self.desired_district
             and self.desired_district.city_id != self.desired_city_id
         ):
@@ -429,10 +455,36 @@ class Customer(BaseModel):
         )
 
     def get_desired_region(self):
-        """Возвращает регион желаемого города покупки."""
+        """Resolve the preserved financial region independently of geographic IDs."""
+        if self.purchase_uses_canonical_locations:
+            return self.desired_financial_region
         if not self.desired_city_id:
             return None
         return self.desired_city.region
+
+    @property
+    def residence_display_name(self):
+        """Display current residence without reviving a cleared legacy city."""
+        locality = self.residence_locality if self.residence_uses_canonical_location else self.residence_city
+        return (geographic_label(locality) if self.residence_uses_canonical_location else locality.name) if locality else None
+
+    @property
+    def purchase_locality_display_name(self):
+        """Use current purchase locality or the unresolved legacy description."""
+        locality = self.desired_locality if self.purchase_uses_canonical_locations else self.desired_city
+        return locality.name if locality else None
+
+    @property
+    def purchase_district_display_name(self):
+        """Keep a cleared current district distinct from a retained snapshot."""
+        district = self.desired_district_location if self.purchase_uses_canonical_locations else self.desired_district
+        return district.name if district else None
+
+    @property
+    def purchase_region_display_name(self):
+        """Describe the chosen geographic region without exposing a financial key."""
+        region = self.desired_region_location if self.purchase_uses_canonical_locations else self.get_desired_region()
+        return region.name if region else None
 
     def get_preferential_credit_limit(self):
         """Возвращает максимальный лимит кредита среди выбранных льготных программ."""

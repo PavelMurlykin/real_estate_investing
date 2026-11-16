@@ -19,6 +19,8 @@ from bank.models import (
     MortgageProgramRegionalCreditLimit,
 )
 from customer.models import Customer
+from customer.location_service import CUSTOMER_LOCATION_FIELDS, prepare_customer_locations
+from location.presentation import geographic_label
 from location.models import City, District, Location, Metro, MetroLine, Region
 from property.location_context import (
     building_geography_prefetch, geography_prefetch, locality_filter, set_primary_location,
@@ -1859,6 +1861,10 @@ class CustomerWriteSerializer(serializers.ModelSerializer):
     """Validate and atomically persist a customer form payload."""
 
     MODEL_TO_API_FIELD_NAMES = {
+        'residence_locality': 'residenceLocalityId',
+        'desired_region_location': 'desiredRegionLocationId',
+        'desired_district_location': 'desiredDistrictLocationId',
+        'desired_locality': 'desiredLocalityId',
         'first_name': 'firstName',
         'last_name': 'lastName',
         'birth_date': 'birthDate',
@@ -1952,6 +1958,22 @@ class CustomerWriteSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
         write_only=True,
+    )
+    residenceLocalityId = serializers.PrimaryKeyRelatedField(
+        source='residence_locality', queryset=Location.objects.select_related('location_type', 'region'),
+        required=False, allow_null=True, write_only=True,
+    )
+    desiredRegionLocationId = serializers.PrimaryKeyRelatedField(
+        source='desired_region_location', queryset=Location.objects.select_related('location_type', 'region'),
+        required=False, allow_null=True, write_only=True,
+    )
+    desiredDistrictLocationId = serializers.PrimaryKeyRelatedField(
+        source='desired_district_location', queryset=Location.objects.select_related('location_type', 'region'),
+        required=False, allow_null=True, write_only=True,
+    )
+    desiredLocalityId = serializers.PrimaryKeyRelatedField(
+        source='desired_locality', queryset=Location.objects.select_related('location_type', 'region'),
+        required=False, allow_null=True, write_only=True,
     )
     initialPaymentAmount = serializers.DecimalField(
         source='initial_payment_amount',
@@ -2067,7 +2089,8 @@ class CustomerWriteSerializer(serializers.ModelSerializer):
             'age',
             'birthDate',
             'birthYear',
-            'residenceCityId',
+            'residenceCityId', 'residenceLocalityId', 'desiredRegionLocationId',
+            'desiredDistrictLocationId', 'desiredLocalityId',
             'initialPaymentAmount',
             'maximumMonthlyPayment',
             'preferentialProgramIds',
@@ -2118,11 +2141,12 @@ class CustomerWriteSerializer(serializers.ModelSerializer):
                 setattr(customer, field_name, value)
 
         try:
+            prepare_customer_locations(customer, attributes, self.instance)
             customer.clean()
         except DjangoValidationError as error:
             self._raise_customer_validation_error(error)
 
-        for field_name in self.NORMALIZED_FIELD_NAMES:
+        for field_name in self.NORMALIZED_FIELD_NAMES + CUSTOMER_LOCATION_FIELDS:
             attributes[field_name] = getattr(customer, field_name)
         return attributes
 
@@ -2165,7 +2189,7 @@ class CustomerListItemSerializer(serializers.ModelSerializer):
 
     fullName = serializers.CharField(source='full_name', read_only=True)
     residenceCity = serializers.CharField(
-        source='residence_city.name',
+        source='residence_display_name',
         allow_null=True,
         read_only=True,
     )
@@ -2200,6 +2224,25 @@ class CustomerListItemSerializer(serializers.ModelSerializer):
 
 class CustomerDetailSerializer(serializers.ModelSerializer):
     """Serialize an owner-scoped customer profile and financial capacity."""
+
+    def to_representation(self, instance):
+        """Expose new territories alongside preserved legacy snapshot identifiers."""
+        result = super().to_representation(instance)
+        for name, api_name in [
+            ('residence_locality', 'residenceLocality'),
+            ('desired_region_location', 'desiredRegionLocation'),
+            ('desired_district_location', 'desiredDistrictLocation'), ('desired_locality', 'desiredLocality'),
+        ]:
+            territory = getattr(instance, name)
+            result[api_name + 'Id'] = getattr(instance, name + '_id')
+            result[api_name] = territory.name if territory else None
+            if name in {'residence_locality', 'desired_locality'}:
+                result[api_name + 'Label'] = geographic_label(territory) if territory else None
+        result['residenceUsesCanonicalLocation'] = instance.residence_uses_canonical_location
+        result['purchaseUsesCanonicalLocations'] = instance.purchase_uses_canonical_locations
+        region = instance.get_desired_region()
+        result['desiredFinancialRegionId'] = region.pk if region else None
+        return result
 
     firstName = serializers.CharField(source='first_name', read_only=True)
     lastName = serializers.CharField(source='last_name', read_only=True)

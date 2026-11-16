@@ -6,6 +6,7 @@ import { chromium } from 'playwright-core'
 const expectedDatabaseName = 'react_browser_acceptance'
 const allowedWritePathPatterns = [
   /^\/property\/\d+\/update\/$/,
+  /^\/customers\/\d+\/update\/$/,
   /^\/api\/v1\/complexes\/\d+\/locations\/$/,
   /^\/api\/v1\/auth\/(?:login|logout)\/$/,
   /^\/api\/v1\/company-groups\/(?:\d+\/)?$/,

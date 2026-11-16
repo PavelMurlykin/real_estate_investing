@@ -34,6 +34,7 @@ from users.roles import can_view_all_private_records
 
 from .forms import CustomerForm
 from .models import Customer, CustomerCalculation, CustomerTrenchCalculation
+from .location_service import CUSTOMER_LOCATION_RELATED
 
 
 CUSTOMER_CALCULATION_SORT_FIELDS = {
@@ -432,6 +433,7 @@ class CustomerOwnedQuerysetMixin(LoginRequiredMixin):
                 'desired_city',
                 'desired_city__region',
                 'desired_district',
+                *CUSTOMER_LOCATION_RELATED,
             )
             .prefetch_related(
                 'desired_layouts',

@@ -38,7 +38,7 @@
                             <p><strong>Возраст:</strong> {{ customer.age|default:"-" }}</p>
                             <p><strong>Дата рождения:</strong> {{ customer.birth_date|date:"d.m.Y"|default:"-" }}</p>
                             <p><strong>Год рождения:</strong> {{ customer.birth_year|default:"-" }}</p>
-                            <p><strong>Город проживания:</strong> {{ customer.residence_city|default:"-" }}</p>
+                            <p><strong>Населённый пункт проживания:</strong> {{ customer.residence_display_name|default:"-" }}</p>
                         </div>
                     </div>
                 </div>
@@ -80,8 +80,9 @@
                     <div class="row">
                         <div class="col-md-6">
                             <p><strong>Цель покупки:</strong> {{ customer.get_purchase_goal_display|default:"-" }}</p>
-                            <p><strong>Желаемый город:</strong> {{ customer.desired_city|default:"-" }}</p>
-                            <p><strong>Желаемый район:</strong> {{ customer.desired_district|default:"-" }}</p>
+                            <p><strong>Регион покупки:</strong> {{ customer.purchase_region_display_name|default:"-" }}</p>
+                            <p><strong>Населённый пункт покупки:</strong> {{ customer.purchase_locality_display_name|default:"-" }}</p>
+                            <p><strong>Желаемый район:</strong> {{ customer.purchase_district_display_name|default:"-" }}</p>
                             <p><strong>Площадь от:</strong> {{ customer.area_min|default:"-" }}</p>
                             <p><strong>Площадь до:</strong> {{ customer.area_max|default:"-" }}</p>
                         </div>

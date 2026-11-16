@@ -1,9 +1,15 @@
+from copy import copy
+import json
+
 from django import forms
 
 from bank.models import MortgageProgram
-from location.models import City, District
+from location.models import Location
+from location.presentation import geographic_label
+from property.location_context import locality_filter
 from property.models import ApartmentLayout
 
+from .location_service import CUSTOMER_LOCATION_FIELDS, PURCHASE_FIELDS, RESIDENCE_FIELDS, prepare_customer_locations
 from .models import Customer
 
 
@@ -65,14 +71,15 @@ class CustomerForm(forms.ModelForm):
             'age',
             'birth_date',
             'birth_year',
-            'residence_city',
+            'residence_locality',
             'initial_payment_amount',
             'max_monthly_payment',
             'preferential_programs',
             'has_owned_property',
             'purchase_goal',
-            'desired_city',
-            'desired_district',
+            'desired_region_location',
+            'desired_locality',
+            'desired_district_location',
             'desired_layouts',
             'area_min',
             'area_max',
@@ -94,7 +101,7 @@ class CustomerForm(forms.ModelForm):
             'birth_year': forms.NumberInput(
                 attrs={'class': 'form-control', 'min': 1900}
             ),
-            'residence_city': forms.Select(attrs={'class': 'form-select'}),
+            'residence_locality': forms.Select(attrs={'class': 'form-select'}),
             'initial_payment_amount': forms.NumberInput(
                 attrs={'class': 'form-control', 'step': '0.01', 'min': 0}
             ),
@@ -105,8 +112,8 @@ class CustomerForm(forms.ModelForm):
                 attrs={'class': 'form-check-input'}
             ),
             'purchase_goal': forms.Select(attrs={'class': 'form-select'}),
-            'desired_city': forms.Select(attrs={'class': 'form-select'}),
-            'desired_district': forms.Select(attrs={'class': 'form-select'}),
+            'desired_locality': forms.Select(attrs={'class': 'form-select'}),
+            'desired_district_location': forms.Select(attrs={'class': 'form-select'}),
             'desired_layouts': forms.CheckboxSelectMultiple(
                 attrs={'class': 'form-check-input'}
             ),
@@ -168,8 +175,8 @@ class CustomerForm(forms.ModelForm):
         """
         super().__init__(*args, **kwargs)
 
-        self.fields['residence_city'].queryset = City.objects.order_by('name')
-        self.fields['desired_city'].queryset = City.objects.order_by('name')
+        self.previous_location_values = copy(self.instance)
+        self.configure_location_fields()
         self.fields[
             'desired_layouts'
         ].queryset = ApartmentLayout.objects.order_by('name')
@@ -189,31 +196,52 @@ class CustomerForm(forms.ModelForm):
                 )
             )
 
-        self.fields['residence_city'].empty_label = 'Не указан'
-        self.fields['desired_city'].empty_label = 'Не указан'
+        self.fields['residence_locality'].empty_label = 'Не указан'
+        self.fields['desired_locality'].empty_label = 'Не указан'
 
         purchase_goal_choices = list(self.fields['purchase_goal'].choices)
         if purchase_goal_choices:
             purchase_goal_choices[0] = ('', 'Не указана')
             self.fields['purchase_goal'].choices = purchase_goal_choices
 
-        self.fields['desired_district'].queryset = District.objects.order_by(
-            'name'
-        )
-        self.fields['desired_district'].empty_label = 'Не указан'
+    def configure_location_fields(self):
+        """Bound geographic choices while retaining current and inactive selections."""
+        locations = Location.objects.select_related('location_type', 'parent', 'region').order_by('name', 'pk')
+        for name, category, filters in [
+            ('residence_locality', 'locality', {}),
+            ('desired_region_location', 'region', {}),
+            ('desired_district_location', 'district', {'regionId': 'id_desired_region_location'}),
+            ('desired_locality', 'locality', {'regionId': 'id_desired_region_location', 'relatedToId': 'id_desired_district_location'}),
+        ]:
+            field = self.fields[name]
+            field.queryset = locations.filter(locality_filter()) if category == 'locality' else locations.filter(location_type__category=category)
+            if field.widget.__class__.__module__.startswith('django.contrib.admin'):
+                continue
+            value = self.data.get(name) if self.is_bound else self.initial.get(name)
+            choices = {row.pk: row for row in field.queryset[:50]}
+            if str(value or '').isdecimal() and len(str(value)) <= 19:
+                choices.update({row.pk: row for row in field.queryset.filter(pk=value)})
+            field.widget = forms.Select(attrs={
+                'class': 'form-select', 'data-remote-options': f'/api/v1/catalog-options/locations/?category={category}',
+                'data-remote-filters': json.dumps(filters),
+            })
+            field.widget.choices = [('', 'Не указано')] + [(row.pk, geographic_label(row)) for row in choices.values()]
 
-        selected_city_id = self.data.get('desired_city')
-        if (
-            not selected_city_id
-            and self.instance
-            and self.instance.desired_city_id
-        ):
-            selected_city_id = str(self.instance.desired_city_id)
-
-        if selected_city_id:
-            self.fields['desired_district'].queryset = District.objects.filter(
-                city_id=selected_city_id
-            ).order_by('name')
+    def clean(self):
+        """Prepare only changed territories and keep unresolved legacy preferences."""
+        data = super().clean()
+        candidate = copy(self.instance)
+        for name in RESIDENCE_FIELDS + PURCHASE_FIELDS:
+            setattr(candidate, name, data.get(name))
+        changed = set(self.changed_data).intersection(RESIDENCE_FIELDS + PURCHASE_FIELDS)
+        if not self.instance.pk:
+            changed = set(RESIDENCE_FIELDS + PURCHASE_FIELDS)
+        prepare_customer_locations(candidate, changed, self.previous_location_values)
+        for name in CUSTOMER_LOCATION_FIELDS:
+            setattr(self.instance, name, getattr(candidate, name))
+            if name in self.fields:
+                data[name] = getattr(candidate, name)
+        return data
 
     def clean_cardinal_directions(self):
         """Сохраняет выбранные стороны света в текстовое поле модели."""

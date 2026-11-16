@@ -15,6 +15,7 @@ from django.contrib.auth.forms import (
 from django.contrib.auth.tokens import default_token_generator
 from django.db import transaction
 from django.db.models import (
+    Case,
     CharField,
     Count,
     DecimalField,
@@ -27,6 +28,7 @@ from django.db.models import (
     Q,
     Subquery,
     Value,
+    When,
 )
 from django.db.models.deletion import ProtectedError
 from django.db.models.functions import Cast
@@ -70,6 +72,7 @@ from bank.models import (
     MortgageProgram,
     MortgageProgramRegionalCreditLimit,
 )
+from customer.location_service import CUSTOMER_LOCATION_RELATED
 from customer.models import (
     Customer,
     CustomerCalculation,
@@ -3572,7 +3575,7 @@ class CustomerListAPIView(ListCreateAPIView):
     ordering_fields = {
         'phone': ('phone',),
         'email': ('email',),
-        'city': ('residence_city__name',),
+        'city': ('residence_location_sort',),
         'createdAt': ('created_at',),
         'name': ('first_name', 'last_name'),
     }
@@ -3595,8 +3598,12 @@ class CustomerListAPIView(ListCreateAPIView):
         query_serializer.is_valid(raise_exception=True)
         filters = query_serializer.validated_data
         queryset = _customer_queryset(self.request.user).select_related(
-            'residence_city'
-        )
+            'residence_city', 'residence_locality',
+            'residence_locality__location_type', 'residence_locality__parent', 'residence_locality__region',
+        ).annotate(residence_location_sort=Case(
+            When(residence_uses_canonical_location=True, then=F('residence_locality__name')),
+            default=F('residence_city__name'), output_field=CharField(),
+        ))
         search = filters.get('q', '')
         if search:
             queryset = queryset.filter(
@@ -3638,6 +3645,7 @@ class CustomerDetailAPIView(RetrieveUpdateDestroyAPIView):
                 'residence_city',
                 'desired_city__region',
                 'desired_district',
+                *CUSTOMER_LOCATION_RELATED,
             )
             .prefetch_related(
                 'desired_layouts',
