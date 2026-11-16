@@ -1,3 +1,4 @@
+import { LocationFilters } from '@/features/locations/LocationFilters'
 import { useTableSearchParams } from '@/shared/lib/useTableSearchParams'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
@@ -18,12 +19,12 @@ export function PropertyFilters() {
   )
   return (
     <div className="field-grid table-filters">
-      {select('cities', 'Город', 'city', ['realEstateComplex', 'building'])}
+      <LocationFilters />
       {select('developers', 'Застройщик', 'developer', ['realEstateComplex', 'building'])}
       {select('complexes', 'Жилой комплекс', 'realEstateComplex', ['building'], {
-        cityId: parameters.get('city'), developerId: parameters.get('developer'),
+        regionLocationId: parameters.get('regionLocationId'), districtLocationId: parameters.get('districtLocationId'), localityId: parameters.get('localityId'), developerId: parameters.get('developer'),
       })}
-      {select('buildings', 'Корпус', 'building', [], { realEstateComplexId: parameters.get('realEstateComplex') })}
+      {select('buildings', 'Корпус', 'building', [], { realEstateComplexId: parameters.get('realEstateComplex'), regionLocationId: parameters.get('regionLocationId'), districtLocationId: parameters.get('districtLocationId'), localityId: parameters.get('localityId') })}
       {select('layouts', 'Планировка', 'layout')}
       <LiveFilterInput label="Номер квартиры" parameter="apartmentNumber" />
       <LiveFilterInput label="Площадь, м²" parameter="area" type="number" max={99999999.99} />

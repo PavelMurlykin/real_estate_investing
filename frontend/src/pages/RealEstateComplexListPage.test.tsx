@@ -112,12 +112,12 @@ describe('RealEstateComplexListPage', () => {
       queryClient: createDirectoryQueryClient(),
     })
 
-    await user.click(screen.getByRole('combobox', { name: 'Город' }))
-    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Город' })).not.toHaveAttribute('aria-busy', 'true'))
+    await user.click(screen.getByRole('combobox', { name: 'Населённый пункт' }))
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Населённый пункт' })).not.toHaveAttribute('aria-busy', 'true'))
     await user.click(screen.getByRole('option', { name: 'Санкт-Петербург' }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-      '/api/v1/complexes/?cityId=2',
+      '/api/v1/complexes/?localityId=2',
       expect.objectContaining({ credentials: 'same-origin' }),
     ))
   })

@@ -50,7 +50,9 @@ class GeographyQuerySerializer(CatalogOptionQuerySerializer):
         choices=['region', 'district', 'locality', 'area'], required=False,
     )
     ancestorId = serializers.IntegerField(min_value=1, required=False)
+    relatedToId = serializers.IntegerField(min_value=1, required=False)
     legacyRegionId = serializers.IntegerField(min_value=1, required=False)
+    legacyCityId = serializers.IntegerField(min_value=1, required=False)
 
 
 class GeographyAPIView(APIView):
@@ -65,6 +67,9 @@ class GeographyAPIView(APIView):
         parameters = serializer.validated_data
         base = geographic_queryset()
         queryset = base
+        if parameters.get('legacyCityId'):
+            queryset = queryset.filter(legacy_mappings__model_name='city',
+                                       legacy_mappings__legacy_id=parameters['legacyCityId'])
         if parameters.get('category') == 'locality':
             queryset = queryset.filter(
                 Q(location_type__category='locality') | Q(
@@ -82,6 +87,11 @@ class GeographyAPIView(APIView):
             ).values_list('location_id', flat=True))
         if parameters.get('ancestorId'):
             queryset = queryset.filter(ancestor_links__ancestor_id=parameters['ancestorId'])
+        if parameters.get('relatedToId'):
+            queryset = queryset.filter(
+                Q(ancestor_links__ancestor_id=parameters['relatedToId'])
+                | Q(descendant_links__descendant_id=parameters['relatedToId']),
+            ).distinct()
         if parameters['activeOnly']:
             queryset = queryset.filter(is_active=True)
         search = parameters.get('q', '').strip()
@@ -104,6 +114,7 @@ class ComplexLocationItemSerializer(serializers.Serializer):
     """Resolve only existing active geographic identities."""
     locationId = serializers.PrimaryKeyRelatedField(queryset=Location.objects.filter(is_active=True))
     isPrimary = serializers.BooleanField()
+    isHistorical = serializers.BooleanField(default=False)
 
 
 class BuildingLocationItemSerializer(serializers.Serializer):
@@ -123,6 +134,8 @@ class ComplexLocationsSerializer(serializers.Serializer):
             raise serializers.ValidationError('Укажите ровно одну основную территорию.')
         if len({row['locationId'].pk for row in rows}) != len(rows):
             raise serializers.ValidationError('Территории не должны повторяться.')
+        if any(row['isPrimary'] and row['isHistorical'] for row in rows):
+            raise serializers.ValidationError('Основная территория не может быть исторической.')
         return rows
 
 
@@ -133,7 +146,8 @@ def serialize_complex_locations(complex_object):
     ).order_by('-is_primary', 'pk'))
     primary = next((row for row in links if row.is_primary), None)
     return {
-        'locations': [{**serialize_location(row.location), 'isPrimary': row.is_primary} for row in links],
+        'locations': [{**serialize_location(row.location), 'isPrimary': row.is_primary,
+                       'isHistorical': row.is_historical} for row in links],
         'buildings': [{
             'id': row.pk, 'number': row.number,
             'locationId': row.complex_location.location_id if row.complex_location_id else None,
@@ -180,7 +194,7 @@ class ComplexLocationsAPIView(APIView):
         for row in rows:
             link, _ = RealEstateComplexLocation.objects.update_or_create(
                 real_estate_complex=complex_object, location=row['locationId'],
-                defaults={'is_primary': row['isPrimary']},
+                defaults={'is_primary': row['isPrimary'], 'is_historical': row['isHistorical']},
             )
             links[row['locationId'].pk] = link
         for identifier, target in updates.items():

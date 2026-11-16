@@ -415,10 +415,11 @@ export function MortgageCalculatorPage({
   const queryClient = useQueryClient()
   const optionsQuery = useQuery(mortgageOptionsQueryOptions)
   const sessionQuery = useQuery(sessionQueryOptions)
+  const [manualProperty, setManualProperty] = useState<ManualPropertyState | null>(null)
   const [propertySearch, setPropertySearch] = useState('')
   const debouncedPropertySearch = useDebouncedValue(propertySearch.trim())
   const propertyListQuery = useInfiniteQuery(
-    mortgagePropertyOptionsQueryOptions(debouncedPropertySearch),
+    mortgagePropertyOptionsQueryOptions(debouncedPropertySearch, manualProperty),
   )
   const propertyItems = useMemo(
     () => [...new Map(propertyListQuery.data?.pages.flatMap((page) => page.results)
@@ -470,7 +471,6 @@ export function MortgageCalculatorPage({
     enabled: selectedPropertyIdentifier !== null && !listedProperty,
   })
   const [propertyData, setPropertyData] = useState<PropertyDataState | null>(null)
-  const [manualProperty, setManualProperty] = useState<ManualPropertyState | null>(null)
   const [selectedPropertySummary, setSelectedPropertySummary] = useState<PropertyListItem | PropertyDetail | null>(null)
   const resolvedProperty = listedProperty ?? selectedPropertyQuery.data
   const selectedProperty = resolvedProperty ?? (

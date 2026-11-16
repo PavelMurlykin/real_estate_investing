@@ -9,6 +9,9 @@ export const capabilitiesSchema = z.object({
 })
 
 export const catalogOptionSchema = z.object({
+  regionLocationId: z.number().int().positive().nullable().optional(),
+  districtLocationId: z.number().int().positive().nullable().optional(),
+  localityId: z.number().int().positive().nullable().optional(),
   id: z.number().int().positive(),
   label: z.string(),
   regionId: z.number().int().positive().nullable().optional(),
@@ -109,6 +112,9 @@ export type PasswordResetConfirmRequest = {
 }
 
 export const propertyListItemSchema = z.object({
+  regionLocationId: z.number().int().positive().nullable().optional(),
+  districtLocationId: z.number().int().positive().nullable().optional(),
+  localityId: z.number().int().positive().nullable().optional(),
   id: z.number().int().positive(),
   developerId: z.number().int().positive().optional(),
   realEstateComplexId: z.number().int().positive().optional(),
@@ -779,6 +785,9 @@ export const customerMutationResponseSchema = z.object({
 })
 
 export const propertyDetailSchema = z.object({
+  regionLocationId: z.number().int().positive().nullable().optional(),
+  districtLocationId: z.number().int().positive().nullable().optional(),
+  localityId: z.number().int().positive().nullable().optional(),
   id: z.number().int().positive(),
   apartmentNumber: z.string(),
   regionId: z.number().int().positive().nullable(),

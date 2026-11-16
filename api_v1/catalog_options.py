@@ -1,4 +1,4 @@
-from django.db.models import Q
+from django.db.models import Q, prefetch_related_objects
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny
@@ -9,15 +9,17 @@ from bank.models import Bank, MortgageProgram
 from location.models import City, District, Metro, MetroLine, Region
 from location.models import LegacyLocationMapping, Location
 from property.location_context import geography_prefetch
-from django.db.models import prefetch_related_objects
+from property.location_filters import apply_location_scopes
 from property.models import (
     ApartmentDecoration, ApartmentLayout, CompanyGroup, Developer,
     RealEstateClass, RealEstateComplex, RealEstateComplexBuilding,
     RealEstateType, TransportAccessibilityType, WindowView,
 )
 
+from .location_parameters import LocationScopeQuerySerializer
 
-class CatalogOptionQuerySerializer(serializers.Serializer):
+
+class CatalogOptionQuerySerializer(LocationScopeQuerySerializer):
     """Validate bounded searches and selected catalog identifiers."""
 
     q = serializers.CharField(required=False, allow_blank=True, max_length=100)
@@ -87,13 +89,17 @@ def serialize_catalog_option(item, label_field):
     elif isinstance(item, (RealEstateComplex, RealEstateComplexBuilding)):
         complex_object = (item if isinstance(item, RealEstateComplex)
                           else item.real_estate_complex)
+        geography = item.geography
         option.update(
             realEstateComplexId=complex_object.pk,
             developerId=complex_object.developer_id,
             districtId=complex_object.district_id,
-            cityId=complex_object.geography.city_id,
-            regionId=complex_object.geography.region_id,
+            cityId=geography.city_id,
+            regionId=geography.region_id,
         )
+        option.update(regionLocationId=geography.region_location_id,
+                      districtLocationId=geography.district_location_id,
+                      localityId=geography.locality_id)
     return option
 
 
@@ -119,6 +125,10 @@ class CatalogOptionsAPIView(APIView):
         if related:
             base_queryset = base_queryset.select_related(*related)
         queryset = base_queryset
+        if model is RealEstateComplex:
+            queryset = apply_location_scopes(queryset, parameters)
+        elif model is RealEstateComplexBuilding:
+            queryset = apply_location_scopes(queryset, parameters, buildings=True, prefix='')
         if dictionary_key in {'metro', 'metro-lines'} and parameters.get('locationId'):
             location = Location.objects.filter(pk=parameters['locationId']).first()
             regions = LegacyLocationMapping.objects.filter(

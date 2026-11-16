@@ -288,6 +288,7 @@ class RealEstateComplexLocation(BaseModel):
     )
     location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='complex_links')
     is_primary = models.BooleanField(default=False)
+    is_historical = models.BooleanField(default=False, db_index=True)
 
     class Meta:
         """Allow multiple territories but only one primary display location."""
@@ -299,6 +300,10 @@ class RealEstateComplexLocation(BaseModel):
             models.UniqueConstraint(
                 fields=['real_estate_complex'], condition=models.Q(is_primary=True),
                 name='unique_primary_complex_location',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(is_primary=False) | models.Q(is_historical=False),
+                name='primary_complex_location_is_current',
             ),
         ]
 

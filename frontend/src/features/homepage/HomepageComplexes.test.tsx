@@ -22,7 +22,7 @@ function Address() { return <output aria-label="Адрес">{useLocation().searc
 
 function renderComplexes() {
   const queryClient = createTestQueryClient()
-  queryClient.setQueryData(['homepage-complexes', '7'], { pages: [firstPage], pageParams: [1] })
+  queryClient.setQueryData(['homepage-complexes', '7', ''], { pages: [firstPage], pageParams: [1] })
   return renderWithProviders(<><HomepageComplexes /><Address /></>, { queryClient, initialRoute: '/?city=7' })
 }
 
@@ -55,14 +55,14 @@ describe('HomepageComplexes', () => {
     renderComplexes()
     await user.click(screen.getByRole('button', { name: 'На карте' }))
     expect(await screen.findByRole('region', { name: 'Карта ЖК: Санкт-Петербург' })).toBeInTheDocument()
-    await user.click(screen.getByRole('combobox', { name: 'Город на главной' }))
-    await user.type(screen.getByRole('combobox', { name: 'Город на главной' }), 'Москва')
-    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Город на главной' })).not.toHaveAttribute('aria-busy', 'true'))
+    await user.click(screen.getByRole('combobox', { name: 'Населённый пункт' }))
+    await user.type(screen.getByRole('combobox', { name: 'Населённый пункт' }), 'Москва')
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Населённый пункт' })).not.toHaveAttribute('aria-busy', 'true'))
     await user.click(await screen.findByRole('option', { name: 'Москва' }))
     expect(await screen.findByRole('heading', { name: 'ЖК Москва' })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('region', { name: 'Карта ЖК: Москва' })).toBeInTheDocument())
     const parameters = new URLSearchParams(screen.getByLabelText('Адрес').textContent ?? '')
-    expect(parameters.get('city')).toBe('8')
+    expect(parameters.get('localityId')).toBe('8')
     expect(parameters.get('view')).toBe('map')
   })
 })

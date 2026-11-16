@@ -14,6 +14,9 @@ export function PropertyFields({ value, onChange, errors }: {
   const identifier = useId()
   const update = (changes: Partial<ManualPropertyState>) => onChange({ ...value, ...changes })
   const context = (option?: CatalogOption) => option ? {
+    regionLocationId: value.regionLocationId || String(option.regionLocationId ?? ''),
+    districtLocationId: value.districtLocationId || String(option.districtLocationId ?? ''),
+    localityId: value.localityId || String(option.localityId ?? ''),
     regionId: option.regionId === undefined ? value.regionId : String(option.regionId ?? ''),
     cityId: option.cityId === undefined ? value.cityId : String(option.cityId ?? ''),
     districtId: option.districtId === undefined ? value.districtId : String(option.districtId ?? ''),
@@ -21,25 +24,26 @@ export function PropertyFields({ value, onChange, errors }: {
   } : {}
   return (
     <div className="field-grid property-data-grid" aria-label="Данные объекта недвижимости">
-      <RemoteSelect searchable dictionary="regions" label="Регион" value={value.regionId}
-        onChange={(regionId) => update({ regionId, cityId: '', districtId: '', realEstateComplexId: '', buildingId: '' })} />
-      <RemoteSelect searchable dictionary="cities" label="Город" value={value.cityId}
-        filters={{ regionId: value.regionId }} error={errors['manualProperty.cityId']}
-        onChange={(cityId, option) => update({ cityId, regionId: String(option?.regionId ?? value.regionId), districtId: '', realEstateComplexId: '', buildingId: '' })} />
-      <RemoteSelect searchable dictionary="districts" label="Район" value={value.districtId}
-        filters={{ cityId: value.cityId }} disabled={!value.cityId} error={errors['manualProperty.districtId']}
-        onChange={(districtId) => update({ districtId, realEstateComplexId: '', buildingId: '' })} />
+      <RemoteSelect searchable dictionary="locations" label="Регион" value={value.regionLocationId ?? ''}
+        filters={{ category: 'region' }}
+        onChange={(regionLocationId) => update({ regionLocationId, regionId: '', districtLocationId: '', localityId: '', cityId: '', districtId: '', realEstateComplexId: '', buildingId: '' })} />
+      <RemoteSelect searchable dictionary="locations" label="Населённый пункт" value={value.localityId ?? ''}
+        filters={{ category: 'locality', regionId: value.regionLocationId }}
+        onChange={(localityId) => update({ localityId, regionId: '', districtLocationId: '', cityId: '', districtId: '', realEstateComplexId: '', buildingId: '' })} />
+      <RemoteSelect searchable dictionary="locations" label="Административный район" value={value.districtLocationId ?? ''}
+        filters={{ category: 'district', regionId: value.regionLocationId, relatedToId: value.localityId }}
+        onChange={(districtLocationId) => update({ districtLocationId, cityId: '', districtId: '', realEstateComplexId: '', buildingId: '' })} />
       <RemoteSelect searchable dictionary="developers" label="Застройщик" value={value.developerId}
         error={errors['manualProperty.developerId']}
         onChange={(developerId) => update({ developerId, realEstateComplexId: '', buildingId: '' })} />
       <RemoteSelect searchable dictionary="complexes" label="Жилой комплекс" value={value.realEstateComplexId}
-        filters={{ cityId: value.cityId, districtId: value.districtId, developerId: value.developerId }}
+        filters={{ regionLocationId: value.regionLocationId, districtLocationId: value.districtLocationId, localityId: value.localityId, developerId: value.developerId }}
         error={errors['manualProperty.realEstateComplexId']}
         onChange={(realEstateComplexId, option) => update({ ...context(option), realEstateComplexId, buildingId: '' })} />
       <RemoteSelect searchable dictionary="buildings" label="Корпус" value={value.buildingId}
-        filters={{ realEstateComplexId: value.realEstateComplexId }} disabled={!value.realEstateComplexId}
+        filters={{ realEstateComplexId: value.realEstateComplexId, regionLocationId: value.regionLocationId, districtLocationId: value.districtLocationId, localityId: value.localityId }} disabled={!value.realEstateComplexId}
         error={errors['manualProperty.buildingId']}
-        onChange={(buildingId) => update({ buildingId })} />
+        onChange={(buildingId, option) => update({ ...context(option), buildingId })} />
       {([['apartmentNumber', 'Номер квартиры', 'text'], ['area', 'Площадь, м²', 'number'], ['floor', 'Этаж', 'number']] as const).map(([field, label, type]) => (
         type === 'number' ? <NumberField key={field} label={label} value={value[field]}
           min={field === 'area' ? '0.01' : '0'}

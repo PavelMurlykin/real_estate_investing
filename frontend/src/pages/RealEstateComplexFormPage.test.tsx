@@ -292,8 +292,9 @@ describe('RealEstateComplexFormPage', () => {
     await user.click(screen.getByRole('radio', { name: 'Главное фото 2' }))
     await user.click(screen.getByRole('button', { name: 'Создать ЖК' }))
     expect(await screen.findByRole('heading', { name: 'ЖК сохранён' })).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    const body = fetchMock.mock.calls[0][1].body as FormData
+    const writes = fetchMock.mock.calls.filter(([, options]) => options?.method === 'POST')
+    expect(writes).toHaveLength(1)
+    const body = writes[0][1].body as FormData
     expect(body.getAll('photos')).toEqual(files)
     expect(body.get('primaryPhotoIndex')).toBe('1')
     expect(URL.revokeObjectURL).toHaveBeenCalledTimes(2)

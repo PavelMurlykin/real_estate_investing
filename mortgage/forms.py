@@ -546,7 +546,7 @@ class MortgageForm(forms.Form):
             for field_name in MANUAL_PROPERTY_FIELD_NAMES:
                 complex_object = cleaned_data.get('OBJECT_COMPLEX')
                 if (field_name in {'OBJECT_CITY', 'OBJECT_DISTRICT'}
-                        and complex_object and complex_object.district_id is None
+                        and complex_object
                         and complex_object.primary_location is not None):
                     continue
                 if cleaned_data.get(field_name):

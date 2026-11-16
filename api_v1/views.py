@@ -1,3 +1,4 @@
+from property.location_filters import apply_location_scopes, geographic_search_ids
 from property.location_context import building_geography_prefetch, geography_prefetch
 from django.conf import settings
 from django.contrib.auth import (
@@ -2938,18 +2939,14 @@ class RealEstateComplexListCreateAPIView(ListCreateAPIView):
         filters = query_serializer.validated_data
         queryset = _real_estate_complex_list_queryset()
 
-        if filters.get('locationId'):
-            queryset = queryset.filter(
-                location_links__location__ancestor_links__ancestor_id=filters['locationId'],
-            ).distinct()
+        queryset = apply_location_scopes(queryset, filters)
 
         search = filters.get('search', '')
         if search:
             queryset = queryset.filter(
                 Q(name__icontains=search)
                 | Q(developer__name__icontains=search)
-                | Q(district__city__name__icontains=search)
-                | Q(location_links__is_primary=True, location_links__location__name__icontains=search)
+                | Q(pk__in=geographic_search_ids(search))
             )
         filter_fields = {
             'developerId': 'developer_id',
@@ -3250,21 +3247,17 @@ class PropertyListAPIView(ListCreateAPIView):
             'decoration',
         )
 
+        queryset = apply_location_scopes(queryset, filters, buildings=True)
+
         search = filters.get('search', '')
         if search:
             queryset = queryset.filter(
                 Q(apartment_number__icontains=search)
                 | Q(building__number__icontains=search)
                 | Q(building__real_estate_complex__name__icontains=search)
-                | Q(building__real_estate_complex__location_links__is_primary=True,
-                    building__real_estate_complex__location_links__location__name__icontains=search)
+                | Q(pk__in=geographic_search_ids(search, properties=True))
                 | Q(
                     building__real_estate_complex__developer__name__icontains=(
-                        search
-                    )
-                )
-                | Q(
-                    building__real_estate_complex__district__city__name__icontains=(
                         search
                     )
                 )

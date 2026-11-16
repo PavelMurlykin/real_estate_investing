@@ -45,6 +45,7 @@ const propertyList = {
   results: [{
     id: 3,
     regionId: 1, cityId: 1, districtId: 1, developerId: 1,
+    regionLocationId: 1, districtLocationId: 1, localityId: 1,
     realEstateComplexId: 1, buildingId: 1, layoutId: 1, decorationId: 1,
     district: 'Центральный',
     city: 'Казань',
@@ -402,7 +403,7 @@ describe('MortgageCalculatorPage', () => {
     const { container } = renderCalculator({ session: authenticatedSession, initialCalculationType: mode })
     expect(container.querySelectorAll('form')).toHaveLength(1)
     expect(screen.queryByRole('button', { name: 'Заполнить объект вручную' })).not.toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Город' })).toBeVisible()
+    expect(screen.getByRole('combobox', { name: 'Населённый пункт' })).toBeVisible()
     expect(screen.getByLabelText('Номер квартиры')).not.toHaveAttribute('readonly')
     await user.type(screen.getByLabelText('Номер квартиры'), 'PARTIAL-42')
     await user.click(screen.getByRole('button', {
@@ -438,7 +439,7 @@ describe('MortgageCalculatorPage', () => {
     const payload = JSON.parse(saved?.[1]?.body as string)
     expect(payload).not.toHaveProperty('propertyId')
     expect(payload.parameters.manualProperty).toMatchObject({
-      cityId: 1, buildingId: 1, apartmentNumber: 'NEW-42', area: '52.40',
+      cityId: null, buildingId: 1, apartmentNumber: 'NEW-42', area: '52.40',
     })
   })
 
@@ -614,7 +615,7 @@ describe('MortgageCalculatorPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Сохранить расчёт' }))
     const calculation = fetchMock.mock.calls.find(([path]) => path === '/api/v1/mortgage/calculate/')
     expect(JSON.parse(calculation?.[1].body as string).manualProperty).toEqual({
-      cityId: 1, districtId: 1, developerId: 1, realEstateComplexId: 1, buildingId: 1,
+      cityId: null, districtId: null, developerId: 1, realEstateComplexId: 1, buildingId: 1,
       apartmentNumber: 'NEW-42', area: '51.25', floor: 9, layoutId: 1, decorationId: 1,
     })
     const saved = fetchMock.mock.calls.find(([path]) => path === '/api/v1/mortgage/calculations/')
@@ -681,7 +682,7 @@ describe('MortgageCalculatorPage', () => {
     } else {
       expect(screen.getAllByLabelText('Годовая ставка, %').every((input) => (input as HTMLInputElement).value === '3')).toBe(true)
     }
-    expect(screen.getByLabelText('Район')).toHaveValue('Центральный')
+    expect(screen.getByLabelText('Административный район')).toHaveValue('Центральный')
     const fetchMock = vi.fn().mockImplementation(() => new Promise(() => {}))
     vi.stubGlobal('fetch', fetchMock)
     await user.type(screen.getByRole('combobox', { name: 'Объект недвижимости' }), 'Другой ЖК')
@@ -831,7 +832,7 @@ describe('MortgageCalculatorPage', () => {
     await user.click(screen.getByRole('combobox', { name: 'Объект недвижимости' }))
     await user.click(await screen.findByRole('option', { name: /кв\. 42$/ }))
 
-    expect(screen.getByLabelText('Город')).toHaveValue('Казань')
+    expect(screen.getByLabelText('Населённый пункт')).toHaveValue('Казань')
     expect(screen.getByLabelText('Базовая стоимость, ₽')).toHaveValue(5000000)
 
     const adjustmentPercent = screen.getByLabelText('Скидка, %')
@@ -858,7 +859,7 @@ describe('MortgageCalculatorPage', () => {
     await user.click(screen.getByLabelText('Траншевая ипотека'))
     expect(screen.getByLabelText('Количество траншей')).toBeInTheDocument()
     expect(screen.getByLabelText('Базовая стоимость, ₽')).toHaveValue(5000000)
-    expect(screen.getByLabelText('Город')).toHaveValue('Казань')
+    expect(screen.getByLabelText('Населённый пункт')).toHaveValue('Казань')
   })
 
   it('loads a private saved scenario as a new React calculation sample', async () => {

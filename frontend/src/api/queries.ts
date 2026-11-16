@@ -199,9 +199,15 @@ export const overviewQueryOptions = queryOptions({
   staleTime: 60_000,
 })
 
-export function fetchHomepageComplexes(city: string, page: number, signal?: AbortSignal) {
+export function fetchHomepageComplexes(city: string, page: number, signal?: AbortSignal, scopes?: URLSearchParams) {
   const parameters = new URLSearchParams({ page: String(page), pageSize: '50' })
   if (city) parameters.set('city', city)
+  if (scopes) {
+    if (!city || ['regionLocationId', 'districtLocationId', 'localityId'].some((field) => scopes.has(field))) parameters.set('allLocations', 'true')
+    for (const field of ['regionLocationId', 'districtLocationId', 'localityId']) {
+      const value = scopes.get(field); if (value) parameters.set(field, value)
+    }
+  }
   return requestJson(`/api/v1/homepage/complexes/?${parameters}`, homepageComplexListSchema, { signal })
 }
 
@@ -840,6 +846,7 @@ export function realEstateComplexListQueryOptions(
 ) {
   const normalizedParameters = new URLSearchParams()
   for (const fieldName of [
+    'regionLocationId', 'districtLocationId', 'localityId',
     'locationId',
     'search',
     'developerId',
@@ -1263,12 +1270,18 @@ export function propertyListQueryOptions(searchParameters: URLSearchParams) {
   })
 }
 
-export function mortgagePropertyOptionsQueryOptions(search: string) {
+export function mortgagePropertyOptionsQueryOptions(search: string, scopes?: { regionLocationId?: string, districtLocationId?: string, localityId?: string } | null) {
+  const scopeParameters = new URLSearchParams()
+  for (const field of ['regionLocationId', 'districtLocationId', 'localityId'] as const) {
+    if (scopes?.[field]) scopeParameters.set(field, scopes[field])
+  }
+  const scopeKey = scopeParameters.toString()
   return infiniteQueryOptions({
-    queryKey: ['properties', 'mortgage-options', search],
+    queryKey: scopeKey ? ['properties', 'mortgage-options', search, scopeKey] : ['properties', 'mortgage-options', search],
     initialPageParam: 1,
     queryFn: ({ pageParam, signal }) => {
       const parameters = new URLSearchParams({ pageSize: '100', ordering: 'realEstateComplex' })
+      scopeParameters.forEach((value, field) => parameters.set(field, value))
       if (search) parameters.set('search', search)
       if (pageParam > 1) parameters.set('page', String(pageParam))
       return requestJson(`/api/v1/properties/?${parameters}`, propertyListResponseSchema, { signal })

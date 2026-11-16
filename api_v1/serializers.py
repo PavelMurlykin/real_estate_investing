@@ -53,6 +53,7 @@ from property.models import (
 from property.validators import validate_property_image_upload
 
 from .customer_service import build_customer_financial_capacity
+from .location_parameters import LocationScopeQuerySerializer
 
 
 class LoginRequestSerializer(serializers.Serializer):
@@ -2409,7 +2410,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         )
 
 
-class RealEstateComplexListQuerySerializer(serializers.Serializer):
+class RealEstateComplexListQuerySerializer(LocationScopeQuerySerializer):
     """Validate filters, sorting, and pagination for residential complexes."""
 
     locationId = serializers.IntegerField(required=False, min_value=1)
@@ -2488,7 +2489,12 @@ class GeographicModelSerializer(serializers.ModelSerializer):
             prefetch_related_objects([complex_object], geography_prefetch())
         if isinstance(instance, Property):
             prefetch_related_objects([instance.building], building_geography_prefetch())
-        return super().to_representation(instance)
+        result = super().to_representation(instance)
+        geography = instance.geography if isinstance(instance, RealEstateComplex) else instance.building.geography
+        result.update(regionLocationId=geography.region_location_id,
+                      districtLocationId=geography.district_location_id,
+                      localityId=geography.locality_id)
+        return result
 
 
 class RealEstateComplexListItemSerializer(GeographicModelSerializer):
@@ -3386,7 +3392,7 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
             storage.delete(photo_name)
 
 
-class PropertyListQuerySerializer(serializers.Serializer):
+class PropertyListQuerySerializer(LocationScopeQuerySerializer):
     """Validate filters, sorting, and pagination for the property list."""
 
     ORDERING_CHOICES = (

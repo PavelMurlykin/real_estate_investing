@@ -1,3 +1,4 @@
+import { LocationFilters } from '@/features/locations/LocationFilters'
 import { Notice } from '@/shared/ui/Notice'
 import { restoreFocus } from '@/shared/lib/restoreFocus'
 import { ModalDialog } from '@/shared/ui/ModalDialog'
@@ -119,7 +120,7 @@ export function RealEstateComplexListPage() {
       >
         <form className="search-form" role="search" onSubmit={(event) => event.preventDefault()}>
           <div className="live-search-control">
-            <LiveFilterInput label="Поиск" id="complex-search" parameter="search" placeholder="ЖК, застройщик или город" />
+            <LiveFilterInput label="Поиск" id="complex-search" parameter="search" placeholder="ЖК, застройщик или населённый пункт" />
           </div>
         </form>
         <RemoteSelect filter dictionary="developers" label="Застройщик" value={searchParameters.get('developerId') ?? ''}
@@ -128,14 +129,7 @@ export function RealEstateComplexListPage() {
               developerId: value || null,
               page: null,
             })} />
-        <RemoteSelect filter dictionary="cities" label="Город" value={searchParameters.get('cityId') ?? ''}
-            initialOptions={options?.cities.map((option) => ({ id: option.id, label: option.name }))}
-            onChange={(value) => updateParameters({
-              cityId: value || null,
-              page: null,
-            })} />
-        <RemoteSelect filter dictionary="locations" label="Точная территория" value={searchParameters.get('locationId') ?? ''}
-            onChange={(value) => updateParameters({ locationId: value || null, page: null })} />
+        <LocationFilters />
         <RemoteSelect filter dictionary="real-estate-classes" label="Класс" value={searchParameters.get('realEstateClassId') ?? ''}
             initialOptions={options?.realEstateClasses.map((option) => ({ id: option.id, label: option.name }))}
             onChange={(value) => updateParameters({

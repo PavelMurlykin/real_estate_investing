@@ -10,7 +10,7 @@ export const geographicPageSchema = z.object({
   results: z.array(geographicLocationSchema), totalCount: z.number(), nextPage: z.number().nullable(),
 })
 export const complexLocationsSchema = z.object({
-  locations: z.array(geographicLocationSchema.extend({ isPrimary: z.boolean() })),
+  locations: z.array(geographicLocationSchema.extend({ isPrimary: z.boolean(), isHistorical: z.boolean().optional() })),
   buildings: z.array(z.object({
     id: z.number(), number: z.string(), locationId: z.number().nullable(), effectiveLocationId: z.number().nullable(),
   })),

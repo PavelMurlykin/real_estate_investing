@@ -30,6 +30,7 @@ test('creates and edits a complex by locality without a legacy district', {
   await page.getByRole('link', { name: 'Редактировать', exact: true }).click()
   const locality = page.getByRole('combobox', { name: 'Населённый пункт *', exact: true })
   await locality.waitFor()
+  await page.waitForFunction((input) => input.value.includes('Пушкин'), await locality.elementHandle())
   assert.match(await locality.inputValue(), /Пушкин/)
   await locality.fill('Стрельна')
   await page.getByRole('option', { name: /п\. Стрельна · Петродворцовый район/ }).click()

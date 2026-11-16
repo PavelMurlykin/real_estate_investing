@@ -191,6 +191,9 @@ export function RealEstateComplexFormPage() {
       })
       await queryClient.invalidateQueries({ queryKey: ['overview'] })
       await queryClient.invalidateQueries({ queryKey: ['homepage-complexes'] })
+      await Promise.all([
+        ['properties'], ['property'], ['catalog-options'], ['complex-locations', savedComplex.id],
+      ].map((queryKey) => queryClient.invalidateQueries({ queryKey })))
       queryClient.setQueryData(
         ['real-estate-complex', savedComplex.id],
         savedComplex,

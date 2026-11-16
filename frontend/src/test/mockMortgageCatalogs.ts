@@ -14,8 +14,15 @@ export function mockMortgageCatalogs(properties: PropertyListItem[]) {
         regionId: property.regionId ?? 1, cityId: property.cityId ?? 1,
         districtId: property.districtId ?? 1, developerId: property.developerId ?? 1,
         realEstateComplexId: property.realEstateComplexId ?? 1,
+        regionLocationId: property.regionLocationId ?? property.regionId ?? 1,
+        districtLocationId: property.districtLocationId ?? property.districtId ?? 1,
+        localityId: property.localityId ?? property.cityId ?? 1,
       }
       const entries: Record<string, CatalogOption> = {
+        locations: { ...metadata,
+          id: url.searchParams.get('category') === 'region' ? metadata.regionLocationId : url.searchParams.get('category') === 'district' ? metadata.districtLocationId : metadata.localityId,
+          label: url.searchParams.get('category') === 'region' ? `Регион ${metadata.regionLocationId}` : url.searchParams.get('category') === 'district' ? property.district ?? 'Центральный' : property.city,
+        },
         regions: { ...metadata, id: metadata.regionId, label: `Регион ${metadata.regionId}` },
         cities: { ...metadata, id: metadata.cityId, label: property.city },
         districts: { ...metadata, id: metadata.districtId, label: property.district ?? 'Центральный' },

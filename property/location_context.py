@@ -48,6 +48,9 @@ class LocationContext:
     region: str = ''
     city: str = ''
     district: str = ''
+    region_location_id: int | None = None
+    district_location_id: int | None = None
+    locality_id: int | None = None
 
 
 def primary_location(complex_object):
@@ -67,10 +70,19 @@ def location_context(complex_object, explicit_location=None):
         location is None or location.location_type.category == 'district'
     ):
         district = complex_object.district
+        ancestors = (list(location.ancestor_links.select_related('ancestor__location_type').order_by('depth'))
+                     if location and 'ancestor_links' not in getattr(location, '_prefetched_objects_cache', {})
+                     else list(location.ancestor_links.all()) if location else [])
+        locality = next((path.ancestor for path in ancestors
+                         if path.ancestor.location_type.category == 'locality'
+                         or path.ancestor.location_type.abbreviation in {'г', 'г.', 'г.ф.з.'}), None)
         return LocationContext(
             region_id=district.city.region_id, city_id=district.city_id,
             region=district.city.region.name, city=district.city.name,
             district=district.name,
+            region_location_id=location.region_id if location else None,
+            district_location_id=location.pk if location else None,
+            locality_id=locality.pk if locality else None,
         )
     if location is None:
         return LocationContext()
@@ -101,6 +113,9 @@ def location_context(complex_object, explicit_location=None):
         city_id=legacy_identifier(locality, 'city'),
         region=region.name if region else '', city=locality.name if locality else '',
         district=district.name if district else '',
+        region_location_id=region.pk if region else None,
+        district_location_id=district.pk if district else None,
+        locality_id=locality.pk if locality else None,
     )
 
 
@@ -117,9 +132,11 @@ def set_primary_location(complex_object, location):
     from .models import RealEstateComplex, RealEstateComplexLocation
 
     RealEstateComplex.objects.select_for_update().get(pk=complex_object.pk)
-    complex_object.location_links.filter(is_primary=True).update(is_primary=False)
+    complex_object.location_links.filter(is_primary=True).exclude(location=location).update(
+        is_primary=False, is_historical=True,
+    )
     RealEstateComplexLocation.objects.update_or_create(
         real_estate_complex=complex_object, location=location,
-        defaults={'is_primary': True},
+        defaults={'is_primary': True, 'is_historical': False},
     )
     clear_geography_cache(complex_object)

@@ -4,17 +4,22 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import { fetchHomepageComplexes } from '@/api/queries'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
-import { RemoteSelect } from '@/shared/ui/RemoteSelect'
+import { LocationFilters } from '@/features/locations/LocationFilters'
 
 const ComplexMap = lazy(() => import('./ComplexMap'))
 
 export function HomepageComplexes() {
   const [parameters, setParameters] = useSearchParams()
   const city = parameters.get('city') ?? ''
+  const scopeParameters = new URLSearchParams()
+  for (const name of ['regionLocationId', 'districtLocationId', 'localityId']) {
+    const value = parameters.get(name); if (value) scopeParameters.set(name, value)
+  }
+  const scopeKey = scopeParameters.toString()
   const view = parameters.get('view') === 'map' ? 'map' : 'list'
   const complexesQuery = useInfiniteQuery({
-    queryKey: ['homepage-complexes', city], initialPageParam: 1,
-    queryFn: ({ pageParam, signal }) => fetchHomepageComplexes(city, pageParam, signal),
+    queryKey: ['homepage-complexes', city, scopeKey], initialPageParam: 1,
+    queryFn: ({ pageParam, signal }) => fetchHomepageComplexes(city, pageParam, signal, scopeParameters),
     getNextPageParam: (last) => last.page < last.totalPages ? last.page + 1 : undefined,
     placeholderData: (previous) => previous,
     staleTime: 60_000,
@@ -32,26 +37,23 @@ export function HomepageComplexes() {
   return (
     <section className="homepage-complexes" aria-labelledby="homepage-complexes-title">
       <div className="section-heading">
-        <div><span className="eyebrow">Подбор недвижимости</span><h2 id="homepage-complexes-title">Жилые комплексы по городам</h2></div>
+        <div><span className="eyebrow">Подбор недвижимости</span><h2 id="homepage-complexes-title">Жилые комплексы по территориям</h2></div>
       </div>
       <div className="filter-panel">
-        <RemoteSelect filter dictionary="cities" label="Город на главной"
-          value={complexesQuery.isPlaceholderData ? city : selectedCity ? String(selectedCity.id) : ''}
-          initialOptions={selectedCity ? [{ id: selectedCity.id, label: selectedCity.name }] : []}
-          truncated filters={{ activeOnly: 'true' }} onChange={(value) => update('city', value)} />
+        <LocationFilters />
         <div className="homepage-view-switcher" role="group" aria-label="Режим отображения ЖК">
           <button type="button" className={`button button--${view === 'list' ? 'primary' : 'secondary'}`} aria-pressed={view === 'list'} onClick={() => update('view', 'list')}>Списком</button>
           <button type="button" className={`button button--${view === 'map' ? 'primary' : 'secondary'}`} aria-pressed={view === 'map'} onClick={() => update('view', 'map')}>На карте</button>
         </div>
       </div>
-      {complexesQuery.isLoading || complexesQuery.isPlaceholderData ? <PageLoadingState compact title="Загружаем ЖК выбранного города…" /> : null}
+      {complexesQuery.isLoading || complexesQuery.isPlaceholderData ? <PageLoadingState compact title="Загружаем ЖК выбранной территории…" /> : null}
       {complexesQuery.isError ? <ErrorState title="Не удалось загрузить жилые комплексы"
         onRetry={() => data ? complexesQuery.fetchNextPage() : complexesQuery.refetch()} /> : null}
       {data && !complexesQuery.isPlaceholderData ? <>
-        <div className="results-heading" aria-live="polite"><p>ЖК в городе {selectedCity?.name ?? '—'}: <strong>{data.totalCount}</strong>. Показано: {complexes.length}.</p></div>
-        {view === 'map' && complexes.length && selectedCity ? (
+        <div className="results-heading" aria-live="polite"><p>ЖК: {selectedCity?.name ?? 'выбранные территории России'}: <strong>{data.totalCount}</strong>. Показано: {complexes.length}.</p></div>
+        {view === 'map' && complexes.length ? (
           <Suspense fallback={<PageLoadingState compact title="Загружаем карту…" />}>
-            <ComplexMap complexes={complexes} city={selectedCity.name} />
+            <ComplexMap complexes={complexes} city={selectedCity?.name ?? 'Россия'} />
           </Suspense>
         ) : null}
         {complexes.length ? <div className="homepage-complex-grid">
@@ -76,7 +78,7 @@ export function HomepageComplexes() {
               </div>
             </article>
           ))}
-        </div> : <EmptyState title="В выбранном городе пока нет ЖК" description="Выберите другой активный город или вернитесь позже." />}
+        </div> : <EmptyState title="В выбранной территории пока нет ЖК" description="Измените фильтры региона, района или населённого пункта." />}
         {complexesQuery.hasNextPage ? <button type="button" className="button button--secondary" disabled={complexesQuery.isFetching} onClick={() => void complexesQuery.fetchNextPage()}>{complexesQuery.isFetchingNextPage ? 'Загружаем…' : 'Показать ещё ЖК'}</button> : null}
       </> : null}
     </section>

@@ -6,6 +6,8 @@ from rest_framework.permissions import AllowAny
 
 from location.models import City
 from property.models import RealEstateComplex
+from property.location_filters import apply_location_scopes, selected_scopes
+from .location_parameters import LocationScopeQuerySerializer
 
 from .pagination import ApplicationPageNumberPagination
 from .serializers import (
@@ -13,12 +15,13 @@ from .serializers import (
 )
 
 
-class HomepageQuerySerializer(serializers.Serializer):
+class HomepageQuerySerializer(LocationScopeQuerySerializer):
     """Validate bounded homepage requests while retaining legacy city fallback."""
 
     city = serializers.CharField(required=False, allow_blank=True, max_length=20)
     page = serializers.IntegerField(required=False, min_value=1)
     pageSize = serializers.IntegerField(required=False, min_value=1, max_value=100)
+    allLocations = serializers.BooleanField(default=False)
 
 
 class HomepageComplexSerializer(RealEstateComplexListItemSerializer):
@@ -67,6 +70,13 @@ class HomepageComplexListAPIView(ListAPIView):
         """Apply the legacy active-city and active-district rules before paging."""
         serializer = HomepageQuerySerializer(data=self.request.query_params)
         serializer.is_valid(raise_exception=True)
+        self.location_scopes = serializer.validated_data
+        if selected_scopes(self.location_scopes) or self.location_scopes['allLocations']:
+            self.selected_city = None
+            return apply_location_scopes(RealEstateComplex.objects.filter(is_active=True).select_related(
+                'developer__company_group', 'district__city__region',
+                'real_estate_class', 'real_estate_type',
+            ).annotate(building_count=Count('realestatecomplexbuilding', distinct=True)), self.location_scopes).order_by('name', 'pk')
         identifier = serializer.validated_data.get('city', '')
         cities = City.objects.filter(is_active=True).order_by('name', 'pk')
         selected = None

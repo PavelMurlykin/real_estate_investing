@@ -20,6 +20,7 @@ const properties = [1, 2].map((id) => ({
 }))
 
 const initial: ManualPropertyState = {
+  regionLocationId: '1', districtLocationId: '1', localityId: '1',
   regionId: '1', cityId: '1', districtId: '1', developerId: '1',
   realEstateComplexId: '1', buildingId: '1', apartmentNumber: '42',
   area: '50.00', floor: '5', layoutId: '1', decorationId: '1',
@@ -62,15 +63,15 @@ describe('PropertyFields', () => {
     })
     expect(screen.getAllByRole('combobox')).toHaveLength(8)
     expect(container.querySelectorAll('select, input[type="search"], form')).toHaveLength(0)
-    expect(screen.getByRole('combobox', { name: 'Район' })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: 'Административный район' })).toBeEnabled()
     expect(screen.getByRole('combobox', { name: 'Корпус' })).toBeDisabled()
     expect(screen.getByLabelText('Площадь, м²')).toHaveAccessibleDescription('Укажите положительную площадь.')
     expect(screen.getByLabelText('Площадь, м²')).toHaveAttribute('aria-invalid', 'true')
   })
 
   it.each([
-    ['Регион', 'Регион 2', { regionId: '2', cityId: '', districtId: '', realEstateComplexId: '', buildingId: '' }],
-    ['Город', 'Город 2', { regionId: '2', cityId: '2', districtId: '', realEstateComplexId: '', buildingId: '' }],
+    ['Регион', 'Регион 2', { regionLocationId: '2', regionId: '', cityId: '', districtId: '', realEstateComplexId: '', buildingId: '' }],
+    ['Населённый пункт', 'Город 2', { localityId: '2', regionId: '', cityId: '', districtId: '', realEstateComplexId: '', buildingId: '' }],
     ['Застройщик', 'Застройщик 2', { developerId: '2', realEstateComplexId: '', buildingId: '' }],
     ['Жилой комплекс', 'ЖК 2', { regionId: '2', cityId: '2', districtId: '2', developerId: '2', realEstateComplexId: '2', buildingId: '' }],
   ] as const)('updates the %s cascade without losing apartment details', async (label, choice, expected) => {
@@ -86,10 +87,10 @@ describe('PropertyFields', () => {
   it('keeps the selected region when the city is cleared', async () => {
     const user = userEvent.setup()
     const { changed } = renderFields()
-    await user.click(screen.getByRole('combobox', { name: 'Город' }))
+    await user.click(screen.getByRole('combobox', { name: 'Населённый пункт' }))
     await user.click(screen.getByRole('option', { name: 'Не выбрано' }))
     expect(changed).toHaveBeenLastCalledWith(expect.objectContaining({
-      regionId: '1', cityId: '', districtId: '', realEstateComplexId: '', buildingId: '',
+      regionId: '', cityId: '', districtId: '', realEstateComplexId: '', buildingId: '',
     }))
   })
 })
