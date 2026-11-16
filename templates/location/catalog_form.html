@@ -65,10 +65,10 @@
     {% if can_sync_external_data %}
     <section class="card mb-4" aria-labelledby="national-import-title">
         <div class="card-body">
-            <h2 id="national-import-title">Все города и районы России</h2>
+            <h2 id="national-import-title">Все населённые пункты России</h2>
             <p>Общий импорт работает в фоне и сохраняет прогресс. Фильтры не ограничивают загрузку.</p>
             {% if national_import %}
-            <p role="status">Статус: {{ national_import.status }}. Обработано {{ national_import.processedCities }} из {{ national_import.totalCities }} городов. {{ national_import.currentCity }}</p>
+            <p role="status">Статус: {{ national_import.status }}. Населённых пунктов: {{ national_import.processedCities }}. Разделов регионов: {{ national_import.processedRegions }} из {{ national_import.totalRegions }}. {{ national_import.currentCity }}</p>
             {% if national_import.errorMessage %}<p role="alert">{{ national_import.errorMessage }}</p>{% endif %}
             <p>Обновите страницу, чтобы увидеть текущий прогресс.</p>
             {% endif %}
@@ -76,7 +76,7 @@
                 {% csrf_token %}
                 <button type="submit" class="btn btn-primary" name="action" value="national"
                     {% if national_import.status == 'queued' or national_import.status == 'running' %}disabled{% endif %}>
-                    {% if national_import.status == 'failed' %}Продолжить импорт России{% else %}Импортировать все города и районы России{% endif %}
+                    {% if national_import.status == 'failed' %}Продолжить импорт России{% else %}Импортировать все населённые пункты России{% endif %}
                 </button>
             </form>
         </div>

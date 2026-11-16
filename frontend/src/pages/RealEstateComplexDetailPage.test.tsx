@@ -88,6 +88,8 @@ const managerSession: Session = {
 
 function renderDetail(session?: Session, detail = complexDetail) {
   const queryClient = createTestQueryClient()
+  queryClient.setQueryDefaults(['complex-locations'], { staleTime: Infinity })
+  queryClient.setQueryData(['complex-locations', 7], { locations: [], buildings: [] })
   queryClient.setQueryData(['real-estate-complex', 7], detail)
   if (session) queryClient.setQueryData(['session'], session)
   return renderWithProviders(

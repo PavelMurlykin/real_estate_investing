@@ -1,4 +1,5 @@
 import { Notice } from '@/shared/ui/Notice'
+import { ComplexLocationsPanel } from '@/features/locations/ComplexLocationsPanel'
 import { restoreFocus } from '@/shared/lib/restoreFocus'
 import { ModalDialog } from '@/shared/ui/ModalDialog'
 import { ComplexPhotos } from '@/features/realEstateComplex/ComplexPhotos'
@@ -200,6 +201,7 @@ export function RealEstateComplexDetailPage() {
         </section>
       </div>
 
+      <ComplexLocationsPanel complexId={realEstateComplex.id} canManage={canManageCatalogs} />
       <section className="saved-property-card detail-card" aria-labelledby="complex-buildings-title">
         <div className="section-heading">
           <div>

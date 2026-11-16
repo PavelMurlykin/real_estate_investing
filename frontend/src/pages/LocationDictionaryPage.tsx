@@ -74,10 +74,10 @@ const locationDictionaryConfigurations: LocationDictionaryConfiguration[] = [
   },
   {
     key: 'districts',
-    title: 'Районы',
+    title: 'Административные районы',
     singular: 'район',
     nameLabel: 'Название района',
-    description: 'Районы городов, используемые в карточках жилых комплексов.',
+    description: 'Административные районы, используемые в карточках жилых комплексов.',
   },
   {
     key: 'metro',
@@ -584,6 +584,7 @@ export function LocationDictionaryPage() {
         </div>
       </header>
 
+      <Link className="button button--secondary" to="/locations/localities">Все населённые пункты и территории</Link>
       <SectionNavigation label="Справочники локаций" items={locationDictionaryConfigurations.map((item) => ({
         to: `/locations/${item.key}`, label: item.title,
       }))} />

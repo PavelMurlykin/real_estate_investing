@@ -70,6 +70,7 @@ const PropertyDictionaryPage = lazy(async () => ({
   default: (await import('@/pages/PropertyDictionaryPage'))
     .PropertyDictionaryPage,
 }))
+const GeographyPage = lazy(async () => ({ default: (await import('@/pages/GeographyPage')).GeographyPage }))
 const LocationDictionaryPage = lazy(async () => ({
   default: (await import('@/pages/LocationDictionaryPage'))
     .LocationDictionaryPage,
@@ -216,6 +217,7 @@ export function App() {
           path="dictionaries/:dictionaryKey/:entryId/edit"
           element={<PropertyDictionaryPage />}
         />
+        <Route path="locations/localities" element={<GeographyPage />} />
         <Route
           path="locations/:dictionaryKey"
           element={<LocationDictionaryPage />}

@@ -5,7 +5,7 @@ from django.db import models
 from django.urls import reverse
 
 from core.models import BaseModel
-from location.models import District, Metro, Region
+from location.models import District, Location, Metro, Region
 
 from .validators import validate_property_image_upload
 
@@ -265,6 +265,29 @@ class RealEstateComplex(BaseModel):
         return self.name
 
 
+class RealEstateComplexLocation(BaseModel):
+    """Attach precise territories while retaining all legacy complex identities."""
+
+    real_estate_complex = models.ForeignKey(
+        RealEstateComplex, on_delete=models.CASCADE, related_name='location_links',
+    )
+    location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='complex_links')
+    is_primary = models.BooleanField(default=False)
+
+    class Meta:
+        """Allow multiple territories but only one primary display location."""
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=['real_estate_complex', 'location'], name='unique_complex_location',
+            ),
+            models.UniqueConstraint(
+                fields=['real_estate_complex'], condition=models.Q(is_primary=True),
+                name='unique_primary_complex_location',
+            ),
+        ]
+
+
 class RealEstateComplexPhoto(BaseModel):
     """One gallery photograph, with the main photo selected on the complex."""
 
@@ -416,6 +439,10 @@ class RealEstateComplexBuilding(BaseModel):
     real_estate_complex = models.ForeignKey(
         RealEstateComplex, on_delete=models.CASCADE, verbose_name='ЖК'
     )
+    complex_location = models.ForeignKey(
+        RealEstateComplexLocation, null=True, blank=True, on_delete=models.PROTECT,
+        related_name='buildings', verbose_name='Территория корпуса',
+    )
 
     class Meta(BaseModel.Meta):
         """
@@ -441,7 +468,11 @@ class RealEstateComplexBuilding(BaseModel):
         return self.number
 
     def clean(self):
+        """Validate ownership of the territory and existing date/quarter rules."""
         super().clean()
+        if (self.complex_location_id
+                and self.complex_location.real_estate_complex_id != self.real_estate_complex_id):
+            raise ValidationError({'complex_location': 'Выберите территорию этого ЖК.'})
         self._clean_period_fields(
             'commissioning',
             'Укажите либо точную дату ввода в эксплуатацию, либо год и квартал.',

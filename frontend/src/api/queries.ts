@@ -840,6 +840,7 @@ export function realEstateComplexListQueryOptions(
 ) {
   const normalizedParameters = new URLSearchParams()
   for (const fieldName of [
+    'locationId',
     'search',
     'developerId',
     'cityId',

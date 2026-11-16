@@ -10,7 +10,7 @@ test('location filters are live and import errors leave controls reusable after 
 }, async (context) => {
   const { page } = await createAuthenticatedPage(context, 'administrator', { width: 1440, height: 1100 })
   await page.goto(new URL('/app/locations/districts', isolatedBaseUrl).href)
-  const filters = page.getByRole('region', { name: 'Фильтры: Районы' })
+  const filters = page.getByRole('region', { name: 'Фильтры: Административные районы' })
   await filters.waitFor()
   assert.equal(await filters.getByRole('button', { name: 'Найти', exact: true }).count(), 0)
   for (const name of ['Регион', 'Город']) {
@@ -30,25 +30,25 @@ test('location filters are live and import errors leave controls reusable after 
   await page.reload()
   await importButton.waitFor()
   assert.equal(await importButton.isEnabled(), true)
-  assert.equal(await page.getByRole('button', { name: 'Импортировать все города и районы России' }).isEnabled(), true)
+  assert.equal(await page.getByRole('button', { name: 'Импортировать все населённые пункты России' }).isEnabled(), true)
 })
 
 test('national import starts with no selected parents and survives a browser reload', {
-  skip: isolatedWritesEnabled ? false : 'requires isolated stack', timeout: 180000,
+  skip: isolatedWritesEnabled && process.env.BROWSER_TEST_LOCATION_LIVE === '1' ? false : 'requires explicit live import', timeout: 240000,
 }, async (context) => {
   const { page } = await createAuthenticatedPage(context, 'administrator', { width: 1280, height: 1000 })
   await page.goto(new URL('/app/locations/cities', isolatedBaseUrl).href)
-  await page.getByRole('button', { name: 'Импортировать все города и районы России' }).click()
+  await page.getByRole('button', { name: 'Импортировать все населённые пункты России' }).click()
   const endpoint = new URL('/api/v1/location-imports/', isolatedBaseUrl).href
   let job
   for (let attempt = 0; attempt < 80; attempt += 1) {
     const response = await page.context().request.get(endpoint)
     job = (await response.json()).job
     assert.notEqual(job?.status, 'failed', job?.errorMessage)
-    if (job?.totalCities > 1000) break
+    if (job?.totalRegions >= 85 && job?.processedCities > 1000) break
     await new Promise((resolve) => setTimeout(resolve, 1000))
   }
-  assert.ok(job?.totalCities > 1000)
+  assert.ok(job?.totalRegions >= 85 && job?.processedCities > 1000)
   const again = await page.context().request.post(endpoint, {
     data: {}, headers: { 'X-CSRFToken': await getCsrfToken(page.context()) },
   })
@@ -57,8 +57,8 @@ test('national import starts with no selected parents and survives a browser rel
   await page.reload()
   await page.getByRole('progressbar', { name: 'Прогресс общего импорта' }).waitFor()
   assert.equal(await page.getByRole('button', { name: 'Общий импорт выполняется…' }).isDisabled(), true)
-  const cities = await page.context().request.get(new URL('/api/v1/location-dictionaries/cities/?pageSize=100', isolatedBaseUrl).href)
-  assert.ok((await cities.json()).totalCount >= 1117)
+  const cities = await page.context().request.get(new URL('/api/v1/locations/?category=locality&pageSize=100', isolatedBaseUrl).href)
+  assert.ok((await cities.json()).totalCount >= 1000)
   for (const width of [1280, 360]) {
     await page.setViewportSize({ width, height: 1000 })
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true)

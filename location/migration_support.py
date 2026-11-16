@@ -1,0 +1,125 @@
+"""Keep additive geographic migration logic compatible with historical models."""
+
+
+def backfill_locations(registry, database='default'):
+    """Map legacy records and complexes without changing any legacy field."""
+    Location = registry.get_model('location', 'Location')
+    LocationType = registry.get_model('location', 'LocationType')
+    Identifier = registry.get_model('location', 'LocationIdentifier')
+    Mapping = registry.get_model('location', 'LegacyLocationMapping')
+    Alias = registry.get_model('location', 'LocationAlias')
+    Closure = registry.get_model('location', 'LocationClosure')
+    Region = registry.get_model('location', 'Region')
+    City = registry.get_model('location', 'City')
+    District = registry.get_model('location', 'District')
+    types = {}
+    for category, name, abbreviation in [
+        ('region', 'Регион', ''), ('locality', 'Город', 'г.'),
+        ('district', 'Административный район', 'р-н'),
+    ]:
+        types[category], _ = LocationType.objects.using(database).get_or_create(
+            code=f'legacy:{category}', defaults={
+                'category': category, 'name': name, 'abbreviation': abbreviation,
+            },
+        )
+    mappings = {
+        (row.model_name, row.legacy_id): row.location_id
+        for row in Mapping.objects.using(database).all()
+    }
+    identifiers = {
+        (row.provider, row.value): row.location_id
+        for row in Identifier.objects.using(database).filter(provider__in=['fias', 'legacy'])
+    }
+
+    def preserve(model_name, row, category, parent=None, region=None, reuse=None):
+        """Retain one identity, with explicit aliases for shared federal-city roles."""
+        key = (model_name, row.pk)
+        if key in mappings:
+            return mappings[key]
+        source = row.source_identifier or ''
+        fias = source.removeprefix('fias/') if source.startswith('fias/') else None
+        identifier = reuse or identifiers.get(('fias', fias))
+        if identifier is None:
+            location = Location.objects.using(database).create(
+                name=row.name, location_type=types[category],
+                parent_id=parent, region_id=region, is_active=row.is_active,
+                source_status='unverified', needs_review=True,
+            )
+            identifier = location.pk
+            if category == 'region':
+                Location.objects.using(database).filter(pk=identifier).update(region_id=identifier)
+        Mapping.objects.using(database).create(
+            model_name=model_name, legacy_id=row.pk, location_id=identifier,
+            method='federal_role' if reuse else 'preserved',
+        )
+        mappings[key] = identifier
+        Identifier.objects.using(database).get_or_create(
+            provider='legacy', value=f'{model_name}/{row.pk}',
+            defaults={'location_id': identifier},
+        )
+        if fias:
+            Identifier.objects.using(database).get_or_create(
+                provider='fias', value=fias, defaults={'location_id': identifier},
+            )
+            identifiers[('fias', fias)] = identifier
+        Alias.objects.using(database).get_or_create(location_id=identifier, name=row.name)
+        return identifier
+
+    regions = {}
+    region_rows = list(Region.objects.using(database).all())
+    for row in region_rows:
+        regions[row.pk] = preserve('region', row, 'region')
+    names = {row.pk: row.name.casefold().strip() for row in region_rows}
+    cities = {}
+    for row in City.objects.using(database).all():
+        root = regions[row.region_id]
+        federal = names[row.region_id] == row.name.casefold().strip() and names[row.region_id] in {
+            'москва', 'санкт-петербург', 'севастополь',
+        }
+        cities[row.pk] = preserve(
+            'city', row, 'locality', parent=root, region=root,
+            reuse=root if federal else None,
+        )
+    city_regions = dict(City.objects.using(database).values_list('pk', 'region_id'))
+    for row in District.objects.using(database).all():
+        preserve(
+            'district', row, 'district', parent=cities[row.city_id],
+            region=regions[city_regions[row.city_id]],
+        )
+    parents = dict(Location.objects.using(database).values_list('pk', 'parent_id'))
+    existing_closure = set(Closure.objects.using(database).values_list('ancestor_id', 'descendant_id'))
+    paths = []
+    for descendant in set(mappings.values()):
+        ancestor, depth, seen = descendant, 0, set()
+        while ancestor is not None:
+            if ancestor in seen:
+                raise ValueError('Geographic hierarchy contains a cycle.')
+            seen.add(ancestor)
+            if (ancestor, descendant) not in existing_closure:
+                paths.append(Closure(ancestor_id=ancestor, descendant_id=descendant, depth=depth))
+            ancestor, depth = parents.get(ancestor), depth + 1
+    Closure.objects.using(database).bulk_create(paths, batch_size=1000, ignore_conflicts=True)
+    Complex = registry.get_model('property', 'RealEstateComplex')
+    Link = registry.get_model('property', 'RealEstateComplexLocation')
+    linked = set(Link.objects.using(database).filter(is_primary=True).values_list('real_estate_complex_id', flat=True))
+    Link.objects.using(database).bulk_create([
+        Link(real_estate_complex_id=row.pk, location_id=mappings[('district', row.district_id)], is_primary=True)
+        for row in Complex.objects.using(database).exclude(district_id=None)
+        if row.pk not in linked
+    ], batch_size=1000, ignore_conflicts=True)
+    MetroLine = registry.get_model('location', 'MetroLine')
+    Metro = registry.get_model('location', 'Metro')
+    System = registry.get_model('location', 'MetroSystem')
+    for city_id in MetroLine.objects.using(database).values_list('city_id', flat=True).distinct():
+        city = City.objects.using(database).get(pk=city_id)
+        system, _ = System.objects.using(database).get_or_create(
+            name=f'Метрополитен: {city.name}', defaults={'location_id': cities[city_id]},
+        )
+        MetroLine.objects.using(database).filter(city_id=city_id, system_id=None).update(system_id=system.pk)
+    memberships = []
+    Membership = Metro.lines.through
+    for station in Metro.objects.using(database).select_related('metro_line'):
+        if station.location_id is None:
+            Metro.objects.using(database).filter(pk=station.pk).update(location_id=cities[station.metro_line.city_id])
+        memberships.append(Membership(metro_id=station.pk, metroline_id=station.metro_line_id))
+    Membership.objects.using(database).bulk_create(memberships, ignore_conflicts=True, batch_size=1000)

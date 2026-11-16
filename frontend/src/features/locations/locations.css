@@ -1,0 +1,37 @@
+.complex-locations-editor,
+.complex-locations-editor > *,
+.complex-locations-editor .filter-panel > *,
+.geography-filters > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.complex-locations-editor select,
+.geography-filters select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.complex-locations-editor button {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.complex-locations-editor > label,
+.geography-filters > label {
+  display: grid;
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .complex-locations-editor .filter-panel,
+  .geography-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

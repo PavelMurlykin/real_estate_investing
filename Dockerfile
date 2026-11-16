@@ -29,6 +29,7 @@ COPY --from=frontend_builder /build/static/react /app/static/react
 RUN chmod +x /entrypoint.sh \
     && mkdir -p /app/staticfiles \
     && mkdir -p /app/media \
+    && mkdir -p /app/location-import-cache \
     && chown -R django:django /app /entrypoint.sh
 
 USER django

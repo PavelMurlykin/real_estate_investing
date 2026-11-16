@@ -2,7 +2,10 @@
 
 import logging
 import time
+from pathlib import Path
 
+from django.apps import apps
+from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
@@ -12,6 +15,9 @@ from .import_service import (
 )
 from .models import City, District, LocationImportJob, Region
 from .open_data import CityNotFoundError, OpenDataError, OpenLocationSource
+from .gar_source import GarSource, GarSourceError, latest_snapshot
+from .gar_import import load_region
+from .migration_support import backfill_locations
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +27,7 @@ def empty_counts():
     return {'created': 0, 'updated': 0, 'unchanged': 0}
 
 
-def start_import_job():
+def start_import_job(kind='gar'):
     """Reuse an active job or resume a failed job without duplicate workers."""
     try:
         with transaction.atomic():
@@ -29,12 +35,12 @@ def start_import_job():
             if active:
                 return active
             previous = LocationImportJob.objects.select_for_update().first()
-            if previous and previous.status == 'failed':
+            if previous and previous.status == 'failed' and previous.kind == kind:
                 previous.status = 'queued'
                 previous.error_message = ''
                 previous.save(update_fields=['status', 'error_message', 'updated_at'])
                 return previous
-            return LocationImportJob.objects.create()
+            return LocationImportJob.objects.create(kind=kind)
     except IntegrityError:
         return LocationImportJob.objects.get(status__in=['queued', 'running'])
 
@@ -49,6 +55,8 @@ def serialize_import_job(job):
         'currentCity': job.current_city, 'counts': job.counts,
         'coverage': job.coverage, 'errorMessage': job.error_message,
         'updatedAt': job.updated_at.isoformat(),
+        'kind': job.kind, 'sourceVersion': job.source_version,
+        'processedRegions': job.processed_regions, 'totalRegions': job.total_regions,
     }
 
 
@@ -60,6 +68,8 @@ def add_counts(target, summary):
 
 def run_import_job(job, heartbeat=lambda: None):
     """Import all Russian cities, then districts with a per-city checkpoint."""
+    if job.kind == 'gar':
+        return run_gar_job(job, heartbeat)
     job.status = 'running'
     job.error_message = ''
     job.save(update_fields=['status', 'error_message', 'updated_at'])
@@ -149,6 +159,62 @@ def run_import_job(job, heartbeat=lambda: None):
         job.refresh_from_db()
         job.status = 'failed'
         job.error_message = 'Не удалось обработать данные. Прогресс сохранён.'
+        job.save(update_fields=['status', 'error_message', 'updated_at'])
+
+
+def run_gar_job(job, heartbeat=lambda: None):
+    """Checkpoint each complete official subject; keep old dictionaries intact."""
+    job.status, job.error_message = 'running', ''
+    job.save(update_fields=['status', 'error_message', 'updated_at'])
+    last_heartbeat = 0
+
+    def pulse():
+        nonlocal last_heartbeat
+        if time.monotonic() - last_heartbeat > 5:
+            heartbeat()
+            LocationImportJob.objects.filter(pk=job.pk).update(updated_at=timezone.now())
+            last_heartbeat = time.monotonic()
+
+    try:
+        if not job.source_version:
+            job.source_version, job.source_url = latest_snapshot()
+            job.save(update_fields=['source_version', 'source_url', 'updated_at'])
+        source = GarSource(
+            job.source_version, job.source_url,
+            getattr(settings, 'GAR_CACHE_DIRECTORY', Path(settings.BASE_DIR) / 'outputs' / 'gar-cache'),
+            pulse,
+        )
+        if not job.catalog:
+            job.catalog = source.regions()
+            job.total_regions = len(job.catalog)
+            job.counts = {name: empty_counts() for name in ('regions', 'cities', 'districts')}
+            job.coverage = {'source': 'ГАР ФНС', 'retiredRegions': [], 'unresolvedCities': []}
+            job.save()
+        # Also preserve manual records created after the initial migration.
+        backfill_locations(apps)
+        for code in job.catalog[job.processed_regions:]:
+            job.phase, job.current_city = 'extracting', f'Регион {code}'
+            job.save(update_fields=['phase', 'current_city', 'updated_at'])
+            records = source.extract_region(code)
+            pulse()
+            with transaction.atomic():
+                summary = load_region(records, code, job.source_version)
+                for key in summary:
+                    add_counts(job.counts[key], summary[key])
+                if not records:
+                    job.coverage['retiredRegions'].append(code)
+                job.processed_regions += 1
+                job.processed_cities += sum(row['level'] in {'5', '6'} for row in records)
+                job.total_cities = job.processed_cities
+                job.save()
+        job.status, job.phase, job.current_city = 'completed', 'done', ''
+        job.save(update_fields=['status', 'phase', 'current_city', 'updated_at'])
+    except Exception as error:
+        logger.exception('GAR import interrupted job=%s', job.pk)
+        job.refresh_from_db()
+        job.status = 'failed'
+        job.error_message = (str(error) if isinstance(error, GarSourceError) else
+                             'Импорт ГАР прерван. Сохранённые регионы не потеряны; повторите импорт для продолжения.')
         job.save(update_fields=['status', 'error_message', 'updated_at'])
 
 

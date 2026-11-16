@@ -2,6 +2,7 @@
 
 import json
 import os
+from pathlib import Path
 from decimal import Decimal
 
 import django
@@ -156,6 +157,7 @@ def seed_acceptance_fixtures():
             defaults={'line_color': '#336699'},
         )
         return {
+            **create_geography_fixture(property_object),
             'databaseName': DATABASE_NAME,
             'isolated': True,
             'accounts': accounts,
@@ -167,6 +169,33 @@ def seed_acceptance_fixtures():
             'complexId': real_estate_complex.pk,
             'metroLineId': metro_line.pk,
         }
+
+
+def create_geography_fixture(property_object):
+    """Seed a small official extract only inside the guarded acceptance database."""
+    ensure_isolated_database()
+    from django.apps import apps
+    from location.gar_import import load_region
+    from location.migration_support import backfill_locations
+    from location.models import City, District, Location, Region
+    from property.models import RealEstateComplex, RealEstateComplexBuilding
+
+    region, _ = Region.objects.get_or_create(code='78', defaults={'name': 'Санкт-Петербург'})
+    city, _ = City.objects.get_or_create(name='Санкт-Петербург', region=region)
+    district, _ = District.objects.get_or_create(name='Пушкинский район', city=city)
+    District.objects.get_or_create(name='Петродворцовый район', city=city)
+    source_complex = property_object.building.real_estate_complex
+    complex_object, _ = RealEstateComplex.objects.get_or_create(
+        name='E2E пригородный квартал', developer=source_complex.developer,
+        defaults={'district': district, 'real_estate_class': source_complex.real_estate_class,
+                  'real_estate_type': source_complex.real_estate_type},
+    )
+    building, _ = RealEstateComplexBuilding.objects.get_or_create(real_estate_complex=complex_object, number='1')
+    backfill_locations(apps)
+    load_region(json.loads((Path(__file__).parent / 'data' / 'geography.json').read_text(encoding='utf-8')), '78', '20261113')
+    return {'geographyComplexId': complex_object.pk, 'geographyBuildingId': building.pk,
+            'pushkinLocationId': Location.objects.get(name='Пушкин').pk,
+            'strelnaLocationId': Location.objects.get(name='Стрельна').pk}
 
 
 def main():

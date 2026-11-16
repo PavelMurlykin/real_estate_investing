@@ -134,6 +134,8 @@ export function RealEstateComplexListPage() {
               cityId: value || null,
               page: null,
             })} />
+        <RemoteSelect filter dictionary="locations" label="Точная территория" value={searchParameters.get('locationId') ?? ''}
+            onChange={(value) => updateParameters({ locationId: value || null, page: null })} />
         <RemoteSelect filter dictionary="real-estate-classes" label="Класс" value={searchParameters.get('realEstateClassId') ?? ''}
             initialOptions={options?.realEstateClasses.map((option) => ({ id: option.id, label: option.name }))}
             onChange={(value) => updateParameters({

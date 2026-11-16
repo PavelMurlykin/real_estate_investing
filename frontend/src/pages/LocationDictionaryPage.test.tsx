@@ -220,7 +220,7 @@ describe('LocationDictionaryPage', () => {
       'aria-current',
       'page',
     )
-    expect(screen.getByRole('link', { name: 'Районы' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Административные районы' })).toHaveAttribute(
       'href',
       '/locations/districts',
     )

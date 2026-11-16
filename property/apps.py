@@ -26,12 +26,16 @@ class PropertyConfig(AppConfig):
         from django.db.models.signals import post_delete, post_save
 
         from location.models import City, District, Metro
+        from location.compatibility import bind_new_complex
 
         from .models import (
             Developer,
             RealEstateComplex,
             RealEstateComplexBuilding,
         )
+
+        post_save.connect(bind_new_complex, sender=RealEstateComplex,
+                          dispatch_uid='property.bind_new_complex_location')
 
         for model in (
             City,

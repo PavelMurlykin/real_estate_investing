@@ -2408,6 +2408,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
 class RealEstateComplexListQuerySerializer(serializers.Serializer):
     """Validate filters, sorting, and pagination for residential complexes."""
 
+    locationId = serializers.IntegerField(required=False, min_value=1)
     search = serializers.CharField(
         required=False,
         allow_blank=True,

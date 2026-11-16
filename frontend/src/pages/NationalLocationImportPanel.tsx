@@ -22,27 +22,27 @@ export function NationalLocationImportPanel() {
   useEffect(() => {
     if (job?.status === 'completed') {
       void queryClient.invalidateQueries({ predicate: (item) => [
-        'location-dictionaries', 'location-dictionary-options', 'catalog-options',
+        'location-dictionaries', 'location-dictionary-options', 'catalog-options', 'geography',
       ].includes(String(item.queryKey[0])) })
     }
   }, [job?.id, job?.status, queryClient])
 
   return (
     <section className="filter-panel location-national-import" aria-labelledby="national-import-title">
-      <h2 id="national-import-title">Все города и районы России</h2>
-      <p>Один запуск загружает регионы, все города России и доступные в источнике городские районы. Фильтры ниже не ограничивают импорт. Работа продолжается после закрытия страницы.</p>
+      <h2 id="national-import-title">Все населённые пункты России</h2>
+      <p>Официальный ГАР ФНС: города, посёлки, сёла, деревни и административная иерархия. Фильтры не ограничивают импорт. Работа продолжается после закрытия страницы; проверенные регионы сохраняются поэтапно.</p>
       <button className="button button--primary" type="button" disabled={active || mutation.isPending}
         onClick={() => mutation.mutate()}>
         {active || mutation.isPending ? 'Общий импорт выполняется…' : job?.status === 'failed'
-          ? 'Продолжить импорт России' : 'Импортировать все города и районы России'}
+          ? 'Продолжить импорт России' : 'Импортировать все населённые пункты России'}
       </button>
       {job ? (
         <div aria-live="polite" aria-atomic="true">
-          {active ? <p role="status">{job.status === 'queued' ? 'Ожидаем запуска.' : job.phase === 'preparing' ? 'Подготавливаем сведения о районах.' : 'Импортируем районы.'} Городов обработано: {job.processedCities} из {job.totalCities}. {job.currentCity}</p> : null}
-          {active && job.totalCities > 0 ? <progress aria-label="Прогресс общего импорта" value={job.processedCities} max={job.totalCities} /> : null}
-          {job.status === 'completed' ? <Notice as="p" tone="success" role="status">Общий импорт завершён. Обработано городов: {job.processedCities}.</Notice> : null}
+          {active ? <p role="status">{job.status === 'queued' ? 'Ожидаем запуска.' : 'Обрабатываем справочник.'} {job.kind === 'gar' ? `Разделов регионов: ${job.processedRegions ?? 0} из ${job.totalRegions ?? 0}. Населённых пунктов: ${job.processedCities}.` : `Городов обработано: ${job.processedCities} из ${job.totalCities}.`} {job.currentCity}</p> : null}
+          {active && (job.kind === 'gar' ? (job.totalRegions ?? 0) > 0 : job.totalCities > 0) ? <progress aria-label="Прогресс общего импорта" value={job.kind === 'gar' ? job.processedRegions : job.processedCities} max={job.kind === 'gar' ? job.totalRegions : job.totalCities} /> : null}
+          {job.status === 'completed' ? <Notice as="p" tone="success" role="status">Общий импорт завершён. Обработано населённых пунктов: {job.processedCities}. {job.sourceVersion ? `Версия ГАР: ${job.sourceVersion}.` : ''}</Notice> : null}
           {Object.entries(job.counts).map(([key, counts]) => counts ? (
-            <p key={key}>{({ regions: 'Регионы', cities: 'Города', districts: 'Районы' })[key as 'regions' | 'cities' | 'districts']}: добавлено {counts.created}, обновлено {counts.updated}, без изменений {counts.unchanged}.</p>
+            <p key={key}>{({ regions: 'Регионы', cities: 'Населённые пункты', districts: 'Административные районы' })[key as 'regions' | 'cities' | 'districts']}: добавлено {counts.created}, обновлено {counts.updated}, без изменений {counts.unchanged}.</p>
           ) : null)}
           {job.coverage.withoutDistricts ? <p className="field-hint">Без сведений о районах в источнике: {job.coverage.withoutDistricts} городов. Существующие районы сохранены.</p> : null}
           {job.coverage.unresolvedCities?.length ? <p className="field-hint">Не удалось однозначно сопоставить с Wikidata: {job.coverage.unresolvedCities.length} городов. Все города загружены из российского справочника.</p> : null}

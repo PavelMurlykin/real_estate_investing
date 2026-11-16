@@ -4,6 +4,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+GAR_CACHE_DIRECTORY = os.environ.get('GAR_CACHE_DIRECTORY', BASE_DIR / 'outputs' / 'gar-cache')
 load_dotenv(BASE_DIR / '.env')
 
 

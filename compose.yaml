@@ -32,6 +32,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-real_estate_investing_password}
       DB_HOST: db
       DB_PORT: 5432
+      GAR_CACHE_DIRECTORY: /app/location-import-cache
     depends_on:
       db:
         condition: service_healthy
@@ -40,6 +41,7 @@ services:
     volumes:
       - staticfiles:/app/staticfiles
       - mediafiles:/app/media
+      - location_import_cache:/app/location-import-cache
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/', timeout=5).read()"]
       interval: 10s
@@ -64,9 +66,12 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-real_estate_investing_password}
       DB_HOST: db
       DB_PORT: 5432
+      GAR_CACHE_DIRECTORY: /app/location-import-cache
     depends_on:
       web:
         condition: service_healthy
+    volumes:
+      - location_import_cache:/app/location-import-cache
     healthcheck:
       test: ["CMD", "python", "-c", "import os,time; assert time.time()-os.path.getmtime('/tmp/location-import-worker-heartbeat') < 120"]
       interval: 15s
@@ -97,3 +102,4 @@ volumes:
   postgres_data:
   staticfiles:
   mediafiles:
+  location_import_cache:

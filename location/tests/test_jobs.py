@@ -32,15 +32,15 @@ def source_transport():
 @pytest.mark.django_db
 def test_national_import_creates_all_cities_and_repeats_without_changes(source_transport):
     """Import across regions independently of a selected parent and rerun."""
-    first = start_import_job()
-    assert start_import_job().pk == first.pk
+    first = start_import_job(kind='legacy')
+    assert start_import_job(kind='legacy').pk == first.pk
     assert process_next_import()
     first.refresh_from_db()
     assert first.status == 'completed'
     assert first.total_cities == first.processed_cities == 3
     assert first.counts['cities']['created'] == 3
     assert Region.objects.count() == City.objects.count() == 3
-    second = start_import_job()
+    second = start_import_job(kind='legacy')
     assert second.pk != first.pk
     run_import_job(second)
     second.refresh_from_db()
@@ -52,7 +52,7 @@ def test_national_import_creates_all_cities_and_repeats_without_changes(source_t
 @pytest.mark.django_db
 def test_failed_job_resumes_after_last_committed_city(source_transport):
     """Keep earlier cities and resume a failed upstream request after reload."""
-    job = start_import_job()
+    job = start_import_job(kind='legacy')
     with patch('location.open_data.OpenLocationSource.districts', side_effect=[
         [('wikidata/Q201', 'Тверской район')], OpenDataError('Временная ошибка'),
     ]):
@@ -61,7 +61,7 @@ def test_failed_job_resumes_after_last_committed_city(source_transport):
     assert job.status == 'failed'
     assert job.processed_cities == 1
     assert District.objects.count() == 1
-    assert start_import_job().pk == job.pk
+    assert start_import_job(kind='legacy').pk == job.pk
     with patch('location.open_data.OpenLocationSource.districts', return_value=[]) as districts:
         process_next_import()
     job.refresh_from_db()
@@ -74,7 +74,7 @@ def test_failed_job_resumes_after_last_committed_city(source_transport):
 @pytest.mark.django_db
 def test_running_job_is_resumed_when_worker_restarts(source_transport):
     """Persist progress across process death rather than leave a blocked button."""
-    job = LocationImportJob.objects.create(status='running')
+    job = LocationImportJob.objects.create(status='running', kind='legacy')
     assert process_next_import()
     job.refresh_from_db()
     assert job.status == 'completed'
@@ -83,7 +83,7 @@ def test_running_job_is_resumed_when_worker_restarts(source_transport):
 @pytest.mark.django_db
 def test_unexpected_error_releases_job_for_retry(source_transport):
     """Expose a recoverable failure without leaking an internal exception."""
-    job = start_import_job()
+    job = start_import_job(kind='legacy')
     with patch(
         'location.open_data.OpenLocationSource.city_catalog', side_effect=ValueError('private'),
     ):
@@ -91,7 +91,7 @@ def test_unexpected_error_releases_job_for_retry(source_transport):
     job.refresh_from_db()
     assert job.status == 'failed'
     assert 'private' not in job.error_message
-    assert start_import_job().pk == job.pk
+    assert start_import_job(kind='legacy').pk == job.pk
 
 
 @pytest.mark.django_db(transaction=True)
@@ -103,7 +103,7 @@ def test_single_worker_poll_reports_failure_and_uses_platform_temp_directory(
         'location.management.commands.process_location_imports.tempfile.gettempdir',
         lambda: str(tmp_path),
     )
-    start_import_job()
+    start_import_job(kind='legacy')
     with patch('location.open_data.OpenLocationSource.city_catalog',
                side_effect=OpenDataError('Источник недоступен')):
         with pytest.raises(CommandError, match='Источник недоступен'):

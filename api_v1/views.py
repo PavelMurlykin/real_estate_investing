@@ -2929,6 +2929,11 @@ class RealEstateComplexListCreateAPIView(ListCreateAPIView):
         filters = query_serializer.validated_data
         queryset = _real_estate_complex_list_queryset()
 
+        if filters.get('locationId'):
+            queryset = queryset.filter(
+                location_links__location__ancestor_links__ancestor_id=filters['locationId'],
+            ).distinct()
+
         search = filters.get('search', '')
         if search:
             queryset = queryset.filter(

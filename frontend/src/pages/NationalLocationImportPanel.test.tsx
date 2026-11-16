@@ -19,7 +19,7 @@ describe('NationalLocationImportPanel', () => {
     ))
     vi.stubGlobal('fetch', fetchMock)
     renderWithProviders(<NationalLocationImportPanel />)
-    await user.click(screen.getByRole('button', { name: 'Импортировать все города и районы России' }))
+    await user.click(screen.getByRole('button', { name: 'Импортировать все населённые пункты России' }))
     expect(await screen.findByRole('status')).toHaveTextContent('10 из 1117')
     expect(screen.getByRole('button', { name: 'Общий импорт выполняется…' })).toBeDisabled()
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/location-imports/', expect.objectContaining({ method: 'POST', body: '{}' }))
@@ -40,7 +40,7 @@ describe('NationalLocationImportPanel', () => {
     renderWithProviders(<NationalLocationImportPanel />)
     await user.click(await screen.findByRole('button', { name: 'Продолжить импорт России' }))
     expect(await screen.findByRole('status')).toHaveTextContent('Общий импорт завершён')
-    expect(screen.getByRole('button', { name: 'Импортировать все города и районы России' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Импортировать все населённые пункты России' })).toBeEnabled()
   })
 
   it('recovers when the start response has an unexpected format', async () => {
@@ -49,7 +49,7 @@ describe('NationalLocationImportPanel', () => {
       Response.json(options?.method === 'POST' ? { bad: true } : { job: null }),
     )))
     renderWithProviders(<NationalLocationImportPanel />)
-    const button = screen.getByRole('button', { name: 'Импортировать все города и районы России' })
+    const button = screen.getByRole('button', { name: 'Импортировать все населённые пункты России' })
     await user.click(button)
     expect(await screen.findByRole('alert')).toBeInTheDocument()
     await waitFor(() => expect(button).toBeEnabled())

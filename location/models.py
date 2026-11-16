@@ -1,9 +1,142 @@
 import uuid
 
+from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
 
 from core.models import BaseModel
+
+
+class LocationType(models.Model):
+    """Describe a geographic level independently of its display name."""
+
+    code = models.CharField(max_length=80, unique=True)
+    category = models.CharField(max_length=24, db_index=True, choices=[
+        ('region', 'Регион'), ('district', 'Административный район'),
+        ('locality', 'Населённый пункт'), ('area', 'Административная территория'),
+    ])
+    name = models.CharField(max_length=150)
+    abbreviation = models.CharField(max_length=40, blank=True)
+
+    def __str__(self):
+        """Return the official geographic type."""
+        return self.name
+
+
+class Location(BaseModel):
+    """Store one canonical geographic territory with a flexible parent chain."""
+
+    name = models.CharField(max_length=255, db_index=True)
+    location_type = models.ForeignKey(LocationType, on_delete=models.PROTECT)
+    parent = models.ForeignKey(
+        'self', null=True, blank=True, on_delete=models.PROTECT, related_name='children',
+    )
+    region = models.ForeignKey(
+        'self', null=True, blank=True, on_delete=models.PROTECT, related_name='regional_locations',
+    )
+    source_status = models.CharField(max_length=20, default='unverified')
+    source_version = models.CharField(max_length=80, blank=True)
+    needs_review = models.BooleanField(default=False)
+
+    class Meta:
+        """Keep homonyms distinct and index the most frequent scoped search."""
+
+        ordering = ['name', 'pk']
+        indexes = [models.Index(fields=['region', 'name'], name='location_region_name_idx')]
+
+    def __str__(self):
+        """Return the source spelling without inventing a hierarchy level."""
+        return self.name
+
+    def clean(self):
+        """Reject cycles and parents from a different cached subject."""
+        super().clean()
+        ancestor, seen = self.parent, {self.pk} if self.pk else set()
+        while ancestor:
+            if ancestor.pk in seen:
+                raise ValidationError({'parent': 'Цикл в административной иерархии.'})
+            seen.add(ancestor.pk)
+            if self.region_id and ancestor.region_id != self.region_id:
+                raise ValidationError({'parent': 'Родительская территория относится к другому региону.'})
+            ancestor = ancestor.parent
+
+
+class LocationIdentifier(models.Model):
+    """Attach multiple source identities to one canonical territory."""
+
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='identifiers')
+    provider = models.CharField(max_length=40)
+    value = models.CharField(max_length=200)
+
+    class Meta:
+        """Require a source identity to resolve to exactly one territory."""
+
+        constraints = [models.UniqueConstraint(
+            fields=['provider', 'value'], name='unique_location_source_identity',
+        )]
+
+
+class LocationAlias(models.Model):
+    """Preserve historical and manually maintained names for searching."""
+
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='aliases')
+    name = models.CharField(max_length=255, db_index=True)
+
+    class Meta:
+        """Avoid duplicating an alias on the same geographic object."""
+
+        constraints = [models.UniqueConstraint(
+            fields=['location', 'name'], name='unique_location_alias',
+        )]
+
+
+class LocationClosure(models.Model):
+    """Index ancestor searches without recursive work for every result row."""
+
+    ancestor = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='descendant_links')
+    descendant = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='ancestor_links')
+    depth = models.PositiveSmallIntegerField()
+
+    class Meta:
+        """Store one path distance for each pair in the geographic tree."""
+
+        constraints = [models.UniqueConstraint(
+            fields=['ancestor', 'descendant'], name='unique_location_ancestor',
+        )]
+
+
+class LegacyLocationMapping(models.Model):
+    """Preserve old primary keys while mapping several roles to one territory."""
+
+    model_name = models.CharField(max_length=30)
+    legacy_id = models.PositiveBigIntegerField()
+    location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='legacy_mappings')
+    method = models.CharField(max_length=30, default='preserved')
+
+    class Meta:
+        """Keep legacy identifiers unambiguous within their original model."""
+
+        constraints = [models.UniqueConstraint(
+            fields=['model_name', 'legacy_id'], name='unique_legacy_location_mapping',
+        )]
+
+
+class Municipality(BaseModel):
+    """Keep municipal divisions separate from geographic administrative districts."""
+
+    name = models.CharField(max_length=255)
+    municipality_type = models.CharField(max_length=100)
+    identifier = models.CharField(max_length=200, unique=True)
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT)
+    region = models.ForeignKey(Location, on_delete=models.PROTECT)
+    locations = models.ManyToManyField(Location, related_name='municipalities', blank=True)
+
+
+class MetroSystem(BaseModel):
+    """Group metro lines without restricting stations to one locality."""
+
+    name = models.CharField(max_length=150, unique=True)
+    location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.PROTECT)
 
 
 class LocationImportJob(models.Model):
@@ -23,6 +156,11 @@ class LocationImportJob(models.Model):
     total_cities = models.PositiveIntegerField(default=0)
     current_city = models.CharField(max_length=100, blank=True)
     error_message = models.TextField(blank=True)
+    kind = models.CharField(max_length=20, default='gar')
+    source_version = models.CharField(max_length=80, blank=True)
+    source_url = models.URLField(max_length=500, blank=True)
+    processed_regions = models.PositiveSmallIntegerField(default=0)
+    total_regions = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -161,6 +299,7 @@ class MetroLine(ImportedLocation):
     city = models.ForeignKey(
         City, on_delete=models.PROTECT, verbose_name='Город'
     )
+    system = models.ForeignKey(MetroSystem, null=True, blank=True, on_delete=models.PROTECT)
 
     class Meta(BaseModel.Meta):
         """
@@ -192,6 +331,8 @@ class Metro(ImportedLocation):
     metro_line = models.ForeignKey(
         MetroLine, on_delete=models.PROTECT, verbose_name='Линия метро'
     )
+    location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.PROTECT)
+    lines = models.ManyToManyField(MetroLine, related_name='stations', blank=True)
 
     class Meta(BaseModel.Meta):
         """

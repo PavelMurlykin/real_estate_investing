@@ -258,6 +258,8 @@ const locationImportCountsSchema = z.object({
 
 export const locationImportJobResponseSchema = z.object({
   job: z.object({
+    kind: z.string().optional(), sourceVersion: z.string().optional(),
+    processedRegions: z.number().int().nonnegative().optional(), totalRegions: z.number().int().nonnegative().optional(),
     id: z.uuid(), status: z.enum(['queued', 'running', 'completed', 'failed']),
     phase: z.string(), processedCities: z.number().int().nonnegative(),
     totalCities: z.number().int().nonnegative(), currentCity: z.string(),
