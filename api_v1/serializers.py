@@ -2542,6 +2542,7 @@ class RealEstateComplexOptionsQuerySerializer(serializers.Serializer):
 
     regionId = serializers.IntegerField(required=False, min_value=1)
     cityId = serializers.IntegerField(required=False, min_value=1)
+    canonicalLocations = serializers.BooleanField(default=False)
 
 
 class GeographicListSerializer(serializers.ListSerializer):
@@ -2967,6 +2968,14 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
         queryset=Location.objects.filter(locality_filter()).select_related('region'),
         required=False, write_only=True,
     )
+    regionLocationId = serializers.PrimaryKeyRelatedField(
+        queryset=Location.objects.filter(location_type__category='region'),
+        required=False, write_only=True,
+    )
+    districtLocationId = serializers.PrimaryKeyRelatedField(
+        queryset=Location.objects.filter(location_type__category='district'),
+        required=False, write_only=True,
+    )
     realEstateClassId = serializers.PrimaryKeyRelatedField(
         source='real_estate_class', queryset=RealEstateClass.objects.all()
     )
@@ -3015,6 +3024,7 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
         model = RealEstateComplex
         fields = (
             'name', 'description', 'developerId', 'districtId', 'locationId',
+            'regionLocationId', 'districtLocationId',
             'realEstateClassId', 'realEstateTypeId', 'mapLink',
             'presentationLink', 'investmentPotential', 'photo', 'clearPhoto',
             'photos', 'primaryPhotoId', 'primaryPhotoIndex', 'removedPhotoIds',
@@ -3123,6 +3133,11 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
             real_estate_complex.district if real_estate_complex else None,
         )
         location = attributes.get('locationId')
+        territory = location or (real_estate_complex.primary_location if real_estate_complex else None)
+        for field in ['regionLocationId', 'districtLocationId']:
+            scope = attributes.get(field)
+            if scope and (territory is None or not territory.ancestor_links.filter(ancestor=scope).exists()):
+                raise serializers.ValidationError({field: 'Территория ЖК не относится к выбранной локации.'})
         if location is not None:
             previous = real_estate_complex.primary_location if real_estate_complex else None
             if not location.is_active and (previous is None or previous.pk != location.pk):
@@ -3294,6 +3309,8 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """Create a complex and all submitted child rows atomically."""
         location = validated_data.pop('locationId', None)
+        validated_data.pop('regionLocationId', None)
+        validated_data.pop('districtLocationId', None)
         buildings = validated_data.pop('buildings', [])
         metro_availability = validated_data.pop('metroAvailability', [])
         validated_data.pop('clearPhoto', None)
@@ -3313,6 +3330,8 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         """Update a complex and optional replacement child lists atomically."""
         location = validated_data.pop('locationId', None)
+        validated_data.pop('regionLocationId', None)
+        validated_data.pop('districtLocationId', None)
         missing_related_rows = object()
         buildings = validated_data.pop('buildings', missing_related_rows)
         metro_availability = validated_data.pop(

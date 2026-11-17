@@ -708,6 +708,9 @@ const realEstateComplexMetroAvailabilitySchema = z.object({
 })
 
 export const realEstateComplexDetailSchema = z.object({
+  regionLocationId: z.number().int().positive().nullable().optional(),
+  districtLocationId: z.number().int().positive().nullable().optional(),
+  localityId: z.number().int().positive().nullable().optional(),
   location: geographicLocationSchema.nullable().optional(),
   id: z.number().int().positive(),
   name: z.string(),

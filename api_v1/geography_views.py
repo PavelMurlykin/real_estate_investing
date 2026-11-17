@@ -1,7 +1,7 @@
 """Public geographic search and permission-checked precise complex bindings."""
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Prefetch, Q, prefetch_related_objects
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
@@ -10,7 +10,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from location.models import LegacyLocationMapping, Location
+from location.models import LegacyLocationMapping, Location, LocationClosure
 from location.presentation import geographic_label
 from property.models import RealEstateComplex, RealEstateComplexLocation
 from .catalog_options import CatalogOptionQuerySerializer
@@ -44,6 +44,7 @@ class GeographyQuerySerializer(CatalogOptionQuerySerializer):
     relatedToId = serializers.IntegerField(min_value=1, required=False)
     legacyRegionId = serializers.IntegerField(min_value=1, required=False)
     legacyCityId = serializers.IntegerField(min_value=1, required=False)
+    includeContext = serializers.BooleanField(default=False)
 
 
 class GeographyAPIView(APIView):
@@ -93,9 +94,29 @@ class GeographyAPIView(APIView):
         page, size = parameters['page'], parameters['pageSize']
         offset = (page - 1) * size
         selected = parameters.get('selectedIds', []) + ([parameters['selected']] if parameters.get('selected') else [])
+        rows = list(queryset[offset:offset + size])
+        selected_rows = list(base.filter(pk__in=selected))
+        if parameters['includeContext']:
+            prefetch_related_objects(rows + selected_rows, Prefetch(
+                'ancestor_links', queryset=LocationClosure.objects.select_related(
+                    'ancestor__location_type',
+                ).order_by('depth'),
+            ))
+
+        def option_payload(location):
+            """Attach canonical scope identifiers only when requested by a form."""
+            payload = serialize_location(location)
+            if parameters['includeContext']:
+                payload['regionLocationId'] = location.region_id
+                payload['districtLocationId'] = next((
+                    link.ancestor_id for link in location.ancestor_links.all()
+                    if link.ancestor.location_type.category == 'district'
+                ), None)
+            return payload
+
         return Response({
-            'results': [serialize_location(row) for row in queryset[offset:offset + size]],
-            'selected': [serialize_location(row) for row in base.filter(pk__in=selected)],
+            'results': [option_payload(row) for row in rows],
+            'selected': [option_payload(row) for row in selected_rows],
             'totalCount': count, 'page': page,
             'nextPage': page + 1 if offset + size < count else None,
         })

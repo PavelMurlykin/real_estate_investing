@@ -3126,25 +3126,29 @@ class RealEstateComplexOptionsAPIView(APIView):
         filters = query_serializer.validated_data
         maximum_results = settings.PUBLIC_CATALOG_API_MAX_RESULTS
 
-        regions, regions_truncated = _build_bounded_option_rows(
-            Region.objects.order_by('name', 'pk'), maximum_results
-        )
-        cities_queryset = City.objects.order_by('name', 'pk')
-        if filters.get('regionId'):
-            cities_queryset = cities_queryset.filter(
-                region_id=filters['regionId']
+        if filters['canonicalLocations']:
+            regions, cities, districts = [], [], []
+            regions_truncated = cities_truncated = districts_truncated = False
+        else:
+            regions, regions_truncated = _build_bounded_option_rows(
+                Region.objects.order_by('name', 'pk'), maximum_results
             )
-        cities, cities_truncated = _build_bounded_option_rows(
-            cities_queryset, maximum_results
-        )
-        districts_queryset = District.objects.none()
-        if filters.get('cityId'):
-            districts_queryset = District.objects.filter(
-                city_id=filters['cityId']
-            ).order_by('name', 'pk')
-        districts, districts_truncated = _build_bounded_option_rows(
-            districts_queryset, maximum_results
-        )
+            cities_queryset = City.objects.order_by('name', 'pk')
+            if filters.get('regionId'):
+                cities_queryset = cities_queryset.filter(
+                    region_id=filters['regionId']
+                )
+            cities, cities_truncated = _build_bounded_option_rows(
+                cities_queryset, maximum_results
+            )
+            districts_queryset = District.objects.none()
+            if filters.get('cityId'):
+                districts_queryset = District.objects.filter(
+                    city_id=filters['cityId']
+                ).order_by('name', 'pk')
+            districts, districts_truncated = _build_bounded_option_rows(
+                districts_queryset, maximum_results
+            )
 
         developer_objects = list(
             Developer.objects.select_related('company_group').order_by(
@@ -3175,7 +3179,7 @@ class RealEstateComplexOptionsAPIView(APIView):
 
         metro_stations = []
         metro_stations_truncated = False
-        if filters.get('cityId'):
+        if not filters['canonicalLocations'] and filters.get('cityId'):
             metro_objects = list(
                 Metro.objects.select_related('metro_line').filter(
                     metro_line__city_id=filters['cityId']

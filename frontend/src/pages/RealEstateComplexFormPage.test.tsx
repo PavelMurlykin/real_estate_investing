@@ -117,12 +117,29 @@ const savedComplex: RealEstateComplexDetail = {
 function createManagerQueryClient() {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['session'], managerSession)
-  for (const filters of ['category=region', 'activeOnly=true&category=locality']) {
-    for (const selected of ['', '501']) {
+  const localities = [
+    { id: 501, label: 'г. Пушкин · Санкт-Петербург', regionLocationId: 11, districtLocationId: 21 },
+    { id: 502, label: 'п. Стрельна · Санкт-Петербург', regionLocationId: 11, districtLocationId: 22 },
+  ]
+  const cacheLocations = (filters: string, options: typeof localities | { id: number, label: string, regionId?: number }[]) => {
+    for (const selected of ['', '11', '21', '22', '501', '502']) {
       queryClient.setQueryData(['catalog-options', 'locations', filters, '', selected], {
-        pages: [{ results: [{ id: 501, label: 'г. Пушкин · Санкт-Петербург' }], selected: [], page: 1, totalCount: 1, nextPage: null }],
+        pages: [{ results: options, selected: options.filter((option) => String(option.id) === selected), page: 1, totalCount: options.length, nextPage: null }],
         pageParams: [1],
       })
+    }
+  }
+  cacheLocations('category=region', [{ id: 11, label: 'Санкт-Петербург' }])
+  for (const parent of ['', '&regionId=11']) {
+    cacheLocations(`category=district${parent}`, [
+      { id: 21, label: 'Пушкинский район', regionId: 11 }, { id: 22, label: 'Петродворцовый район', regionId: 11 },
+    ])
+  }
+  for (const region of ['', '&regionId=11']) {
+    cacheLocations(`activeOnly=true&category=locality&includeContext=true${region}`, localities)
+    for (const district of [21, 22]) {
+      cacheLocations(`activeOnly=true&category=locality&includeContext=true${region}&relatedToId=${district}`,
+        localities.filter((location) => location.districtLocationId === district))
     }
   }
   queryClient.setQueryData(['catalog-options', 'metro', '', '', ''], {
@@ -132,7 +149,7 @@ function createManagerQueryClient() {
     pages: [{ results: [{ id: 7, label: 'Петроградская · Синяя' }], selected: [], page: 1, totalCount: 1, nextPage: null }], pageParams: [1],
   })
 
-  for (const queryString of ['', 'regionId=1', 'regionId=1&cityId=2']) {
+  for (const queryString of ['canonicalLocations=true']) {
     queryClient.setQueryData(
       ['real-estate-complex-options', queryString],
       formOptions,
@@ -158,10 +175,10 @@ function mockPhotoPreviews() {
   })
 }
 
-function renderEditForm() {
+function renderEditForm(overrides: Partial<RealEstateComplexDetail> = {}) {
   const queryClient = createManagerQueryClient()
   queryClient.setQueryData(['real-estate-complex', 99], {
-    ...savedComplex, photoUrl: '/media/first.jpg', photos: [
+    ...savedComplex, ...overrides, photoUrl: '/media/first.jpg', photos: [
       { id: 31, url: '/media/first.jpg', isPrimary: true },
       { id: 32, url: '/media/second.jpg', isPrimary: false },
     ],
@@ -191,6 +208,65 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('RealEstateComplexFormPage', () => {
+  it('uses canonical IDs to prefill and change territory without dropping metro or building rows', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockResolvedValue(Response.json(savedComplex))
+    vi.stubGlobal('fetch', fetchMock)
+    renderEditForm({
+      regionLocationId: 11, districtLocationId: 21, localityId: 501,
+      location: { id: 501, name: 'Пушкин', label: 'г. Пушкин · Санкт-Петербург', type: 'Город', category: 'locality',
+        regionId: 11, parentId: 21, region: 'Санкт-Петербург', parent: 'Пушкинский район', needsReview: false, isActive: true },
+    })
+    expect(screen.getByRole('combobox', { name: 'Регион' })).toHaveValue('Санкт-Петербург')
+    expect(screen.getByRole('combobox', { name: 'Административный район' })).toHaveValue('Пушкинский район')
+    await chooseOption(user, 'Административный район', 'Петродворцовый район')
+    expect(screen.getByRole('combobox', { name: 'Населённый пункт *' })).toHaveValue('')
+    await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }))
+    expect(screen.getByText('Выберите населённый пункт.')).toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
+    await chooseOption(user, 'Населённый пункт *', 'п. Стрельна · Санкт-Петербург')
+    await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }))
+    expect(await screen.findByRole('heading', { name: 'ЖК сохранён' })).toBeInTheDocument()
+    const body = fetchMock.mock.calls[0][1].body as FormData
+    expect(body.get('regionLocationId')).toBe('11')
+    expect(body.get('districtLocationId')).toBe('22')
+    expect(body.get('locationId')).toBe('502')
+    expect(body.has('districtId')).toBe(false)
+    expect(body.has('cityId')).toBe(false)
+    expect(JSON.parse(String(body.get('buildings')))[0].id).toBe(10)
+    expect(JSON.parse(String(body.get('metroAvailability')))[0].id).toBe(11)
+  })
+
+  it('does not refine a coarse territory implicitly when saving other fields', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockResolvedValue(Response.json(savedComplex))
+    vi.stubGlobal('fetch', fetchMock)
+    renderEditForm({
+      regionLocationId: 11, districtLocationId: 21, localityId: 11,
+      location: { id: 21, name: 'Пушкинский район', label: 'Пушкинский район', type: 'Район', category: 'district',
+        regionId: 11, parentId: 11, region: 'Санкт-Петербург', parent: 'Санкт-Петербург', needsReview: false, isActive: true },
+    })
+    expect(screen.getByRole('combobox', { name: 'Населённый пункт' })).toHaveValue('')
+    expect(screen.getByText(/Населённый пункт пока не уточнён/)).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Описание'), 'Уточнено описание')
+    await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }))
+    expect(await screen.findByRole('heading', { name: 'ЖК сохранён' })).toBeInTheDocument()
+    const body = fetchMock.mock.calls[0][1].body as FormData
+    expect(body.has('locationId')).toBe(false)
+    expect(body.has('districtId')).toBe(false)
+    expect(body.get('districtLocationId')).toBe('21')
+  })
+
+  it('clears dependent territory fields when the region changes', async () => {
+    const user = userEvent.setup()
+    renderCreateForm()
+    await chooseOption(user, 'Населённый пункт *', 'г. Пушкин · Санкт-Петербург')
+    expect(screen.getByRole('combobox', { name: 'Регион' })).toHaveValue('Санкт-Петербург')
+    expect(screen.getByRole('combobox', { name: 'Административный район' })).toHaveValue('Пушкинский район')
+    await chooseOption(user, 'Регион', 'Не выбрано')
+    expect(screen.getByRole('combobox', { name: 'Административный район' })).toHaveValue('')
+    expect(screen.getByRole('combobox', { name: 'Населённый пункт *' })).toHaveValue('')
+  })
   it('keeps existing metro and legacy bindings while adding a precise locality', async () => {
     const user = userEvent.setup()
     renderEditForm()
@@ -372,6 +448,10 @@ describe('RealEstateComplexFormPage', () => {
     expect(requestOptions.method).toBe('POST')
     const formData = requestOptions.body as FormData
     expect(formData.get('name')).toBe('Новый квартал')
+    expect(formData.get('regionLocationId')).toBe('11')
+    expect(formData.get('districtLocationId')).toBe('21')
+    expect(formData.get('locationId')).toBe('501')
+    expect(formData.has('districtId')).toBe(false)
     expect(JSON.parse(String(formData.get('buildings')))).toEqual([
       expect.objectContaining({ number: '1' }),
     ])

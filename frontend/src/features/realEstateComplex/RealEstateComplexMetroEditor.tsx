@@ -8,8 +8,7 @@ import type { MetroAvailabilityFormRow } from './formTypes'
 type RealEstateComplexMetroEditorProps = {
   rows: MetroAvailabilityFormRow[]
   options: RealEstateComplexOptions
-  cityId: number | null
-  locationId?: number | null
+  hasLocation: boolean
   error?: string
   onAdd: () => void
   onChange: (index: number, row: MetroAvailabilityFormRow) => void
@@ -19,8 +18,7 @@ type RealEstateComplexMetroEditorProps = {
 export function RealEstateComplexMetroEditor({
   rows,
   options,
-  cityId,
-  locationId,
+  hasLocation,
   error,
   onAdd,
   onChange,
@@ -41,14 +39,14 @@ export function RealEstateComplexMetroEditor({
           <button
             className="button button--secondary"
             type="button"
-            disabled={!cityId && !locationId}
+            disabled={!hasLocation}
             onClick={onAdd}
           >
             Добавить станцию
           </button>
         </div>
-        {options.metroStations.length === 0 && !locationId ? (
-          <EmptyState compact title="Выберите город, чтобы получить список станций метро." />
+        {!hasLocation ? (
+          <EmptyState compact title="Выберите населённый пункт, чтобы добавить станции метро." />
         ) : null}
         {error ? <Notice as="p" tone="error" role="alert" className="form-error">{error}</Notice> : null}
         <div className="complex-editor-grid complex-editor-grid--metro">
@@ -79,7 +77,7 @@ export function RealEstateComplexMetroEditor({
                       })}
                     initialOptions={(options.metroStations ?? []).map((option) => ({ id: option.id, label: `${option.station} · ${option.line}` }))}
                     truncated
-                    disabled={!cityId && !locationId}
+                    disabled={!hasLocation}
                     required
                   />
                   <RemoteSelect searchable

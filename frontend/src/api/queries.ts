@@ -893,8 +893,9 @@ export function realEstateComplexDetailQueryOptions(
 }
 
 export type RealEstateComplexOptionFilters = {
-  regionId: number | null
-  cityId: number | null
+  regionId?: number | null
+  cityId?: number | null
+  canonicalLocations?: boolean
 }
 
 export function realEstateComplexOptionsQueryOptions(
@@ -907,6 +908,7 @@ export function realEstateComplexOptionsQueryOptions(
   if (filters.cityId) {
     searchParameters.set('cityId', String(filters.cityId))
   }
+  if (filters.canonicalLocations) searchParameters.set('canonicalLocations', 'true')
   const queryString = searchParameters.toString()
   return queryOptions({
     queryKey: ['real-estate-complex-options', queryString],
