@@ -143,6 +143,10 @@ def test_complex_form_rolls_back_changes_and_files_on_gallery_overflow(
 @pytest.fixture
 def import_payload(complex_catalog):
     """Describe an existing project using portable natural keys."""
+    from django.apps import apps
+    from location.migration_support import backfill_locations
+
+    backfill_locations(apps)
     return {
         'version': 1,
         'complexes': [{
@@ -343,12 +347,22 @@ def test_import_endpoint_requires_administrator_and_accepts_json(
 
 @pytest.mark.django_db
 def test_prepared_complex_snapshot_is_portable(settings, tmp_path):
-    """Import the real delivered file into an empty catalog and rerun it."""
+    """Import the delivered version 1 file with migrated geographic references."""
+    from django.apps import apps
+    from location.models import City, District, MetroLine, Region
+    from location.migration_support import backfill_locations
     from property.models import RealEstateClass
 
     settings.MEDIA_ROOT = tmp_path
     path = Path(__file__).resolve().parents[1] / 'data/complexes-moscow-spb-2026-11.json'
     payload = json.loads(path.read_text(encoding='utf-8'))
+    for row in payload['complexes']:
+        region, _ = Region.objects.get_or_create(code=row['region_code'], defaults={'name': row['region']})
+        city, _ = City.objects.get_or_create(name=row['city'], region=region)
+        District.objects.get_or_create(name=row['district'], city=city)
+        MetroLine.objects.get_or_create(line=row['metro'][0]['line'], city=city,
+                                       defaults={'line_color': row['metro'][0]['color']})
+    backfill_locations(apps)
     for name in {row['real_estate_class'] for row in payload['complexes']}:
         RealEstateClass.objects.create(name=name, weight='1.00')
     first = import_complex_catalog(payload)

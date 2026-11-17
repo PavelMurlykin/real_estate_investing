@@ -9,16 +9,24 @@ export function ComplexImport() {
   const queryClient = useQueryClient()
   const mutation = useMutation({
     mutationFn: importComplexCatalog,
-    onSuccess: () => queryClient.invalidateQueries({
-      predicate: (query) => [
-        'real-estate-complexes', 'real-estate-complex', 'real-estate-complex-options',
-        'homepage-complexes', 'homepage', 'catalog-options', 'overview',
-      ].includes(String(query.queryKey[0])),
-    }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        predicate: (query) => [
+          'real-estate-complexes', 'real-estate-complex', 'real-estate-complex-options',
+          'homepage-complexes', 'homepage', 'catalog-options', 'overview',
+        ].includes(String(query.queryKey[0])),
+      })
+    },
   })
   return (
     <details className="bank-catalog-import">
       <summary>Импорт жилых комплексов из JSON</summary>
+      <p className="field-hint">
+        Версия 2 использует ID или GUID ФИАС населённого пункта и ссылки на станции либо системы метро.
+        Версия 1 с названиями региона, города и административного района поддерживается.
+        Сначала загрузите справочник локаций; неоднозначные соответствия отклоняются целиком.
+        Повторная загрузка сохраняет связи ЖК, корпусов, квартир и фотографий.
+      </p>
       <form onSubmit={(event) => {
         event.preventDefault()
         if (file && !mutation.isPending) mutation.mutate(file)

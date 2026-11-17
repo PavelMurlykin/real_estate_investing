@@ -245,9 +245,36 @@ On the edit page, each saved image has an “Удалить фото” button. 
 
 Administrators can expand “Импорт жилых комплексов из JSON” on the catalog page and select a UTF-8 JSON file of up to 16 MB. Use the [prepared selection](../data/complexes-moscow-spb-2026-11.json). Images are embedded, and each record links to its source materials.
 
-Version 1 contains a complexes list. Each record includes a stable key, name, region, city, district, developer, class, property type, description, buildings, metro, and one to three photos. Each photo has a filename and base64 data. The zero-based primary_photo index selects the main image. Use match_name to normalize an existing project name, and match_city when correcting its city.
+The import supports versions 1 and 2. Load GAR geography and the required metro systems first. Complex import creates no legacy region, city or district records. Version 1 retains its existing fields: region, region_code, city and district resolve against canonical geography. Unknown or ambiguous territories reject the entire file. A legacy city/district pair retains that coarse precision; a compatible old file does not replace confirmed Pushkin or Strelna with the general Petersburg territory.
 
-The import resolves a stable source key or normalized name within a city and rejects ambiguous matches. Buildings and metro rows are merged by natural keys, preserving rows omitted from the file. Correcting a city replaces metro access with entries for the new city. A failed import rolls back all database changes and removes files created by that attempt. Repeated imports update data without duplicating complexes, buildings or photos. Sources and coverage for dates and travel times are recorded in sources, notes, and metadata.
+Version 2 replaces the old geographic fields with location containing exactly one of `{"fias_id":"FIAS GUID"}` or `{"id":123}`. The reference must identify a locality or a federal city's locality role. GUIDs are portable; IDs belong to the current database. Pushkin's FIAS GUID is `110d6ad9-0b64-47cf-a2ee-7e935228799c`; Strelna's is `3eece910-1326-4602-aa21-e4ee117275ad`.
+
+```json
+{
+  "version": 2,
+  "complexes": [{
+    "key": "example:pushkin",
+    "name": "Пример ЖК",
+    "location": {"fias_id": "110d6ad9-0b64-47cf-a2ee-7e935228799c"},
+    "developer": "Название застройщика",
+    "real_estate_class": "Комфорт",
+    "real_estate_type": "Квартира",
+    "description": "Описание ЖК",
+    "buildings": [{"number": "1"}],
+    "metro": [],
+    "photos": [],
+    "sources": ["https://example.com/project"]
+  }]
+}
+```
+
+Replace the example project values; its class must already exist in the catalog. The buildings list contains 1–100 records. Version 2 metro entries use station_id, station_source_identifier, or station and line with system_id or system_location. The latter uses the same id/fias_id reference format for the network center. Creating a line requires color in #RRGGBB format. Each access row requires mode (“Пешком”, “На транспорте”, or “На электричке”) and minutes from 1 to 1440. A station may be outside the complex locality; its own geography and all line memberships are retained. Version 1 station/line names remain supported; an ambiguous network requires an explicit version 2 reference.
+
+Version 2 metro and photos may be omitted or empty: existing access rows and gallery images remain. An image has name and base64 data; one import accepts at most 3 images. The zero-based primary_photo index is supplied only with new photos. Version 1 retains its requirement for at least one station and photo. Source links and notes remain in sources, notes and metadata.
+
+Matching uses the stable key or a normalized name within a specific territory. Use match_name for a rename. To move an existing complex without a source key, version 2 accepts match_location with its previous id/fias_id; version 1 retains match_city. Existing complex, building, apartment, photo and metro-access IDs remain unchanged. The previous district field is not overwritten. Explicit building territories and previous complex territories remain linked; moving a complex does not automatically move apartments whose buildings have their own territory. Financial calculations, customer links and regional limits are unchanged.
+
+Buildings and metro access are merged with existing records; omitted entries remain. Repeating an import creates no duplicate complexes, buildings, stations or images. Any error rolls back the entire file and removes only files created by the failed attempt. The button becomes available again after success or failure; list refresh does not block another import. Application administrators and superusers retain import access, protected by session authentication and CSRF.
 
 The selection's building schedules were checked on 7 November 2026. The [verification log](complex-schedule-audit-2026-11-07.md) lists previous and corrected values, evidence, and unresolved cases; structured evidence is stored in metadata.schedule_verification. A commissioning permit date represents actual commissioning; apartment handover remains a planned deadline. Quarter precision is retained as year and quarter. Unverified or conflicting periods use explicit null values: importing them clears previous dates while retaining the building and property links. A field omitted from a building record retains its previous value. Some official registry cards are accessible only through the search index; freshness limitations are recorded in the log.
 
