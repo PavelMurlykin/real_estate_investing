@@ -161,6 +161,11 @@
                 changed = true;
             });
         }
+        form.querySelectorAll('[data-catalog-clear-on]').forEach(function (control) {
+            if (control.dataset.catalogClearOn.split(/\s+/).some(function (identifier) {
+                return changedIdentifiers.has(identifier);
+            })) control.value = '';
+        });
     }
 
     function replaceResults(html, targetSelector) {

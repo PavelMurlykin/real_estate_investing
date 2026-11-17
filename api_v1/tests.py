@@ -259,6 +259,8 @@ def test_property_list_api_returns_paginated_normalized_rows(
             'realEstateComplexId': first_property.building.real_estate_complex_id,
             'regionId': first_property.building.real_estate_complex.district.city.region_id,
             'regionLocationId': first_property.building.real_estate_complex.primary_location.region_id,
+            'region': first_property.building.real_estate_complex.district.city.region.name,
+            'locationId': first_property.building.real_estate_complex.primary_location.pk,
             'districtLocationId': first_property.building.real_estate_complex.primary_location.pk,
             'localityId': first_property.building.real_estate_complex.primary_location.parent_id,
             'district': 'Петроградский',

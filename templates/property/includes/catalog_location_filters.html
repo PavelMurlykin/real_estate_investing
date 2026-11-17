@@ -1,0 +1,8 @@
+{% if request.GET.legacy == '1' %}<input type="hidden" name="legacy" value="1">{% endif %}
+<input type="hidden" name="locationId" id="catalog_location_locationId" value="{{ filters.locationId }}" data-catalog-clear-on="catalog_location_regionLocationId catalog_location_districtLocationId catalog_location_localityId">
+<input type="hidden" name="filter_city" value="{{ filters.city }}" data-catalog-clear-on="catalog_location_regionLocationId catalog_location_districtLocationId catalog_location_localityId">
+{% for field in location_filter_form %}
+<div class="col-md-6 col-xl-3">
+    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+</div>
+{% endfor %}

@@ -2574,6 +2574,9 @@ class GeographicModelSerializer(serializers.ModelSerializer):
         result.update(regionLocationId=geography.region_location_id,
                       districtLocationId=geography.district_location_id,
                       localityId=geography.locality_id)
+        if hasattr(instance, 'geographic_location_id'):
+            from property.location_queries import geography_payload
+            result.update(geography_payload(instance))
         return result
 
 

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -31,6 +31,21 @@ const propertyList: PropertyListResponse = {
 }
 
 describe('PropertyListPage', () => {
+  it('shows the effective locality and keeps geographic search in the URL', async () => {
+    const queryClient = createTestQueryClient()
+    const canonical = { ...propertyList, results: [{ ...propertyList.results[0],
+      city: 'Стрельна', district: 'Петродворцовый район', region: 'Санкт-Петербург',
+    }] }
+    queryClient.setQueryData(['properties', ''], canonical)
+    const fetchMock = vi.fn<typeof fetch>(async () => Response.json(canonical))
+    vi.stubGlobal('fetch', fetchMock)
+    renderWithProviders(<PropertyListPage />, { queryClient })
+    const table = within(screen.getByRole('table'))
+    expect(table.getByText('Стрельна')).toBeInTheDocument()
+    expect(table.getByText(/Петродворцовый район · Санкт-Петербург/)).toBeInTheDocument()
+    await userEvent.setup().type(screen.getByRole('searchbox', { name: 'Поиск' }), 'Стрельна')
+    await waitFor(() => expect(fetchMock.mock.calls.some(([path]) => new URL(String(path), 'http://localhost').searchParams.get('search') === 'Стрельна')).toBe(true))
+  })
   it('searches while typing and sorts the server selection through the column header', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify(propertyList), {
@@ -103,7 +118,7 @@ describe('PropertyListPage', () => {
       }),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Сбросить' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Убрать поиск из ссылки' })).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'Поиск' })).toHaveValue('unknown')
   })
 
   it('preserves the customer context in property and mortgage links', () => {

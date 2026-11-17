@@ -84,6 +84,22 @@ function createDirectoryQueryClient(session?: Session) {
 }
 
 describe('RealEstateComplexListPage', () => {
+  it('shows canonical locality context and sorts through the locality column', async () => {
+    const queryClient = createDirectoryQueryClient()
+    const canonical = { ...directory, results: [{ ...directory.results[0],
+      city: 'Пушкин', district: 'Пушкинский район', region: 'Санкт-Петербург',
+    }] }
+    queryClient.setQueryData(['real-estate-complexes', ''], canonical)
+    const fetchMock = vi.fn<typeof fetch>(async () => Response.json(canonical))
+    vi.stubGlobal('fetch', fetchMock)
+    renderWithProviders(<RealEstateComplexListPage />, { queryClient })
+    const table = within(screen.getByRole('table'))
+    expect(table.getByText('Пушкин')).toBeInTheDocument()
+    expect(table.getByText(/Пушкинский район · Санкт-Петербург/)).toBeInTheDocument()
+    await userEvent.setup().click(table.getByRole('button', { name: 'Населённый пункт' }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([path]) => String(path).includes('ordering=city'))).toBe(true))
+    expect(fetchMock.mock.calls.some(([path]) => String(path).includes('/complexes/options/'))).toBe(false)
+  })
   it('renders a public responsive directory with a React detail route', () => {
     renderWithProviders(<RealEstateComplexListPage />, {
       queryClient: createDirectoryQueryClient(),

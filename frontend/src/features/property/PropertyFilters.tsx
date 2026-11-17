@@ -19,6 +19,7 @@ export function PropertyFilters() {
   )
   return (
     <div className="field-grid table-filters">
+      <LiveFilterInput label="Поиск" parameter="search" placeholder="Локация, ЖК, корпус или квартира" />
       <LocationFilters />
       {select('developers', 'Застройщик', 'developer', ['realEstateComplex', 'building'])}
       {select('complexes', 'Жилой комплекс', 'realEstateComplex', ['building'], {

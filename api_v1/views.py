@@ -1,6 +1,10 @@
-from property.location_filters import apply_location_scopes, geographic_search_ids
+from property.location_filters import (
+    apply_catalog_location_filters, apply_location_scopes, geographic_search_ids,
+)
 from property.location_context import building_geography_prefetch, geography_prefetch
-from property.location_queries import annotate_property_geography, property_geography_search
+from property.location_queries import (
+    annotate_complex_geography, annotate_property_geography, property_geography_search,
+)
 from django.conf import settings
 from django.contrib.auth import (
     get_user_model,
@@ -2943,7 +2947,7 @@ class RealEstateComplexListCreateAPIView(ListCreateAPIView):
     ordering_fields = {
         'name': 'name',
         'developer': 'developer__name',
-        'city': 'district__city__name',
+        'city': 'geographic_locality_name',
         'realEstateClass': 'real_estate_class__name',
         'realEstateType': 'real_estate_type__name',
         'buildingCount': 'building_count',
@@ -2968,9 +2972,8 @@ class RealEstateComplexListCreateAPIView(ListCreateAPIView):
         )
         query_serializer.is_valid(raise_exception=True)
         filters = query_serializer.validated_data
-        queryset = _real_estate_complex_list_queryset()
-
-        queryset = apply_location_scopes(queryset, filters)
+        queryset = annotate_complex_geography(_real_estate_complex_list_queryset())
+        queryset = apply_catalog_location_filters(queryset, filters)
 
         search = filters.get('search', '')
         if search:
@@ -2981,7 +2984,6 @@ class RealEstateComplexListCreateAPIView(ListCreateAPIView):
             )
         filter_fields = {
             'developerId': 'developer_id',
-            'cityId': 'district__city_id',
             'realEstateClassId': 'real_estate_class_id',
             'realEstateTypeId': 'real_estate_type_id',
             'buildingCount': 'building_count',
@@ -3241,7 +3243,7 @@ class PropertyListAPIView(ListCreateAPIView):
     serializer_class = PropertyListItemSerializer
     pagination_class = ApplicationPageNumberPagination
     ordering_fields = {
-        'city': 'building__real_estate_complex__district__city__name',
+        'city': 'geographic_locality_name',
         'developer': 'building__real_estate_complex__developer__name',
         'realEstateComplex': 'building__real_estate_complex__name',
         'building': 'building__number',
@@ -3278,7 +3280,8 @@ class PropertyListAPIView(ListCreateAPIView):
             'decoration',
         )
 
-        queryset = apply_location_scopes(queryset, filters, buildings=True)
+        queryset = annotate_property_geography(queryset, 'building__')
+        queryset = apply_catalog_location_filters(queryset, filters, properties=True)
 
         search = filters.get('search', '')
         if search:
@@ -3295,7 +3298,6 @@ class PropertyListAPIView(ListCreateAPIView):
             ).distinct()
 
         filter_fields = {
-            'city': 'building__real_estate_complex__district__city_id',
             'developer': 'building__real_estate_complex__developer_id',
             'realEstateComplex': 'building__real_estate_complex_id',
             'building': 'building_id',

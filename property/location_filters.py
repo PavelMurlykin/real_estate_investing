@@ -81,6 +81,32 @@ def apply_location_scopes(queryset, parameters, *, buildings=False, prefix=None)
             if buildings else filter_complex_locations(queryset, scopes, prefix or ''))
 
 
+def apply_catalog_location_filters(queryset, parameters, *, properties=False):
+    """Intersect old city links and canonical scopes on the same actual territory."""
+    scopes = selected_scopes(parameters)
+    city = parameters.get('cityId') or parameters.get('city')
+    if not scopes and not city:
+        return queryset
+    combined = list(scopes)
+    if city:
+        combined.append(LegacyLocationMapping.objects.filter(
+            model_name='city', legacy_id=city,
+        ).order_by().values('location_id'))
+    filtered = (
+        filter_property_locations(queryset, combined)
+        if properties else filter_complex_locations(queryset, combined)
+    )
+    if city and not scopes:
+        old_city = (
+            'building__real_estate_complex__district__city_id'
+            if properties else 'district__city_id'
+        )
+        return queryset.filter(Q(pk__in=filtered.values('pk')) | Q(**{
+            'geographic_location_id__isnull': True, old_city: city,
+        }))
+    return filtered
+
+
 def geographic_search_ids(search, *, properties=False):
     """Search names and aliases through effective ancestry, excluding obsolete links."""
     from .models import Property, RealEstateComplex

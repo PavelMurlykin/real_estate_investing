@@ -28,6 +28,29 @@ def annotate_property_geography(queryset, building_prefix='property__building__'
         Subquery(primary), Subquery(previous),
         output_field=BigIntegerField(),
     ))
+    return _annotate_geography_labels(
+        queryset, f'{building_prefix}real_estate_complex__district',
+    )
+
+
+def annotate_complex_geography(queryset, complex_prefix=''):
+    """Sort and display complexes by the primary territory, then an old mapping."""
+    if 'geographic_location_id' in queryset.query.annotations:
+        return queryset
+    primary = RealEstateComplexLocation.objects.filter(
+        real_estate_complex_id=OuterRef(f'{complex_prefix}pk'), is_primary=True,
+    ).order_by().values('location_id')[:1]
+    previous = LegacyLocationMapping.objects.filter(
+        model_name='district', legacy_id=OuterRef(f'{complex_prefix}district_id'),
+    ).order_by().values('location_id')[:1]
+    queryset = queryset.annotate(geographic_location_id=Coalesce(
+        Subquery(primary), Subquery(previous), output_field=BigIntegerField(),
+    ))
+    return _annotate_geography_labels(queryset, f'{complex_prefix}district')
+
+
+def _annotate_geography_labels(queryset, old_district):
+    """Resolve nearest canonical ancestors independently of legacy financial IDs."""
     ancestry = LocationClosure.objects.filter(
         descendant_id=OuterRef('geographic_location_id'),
     ).order_by('depth', 'ancestor_id')
@@ -38,7 +61,6 @@ def annotate_property_geography(queryset, building_prefix='property__building__'
     )
     district = ancestry.filter(ancestor__location_type__category='district')
     region = ancestry.filter(ancestor__location_type__category='region')
-    old_district = f'{building_prefix}real_estate_complex__district'
     annotations = {}
     for category, records, previous_name in (
         ('region', region, f'{old_district}__city__region__name'),

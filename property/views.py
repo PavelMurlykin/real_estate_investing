@@ -7,7 +7,7 @@ from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import models as django_models
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.db.models.deletion import ProtectedError
 from django.forms import modelform_factory
 from django.http import HttpResponseRedirect
@@ -32,6 +32,11 @@ from users.roles import (
 )
 
 from .form_fields import get_developers_with_company_groups_queryset
+from .catalog_filters import (
+    catalog_location_form, catalog_location_parameters, property_relation_filters,
+)
+from .location_filters import apply_catalog_location_filters, geographic_search_ids
+from .location_queries import annotate_complex_geography, annotate_property_geography
 from .forms import (
     CompanyGroupForm,
     DeveloperForm,
@@ -1134,7 +1139,7 @@ class RealEstateComplexListView(ListView):
     sort_fields = {
         'name': 'name',
         'developer': 'developer__name',
-        'city': 'district__city__name',
+        'city': 'geographic_locality_name',
         'real_estate_class': 'real_estate_class__name',
         'real_estate_type': 'real_estate_type__name',
         'buildings_count': 'buildings_count',
@@ -1142,7 +1147,7 @@ class RealEstateComplexListView(ListView):
     table_columns = (
         {'key': 'name', 'label': 'ЖК'},
         {'key': 'developer', 'label': 'Застройщик'},
-        {'key': 'city', 'label': 'Город'},
+        {'key': 'city', 'label': 'Населённый пункт'},
         {'key': 'real_estate_class', 'label': 'Класс'},
         {'key': 'real_estate_type', 'label': 'Тип'},
         {'key': 'buildings_count', 'label': 'Корпусов'},
@@ -1162,19 +1167,23 @@ class RealEstateComplexListView(ListView):
             )
             .select_related(
                 'developer__company_group',
-                'district__city',
+                'district__city__region',
                 'real_estate_class',
                 'real_estate_type',
             )
         )
 
         filters = self.get_filters()
+        queryset = annotate_complex_geography(queryset)
+        queryset = apply_catalog_location_filters(queryset, filters)
         if filters['name']:
-            queryset = queryset.filter(name__icontains=filters['name'])
+            queryset = queryset.filter(
+                Q(name__icontains=filters['name'])
+                | Q(developer__name__icontains=filters['name'])
+                | Q(pk__in=geographic_search_ids(filters['name'])),
+            )
         if filters['developer']:
             queryset = queryset.filter(developer_id=filters['developer'])
-        if filters['city']:
-            queryset = queryset.filter(district__city_id=filters['city'])
         if filters['real_estate_class']:
             queryset = queryset.filter(
                 real_estate_class_id=filters['real_estate_class']
@@ -1193,15 +1202,18 @@ class RealEstateComplexListView(ListView):
         sort_field = self.sort_fields.get(sort_by)
         if sort_field:
             sort_prefix = '-' if sort_dir == 'desc' else ''
-            return queryset.order_by(f'{sort_prefix}{sort_field}', 'name')
+            return queryset.order_by(f'{sort_prefix}{sort_field}', 'name', 'pk')
 
-        return queryset.order_by('developer__name', 'name')
+        return queryset.order_by('developer__name', 'name', 'pk')
 
     def get_filters(self):
+        """Normalize canonical scopes and legacy URL aliases for complex lists."""
         return {
-            'name': self.request.GET.get('filter_name', '').strip(),
+            **catalog_location_parameters(self.request.GET),
+            'name': (
+                self.request.GET.get('search') or self.request.GET.get('filter_name', '')
+            ).strip(),
             'developer': self.request.GET.get('filter_developer', ''),
-            'city': self.request.GET.get('filter_city', ''),
             'real_estate_class': self.request.GET.get(
                 'filter_real_estate_class', ''
             ),
@@ -1260,7 +1272,7 @@ class RealEstateComplexListView(ListView):
         context['developers_for_filter'] = (
             get_developers_with_company_groups_queryset()
         )
-        context['cities_for_filter'] = City.objects.order_by('name')
+        context['location_filter_form'] = catalog_location_form(context['filters'])
         context['classes_for_filter'] = RealEstateClass.objects.order_by(
             'weight', 'name'
         )
@@ -1502,7 +1514,7 @@ class PropertyListView(ListView):
     context_object_name = 'properties'
     paginate_by = 20
     sort_fields = {
-        'city': 'building__real_estate_complex__district__city__name',
+        'city': 'geographic_locality_name',
         'developer': 'building__real_estate_complex__developer__name',
         'complex': 'building__real_estate_complex__name',
         'building': 'building__number',
@@ -1512,7 +1524,7 @@ class PropertyListView(ListView):
         'property_cost': 'property_cost',
     }
     table_columns = (
-        {'key': 'city', 'label': 'Город'},
+        {'key': 'city', 'label': 'Населённый пункт'},
         {'key': 'developer', 'label': 'Застройщик'},
         {'key': 'complex', 'label': 'ЖК'},
         {'key': 'building', 'label': 'Корпус'},
@@ -1532,7 +1544,7 @@ class PropertyListView(ListView):
         """
         queryset = Property.objects.select_related(
             'building__real_estate_complex__developer__company_group',
-            'building__real_estate_complex__district__city',
+            'building__real_estate_complex__district__city__region',
             'building__real_estate_complex',
             'building',
             'layout',
@@ -1540,12 +1552,16 @@ class PropertyListView(ListView):
         )
 
         filters = self.get_filters()
-
-        if filters['city']:
+        queryset = annotate_property_geography(queryset, 'building__')
+        queryset = apply_catalog_location_filters(queryset, filters, properties=True)
+        if filters['search']:
+            search = filters['search']
             queryset = queryset.filter(
-                building__real_estate_complex__district__city_id=filters[
-                    'city'
-                ]
+                Q(apartment_number__icontains=search)
+                | Q(building__number__icontains=search)
+                | Q(building__real_estate_complex__name__icontains=search)
+                | Q(building__real_estate_complex__developer__name__icontains=search)
+                | Q(pk__in=geographic_search_ids(search, properties=True)),
             )
         if filters['developer']:
             queryset = queryset.filter(
@@ -1580,20 +1596,22 @@ class PropertyListView(ListView):
         if sort_field:
             sort_prefix = '-' if sort_dir == 'desc' else ''
             return queryset.order_by(
-                f'{sort_prefix}{sort_field}', 'apartment_number'
+                f'{sort_prefix}{sort_field}', 'apartment_number', 'pk',
             )
 
         return queryset.order_by(
-            'building__real_estate_complex__district__city__name',
+            'geographic_locality_name',
             'building__real_estate_complex__developer__name',
             'building__real_estate_complex__name',
             'building__number',
-            'apartment_number',
+            'apartment_number', 'pk',
         )
 
     def get_filters(self):
+        """Retain precise apartment filters alongside canonical geography."""
         return {
-            'city': self.request.GET.get('filter_city', ''),
+            **catalog_location_parameters(self.request.GET),
+            'search': self.request.GET.get('search', '').strip(),
             'developer': self.request.GET.get('filter_developer', ''),
             'complex': self.request.GET.get('filter_complex', ''),
             'building': self.request.GET.get('filter_building', ''),
@@ -1667,18 +1685,11 @@ class PropertyListView(ListView):
         context['sort_by'] = self.request.GET.get('sort_by', '')
         context['sort_dir'] = self.request.GET.get('sort_dir', 'asc')
         context['columns'] = self.build_table_columns()
-        context['cities_for_filter'] = City.objects.order_by('name')
         context['developers_for_filter'] = (
             get_developers_with_company_groups_queryset()
         )
-        context['complexes_for_filter'] = RealEstateComplex.objects.select_related(
-            'developer', 'district__city'
-        ).order_by('name')
-        context['buildings_for_filter'] = (
-            RealEstateComplexBuilding.objects.select_related(
-                'real_estate_complex'
-            ).order_by('real_estate_complex__name', 'number')
-        )
+        context['location_filter_form'] = catalog_location_form(context['filters'])
+        context.update(property_relation_filters(context['filters']))
         context['layouts_for_filter'] = ApartmentLayout.objects.order_by('name')
         context['pagination_querystring'] = self.build_querystring()
         return context

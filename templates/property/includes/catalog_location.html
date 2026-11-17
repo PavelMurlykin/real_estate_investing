@@ -1,0 +1,4 @@
+{{ entry.geographic_locality_name|default:'Не уточнён' }}
+{% if entry.geographic_district_name or entry.geographic_region_name %}
+<div class="small text-muted">{{ entry.geographic_district_name }}{% if entry.geographic_district_name and entry.geographic_region_name %} · {% endif %}{{ entry.geographic_region_name }}</div>
+{% endif %}

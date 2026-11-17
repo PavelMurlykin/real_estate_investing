@@ -30,10 +30,11 @@
             <form method="get" class="row g-2" data-catalog-filter-form data-catalog-results-target="#catalog-results">
                 <input type="hidden" name="sort_by" value="{{ sort_by }}">
                 <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+                {% include "property/includes/catalog_location_filters.html" %}
 
                 <div class="col-md-4 col-xl-2">
-                    <label class="form-label">ЖК</label>
-                    <input type="text" name="filter_name" value="{{ filters.name }}" class="form-control" data-catalog-filter-control>
+                    <label class="form-label" for="catalog_search">Поиск</label>
+                    <input type="search" id="catalog_search" name="filter_name" value="{{ filters.name }}" placeholder="ЖК, застройщик или локация" class="form-control" data-catalog-filter-control>
                 </div>
                 <div class="col-md-4 col-xl-2">
                     <label class="form-label">Застройщик</label>
@@ -41,15 +42,6 @@
                         <option value="">Все</option>
                         {% for developer in developers_for_filter %}
                         <option value="{{ developer.id }}" {% if filters.developer == developer.id|stringformat:'s' %}selected{% endif %}>{{ developer.get_display_name_with_company_group }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-4 col-xl-2">
-                    <label class="form-label">Город</label>
-                    <select name="filter_city" class="form-select" data-catalog-filter-control>
-                        <option value="">Все</option>
-                        {% for city in cities_for_filter %}
-                        <option value="{{ city.id }}" {% if filters.city == city.id|stringformat:'s' %}selected{% endif %}>{{ city.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -76,7 +68,7 @@
                     <input type="number" min="0" name="filter_buildings_count" value="{{ filters.buildings_count }}" class="form-control" data-catalog-filter-control>
                 </div>
                 <div class="col-12">
-                    <a href="{% url 'property:complex_list' %}" class="btn btn-outline-secondary">Сбросить</a>
+                    <a href="{% url 'property:complex_list' %}{% if request.GET.legacy == '1' %}?legacy=1{% endif %}" class="btn btn-outline-secondary">Сбросить</a>
                 </div>
             </form>
         </div>
@@ -113,7 +105,7 @@
                                     {% elif column.key == 'developer' %}
                                         {{ complex.developer.get_display_name_with_company_group }}
                                     {% elif column.key == 'city' %}
-                                        {{ complex.geography.city }}
+                                        {% include "property/includes/catalog_location.html" with entry=complex %}
                                     {% elif column.key == 'real_estate_class' %}
                                         {{ complex.real_estate_class.name }}
                                     {% elif column.key == 'real_estate_type' %}
@@ -179,5 +171,5 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{% static 'js/catalog.js' %}?v=20260516-sort"></script>
+<script src="{% static 'js/catalog.js' %}?v=20261117-locations"></script>
 {% endblock %}

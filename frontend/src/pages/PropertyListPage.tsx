@@ -1,4 +1,5 @@
 import { TableScrollArea } from '@/shared/ui/TableScrollArea'
+import { CatalogLocation } from '@/features/locations/CatalogLocation'
 import { Pagination } from '@/shared/ui/Pagination'
 import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
@@ -30,7 +31,7 @@ function PropertyMobileCard({
     <article className="property-mobile-card">
       <div className="property-mobile-card__heading">
         <div>
-          <span>{property.city}</span>
+          <CatalogLocation location={property} />
           <h2>{property.realEstateComplex}</h2>
         </div>
         <strong>{formatCurrency(property.propertyCost)}</strong>
@@ -125,11 +126,6 @@ export function PropertyListPage() {
 
       <section className="filter-panel" aria-label="Фильтры объектов">
         <PropertyFilters />
-        {searchParameters.get('search') ? <p className="filter-panel__notice">
-          Поиск из ссылки: {searchParameters.get('search')}{' '}
-          <button type="button" className="text-button" aria-label="Убрать поиск из ссылки"
-            onClick={() => updateParameters({ search: null, page: null })}>Убрать</button>
-        </p> : null}
         <ResetFilters />
       </section>
 
@@ -152,7 +148,7 @@ export function PropertyListPage() {
               </caption>
               <thead>
                 <tr>
-                  <SortableHeader field="city" defaultOrdering="city">Город</SortableHeader>
+                  <SortableHeader field="city" defaultOrdering="city">Населённый пункт</SortableHeader>
                   <SortableHeader field="developer" defaultOrdering="city">Застройщик</SortableHeader>
                   <SortableHeader field="realEstateComplex" defaultOrdering="city">ЖК</SortableHeader>
                   <SortableHeader field="building" defaultOrdering="city">Корпус</SortableHeader>
@@ -166,7 +162,7 @@ export function PropertyListPage() {
               <tbody>
                 {results.map((property) => (
                   <tr key={property.id}>
-                    <td>{property.city}</td>
+                    <td><CatalogLocation location={property} /></td>
                     <td>{property.developer}</td>
                     <td><strong>{property.realEstateComplex}</strong></td>
                     <td>{property.building}</td>

@@ -1,4 +1,5 @@
 import { LocationFilters } from '@/features/locations/LocationFilters'
+import { CatalogLocation } from '@/features/locations/CatalogLocation'
 import { Notice } from '@/shared/ui/Notice'
 import { restoreFocus } from '@/shared/lib/restoreFocus'
 import { ModalDialog } from '@/shared/ui/ModalDialog'
@@ -18,7 +19,6 @@ import { ApiError } from '@/api/client'
 import {
   deleteRealEstateComplex,
   realEstateComplexListQueryOptions,
-  realEstateComplexOptionsQueryOptions,
   sessionQueryOptions,
 } from '@/api/queries'
 import type { RealEstateComplexListItem } from '@/api/schemas'
@@ -33,9 +33,6 @@ export function RealEstateComplexListPage() {
   const sessionQuery = useQuery(sessionQueryOptions)
   const complexQuery = useQuery(
     realEstateComplexListQueryOptions(tableParameters),
-  )
-  const optionsQuery = useQuery(
-    realEstateComplexOptionsQueryOptions({ regionId: null, cityId: null }),
   )
   const queryClient = useQueryClient()
   const [selectedComplex, setSelectedComplex] = (
@@ -89,7 +86,6 @@ export function RealEstateComplexListPage() {
   const canManageCatalogs = (
     sessionQuery.data?.capabilities.manageCatalogs === true
   )
-  const options = optionsQuery.data
   const { results, page, totalCount, totalPages } = complexQuery.data
 
   return (
@@ -124,20 +120,17 @@ export function RealEstateComplexListPage() {
           </div>
         </form>
         <RemoteSelect filter dictionary="developers" label="Застройщик" value={searchParameters.get('developerId') ?? ''}
-            initialOptions={options?.developers.map((option) => ({ id: option.id, label: option.label }))}
             onChange={(value) => updateParameters({
               developerId: value || null,
               page: null,
             })} />
         <LocationFilters />
         <RemoteSelect filter dictionary="real-estate-classes" label="Класс" value={searchParameters.get('realEstateClassId') ?? ''}
-            initialOptions={options?.realEstateClasses.map((option) => ({ id: option.id, label: option.name }))}
             onChange={(value) => updateParameters({
               realEstateClassId: value || null,
               page: null,
             })} />
         <RemoteSelect filter dictionary="real-estate-types" label="Тип" value={searchParameters.get('realEstateTypeId') ?? ''}
-            initialOptions={options?.realEstateTypes.map((option) => ({ id: option.id, label: option.name }))}
             onChange={(value) => updateParameters({
               realEstateTypeId: value || null,
               page: null,
@@ -171,7 +164,7 @@ export function RealEstateComplexListPage() {
                 <tr>
                   <SortableHeader field="name" defaultOrdering="name">Жилой комплекс</SortableHeader>
                   <SortableHeader field="developer" defaultOrdering="name">Застройщик</SortableHeader>
-                  <SortableHeader field="city" defaultOrdering="name">Город</SortableHeader>
+                  <SortableHeader field="city" defaultOrdering="name">Населённый пункт</SortableHeader>
                   <SortableHeader field="realEstateClass" defaultOrdering="name">Класс</SortableHeader>
                   <SortableHeader field="realEstateType" defaultOrdering="name">Тип</SortableHeader>
                   <SortableHeader field="buildingCount" defaultOrdering="name">Корпусов</SortableHeader>
@@ -191,7 +184,7 @@ export function RealEstateComplexListPage() {
 
                     </td>
                     <td>{realEstateComplex.developer.label}</td>
-                    <td>{realEstateComplex.city}</td>
+                    <td><CatalogLocation location={realEstateComplex} /></td>
                     <td>{realEstateComplex.realEstateClass}</td>
                     <td>{realEstateComplex.realEstateType}</td>
                     <td>{formatInteger(realEstateComplex.buildingCount)}</td>
@@ -241,7 +234,7 @@ export function RealEstateComplexListPage() {
               >
                 <div className="property-mobile-card__heading">
                   <div>
-                    <span>{realEstateComplex.city}</span>
+                    <CatalogLocation location={realEstateComplex} />
                     <h2>{realEstateComplex.name}</h2>
                   </div>
 
