@@ -12,15 +12,11 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
-from location.models import City, District
+from mortgage.selector_views import calculator_properties
+from property.location_form_fields import selected_identifier
 from property.location_queries import annotate_property_geography
 from property.models import (
-    ApartmentDecoration,
-    ApartmentLayout,
-    Developer,
     Property,
-    RealEstateComplex,
-    RealEstateComplexBuilding,
 )
 from trench_mortgage.views import (
     _build_trench_payment_schedule,
@@ -75,7 +71,6 @@ from .word import (
 
 CALCULATION_LIST_PAGE_SIZE = 20
 FORM_DATA_CACHE_TIMEOUT = 600
-PROPERTY_FORM_DATA_CACHE_KEY = 'mortgage:property_form_data:v1'
 MORTGAGE_PROGRAM_FORM_DATA_CACHE_KEY = 'mortgage:program_form_data:v1'
 
 
@@ -372,9 +367,12 @@ def _populate_trench_report_context(
 def _get_property_initial(property_obj):
     """Return calculator form initial data from an existing property."""
     real_estate_complex = property_obj.building.real_estate_complex
-    district = real_estate_complex.district
+    geography = property_obj.building.geography
 
     return {
+        'OBJECT_REGION_LOCATION': geography.region_location_id,
+        'OBJECT_DISTRICT_LOCATION': geography.district_location_id,
+        'OBJECT_LOCALITY': geography.locality_id,
         'OBJECT_CITY': property_obj.building.geography.city_id,
         'OBJECT_DISTRICT': real_estate_complex.district_id,
         'OBJECT_DEVELOPER': real_estate_complex.developer_id,
@@ -401,10 +399,14 @@ def _get_property_calculator_initial(property_obj):
 def _get_property_payload(property_obj):
     """Return property data used by the calculator UI."""
     real_estate_complex = property_obj.building.real_estate_complex
-    district = real_estate_complex.district
+    geography = property_obj.building.geography
 
     return {
         'id': property_obj.pk,
+        'region_location_id': geography.region_location_id,
+        'district_location_id': geography.district_location_id,
+        'locality_id': geography.locality_id,
+        'financial_region_id': geography.region_id,
         'property_cost': str(property_obj.property_cost),
         'city_id': property_obj.building.geography.city_id,
         'district_id': real_estate_complex.district_id,
@@ -416,57 +418,6 @@ def _get_property_payload(property_obj):
         'layout_id': property_obj.layout_id,
         'floor': property_obj.floor,
         'decoration_id': property_obj.decoration_id,
-    }
-
-
-def _get_property_form_data():
-    """Return cached selector data for the mortgage object block."""
-    return cache.get_or_set(
-        PROPERTY_FORM_DATA_CACHE_KEY,
-        _build_property_form_data,
-        FORM_DATA_CACHE_TIMEOUT,
-    )
-
-
-def _build_property_form_data():
-    """Build reusable selector data for the mortgage object block."""
-    districts = District.objects.select_related('city').order_by('name')
-    complexes = RealEstateComplex.objects.select_related(
-        'developer',
-        'district__city',
-    ).order_by('name')
-    buildings = RealEstateComplexBuilding.objects.select_related(
-        'real_estate_complex'
-    ).order_by('real_estate_complex__name', 'number')
-    properties = Property.objects.select_related(
-        'building',
-        'building__real_estate_complex__developer',
-        'building__real_estate_complex__district__city',
-        'layout',
-        'decoration',
-    ).order_by('building_id', 'apartment_number')
-
-    return {
-        'cities': list(
-            City.objects.order_by('name').values('id', 'name', 'region_id')
-        ),
-        'districts': list(districts.values('id', 'name', 'city_id')),
-        'complexes': list(
-            complexes.values(
-                'id',
-                'name',
-                'developer_id',
-                'district_id',
-                'district__city_id',
-            )
-        ),
-        'buildings': list(
-            buildings.values('id', 'number', 'real_estate_complex_id')
-        ),
-        'properties': [
-            _get_property_payload(property_obj)
-            for property_obj in properties
-        ],
     }
 
 
@@ -603,7 +554,7 @@ def _build_mortgage_program_form_data():
 
 def _get_selected_property_from_form_data(form_data):
     """Return a selected property from hidden id or apartment number."""
-    selected_id = form_data.get('PROPERTY')
+    selected_id = selected_identifier(form_data.get('PROPERTY'))
     if selected_id:
         return (
             Property.objects.select_related(
@@ -617,7 +568,7 @@ def _get_selected_property_from_form_data(form_data):
             .first()
         )
 
-    building_id = form_data.get('OBJECT_BUILDING')
+    building_id = selected_identifier(form_data.get('OBJECT_BUILDING'))
     apartment_number = (form_data.get('OBJECT_APARTMENT_NUMBER') or '').strip()
     if not building_id or not apartment_number:
         return None
@@ -806,8 +757,10 @@ def mortgage_calculator(request):
             for field_name, value in _get_property_initial(
                 selected_property
             ).items():
-                if not form_data.get(field_name):
-                    form_data[field_name] = str(value)
+                if (field_name not in form_data if field_name in {
+                    'OBJECT_REGION_LOCATION', 'OBJECT_DISTRICT_LOCATION', 'OBJECT_LOCALITY',
+                } else not form_data.get(field_name)):
+                    form_data[field_name] = str(value) if value is not None else ''
         mortgage_form = MortgageForm(form_data)
     elif sample_calculation is not None:
         mortgage_form = MortgageForm(
@@ -839,12 +792,16 @@ def mortgage_calculator(request):
     trench_count = _resolve_trench_count(mortgage_form)
     trench_default_rate = _resolve_trench_default_rate(mortgage_form)
     can_save_calculations = request.user.is_authenticated
+    if sample_calculation is not None:
+        selected_property = sample_calculation.property
 
     context = {
         'mortgage_form': mortgage_form,
         'target_customer': target_customer,
         'sample_calculation': sample_calculation,
-        'property_form_data': _get_property_form_data(),
+        'property_form_data': {
+            'properties': [_get_property_payload(selected_property)] if selected_property else [],
+        },
         'mortgage_program_form_data': _get_mortgage_program_form_data(),
         'active_calculation_type': active_calculation_type,
         'trench_count': trench_count,
@@ -1255,13 +1212,7 @@ def property_cost_api(request, pk):
         Any: Тип результата определяется вызывающим кодом.
     """
     property_obj = get_object_or_404(
-        Property.objects.select_related(
-            'building__real_estate_complex__developer',
-            'building__real_estate_complex__district__city',
-            'building',
-            'layout',
-            'decoration',
-        ),
+        calculator_properties(),
         pk=pk,
     )
     return JsonResponse(_get_property_payload(property_obj))

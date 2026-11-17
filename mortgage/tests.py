@@ -426,7 +426,7 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, 'property-apartment-menu')
         self.assertContains(
             response,
-            'mortgage_form.js?v=20260715-developer-programs',
+            'mortgage_form.js?v=20261117-locations',
         )
         self.assertContains(response, 'Ипотечная программа')
         self.assertContains(response, 'mortgage-bank-select')
@@ -444,19 +444,12 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertContains(response, 'id_TRENCH_COUNT')
         self.assertContains(response, 'trench_amount_source_1')
         self.assertContains(response, 'Стоимость объекта')
-        self.assertContains(response, 'Город')
-        self.assertContains(response, 'Район')
+        self.assertContains(response, 'Населённый пункт')
+        self.assertContains(response, 'Административный район')
         self.assertContains(response, 'Жилой комплекс')
         self.assertContains(response, 'Номер квартиры')
         self.assertNotContains(response, 'Объект недвижимости')
-        self.assertEqual(
-            response.context['property_form_data']['properties'][0]['id'],
-            self.property.pk,
-        )
-        self.assertIn(
-            'region_id',
-            response.context['property_form_data']['cities'][0],
-        )
+        self.assertEqual(response.context['property_form_data'], {'properties': []})
 
     def test_calculation_list_is_available_from_calculation_menu(self):
         response = self.client.get(self.url)
@@ -2180,6 +2173,10 @@ class MortgageCalculatorViewTests(TestCase):
             set(payload),
             {
                 'id',
+                'region_location_id',
+                'district_location_id',
+                'locality_id',
+                'financial_region_id',
                 'property_cost',
                 'city_id',
                 'district_id',

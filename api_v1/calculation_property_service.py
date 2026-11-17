@@ -7,6 +7,9 @@ from users.roles import can_manage_catalogs
 
 
 MANUAL_PROPERTY_FIELDS = {
+    'regionLocationId': 'OBJECT_REGION_LOCATION',
+    'districtLocationId': 'OBJECT_DISTRICT_LOCATION',
+    'localityId': 'OBJECT_LOCALITY',
     'cityId': 'OBJECT_CITY',
     'districtId': 'OBJECT_DISTRICT',
     'developerId': 'OBJECT_DEVELOPER',
@@ -22,8 +25,8 @@ MANUAL_PROPERTY_FIELDS = {
 
 def validate_manual_property(values):
     """Reuse the established mortgage form for object fields and cascades."""
-    data = {field: values.get(name, '')
-            for name, field in MANUAL_PROPERTY_FIELDS.items()}
+    data = {field: values[name]
+            for name, field in MANUAL_PROPERTY_FIELDS.items() if name in values}
     data.update({
         'PROPERTY_COST': '1000000', 'DISCOUNT_MARKUP_TYPE': 'discount',
         'DISCOUNT_MARKUP_VALUE': '0', 'INITIAL_PAYMENT_PERCENT': '20',

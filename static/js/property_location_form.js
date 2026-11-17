@@ -58,6 +58,7 @@
                 Object.entries(assignments).forEach(([target, value]) => { fields[target].value = value || ''; });
                 refresh();
                 status.textContent = 'Локация квартиры соответствует выбранному корпусу.';
+                form.dispatchEvent(new CustomEvent('property-location:resolved', {detail: context}));
             } catch (error) {
                 if (revision === currentRevision) status.textContent = error.message;
             }

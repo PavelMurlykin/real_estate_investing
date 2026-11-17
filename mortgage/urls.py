@@ -2,10 +2,13 @@
 from django.urls import path
 
 from . import views
+from . import selector_views
 
 app_name = 'mortgage'
 
 urlpatterns = [
+    path('property-options/', selector_views.property_options, name='property_options'),
+    path('financial-region/', selector_views.financial_region, name='financial_region'),
     path('', views.mortgage_calculator, name='mortgage_calculator'),
     path(
         'property-cost/<int:pk>/',

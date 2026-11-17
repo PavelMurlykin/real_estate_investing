@@ -8,6 +8,10 @@ from mortgage.validators import (
     MORTGAGE_DATE_RANGE_ERROR,
     is_mortgage_end_date_supported,
 )
+from mortgage.location_fields import (
+    configure_calculator_locations,
+    validate_calculator_locations,
+)
 from property.form_fields import (
     DeveloperModelChoiceField,
     get_developers_with_company_groups_queryset,
@@ -52,36 +56,12 @@ class MortgageForm(forms.Form):
         widget=forms.HiddenInput(attrs={'id': 'id_PROPERTY'}),
     )
 
+    # Legacy identifiers remain accepted for older clients only.
     OBJECT_CITY = forms.ModelChoiceField(
-        queryset=City.objects.all(),
-        label='Город',
-        required=False,
-        empty_label='Выберите город',
-        widget=forms.Select(
-            attrs={
-                'class': 'form-select',
-                'id': 'city-select',
-                'data-cascade-field': 'city',
-            }
-        ),
+        queryset=City.objects.all(), required=False, widget=forms.HiddenInput(),
     )
-
     OBJECT_DISTRICT = forms.ModelChoiceField(
-        queryset=District.objects.all(),
-        label='Район',
-        required=False,
-        empty_label='Выберите район',
-        widget=forms.Select(
-            attrs={
-                'class': 'form-select',
-                'id': 'district-select',
-                'data-cascade-field': 'district',
-                'data-cascade-data-key': 'districts',
-                'data-cascade-empty-label': 'Выберите район',
-                'data-cascade-parent-city': 'city_id',
-                'data-cascade-autofill-city': 'city_id',
-            }
-        ),
+        queryset=District.objects.all(), required=False, widget=forms.HiddenInput(),
     )
 
     OBJECT_DEVELOPER = DeveloperModelChoiceField(
@@ -93,7 +73,6 @@ class MortgageForm(forms.Form):
             attrs={
                 'class': 'form-select',
                 'id': 'developer-select',
-                'data-cascade-field': 'developer',
             }
         ),
     )
@@ -107,15 +86,6 @@ class MortgageForm(forms.Form):
             attrs={
                 'class': 'form-select',
                 'id': 'complex-select',
-                'data-cascade-field': 'complex',
-                'data-cascade-data-key': 'complexes',
-                'data-cascade-empty-label': 'Выберите ЖК',
-                'data-cascade-parent-city': 'district__city_id',
-                'data-cascade-parent-district': 'district_id',
-                'data-cascade-parent-developer': 'developer_id',
-                'data-cascade-autofill-city': 'district__city_id',
-                'data-cascade-autofill-district': 'district_id',
-                'data-cascade-autofill-developer': 'developer_id',
             }
         ),
     )
@@ -129,12 +99,6 @@ class MortgageForm(forms.Form):
             attrs={
                 'class': 'form-select',
                 'id': 'id_building',
-                'data-cascade-field': 'building',
-                'data-cascade-data-key': 'buildings',
-                'data-cascade-label-key': 'number',
-                'data-cascade-empty-label': 'Выберите корпус',
-                'data-cascade-parent-complex': 'real_estate_complex_id',
-                'data-cascade-required-parents': 'complex',
             }
         ),
     )
@@ -200,6 +164,8 @@ class MortgageForm(forms.Form):
     def __init__(self, *args, **kwargs):
         """Prepare querysets for object selectors."""
         super().__init__(*args, **kwargs)
+        if self.is_bound:
+            self.data = self.data.copy()
         self.fields['PROPERTY'].queryset = Property.objects.select_related(
             'building__real_estate_complex__developer',
             'building__real_estate_complex__district__city',
@@ -235,6 +201,7 @@ class MortgageForm(forms.Form):
         self.fields['OBJECT_DECORATION'].queryset = (
             ApartmentDecoration.objects.order_by('name')
         )
+        configure_calculator_locations(self)
 
     def has_manual_property_data(self):
         """Return whether the object block contains a new property."""
@@ -524,6 +491,7 @@ class MortgageForm(forms.Form):
                     ),
                 )
 
+        validate_calculator_locations(self, cleaned_data)
         if selected_property:
             building = cleaned_data.get('OBJECT_BUILDING')
             apartment_number = cleaned_data.get('OBJECT_APARTMENT_NUMBER')
@@ -544,10 +512,7 @@ class MortgageForm(forms.Form):
 
         if self.has_manual_property_data():
             for field_name in MANUAL_PROPERTY_FIELD_NAMES:
-                complex_object = cleaned_data.get('OBJECT_COMPLEX')
-                if (field_name in {'OBJECT_CITY', 'OBJECT_DISTRICT'}
-                        and complex_object
-                        and complex_object.primary_location is not None):
+                if field_name in {'OBJECT_CITY', 'OBJECT_DISTRICT'}:
                     continue
                 if cleaned_data.get(field_name):
                     continue

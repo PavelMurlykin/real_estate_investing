@@ -8,6 +8,14 @@
     const developerMortgageProgramsApiUrl = scriptElement
         ? scriptElement.dataset.developerMortgageProgramsApiUrl || ''
         : '';
+    const propertyOptionsUrl = scriptElement?.dataset.propertyOptionsUrl;
+    const financialRegionUrl = scriptElement?.dataset.financialRegionUrl;
+    let financialRegionId = '';
+    let regionRevision = 0;
+    let apartmentRevision = 0;
+    let apartmentTimer;
+    let nextApartmentPage = null;
+    let apartmentLookupError = '';
     let propertyFormData = {
         properties: [],
     };
@@ -113,17 +121,73 @@
         }) || null;
     }
 
-    function getSelectedCityRegionId() {
-        const citySelect = document.getElementById('city-select');
-        const cityId = citySelect ? String(citySelect.value || '') : '';
-        if (!cityId || !Array.isArray(propertyFormData.cities)) {
-            return '';
-        }
+    function getSelectedFinancialRegionId() {
+        return financialRegionId;
+    }
 
-        const city = propertyFormData.cities.find(function (item) {
-            return String(item.id) === cityId;
-        });
-        return city ? String(city.region_id || '') : '';
+    async function refreshFinancialRegion() {
+        const revision = ++regionRevision;
+        financialRegionId = '';
+        updateMortgageProgramLimitOptions();
+        const endpoint = new URL(financialRegionUrl, window.location.origin);
+        endpoint.searchParams.set('regionLocationId', document.getElementById('id_OBJECT_REGION_LOCATION').value);
+        endpoint.searchParams.set('buildingId', getSelectedBuildingId());
+        try {
+            const response = await fetch(endpoint, {credentials: 'same-origin'});
+            if (!response.ok) throw new Error('Не удалось определить региональный лимит.');
+            const data = await response.json();
+            if (revision !== regionRevision) return;
+            financialRegionId = String(data.financialRegionId || '');
+            updateMortgageProgramLimitOptions();
+        } catch (error) {
+            if (revision === regionRevision) {
+                document.querySelector('[data-property-location-status]').textContent = error.message;
+            }
+        }
+    }
+
+    async function loadApartmentOptions(page = 1) {
+        const revision = ++apartmentRevision;
+        const buildingId = getSelectedBuildingId();
+        const query = String(getApartmentNumberInput()?.value || '').trim();
+        nextApartmentPage = null;
+        apartmentLookupError = '';
+        if (!buildingId) {
+            propertyFormData.properties = [];
+            renderApartmentMenu();
+            return;
+        }
+        const endpoint = new URL(propertyOptionsUrl, window.location.origin);
+        endpoint.searchParams.set('buildingId', buildingId);
+        endpoint.searchParams.set('q', query);
+        endpoint.searchParams.set('page', page);
+        for (const [field, parameter] of [
+            ['OBJECT_REGION_LOCATION', 'regionLocationId'],
+            ['OBJECT_DISTRICT_LOCATION', 'districtLocationId'], ['OBJECT_LOCALITY', 'localityId'],
+        ]) endpoint.searchParams.set(parameter, document.getElementById(`id_${field}`).value);
+        try {
+            const response = await fetch(endpoint, {credentials: 'same-origin'});
+            if (!response.ok) throw new Error('Не удалось загрузить квартиры. Повторите поиск.');
+            const data = await response.json();
+            if (revision !== apartmentRevision || getSelectedBuildingId() !== buildingId
+                || String(getApartmentNumberInput()?.value || '').trim() !== query) return;
+            propertyFormData.properties = page === 1 ? data.properties : [...propertyFormData.properties, ...data.properties];
+            nextApartmentPage = data.nextPage;
+            renderApartmentMenu();
+            const propertyItem = getSelectedBuildingPropertyByApartmentNumber(query);
+            if (propertyItem) applySelectedProperty(propertyItem);
+        } catch (error) {
+            if (revision === apartmentRevision) {
+                apartmentLookupError = error.message;
+                renderApartmentMenu();
+            }
+        }
+    }
+
+    function scheduleApartmentLookup() {
+        ++apartmentRevision;
+        window.clearTimeout(apartmentTimer);
+        apartmentTimer = window.setTimeout(() => loadApartmentOptions(), 180);
     }
 
     function getProgramCreditLimit(program) {
@@ -131,7 +195,7 @@
             return 0;
         }
 
-        const regionId = getSelectedCityRegionId();
+        const regionId = getSelectedFinancialRegionId();
         if (regionId && Array.isArray(program.regional_credit_limits)) {
             const regionalLimit = program.regional_credit_limits.find(
                 function (item) {
@@ -1477,7 +1541,7 @@
         if (!apartmentMenuItems.length) {
             const empty = document.createElement('div');
             empty.className = 'apartment-autocomplete-empty';
-            empty.textContent = 'Квартиры не найдены';
+            empty.textContent = apartmentLookupError || 'Квартиры не найдены';
             menu.appendChild(empty);
             return;
         }
@@ -1496,6 +1560,17 @@
             menu.appendChild(option);
         });
 
+        if (nextApartmentPage) {
+            const more = document.createElement('button');
+            more.type = 'button';
+            more.className = 'btn btn-link';
+            more.textContent = 'Показать ещё квартиры';
+            more.addEventListener('mousedown', (event) => {
+                event.preventDefault();
+                loadApartmentOptions(nextApartmentPage);
+            });
+            menu.appendChild(more);
+        }
         setActiveApartmentOption(0);
     }
 
@@ -1512,6 +1587,7 @@
     function syncApartmentSelection() {
         renderApartmentMenu();
         handleApartmentNumberInput();
+        scheduleApartmentLookup();
     }
 
     function scheduleApartmentSelectionSync() {
@@ -1558,8 +1634,11 @@
     function clearObjectDataFields() {
         closeApartmentMenu();
         setSelectedPropertyId('');
-        setFieldValue('city-select', '', true);
-        setFieldValue('district-select', '', true);
+        setFieldValue('id_OBJECT_REGION_LOCATION', '', true);
+        setFieldValue('id_OBJECT_DISTRICT_LOCATION', '', true);
+        setFieldValue('id_OBJECT_LOCALITY', '', true);
+        setFieldValue('id_OBJECT_CITY', '');
+        setFieldValue('id_OBJECT_DISTRICT', '');
         setFieldValue('developer-select', '', true);
         setFieldValue('complex-select', '', true);
         setFieldValue('id_building', '', true);
@@ -1572,6 +1651,11 @@
     }
 
     function handleBuildingChange() {
+        ++apartmentRevision;
+        propertyFormData.properties = [];
+        setFieldValue('id_OBJECT_CITY', '');
+        setFieldValue('id_OBJECT_DISTRICT', '');
+        refreshFinancialRegion();
         const costInput = document.getElementById('property_cost_input');
         if (costInput) {
             costInput.value = '';
@@ -1580,6 +1664,7 @@
             renderApartmentMenu();
             clearPropertySpecificFields(true);
             handlePropertyCostChange();
+            scheduleApartmentLookup();
         }, 0);
     }
 
@@ -1659,8 +1744,9 @@
     }
 
     function fillPropertyDetails(data) {
-        setFieldValue('city-select', data.city_id, true);
-        setFieldValue('district-select', data.district_id, true);
+        financialRegionId = String(data.financial_region_id || '');
+        updateMortgageProgramLimitOptions();
+        // Canonical selectors are initialized from the server for the selected building.
         setFieldValue('developer-select', data.developer_id, true);
         setFieldValue('complex-select', data.complex_id, true);
         setFieldValue('id_building', data.building_id);
@@ -1669,8 +1755,11 @@
     }
 
     function clearPropertyDetails() {
-        setFieldValue('city-select', '', true);
-        setFieldValue('district-select', '', true);
+        setFieldValue('id_OBJECT_REGION_LOCATION', '', true);
+        setFieldValue('id_OBJECT_DISTRICT_LOCATION', '', true);
+        setFieldValue('id_OBJECT_LOCALITY', '', true);
+        setFieldValue('id_OBJECT_CITY', '');
+        setFieldValue('id_OBJECT_DISTRICT', '');
         setFieldValue('developer-select', '', true);
         setFieldValue('complex-select', '', true);
         setFieldValue('id_building', '', true);
@@ -1757,9 +1846,20 @@
             clearObjectDataFields
         );
         bindInput('id_building', 'change', handleBuildingChange);
-        bindInput('city-select', 'change', scheduleApartmentSelectionSync);
-        bindInput('city-select', 'change', updateMortgageProgramLimitOptions);
-        bindInput('district-select', 'change', scheduleApartmentSelectionSync);
+        ['OBJECT_REGION_LOCATION', 'OBJECT_DISTRICT_LOCATION', 'OBJECT_LOCALITY'].forEach((name) => {
+            bindInput(`id_${name}`, 'change', () => {
+                clearPropertySpecificFields(true);
+                setFieldValue('id_OBJECT_CITY', '');
+                setFieldValue('id_OBJECT_DISTRICT', '');
+                refreshFinancialRegion();
+                scheduleApartmentLookup();
+            });
+        });
+        document.querySelector('[data-property-location-form]').addEventListener('property-location:resolved', () => {
+            refreshFinancialRegion();
+            scheduleApartmentLookup();
+            loadDeveloperMortgagePrograms();
+        });
         bindInput('developer-select', 'change', scheduleApartmentSelectionSync);
         bindInput(
             'developer-select',
@@ -1779,6 +1879,8 @@
             handleMortgageProgramSelectionChange
         );
         bindApartmentNumberInput('input', handleApartmentNumberInput);
+        bindApartmentNumberInput('input', scheduleApartmentLookup);
+        bindApartmentNumberInput('focus', scheduleApartmentLookup);
         bindApartmentNumberInput('change', handleApartmentNumberInput);
         bindApartmentNumberInput('focus', handleApartmentNumberFocus);
         bindApartmentNumberInput('keydown', handleApartmentNumberKeydown);
@@ -1881,6 +1983,7 @@
             captureDeveloperMortgageProgramDefaults()
         );
         bindEvents();
+        refreshFinancialRegion();
         document.addEventListener('mousedown', function (event) {
             const menu = getApartmentMenu();
             const input = getApartmentNumberInput();

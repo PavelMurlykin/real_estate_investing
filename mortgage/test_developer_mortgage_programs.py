@@ -122,4 +122,4 @@ def test_mortgage_form_exposes_developer_program_integration(client):
         + reverse('mortgage:developer_mortgage_programs_api')
         + '"'
     ) in response_content
-    assert '20260715-developer-programs-1' in response_content
+    assert '20261117-locations-1' in response_content

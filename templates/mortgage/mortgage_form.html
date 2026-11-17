@@ -114,18 +114,20 @@
         <div class="alert alert-danger">{{ error_message }}</div>
     {% endif %}
 
-    <form method="post" novalidate>
+    <form method="post" novalidate data-property-location-form>
         {% csrf_token %}
         {% if target_customer %}
             <input type="hidden" name="customer" value="{{ target_customer.pk }}">
         {% endif %}
         {{ mortgage_form.PROPERTY }}
+        {{ mortgage_form.OBJECT_CITY }}
+        {{ mortgage_form.OBJECT_DISTRICT }}
         {{ mortgage_form.CALCULATION_TYPE }}
 
         <div class="row g-4">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header d-flex align-items-center justify-content-between gap-2">
+                    <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
                         <span>Данные объекта</span>
                         <div class="d-flex align-items-center gap-2">
                             <button
@@ -145,23 +147,31 @@
                         </div>
                     </div>
                     <div id="object-data-collapse" class="collapse show">
-                        <div class="card-body" data-cascade-selects data-cascade-data="#mortgage-property-form-data">
+                        <div class="card-body">
                             {% for error in mortgage_form.PROPERTY.errors %}
                                 <div class="invalid-feedback d-block">{{ error }}</div>
                             {% endfor %}
 
+                            <p class="text-muted small" role="status" data-property-location-status></p>
                             <div class="row g-3 mt-1">
                                 <div class="col-md-4">
-                                    <label for="{{ mortgage_form.OBJECT_CITY.id_for_label }}" class="form-label">{{ mortgage_form.OBJECT_CITY.label }}</label>
-                                    {{ mortgage_form.OBJECT_CITY }}
-                                    {% for error in mortgage_form.OBJECT_CITY.errors %}
+                                    <label for="{{ mortgage_form.OBJECT_REGION_LOCATION.id_for_label }}" class="form-label">{{ mortgage_form.OBJECT_REGION_LOCATION.label }}</label>
+                                    {{ mortgage_form.OBJECT_REGION_LOCATION }}
+                                    {% for error in mortgage_form.OBJECT_REGION_LOCATION.errors %}
                                         <div class="invalid-feedback d-block">{{ error }}</div>
                                     {% endfor %}
                                 </div>
                                 <div class="col-md-4">
-                                    <label for="{{ mortgage_form.OBJECT_DISTRICT.id_for_label }}" class="form-label">{{ mortgage_form.OBJECT_DISTRICT.label }}</label>
-                                    {{ mortgage_form.OBJECT_DISTRICT }}
-                                    {% for error in mortgage_form.OBJECT_DISTRICT.errors %}
+                                    <label for="{{ mortgage_form.OBJECT_DISTRICT_LOCATION.id_for_label }}" class="form-label">{{ mortgage_form.OBJECT_DISTRICT_LOCATION.label }}</label>
+                                    {{ mortgage_form.OBJECT_DISTRICT_LOCATION }}
+                                    {% for error in mortgage_form.OBJECT_DISTRICT_LOCATION.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ mortgage_form.OBJECT_LOCALITY.id_for_label }}" class="form-label">{{ mortgage_form.OBJECT_LOCALITY.label }}</label>
+                                    {{ mortgage_form.OBJECT_LOCALITY }}
+                                    {% for error in mortgage_form.OBJECT_LOCALITY.errors %}
                                         <div class="invalid-feedback d-block">{{ error }}</div>
                                     {% endfor %}
                                 </div>
@@ -520,7 +530,7 @@
                         </div>
                     </div>
 
-                    <div class="mt-4 d-flex gap-2">
+                    <div class="mt-4 d-flex flex-wrap gap-2">
                         <button
                             type="submit"
                             name="calculate"
@@ -734,7 +744,7 @@
                         {% endfor %}
                     </div>
 
-                    <div class="mt-4 d-flex gap-2">
+                    <div class="mt-4 d-flex flex-wrap gap-2">
                         <button
                             type="submit"
                             name="calculate"
@@ -863,9 +873,11 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{% static 'js/dependent_selects.js' %}"></script>
+<script src="{% static 'js/property_location_form.js' %}"></script>
 <script
-    src="{% static 'js/mortgage_form.js' %}?v=20260715-developer-programs-1"
+    src="{% static 'js/mortgage_form.js' %}?v=20261117-locations-1"
+    data-property-options-url="{% url 'mortgage:property_options' %}"
+    data-financial-region-url="{% url 'mortgage:financial_region' %}"
     data-property-cost-api-template="{% url 'mortgage:property_cost_api' 0 %}"
     data-developer-mortgage-programs-api-url="{% url 'mortgage:developer_mortgage_programs_api' %}"
 ></script>
