@@ -1597,14 +1597,18 @@ class LocationCatalogMetroTests(TestCase):
                 city=self.city,
             )
 
+        from django.apps import apps
+        from location.migration_support import backfill_locations
+        backfill_locations(apps)
+
         response = self.client.get(
             reverse('location:location_catalog'), {'model': 'district'}
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.context['rows']), 20)
-        self.assertTrue(response.context['is_paginated'])
-        self.assertContains(response, '?page=2&model=district')
+        self.assertEqual(len(response.context['page_obj']), 20)
+        self.assertTrue(response.context['page_obj'].has_next())
+        self.assertContains(response, 'page=2')
 
         second_page_response = self.client.get(
             reverse('location:location_catalog'),
@@ -1612,7 +1616,7 @@ class LocationCatalogMetroTests(TestCase):
         )
 
         self.assertEqual(second_page_response.status_code, 200)
-        self.assertEqual(len(second_page_response.context['rows']), 1)
+        self.assertEqual(len(second_page_response.context['page_obj']), 1)
         self.assertContains(second_page_response, 'District 20')
 
     def test_location_catalog_creates_updates_and_deletes_metro(self):

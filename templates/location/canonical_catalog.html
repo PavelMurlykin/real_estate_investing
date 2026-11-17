@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h1>{{ title }}</h1>
+    <nav class="nav nav-tabs my-4" aria-label="Справочники локаций">
+        <a class="nav-link" href="?model=region&amp;legacy=1">Регионы</a>
+        <a class="nav-link" href="?model=locality&amp;legacy=1">Населённые пункты</a>
+        <a class="nav-link" href="?model=district&amp;legacy=1">Административные районы</a>
+        <a class="nav-link" href="?model=metro&amp;legacy=1">Метро</a>
+        <a class="nav-link" href="?model=metro_line&amp;legacy=1">Линии метро</a>
+        <a class="nav-link" href="?model=metro_system&amp;legacy=1">Системы метро</a>
+    </nav>
+    <p>Города, посёлки, сёла и деревни используют единый справочник территорий. Административные районы и муниципальные образования ведутся отдельно.</p>
+    {% if can_sync_external_data %}
+    <section class="card mb-4"><div class="card-body">
+        <h2>Все населённые пункты России</h2>
+        <p>Импорт работает в фоне. Повторный запуск обновляет существующие территории и сохраняет связи.</p>
+        {% if national_import %}<p role="status">Статус: {{ national_import.status }}. Населённых пунктов: {{ national_import.processedCities }}.</p>{% endif %}
+        <form method="post" action="{% url 'location:location_import' %}">{% csrf_token %}
+            <button type="submit" class="btn btn-primary" name="action" value="national" {% if national_import.status == 'queued' or national_import.status == 'running' %}disabled{% endif %}>Импортировать все населённые пункты России</button>
+        </form>
+    </div></section>
+    {% endif %}
+    <form method="get" class="row g-3 mb-4" data-catalog-filter-form data-catalog-results-target="#catalog-results">
+        <input type="hidden" name="model" value="{{ model_key }}"><input type="hidden" name="legacy" value="1">
+        <div class="col-md-4"><label class="form-label" for="location-search">Поиск</label><input class="form-control" type="search" id="location-search" name="q" value="{{ filters.q|default:'' }}" maxlength="255" data-catalog-filter-control></div>
+        {% if dictionary_key != 'regions' %}
+        <div class="col-md-4"><label class="form-label" for="location-region-filter">Регион</label>
+            <select class="form-select" id="location-region-filter" name="regionId" data-catalog-filter-control data-remote-options="/api/v1/catalog-options/locations/?category=region">
+                <option value="">Все</option>{% if region_selected %}<option value="{{ region_selected.pk }}" selected>{{ region_selected.name }}</option>{% endif %}
+            </select>
+        </div>
+        {% endif %}
+        {% if dictionary_key == 'localities' %}
+        <div class="col-md-4"><label class="form-label" for="location-district-filter">Административный район</label>
+            <select class="form-select" id="location-district-filter" name="ancestorId" data-catalog-filter-control data-remote-options="/api/v1/catalog-options/locations/?category=district" data-remote-filters='{"regionId":"location-region-filter"}'>
+                <option value="">Все</option>{% if district_selected %}<option value="{{ district_selected.pk }}" selected>{{ district_selected.name }}</option>{% endif %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="col-md-4"><label class="form-label" for="location-type-filter">Тип</label><select class="form-select" name="typeId" id="location-type-filter" data-catalog-filter-control><option value="">Все</option>{% for type in types %}<option value="{{ type.pk }}" {% if filters.typeId == type.pk %}selected{% endif %}>{{ type.name }}</option>{% endfor %}</select></div>
+        <div class="col-md-4"><label class="form-label" for="location-status-filter">Статус</label><select class="form-select" name="status" id="location-status-filter" data-catalog-filter-control><option value="">Все</option><option value="active" {% if filters.status == 'active' %}selected{% endif %}>Активные</option><option value="inactive" {% if filters.status == 'inactive' %}selected{% endif %}>Неактивные</option></select></div>
+        <div class="col-md-4"><label class="form-label" for="location-ordering-filter">Сортировка</label><select class="form-select" name="ordering" id="location-ordering-filter" data-catalog-filter-control>{% for value, label in filter_form.fields.ordering.choices %}<option value="{{ value }}" {% if filters.ordering == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    </form>
+    {{ filter_form.errors }}
+    <div id="catalog-results">
+        <p role="status">Найдено: {{ page_obj.paginator.count }}</p>
+        <div class="table-responsive"><table class="table"><thead><tr><th>Название</th><th>Тип</th><th>Родительская территория</th><th>Регион</th><th>Статус</th>{% if can_manage_catalogs %}<th>Действия</th>{% endif %}</tr></thead>
+            <tbody>{% for row in page_obj %}<tr><td>{{ row.name }}{% if row.needs_review %} · требуется сверка{% endif %}</td><td>{{ row.location_type.name }}</td><td>{{ row.parent.name|default:'—' }}</td><td>{{ row.region.name|default:'—' }}</td><td>{{ row.is_active|yesno:'Активно,Неактивно' }}</td>{% if can_manage_catalogs %}<td><a href="{% querystring locationId=row.pk edit=None %}">Изменить: {{ row.name }}</a></td>{% endif %}</tr>{% empty %}<tr><td colspan="6">По выбранным условиям ничего не найдено.</td></tr>{% endfor %}</tbody>
+        </table></div>
+        <nav aria-label="Страницы локаций">{% if page_obj.has_previous %}<a href="{% querystring page=page_obj.previous_page_number %}">Назад</a>{% endif %} Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }} {% if page_obj.has_next %}<a href="{% querystring page=page_obj.next_page_number %}">Далее</a>{% endif %}</nav>
+    </div>
+    {% if can_manage_catalogs %}
+    <section class="card my-4"><div class="card-body"><h2>{% if edited_location %}Редактирование записи{% else %}Добавление записи{% endif %}</h2>
+        <form method="post">{% csrf_token %}{% if edited_location %}<input type="hidden" name="locationId" value="{{ edited_location.pk }}">{% endif %}
+            {{ form.as_p }}<button type="submit" class="btn btn-primary">Сохранить</button>
+            {% if edited_location %}<a class="btn btn-secondary" href="?model={{ model_key }}&amp;legacy=1">Отмена</a><button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#delete-location">Удалить запись</button>{% endif %}
+        </form>
+    </div></section>
+    {% if edited_location %}<div class="modal fade" id="delete-location" tabindex="-1" aria-labelledby="delete-location-title"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h2 id="delete-location-title">Удалить {{ edited_location.name }}?</h2></div><div class="modal-body">Связанные и импортированные записи защищены от удаления.</div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><form method="post">{% csrf_token %}<input type="hidden" name="locationId" value="{{ edited_location.pk }}"><button name="action" value="delete" class="btn btn-danger">Удалить</button></form></div></div></div></div>{% endif %}
+    {% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}<script src="{% static 'js/catalog.js' %}"></script>{% endblock %}

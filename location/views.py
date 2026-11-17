@@ -66,6 +66,14 @@ class LocationCatalogView(BaseCatalogView):
     """Catalog view for location dictionaries."""
 
     template_name = 'location/catalog_form.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        """Use canonical pages for geography and keep existing metro editors."""
+        model_key = request.POST.get('model') or request.GET.get('model', 'region')
+        if model_key in {'region', 'city', 'locality', 'district'}:
+            from .catalog_views import CanonicalLocationCatalogView
+            return CanonicalLocationCatalogView.as_view()(request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)
     section_title = 'Локации'
     url_name = 'location:location_catalog'
     default_model_key = 'region'
@@ -158,6 +166,10 @@ class LocationCatalogView(BaseCatalogView):
             edit_object=edit_object,
             delete_error=delete_error,
         )
+        for tab in context['model_tabs']:
+            if tab['key'] == 'city':
+                tab['title'] = 'Населённые пункты'
+                tab['url'] = reverse('location:location_catalog') + '?model=locality'
 
         if can_sync_external_data(self.request.user):
             context['national_import'] = serialize_import_job(LocationImportJob.objects.first())

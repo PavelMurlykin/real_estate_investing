@@ -2,6 +2,7 @@ from django.urls import path
 
 from .location_import_views import LocationImportJobAPIView
 from .geography_views import GeographyAPIView, ComplexLocationsAPIView
+from .location_catalog_views import LocationCatalogAPIView
 
 from .calculation_export_views import UnsavedCalculationExportAPIView
 from .catalog_options import CatalogOptionsAPIView
@@ -72,6 +73,14 @@ from .views import (
 app_name = 'api_v1'
 
 urlpatterns = [
+    path(
+        'location-catalogs/<slug:dictionary_key>/', LocationCatalogAPIView.as_view(),
+        name='location_catalog_list',
+    ),
+    path(
+        'location-catalogs/<slug:dictionary_key>/<int:pk>/',
+        LocationCatalogAPIView.as_view(), name='location_catalog_detail',
+    ),
     path('locations/', GeographyAPIView.as_view(), name='geography'),
     path('catalog-options/locations/', GeographyAPIView.as_view(), name='geography_options'),
     path('complexes/<int:pk>/locations/', ComplexLocationsAPIView.as_view(), name='complex_locations'),

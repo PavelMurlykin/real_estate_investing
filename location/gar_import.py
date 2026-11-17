@@ -10,6 +10,7 @@ from .models import (
     LocationIdentifier, LocationType, Region,
 )
 from .administrative_overrides import SPB_DISTRICTS
+from .catalog_service import lock_location_catalog
 
 
 def normalized_name(value):
@@ -21,6 +22,7 @@ def normalized_name(value):
 @transaction.atomic
 def load_region(records, code, version):
     """Commit one verified region and its closure graph as one restartable unit."""
+    lock_location_catalog()
     counts = {key: {'created': 0, 'updated': 0, 'unchanged': 0}
               for key in ('regions', 'cities', 'districts')}
     if not records:

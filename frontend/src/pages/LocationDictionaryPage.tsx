@@ -1,4 +1,6 @@
 import { SectionNavigation } from '@/shared/ui/SectionNavigation'
+import { locationNavigation } from '@/features/locations/catalog'
+import { CanonicalLocationDictionaryPage } from './CanonicalLocationDictionaryPage'
 import { retryFailedQueries } from '@/shared/lib/retryFailedQueries'
 import { Notice } from '@/shared/ui/Notice'
 import { restoreFocus } from '@/shared/lib/restoreFocus'
@@ -469,6 +471,14 @@ function MetroLineLabel({ entry }: { entry: LocationDictionaryEntry }) {
 }
 
 export function LocationDictionaryPage() {
+  const { dictionaryKey } = useParams()
+  if (dictionaryKey === 'regions' || dictionaryKey === 'districts' || dictionaryKey === 'cities' || dictionaryKey === 'localities') {
+    return <CanonicalLocationDictionaryPage key={dictionaryKey} dictionaryKey={dictionaryKey === 'cities' ? 'localities' : dictionaryKey} />
+  }
+  return <LegacyLocationDictionaryPage />
+}
+
+function LegacyLocationDictionaryPage() {
   const { dictionaryKey: routeDictionaryKey = '', entryId = '' } = useParams()
   const parsedDictionaryKey = locationDictionaryKeySchema.safeParse(
     routeDictionaryKey,
@@ -639,10 +649,7 @@ export function LocationDictionaryPage() {
         </div>
       </header>
 
-      <Link className="button button--secondary" to="/locations/localities">Все населённые пункты и территории</Link>
-      <SectionNavigation label="Справочники локаций" items={locationDictionaryConfigurations.map((item) => ({
-        to: `/locations/${item.key}`, label: item.title,
-      }))} />
+      <SectionNavigation label="Справочники локаций" items={locationNavigation} />
 
       {sessionQuery.data?.capabilities.syncExternalData === true && !isMetroDictionary ? (
         <NationalLocationImportPanel />

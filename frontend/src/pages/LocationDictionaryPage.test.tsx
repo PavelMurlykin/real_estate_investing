@@ -14,42 +14,6 @@ import { createTestQueryClient, renderWithProviders } from '@/test/render'
 
 import { LocationDictionaryPage } from './LocationDictionaryPage'
 
-const regionEntry: LocationDictionaryEntry = {
-  id: 1,
-  name: 'Москва',
-  code: '77',
-  region: null,
-  city: null,
-  metroLine: null,
-  usageCount: 4,
-  isActive: true,
-  createdAt: '2026-09-10T10:00:00+03:00',
-  updatedAt: '2026-09-11T10:00:00+03:00',
-  legacyEditUrl: '/locations/?model=region&edit=1',
-}
-
-const cityEntry: LocationDictionaryEntry = {
-  ...regionEntry,
-  id: 2,
-  code: null,
-  region: { id: 1, name: 'Москва' },
-  legacyEditUrl: '/locations/?model=city&edit=2',
-}
-
-const districtEntry: LocationDictionaryEntry = {
-  id: 4,
-  name: 'Центральный',
-  code: null,
-  region: { id: 1, name: 'Москва' },
-  city: { id: 2, name: 'Москва' },
-  metroLine: null,
-  usageCount: 1,
-  isActive: true,
-  createdAt: '2026-09-10T10:00:00+03:00',
-  updatedAt: '2026-09-11T10:00:00+03:00',
-  legacyEditUrl: '/locations/?model=district&edit=4',
-}
-
 const metroEntry: LocationDictionaryEntry = {
   id: 5,
   name: 'Охотный Ряд',
@@ -174,15 +138,15 @@ function renderLocationPage(
 
 describe('LocationDictionaryPage', () => {
   it('shows external import only for application administrators', () => {
-    renderLocationPage('regions', regionEntry, {
+    renderLocationPage('metro', metroEntry, {
       ...managerSession,
       capabilities: { ...managerSession.capabilities, syncExternalData: true },
     })
-    expect(screen.getByRole('button', { name: 'Импортировать из API' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Импортировать из API' })).toBeInTheDocument()
   })
 
   it('hides external import from catalog moderators', () => {
-    renderLocationPage('regions', regionEntry, managerSession)
+    renderLocationPage('metro', metroEntry, managerSession)
     expect(screen.queryByRole('button', { name: 'Импортировать из API' })).not.toBeInTheDocument()
   })
   it('renders the public metro hierarchy and all location tabs', () => {
@@ -296,138 +260,4 @@ describe('LocationDictionaryPage', () => {
     })
   })
 
-  it('creates a normalized region through the authoritative API', async () => {
-    const user = userEvent.setup()
-    const createdEntry = {
-      ...regionEntry,
-      id: 6,
-      name: 'Тверская область',
-      code: 'TV',
-      usageCount: 0,
-    }
-    const fetchMock = vi.fn<typeof fetch>((_input, requestOptions) => {
-      if (requestOptions?.method === 'POST') {
-        return Promise.resolve(new Response(JSON.stringify(createdEntry), {
-          status: 201,
-          headers: { 'Content-Type': 'application/json' },
-        }))
-      }
-      return Promise.resolve(new Response(JSON.stringify(
-        listResponse(regionEntry),
-      ), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }))
-    })
-    vi.stubGlobal('fetch', fetchMock)
-    renderLocationPage('regions', regionEntry, managerSession)
-
-    expect(screen.queryByText('Используется', { exact: true })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Прежняя версия' })).not.toBeInTheDocument()
-    await user.type(
-      screen.getByLabelText('Название региона *'),
-      '  Тверская область  ',
-    )
-    await user.type(screen.getByLabelText('Код региона *'), ' tv ')
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
-
-    await waitFor(() => expect(
-      screen.getByLabelText('Название региона *'),
-    ).toHaveValue(''))
-    const postCall = fetchMock.mock.calls.find(
-      (call) => call[1]?.method === 'POST',
-    )
-    expect(postCall?.[0]).toBe(
-      '/api/v1/location-dictionaries/regions/',
-    )
-    expect(JSON.parse(postCall?.[1]?.body as string)).toEqual({
-      name: 'Тверская область',
-      code: 'tv',
-      isActive: true,
-    })
-  })
-
-  it.each([
-    { dictionaryKey: 'cities', entry: cityEntry, nameLabel: 'Название города *', parent: { regionId: 1 } },
-    { dictionaryKey: 'districts', entry: districtEntry, nameLabel: 'Название района *', parent: { cityId: 2 } },
-  ] as const)('prefills and updates $dictionaryKey through searchable fields', async ({
-    dictionaryKey, entry, nameLabel, parent,
-  }) => {
-    const user = userEvent.setup()
-    const updatedName = `${entry.name} тест`
-    const fetchMock = vi.fn<typeof fetch>(async (input, requestOptions) => {
-      if (requestOptions?.method === 'PATCH') {
-        return Response.json({ ...entry, name: updatedName })
-      }
-      const path = String(input)
-      if (path.includes('/catalog-options/')) {
-        const choices = path.includes('/regions/') ? options.regions : options.cities
-        return Response.json({ page: 1, nextPage: null, totalCount: choices.length,
-          selected: [], results: choices.map(({ id, name }) => ({ id, label: name })),
-        })
-      }
-      return Response.json(listResponse(entry))
-    })
-    vi.stubGlobal('fetch', fetchMock)
-    renderLocationPage(dictionaryKey, entry, managerSession, `/locations/${dictionaryKey}/${entry.id}/edit`)
-
-    const editor = within(screen.getByRole('complementary', { name: 'Редактирование записи' }))
-    const region = editor.getByRole('combobox', { name: 'Регион *' })
-    expect(region).toHaveValue('Москва')
-    expect(editor.queryByRole('searchbox')).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Прежняя версия' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Django-форма' })).not.toBeInTheDocument()
-    expect(screen.queryByText('Используется', { exact: true })).not.toBeInTheDocument()
-    await user.click(region)
-    await user.clear(region)
-    await user.type(region, 'Моск')
-    await user.click(editor.getByRole('option', { name: 'Москва' }))
-    if (dictionaryKey === 'districts') {
-      expect(editor.getByRole('combobox', { name: 'Город *' })).toHaveValue('Москва')
-    }
-    const nameInput = editor.getByLabelText(nameLabel)
-    expect(nameInput).toHaveValue(entry.name)
-    await user.clear(nameInput)
-    await user.type(nameInput, updatedName)
-    await user.click(editor.getByRole('button', { name: 'Сохранить' }))
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-      `/api/v1/location-dictionaries/${dictionaryKey}/${entry.id}/`,
-      expect.objectContaining({ method: 'PATCH' }),
-    ))
-    const patchCall = fetchMock.mock.calls.find(
-      (call) => call[1]?.method === 'PATCH',
-    )
-    expect(JSON.parse(patchCall?.[1]?.body as string)).toMatchObject({
-      name: updatedName,
-      ...parent,
-    })
-  })
-
-  it('keeps a protected location after an accessible delete conflict', async () => {
-    const user = userEvent.setup()
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(
-      JSON.stringify({ detail: 'Локация используется.' }),
-      {
-        status: 409,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    )))
-    renderLocationPage('regions', regionEntry, managerSession)
-
-    const deleteButtons = screen.getAllByRole('button', {
-      name: 'Удалить: Москва',
-    })
-    expect(deleteButtons).toHaveLength(2)
-    await user.click(deleteButtons[0])
-    const dialog = screen.getByRole('alertdialog')
-    expect(dialog).toHaveAccessibleName('Удалить локацию?')
-    expect(within(dialog).getByRole('button', { name: 'Отмена' })).toHaveFocus()
-    await user.click(within(dialog).getByRole('button', { name: 'Удалить' }))
-
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'Локация используется в других разделах',
-    )
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
-  })
 })

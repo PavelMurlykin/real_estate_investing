@@ -75,6 +75,7 @@ CATALOG_REACT_ROUTES = {
     'location:location_catalog': {
         'region': 'locations/regions/',
         'city': 'locations/cities/',
+        'locality': 'locations/localities/',
         'district': 'locations/districts/',
         'metro': 'locations/metro/',
         'metro_line': 'locations/metro-lines/',
@@ -97,6 +98,7 @@ EDITABLE_CATALOG_MODELS = {
         {
             'region',
             'city',
+            'locality',
             'district',
             'metro',
             'metro_line',
@@ -229,6 +231,13 @@ def specialize_catalog_route(
 
     requested_model = query_parameters.get('model', '')
     route = routes_by_model.get(requested_model, default_route)
+    if view_name == 'location:location_catalog' and requested_model in {
+        'region', 'city', 'locality', 'district',
+    }:
+        canonical_identifier = query_parameters.get('locationId', '')
+        if canonical_identifier.isdecimal():
+            query_parameters['editLocationId'] = canonical_identifier
+            query_parameters.pop('locationId', None)
     edit_identifier = query_parameters.get('edit', '')
     query_parameters.pop('model', None)
     query_parameters.pop('edit', None)
