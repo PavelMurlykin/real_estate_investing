@@ -6,8 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from bank.models import Bank, MortgageProgram
-from location.models import City, District, Metro, MetroLine, Region
-from location.models import LegacyLocationMapping, Location
+from location.models import City, District, Metro, MetroLine, MetroSystem, Region
 from property.location_context import building_geography_prefetch, geography_prefetch
 from property.location_filters import apply_location_scopes
 from property.models import (
@@ -38,6 +37,7 @@ class CatalogOptionQuerySerializer(LocationScopeQuerySerializer):
     realEstateComplexId = serializers.IntegerField(required=False, min_value=1)
     companyGroupId = serializers.IntegerField(required=False, min_value=1)
     metroLineId = serializers.IntegerField(required=False, min_value=1)
+    systemId = serializers.IntegerField(required=False, min_value=1)
     activeOnly = serializers.BooleanField(default=False)
 
 
@@ -64,10 +64,12 @@ CATALOG_OPTIONS = {
     'transport-accessibility-types': (
         TransportAccessibilityType, 'name', (), {}
     ),
-    'metro': (Metro, 'station', ('metro_line',), {
+    'metro': (Metro, 'station', ('metro_line__system',), {
         'cityId': 'metro_line__city_id', 'metroLineId': 'metro_line_id',
+        'systemId': 'metro_line__system_id',
     }),
-    'metro-lines': (MetroLine, 'line', (), {'cityId': 'city_id'}),
+    'metro-lines': (MetroLine, 'line', ('system',), {'cityId': 'city_id', 'systemId': 'system_id'}),
+    'metro-systems': (MetroSystem, 'name', (), {}),
     'banks': (Bank, 'name', (), {}),
     'mortgage-programs': (MortgageProgram, 'name', (), {}),
     'preferential-programs': (MortgageProgram, 'name', (), {}),
@@ -81,6 +83,8 @@ def serialize_catalog_option(item, label_field):
         label = item.get_display_name_with_company_group()
     elif isinstance(item, Metro):
         label = f'{item.station} · {item.metro_line.line}'
+        if item.metro_line.system_id:
+            label += f' · {item.metro_line.system.name}'
     option = {'id': item.pk, 'label': str(label)}
     if isinstance(item, City):
         option['regionId'] = item.region_id
@@ -130,17 +134,18 @@ class CatalogOptionsAPIView(APIView):
         elif model is RealEstateComplexBuilding:
             queryset = apply_location_scopes(queryset, parameters, buildings=True, prefix='')
         if dictionary_key in {'metro', 'metro-lines'} and parameters.get('locationId'):
-            location = Location.objects.filter(pk=parameters['locationId']).first()
-            regions = LegacyLocationMapping.objects.filter(
-                model_name='region', location_id=location.region_id if location else None,
-            ).values_list('legacy_id', flat=True)
             queryset = queryset.filter(**{
-                'metro_line__city__region_id__in' if dictionary_key == 'metro'
-                else 'city__region_id__in': regions,
+                'location_id' if dictionary_key == 'metro'
+                else 'system__location_id': parameters['locationId'],
             })
         for name, field in filters.items():
             if parameters.get(name):
-                queryset = queryset.filter(**{field: parameters[name]})
+                if dictionary_key == 'metro' and name == 'metroLineId':
+                    queryset = queryset.filter(
+                        Q(metro_line_id=parameters[name]) | Q(lines__pk=parameters[name]),
+                    ).distinct()
+                else:
+                    queryset = queryset.filter(**{field: parameters[name]})
         search = parameters.get('q', '').strip()
         if search:
             search_filter = Q(**{f'{label_field}__icontains': search})

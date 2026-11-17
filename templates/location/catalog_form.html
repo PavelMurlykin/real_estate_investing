@@ -84,7 +84,8 @@
     <section class="card mb-4" aria-labelledby="location-import-title">
         <div class="card-body">
             <h2 id="location-import-title">Импорт локаций России</h2>
-            <p>Сначала импортируйте регионы, затем города региона и районы или метро города.
+            <p>Для метро выберите только систему метро — старые регион и город не нужны.
+                Для районов сначала импортируйте регионы и города.
                 Для выбора города выберите регион и нажмите «Показать города».
                 Повторный импорт добавляет и обновляет записи; отсутствующие в источнике записи не удаляются.</p>
             <form method="post" action="{% url 'location:location_import' %}">
@@ -110,9 +111,9 @@
                         <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
 
                         <div class="col-md-6">
-                            <label class="form-label">Город</label>
-                            <select name="filter_city" class="form-select" data-metro-filter-city data-catalog-filter-control>
-                                <option value="">Все города</option>
+                            <label class="form-label">Система метро</label>
+                            <select name="filter_system" class="form-select" data-metro-filter-city data-catalog-filter-control>
+                                <option value="">Все системы</option>
                                 {% for city in cities_for_filter %}
                                 <option value="{{ city.id }}" {% if metro_filters.city == city.id|stringformat:'s' %}selected{% endif %}>
                                     {{ city.name }}
@@ -126,7 +127,7 @@
                             <select name="filter_metro_line" class="form-select" data-metro-filter-line data-catalog-filter-control data-dependent-source="[data-metro-filter-city]" data-dependent-option-attribute="city-id">
                                 <option value="">Все линии</option>
                                 {% for metro_line in metro_lines_for_filter %}
-                                <option value="{{ metro_line.id }}" data-city-id="{{ metro_line.city_id }}" {% if metro_filters.metro_line == metro_line.id|stringformat:'s' %}selected{% endif %}>
+                                <option value="{{ metro_line.id }}" data-city-id="{{ metro_line.system_id }}" {% if metro_filters.metro_line == metro_line.id|stringformat:'s' %}selected{% endif %}>
                                     {{ metro_line }}
                                 </option>
                                 {% endfor %}

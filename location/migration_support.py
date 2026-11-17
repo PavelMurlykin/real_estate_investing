@@ -110,7 +110,7 @@ def backfill_locations(registry, database='default'):
     MetroLine = registry.get_model('location', 'MetroLine')
     Metro = registry.get_model('location', 'Metro')
     System = registry.get_model('location', 'MetroSystem')
-    for city_id in MetroLine.objects.using(database).values_list('city_id', flat=True).distinct():
+    for city_id in MetroLine.objects.using(database).exclude(city_id=None).order_by().values_list('city_id', flat=True).distinct():
         city = City.objects.using(database).get(pk=city_id)
         system, _ = System.objects.using(database).get_or_create(
             name=f'Метрополитен: {city.name}', defaults={'location_id': cities[city_id]},
@@ -119,7 +119,10 @@ def backfill_locations(registry, database='default'):
     memberships = []
     Membership = Metro.lines.through
     for station in Metro.objects.using(database).select_related('metro_line'):
-        if station.location_id is None:
+        if (
+            station.location_id is None and station.metro_line.city_id in cities
+            and getattr(station, 'location_is_inferred', True)
+        ):
             Metro.objects.using(database).filter(pk=station.pk).update(location_id=cities[station.metro_line.city_id])
         memberships.append(Membership(metro_id=station.pk, metroline_id=station.metro_line_id))
     Membership.objects.using(database).bulk_create(memberships, ignore_conflicts=True, batch_size=1000)

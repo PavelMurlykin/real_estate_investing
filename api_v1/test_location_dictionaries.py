@@ -96,7 +96,7 @@ def test_location_metro_list_filters_with_constant_query_count(
     django_assert_num_queries,
 ):
     """Filter metro stations without per-row hierarchy queries."""
-    with django_assert_num_queries(2):
+    with django_assert_num_queries(3):
         response = client.get(
             reverse(
                 'api_v1:location_dictionary_list',
@@ -132,6 +132,14 @@ def test_location_metro_list_filters_with_constant_query_count(
                 'name': 'Сокольническая',
                 'color': '#D92B2B',
             },
+            'system': None,
+            'location': None,
+            'lines': [{
+                'id': location_dictionary_catalog['metro_line'].pk,
+                'name': 'Сокольническая', 'color': '#D92B2B',
+            }],
+            'lineColor': None,
+            'locationIsInferred': True,
             'usageCount': 0,
             'isActive': True,
             'createdAt': response.json()['results'][0]['createdAt'],

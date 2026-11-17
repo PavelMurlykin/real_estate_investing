@@ -94,7 +94,7 @@ export const sessionQueryOptions = queryOptions({
 
 export function importLocationDictionary(
   dictionaryKey: LocationDictionaryKey,
-  parents: { regionId?: number, cityId?: number },
+  parents: { regionId?: number, cityId?: number, systemId?: number },
 ) {
   return requestJson(
     `/api/v1/location-dictionaries/${dictionaryKey}/import/`,
@@ -659,6 +659,8 @@ export function locationDictionaryListQueryOptions(
     'regionId',
     'cityId',
     'metroLineId',
+    'systemId',
+    'locationId',
     'page',
     'pageSize',
   ]) {

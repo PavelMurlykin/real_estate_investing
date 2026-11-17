@@ -78,8 +78,7 @@ export function RealEstateComplexMetroEditor({
                         metroId: value,
                       })}
                     initialOptions={(options.metroStations ?? []).map((option) => ({ id: option.id, label: `${option.station} · ${option.line}` }))}
-                    truncated={Boolean(locationId) || options.truncated.metroStations}
-                    filters={locationId ? { locationId } : { cityId }}
+                    truncated
                     disabled={!cityId && !locationId}
                     required
                   />

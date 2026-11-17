@@ -84,7 +84,9 @@ from customer.views import (
     _get_selected_customer_calculation_links,
 )
 from location.import_forms import LocationImportForm
-from location.models import City, District, Metro, MetroLine, Region
+from location.models import City, District, Metro, MetroLine, MetroSystem, Region
+from location.metro_import import import_metro
+from .metro_serializers import MetroDictionaryWriteSerializer
 from location.import_service import LocationImportError, import_locations
 from mortgage.excel import export_saved_mortgage_calculation_excel
 from mortgage.models import MortgageCalculation
@@ -1570,24 +1572,45 @@ LOCATION_DICTIONARY_CONFIGURATIONS = {
         'legacy_key': 'metro',
         'name_field': 'station',
         'parent_model_field': 'metro_line',
-        'select_related': ('metro_line__city__region',),
+        'select_related': ('metro_line__city__region', 'metro_line__system',
+                           'location__location_type', 'location__parent', 'location__region'),
         'search_fields': (
             'station',
             'metro_line__line',
             'metro_line__city__name',
+            'metro_line__system__name', 'location__name',
         ),
         'filter_fields': {
             'regionId': 'metro_line__city__region_id',
             'cityId': 'metro_line__city_id',
             'metroLineId': 'metro_line_id',
+            'systemId': 'metro_line__system_id',
+            'locationId': 'location_id',
         },
         'usage_relations': ('realestatecomplexmetroavailability',),
         'default_ordering': (
-            'metro_line__city__name',
+            'metro_line__system__name',
             'metro_line__line',
             'station',
             'pk',
         ),
+    },
+    'metro-systems': {
+        'key': 'metro-systems', 'model': MetroSystem, 'legacy_key': 'metro_system',
+        'name_field': 'name', 'select_related': (
+            'location__location_type', 'location__parent', 'location__region',
+        ),
+        'search_fields': ('name', 'location__name'),
+        'filter_fields': {'locationId': 'location_id'},
+        'usage_relations': ('metroline',), 'default_ordering': ('name', 'pk'),
+    },
+    'metro-lines': {
+        'key': 'metro-lines', 'model': MetroLine, 'legacy_key': 'metro_line',
+        'name_field': 'line', 'parent_model_field': 'system',
+        'select_related': ('system', 'city__region'),
+        'search_fields': ('line', 'system__name'),
+        'filter_fields': {'systemId': 'system_id'},
+        'usage_relations': ('metro', 'stations'), 'default_ordering': ('line', 'pk'),
     },
 }
 
@@ -1600,24 +1623,26 @@ class LocationDictionaryImportAPIView(APIView):
 
     def post(self, request, dictionary_key):
         """Validate parent selection and return an atomic import summary."""
-        if dictionary_key not in LOCATION_DICTIONARY_CONFIGURATIONS:
+        if dictionary_key not in ('regions', 'cities', 'districts', 'metro'):
             raise NotFound('Справочник локаций не найден.')
         if (
             not isinstance(request.data, dict)
-            or set(request.data) - {'regionId', 'cityId'}
+            or set(request.data) - {'regionId', 'cityId', 'systemId'}
         ):
-            raise ValidationError({'detail': 'Передайте только регион и город.'})
+            raise ValidationError({'detail': 'Передайте регион и город либо систему метро.'})
         import_form = LocationImportForm({
             **request.data, 'dictionary': dictionary_key,
         })
         if not import_form.is_valid():
             raise ValidationError(dict(import_form.errors))
         try:
-            result = import_locations(
-                dictionary_key,
-                import_form.cleaned_data.get('region'),
-                import_form.cleaned_data.get('city'),
-            )
+            if import_form.cleaned_data.get('system'):
+                result = import_metro(import_form.cleaned_data['system'])
+            else:
+                result = import_locations(
+                    dictionary_key, import_form.cleaned_data.get('region'),
+                    import_form.cleaned_data.get('city'),
+                )
         except LocationImportError as error:
             return Response(
                 {'detail': str(error)}, status=status.HTTP_502_BAD_GATEWAY,
@@ -1644,6 +1669,8 @@ class LocationDictionaryAPIViewMixin:
             queryset = queryset.select_related(
                 *configuration['select_related']
             )
+        if configuration['key'] == 'metro':
+            queryset = queryset.prefetch_related('lines')
 
         usage_expression = None
         for relation_name in configuration['usage_relations']:
@@ -1673,6 +1700,8 @@ class LocationDictionaryAPIViewMixin:
         """Use separate read and authoritative write contracts."""
         if self.request.method == 'GET':
             return LocationDictionaryEntrySerializer
+        if self.get_dictionary_configuration()['key'].startswith('metro'):
+            return MetroDictionaryWriteSerializer
         return LocationDictionaryWriteSerializer
 
     def get_response_serializer(self, dictionary_entry):
@@ -1717,9 +1746,12 @@ class LocationDictionaryListCreateAPIView(
             'filter_fields'
         ].items():
             if filters.get(api_field):
-                queryset = queryset.filter(
-                    **{model_field: filters[api_field]}
-                )
+                if configuration['key'] == 'metro' and api_field == 'metroLineId':
+                    queryset = queryset.filter(
+                        Q(metro_line_id=filters[api_field]) | Q(lines__pk=filters[api_field]),
+                    ).distinct()
+                else:
+                    queryset = queryset.filter(**{model_field: filters[api_field]})
 
         ordering = filters['ordering']
         if ordering == 'default':
@@ -1796,7 +1828,8 @@ class LocationDictionaryDetailAPIView(
         """Delete an unused entry or explain its protected dependency."""
         instance = self.get_object()
         try:
-            instance.delete()
+            with transaction.atomic():
+                instance.delete()
         except ProtectedError:
             return Response(
                 {

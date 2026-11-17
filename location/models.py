@@ -138,6 +138,13 @@ class MetroSystem(BaseModel):
     name = models.CharField(max_length=150, unique=True)
     location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.PROTECT)
 
+    class Meta:
+        """Keep network selectors ordered by their public name."""
+
+        ordering = ['name', 'pk']
+        verbose_name = 'Система метро'
+        verbose_name_plural = 'Системы метро'
+
 
 class LocationImportJob(models.Model):
     """Persist a resumable national import independently of browser requests."""
@@ -297,7 +304,7 @@ class MetroLine(ImportedLocation):
         ],
     )
     city = models.ForeignKey(
-        City, on_delete=models.PROTECT, verbose_name='Город'
+        City, null=True, blank=True, on_delete=models.PROTECT, verbose_name='Прежний город'
     )
     system = models.ForeignKey(MetroSystem, null=True, blank=True, on_delete=models.PROTECT)
 
@@ -309,17 +316,22 @@ class MetroLine(ImportedLocation):
         db_table = 'metro_line'
         verbose_name = 'Линия метро'
         verbose_name_plural = 'Линии метро'
-        ordering = ['city__name', 'line']
+        ordering = ['system__name', 'line']
         constraints = [
             models.UniqueConstraint(
                 fields=['line', 'city'],
                 name='unique_metro_line_line_city',
             ),
+            models.UniqueConstraint(
+                fields=['line', 'system'], name='unique_metro_line_system',
+                condition=models.Q(system__isnull=False),
+            ),
         ]
 
     def __str__(self):
         """Возвращает строковое представление линии метро."""
-        return f'{self.line} ({self.city})'
+        territory = self.system or self.city or 'система не указана'
+        return f'{self.line} ({territory})'
 
 
 class Metro(ImportedLocation):
@@ -332,6 +344,9 @@ class Metro(ImportedLocation):
         MetroLine, on_delete=models.PROTECT, verbose_name='Линия метро'
     )
     location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.PROTECT)
+    location_is_inferred = models.BooleanField(
+        default=True, verbose_name='Территория определена по системе метро',
+    )
     lines = models.ManyToManyField(MetroLine, related_name='stations', blank=True)
 
     class Meta(BaseModel.Meta):
@@ -342,7 +357,7 @@ class Metro(ImportedLocation):
         db_table = 'metro'
         verbose_name = 'Метро'
         verbose_name_plural = 'Метро'
-        ordering = ['metro_line__city__name', 'metro_line__line', 'station']
+        ordering = ['metro_line__system__name', 'metro_line__line', 'station']
         constraints = [
             models.UniqueConstraint(
                 fields=['station', 'metro_line'],

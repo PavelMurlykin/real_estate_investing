@@ -11,6 +11,7 @@ import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
+import { RemoteMultiSelect } from '@/shared/ui/RemoteMultiSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { NationalLocationImportPanel } from './NationalLocationImportPanel'
 import type { FormEvent } from 'react'
@@ -52,6 +53,11 @@ type LocationFormState = {
   regionId: string
   cityId: string
   metroLineId: string
+  systemId: string
+  locationId: string
+  lineIds: string[]
+  lineColor: string
+  locationIsInferred: boolean
   isActive: boolean
 }
 
@@ -84,8 +90,10 @@ const locationDictionaryConfigurations: LocationDictionaryConfiguration[] = [
     title: 'Метро',
     singular: 'станцию',
     nameLabel: 'Название станции',
-    description: 'Станции и линии метро с фильтрацией по городу.',
+    description: 'Станции метро: система, линии и населённый пункт станции.',
   },
+  { key: 'metro-lines', title: 'Линии метро', singular: 'линию', nameLabel: 'Название линии', description: 'Линии относятся к системе метро. Прежние связи с городами сохранены.' },
+  { key: 'metro-systems', title: 'Системы метро', singular: 'систему', nameLabel: 'Название системы', description: 'Центр системы связан с населённым пунктом. Станции могут находиться в других населённых пунктах и регионах.' },
 ]
 
 const emptyFormState: LocationFormState = {
@@ -94,6 +102,7 @@ const emptyFormState: LocationFormState = {
   regionId: '',
   cityId: '',
   metroLineId: '',
+  systemId: '', locationId: '', lineIds: [], lineColor: '#777777', locationIsInferred: true,
   isActive: true,
 }
 
@@ -159,6 +168,11 @@ function LocationDictionaryEditor({
     regionId: entry?.region ? String(entry.region.id) : '',
     cityId: entry?.city ? String(entry.city.id) : '',
     metroLineId: entry?.metroLine ? String(entry.metroLine.id) : '',
+    systemId: entry?.system ? String(entry.system.id) : '',
+    locationId: entry?.location ? String(entry.location.id) : '',
+    lineIds: entry?.lines?.map((line) => String(line.id)) ?? [],
+    lineColor: entry?.lineColor ?? '#777777',
+    locationIsInferred: entry?.locationIsInferred ?? true,
     isActive: entry?.isActive ?? true,
   }))
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
@@ -228,11 +242,11 @@ function LocationDictionaryEditor({
     if (dictionaryKey === 'regions' && !formState.code.trim()) {
       errors.code = 'Укажите код региона.'
     }
-    if (dictionaryKey !== 'regions' && !formState.regionId) {
+    if ((dictionaryKey === 'cities' || dictionaryKey === 'districts') && !formState.regionId) {
       errors.regionId = 'Выберите регион.'
     }
     if (
-      (dictionaryKey === 'districts' || dictionaryKey === 'metro')
+      dictionaryKey === 'districts'
       && !formState.cityId
     ) {
       errors.cityId = 'Выберите город.'
@@ -240,6 +254,8 @@ function LocationDictionaryEditor({
     if (dictionaryKey === 'metro' && !formState.metroLineId) {
       errors.metroLineId = 'Выберите линию метро.'
     }
+    if (dictionaryKey === 'metro-lines' && !formState.systemId) errors.systemId = 'Выберите систему метро.'
+    if (dictionaryKey === 'metro-systems' && !formState.locationId) errors.locationId = 'Выберите центр системы.'
     setFieldErrors(errors)
     if (Object.keys(errors).length) return
 
@@ -256,13 +272,21 @@ function LocationDictionaryEditor({
     }
     if (dictionaryKey === 'metro') {
       payload.metroLineId = Number(formState.metroLineId)
+      payload.lineIds = formState.lineIds.map(Number)
+      payload.locationId = formState.locationId ? Number(formState.locationId) : null
+      payload.locationIsInferred = formState.locationIsInferred
     }
+    if (dictionaryKey === 'metro-lines') {
+      payload.systemId = Number(formState.systemId)
+      payload.lineColor = formState.lineColor
+    }
+    if (dictionaryKey === 'metro-systems') payload.locationId = Number(formState.locationId)
     saveMutation.mutate(payload)
   }
 
-  const requiresRegion = dictionaryKey !== 'regions'
+  const requiresRegion = dictionaryKey === 'cities' || dictionaryKey === 'districts'
   const isMetro = dictionaryKey === 'metro'
-  const requiresCity = dictionaryKey === 'districts' || isMetro
+  const requiresCity = dictionaryKey === 'districts'
 
   return (
     <aside
@@ -340,6 +364,26 @@ function LocationDictionaryEditor({
           />
         ) : null}
 
+        {dictionaryKey === 'metro-lines' || isMetro ? (
+          <RemoteSelect searchable dictionary="metro-systems" label="Система метро"
+            value={formState.systemId} truncated
+            initialOptions={entry?.system ? [{ id: entry.system.id, label: entry.system.name }] : []}
+            onChange={(value) => setFormState((current) => ({ ...current, systemId: value, metroLineId: '', lineIds: [] }))}
+            error={fieldErrors.systemId} required />
+        ) : null}
+        {dictionaryKey === 'metro-systems' || isMetro ? (
+          <RemoteSelect searchable dictionary="locations" label={isMetro ? 'Населённый пункт станции' : 'Центр системы'}
+            value={formState.locationId} truncated filters={{ category: 'locality' }}
+            initialOptions={entry?.location ? [{ id: entry.location.id, label: entry.location.name }] : []}
+            onChange={(value) => setFormState((current) => ({ ...current, locationId: value, locationIsInferred: !value }))}
+            error={fieldErrors.locationId} required={!isMetro} />
+        ) : null}
+        {dictionaryKey === 'metro-lines' ? (
+          <label className="form-field">Цвет линии *
+            <input type="color" value={formState.lineColor} onChange={(event) => updateFormField('lineColor', event.target.value)} />
+            <FieldError id="line-color-error" message={fieldErrors.lineColor} />
+          </label>
+        ) : null}
         {isMetro ? (
           <RemoteSelect searchable
             dictionary="metro-lines" label={"Линия метро"}
@@ -347,14 +391,24 @@ function LocationDictionaryEditor({
                 'metroLineId',
                 value,
               )}
-            initialOptions={(optionsQuery.data?.metroLines ?? []).map((option) => ({ id: option.id, label: option.name }))}
-            truncated={optionsQuery.data?.truncated.metroLines}
-            filters={{ cityId: formState.cityId }}
-            disabled={!formState.cityId || optionsQuery.isFetching}
+            initialOptions={entry?.metroLine ? [{ id: entry.metroLine.id, label: entry.metroLine.name }] : []}
+            truncated
+            filters={{ systemId: formState.systemId }}
+            disabled={!formState.systemId && !entry?.metroLine}
             error={fieldErrors.metroLineId}
             required
           />
         ) : null}
+        {isMetro ? <>
+          <RemoteMultiSelect dictionary="metro-lines" label="Все линии станции"
+            values={formState.lineIds} truncated filters={{ systemId: formState.systemId }}
+            initialOptions={entry?.lines?.map((line) => ({ id: line.id, label: line.name })) ?? []}
+            onChange={(values) => updateFormField('lineIds', values)} error={fieldErrors.lineIds} />
+          <label className="developer-active-field"><input type="checkbox" checked={formState.locationIsInferred}
+            onChange={(event) => updateFormField('locationIsInferred', event.target.checked)} />
+            <span>Территория приблизительная, определена по системе метро</span></label>
+          <p className="field-hint">Основная линия всегда входит в список линий. Если местоположение станции неизвестно, населённый пункт можно не указывать.</p>
+        </> : null}
 
         {optionsQuery.data && Object.values(optionsQuery.data.truncated).some(
           Boolean,
@@ -569,8 +623,9 @@ export function LocationDictionaryPage() {
 
   const { results, page, totalCount, totalPages } = listQuery.data
   const options = filterOptionsQuery.data
-  const showRegion = dictionaryKey !== 'regions'
-  const showCity = dictionaryKey === 'districts' || dictionaryKey === 'metro'
+  const isMetroDictionary = dictionaryKey.startsWith('metro')
+  const showRegion = dictionaryKey === 'cities' || dictionaryKey === 'districts'
+  const showCity = dictionaryKey === 'districts'
   const showMetroLine = dictionaryKey === 'metro'
   const showRegionColumn = showRegion && !showMetroLine
 
@@ -589,15 +644,16 @@ export function LocationDictionaryPage() {
         to: `/locations/${item.key}`, label: item.title,
       }))} />
 
-      {sessionQuery.data?.capabilities.syncExternalData === true ? (
+      {sessionQuery.data?.capabilities.syncExternalData === true && !isMetroDictionary ? (
         <NationalLocationImportPanel />
       ) : null}
-      {sessionQuery.data?.capabilities.syncExternalData === true ? (
+      {sessionQuery.data?.capabilities.syncExternalData === true && (!isMetroDictionary || showMetroLine) ? (
         <LocationImportPanel
-          key={`${dictionaryKey}:${searchParameters.get('regionId')}:${searchParameters.get('cityId')}`}
+          key={`${dictionaryKey}:${searchParameters.get('regionId')}:${searchParameters.get('cityId')}:${searchParameters.get('systemId')}`}
           dictionaryKey={dictionaryKey}
           regionId={searchParameters.get('regionId') ?? ''}
           cityId={searchParameters.get('cityId') ?? ''}
+          systemId={searchParameters.get('systemId') ?? ''}
         />
       ) : null}
 
@@ -623,12 +679,22 @@ export function LocationDictionaryPage() {
         ) : null}
         {showMetroLine ? (
           <RemoteSelect filter dictionary="metro-lines" label="Линия метро" value={searchParameters.get('metroLineId') ?? ''}
-            initialOptions={options.metroLines.map((option) => ({ id: option.id, label: option.name }))}
-            filters={{ cityId: searchParameters.get('cityId') }}
+            truncated
+            filters={{ systemId: searchParameters.get('systemId') }}
             onChange={(value) => updateParameters({
                 metroLineId: value,
                 page: null,
               })} />
+        ) : null}
+        {isMetroDictionary && dictionaryKey !== 'metro-systems' ? (
+          <RemoteSelect filter dictionary="metro-systems" label="Система метро" truncated
+            value={searchParameters.get('systemId') ?? ''}
+            onChange={(value) => updateParameters({ systemId: value, metroLineId: null, page: null })} />
+        ) : null}
+        {isMetroDictionary && dictionaryKey !== 'metro-lines' ? (
+          <RemoteSelect filter dictionary="locations" label={showMetroLine ? 'Населённый пункт станции' : 'Центр системы'} truncated
+            filters={{ category: 'locality' }} value={searchParameters.get('locationId') ?? ''}
+            onChange={(value) => updateParameters({ locationId: value, page: null })} />
         ) : null}
         <SelectFilter label="Статус" parameter="status" emptyLabel="Все"
           options={[{ value: 'active', label: 'Активные' }, { value: 'inactive', label: 'Неактивные' }]} />
@@ -668,6 +734,7 @@ export function LocationDictionaryPage() {
                       {showRegionColumn ? <SortableHeader field="region" defaultOrdering="default">Регион</SortableHeader> : null}
                       {showCity ? <SortableHeader field="city" defaultOrdering="default">Город</SortableHeader> : null}
                       {showMetroLine ? <SortableHeader field="metroLine" defaultOrdering="default">Линия</SortableHeader> : null}
+                      {isMetroDictionary ? <><th scope="col">Система / линии</th><th scope="col">Территория</th></> : null}
 
                       {canManageCatalogs ? (
                         <th scope="col">
@@ -692,6 +759,9 @@ export function LocationDictionaryPage() {
                         {showMetroLine
                           ? <td><MetroLineLabel entry={entry} /></td>
                           : null}
+                        {isMetroDictionary ? <><td>{entry.system?.name ?? '—'}{entry.lines?.length ? <p>{entry.lines.map((line) => line.name).join(', ')}</p> : null}
+                          {entry.lineColor ? <span style={{ color: entry.lineColor }}>● {entry.lineColor}</span> : null}</td>
+                          <td>{entry.location?.name ?? 'Не указана'}{entry.locationIsInferred ? <p className="field-hint">Приблизительно, по системе метро</p> : null}</td></> : null}
 
                         {canManageCatalogs ? (
                           <td>
@@ -736,6 +806,8 @@ export function LocationDictionaryPage() {
 
                     </div>
                     <dl>
+                      {isMetroDictionary ? <><div><dt>Система / линии</dt><dd>{entry.system?.name ?? '—'} {entry.lines?.map((line) => line.name).join(', ')}</dd></div>
+                        <div><dt>Территория</dt><dd>{entry.location?.name ?? 'Не указана'}{entry.locationIsInferred ? ' (приблизительно)' : ''}</dd></div></> : null}
                       {entry.code ? (
                         <div><dt>Код</dt><dd>{entry.code}</dd></div>
                       ) : null}

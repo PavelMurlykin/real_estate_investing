@@ -1506,15 +1506,17 @@ class LocationCatalogMetroTests(TestCase):
             city=self.city,
         )
 
-    def test_location_catalog_routes_old_metro_line_tab_to_metro(self):
+    def test_location_catalog_renders_canonical_metro_line_editor(self):
+        """Edit a network line without requiring the former city selector."""
         response = self.client.get(
             reverse('location:location_catalog'), {'model': 'metro_line'}
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'name="model" value="metro"')
-        self.assertNotContains(response, 'model=metro_line')
-        self.assertNotContains(response, 'name="line_color"')
+        self.assertContains(response, 'name="model" value="metro_line"')
+        self.assertContains(response, 'name="system"')
+        self.assertContains(response, 'name="line_color"')
+        self.assertNotContains(response, 'name="city"')
 
     def test_location_catalog_renders_metro_dictionary(self):
         response = self.client.get(
@@ -1524,16 +1526,16 @@ class LocationCatalogMetroTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             [column['name'] for column in response.context['columns']],
-            ['station', 'metro_line', 'metro_line__city'],
+            ['station', 'metro_line', 'location', 'location_is_inferred'],
         )
         self.assertContains(response, 'name="model" value="metro"')
         self.assertContains(response, 'name="station"')
         self.assertContains(response, 'name="metro_line"')
-        self.assertContains(response, 'name="filter_city"')
+        self.assertContains(response, 'name="filter_system"')
         self.assertContains(response, 'name="filter_metro_line"')
         self.assertContains(response, 'data-metro-filter-form')
         self.assertContains(
-            response, f'data-city-id="{self.city.pk}"', html=False
+            response, 'data-city-id="None"', html=False
         )
         self.assertContains(response, 'catalog-line-select-swatch')
         self.assertNotContains(response, 'name="line_color"')
@@ -1627,6 +1629,7 @@ class LocationCatalogMetroTests(TestCase):
                 'station': 'Station 1',
                 'metro_line': self.metro_line.pk,
                 'is_active': 'on',
+                'location_is_inferred': 'on',
             },
         )
 
@@ -1644,6 +1647,7 @@ class LocationCatalogMetroTests(TestCase):
                 'object_id': metro.pk,
                 'station': 'Station 2',
                 'metro_line': other_line.pk,
+                'location_is_inferred': 'on',
             },
         )
 

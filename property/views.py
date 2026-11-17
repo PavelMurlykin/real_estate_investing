@@ -639,7 +639,8 @@ class BaseCatalogView(TemplateView):
         object_to_delete = get_object_or_404(config.model, pk=object_id)
 
         try:
-            object_to_delete.delete()
+            with transaction.atomic():
+                object_to_delete.delete()
             return redirect(self.get_model_url(config.key))
         except ProtectedError:
             form = self.build_form(config)
@@ -1345,7 +1346,7 @@ class RealEstateComplexFormsetMixin:
             if not metro:
                 continue
 
-            if metro.metro_line.city_id != selected_city.pk:
+            if metro.metro_line.city_id and metro.metro_line.city_id != selected_city.pk:
                 metro_form.add_error(
                     'metro',
                     'Станция метро не относится к выбранному городу.',

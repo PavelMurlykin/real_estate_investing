@@ -2,6 +2,7 @@ from urllib.parse import urlencode
 
 from django import forms
 from django.contrib import messages
+from django.db.models import Q
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.views import View
@@ -11,8 +12,10 @@ from users.roles import ExternalDataSyncRequiredMixin, can_sync_external_data
 
 from .import_forms import LocationImportForm
 from .import_service import LocationImportError, import_locations
+from .metro_import import import_metro
+from .metro_forms import MetroForm, MetroLineForm, MetroSystemForm
 from .jobs import serialize_import_job, start_import_job
-from .models import City, District, LocationImportJob, Metro, MetroLine, Region
+from .models import City, District, LocationImportJob, Metro, MetroLine, MetroSystem, Region
 
 
 class LocationImportView(ExternalDataSyncRequiredMixin, View):
@@ -39,11 +42,14 @@ class LocationImportView(ExternalDataSyncRequiredMixin, View):
             ))
         else:
             try:
-                result = import_locations(
-                    import_form.cleaned_data['dictionary'],
-                    import_form.cleaned_data.get('region'),
-                    import_form.cleaned_data.get('city'),
-                )
+                if import_form.cleaned_data.get('system'):
+                    result = import_metro(import_form.cleaned_data['system'])
+                else:
+                    result = import_locations(
+                        import_form.cleaned_data['dictionary'],
+                        import_form.cleaned_data.get('region'),
+                        import_form.cleaned_data.get('city'),
+                    )
             except LocationImportError as error:
                 messages.error(request, str(error))
             else:
@@ -88,23 +94,31 @@ class LocationCatalogView(BaseCatalogView):
             select_related=('city',),
         ),
         CatalogModelConfig(
+            key='metro_system', model=MetroSystem,
+            form_fields=('name', 'location', 'is_active'),
+            table_fields=('name', 'location'), order_by=('name',), select_related=('location',),
+        ),
+        CatalogModelConfig(
+            key='metro_line', model=MetroLine,
+            form_fields=('line', 'line_color', 'system', 'is_active'),
+            table_fields=('line', 'line_color', 'system'), order_by=('system__name', 'line'),
+            select_related=('system',),
+        ),
+        CatalogModelConfig(
             key='metro',
             model=Metro,
-            form_fields=('station', 'metro_line', 'is_active'),
-            table_fields=('station', 'metro_line', 'metro_line__city'),
-            order_by=('metro_line__city__name', 'metro_line__line', 'station'),
-            select_related=('metro_line__city',),
+            form_fields=('station', 'metro_line', 'lines', 'location', 'location_is_inferred', 'is_active'),
+            table_fields=('station', 'metro_line', 'location', 'location_is_inferred'),
+            order_by=('metro_line__system__name', 'metro_line__line', 'station'),
+            select_related=('metro_line__system', 'location'),
         ),
     )
 
-    def get_current_model_key(self):
-        """Route the removed metro-line tab to the metro catalog."""
-        requested_key = self.request.POST.get('model') or self.request.GET.get(
-            'model'
-        )
-        if requested_key == 'metro_line':
-            return 'metro'
-        return super().get_current_model_key()
+    def build_form(self, config, data=None, instance=None):
+        """Use the same canonical metro validation as administrative editors."""
+        form_class = {'metro': MetroForm, 'metro_line': MetroLineForm,
+                      'metro_system': MetroSystemForm}.get(config.key)
+        return form_class(data=data, instance=instance) if form_class else super().build_form(config, data, instance)
 
     def get_sort_field_map(self, config):
         """Return sortable columns for location catalogs."""
@@ -112,7 +126,8 @@ class LocationCatalogView(BaseCatalogView):
             return {
                 'station': 'station',
                 'metro_line': 'metro_line__line',
-                'metro_line__city': 'metro_line__city__name',
+                'location': 'location__name',
+                'location_is_inferred': 'location_is_inferred',
             }
         return super().get_sort_field_map(config)
 
@@ -121,13 +136,17 @@ class LocationCatalogView(BaseCatalogView):
         if config.key != 'metro':
             return queryset
 
-        city_id = self.request.GET.get('filter_city')
+        city_id = self.request.GET.get('filter_system')
         metro_line_id = self.request.GET.get('filter_metro_line')
 
         if city_id:
-            queryset = queryset.filter(metro_line__city_id=city_id)
+            queryset = queryset.filter(metro_line__system_id=city_id)
+        elif self.request.GET.get('filter_city'):
+            queryset = queryset.filter(metro_line__city_id=self.request.GET['filter_city'])
         if metro_line_id:
-            queryset = queryset.filter(metro_line_id=metro_line_id)
+            queryset = queryset.filter(
+                Q(lines__pk=metro_line_id) | Q(metro_line_id=metro_line_id),
+            ).distinct()
 
         return queryset
 
@@ -163,12 +182,12 @@ class LocationCatalogView(BaseCatalogView):
 
         if config.key == 'metro':
             context['metro_filters'] = {
-                'city': self.request.GET.get('filter_city', ''),
+                'city': self.request.GET.get('filter_system', ''),
                 'metro_line': self.request.GET.get('filter_metro_line', ''),
             }
-            context['cities_for_filter'] = City.objects.order_by('name')
+            context['cities_for_filter'] = MetroSystem.objects.order_by('name')
             context['metro_lines_for_filter'] = MetroLine.objects.select_related(
-                'city'
-            ).order_by('city__name', 'line')
+                'system'
+            ).order_by('system__name', 'line')
 
         return context

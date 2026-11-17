@@ -125,10 +125,10 @@ function createManagerQueryClient() {
       })
     }
   }
-  queryClient.setQueryData(['catalog-options', 'metro', 'locationId=501', '', ''], {
+  queryClient.setQueryData(['catalog-options', 'metro', '', '', ''], {
     pages: [{ results: [{ id: 7, label: 'Петроградская · Синяя' }], selected: [], page: 1, totalCount: 1, nextPage: null }], pageParams: [1],
   })
-  queryClient.setQueryData(['catalog-options', 'metro', 'locationId=501', '', '7'], {
+  queryClient.setQueryData(['catalog-options', 'metro', '', '', '7'], {
     pages: [{ results: [{ id: 7, label: 'Петроградская · Синяя' }], selected: [], page: 1, totalCount: 1, nextPage: null }], pageParams: [1],
   })
 

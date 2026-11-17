@@ -9,17 +9,20 @@ type Props = {
   dictionaryKey: LocationDictionaryKey
   regionId: string
   cityId: string
+  systemId?: string
 }
 
-export function LocationImportPanel({ dictionaryKey, regionId, cityId }: Props) {
+export function LocationImportPanel({ dictionaryKey, regionId, cityId, systemId }: Props) {
   const queryClient = useQueryClient()
-  const needsCity = dictionaryKey === 'districts' || dictionaryKey === 'metro'
-  const needsRegion = dictionaryKey !== 'regions'
-  const canImport = (!needsRegion || Boolean(regionId)) && (!needsCity || Boolean(cityId))
+  const isMetro = dictionaryKey === 'metro'
+  const needsCity = dictionaryKey === 'districts'
+  const needsRegion = dictionaryKey !== 'regions' && !isMetro
+  const canImport = (!isMetro || Boolean(systemId)) && (!needsRegion || Boolean(regionId)) && (!needsCity || Boolean(cityId))
   const mutation = useMutation({
     mutationFn: () => importLocationDictionary(dictionaryKey, {
       ...(needsRegion ? { regionId: Number(regionId) } : {}),
       ...(needsCity ? { cityId: Number(cityId) } : {}),
+      ...(isMetro ? { systemId: Number(systemId) } : {}),
     }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
@@ -37,7 +40,7 @@ export function LocationImportPanel({ dictionaryKey, regionId, cityId }: Props) 
       <div>
         <h2 id="location-import-title">Импорт локаций России</h2>
         <p>
-          {dictionaryKey === 'regions'
+          {isMetro ? 'Выберите систему метро в фильтре ниже. Её центр должен быть связан с населённым пунктом России.' : dictionaryKey === 'regions'
             ? 'Загрузите регионы России, затем перейдите к городам выбранного региона.'
             : needsCity
               ? 'Выберите российские регион и город в фильтрах ниже. При необходимости загрузите их на вкладках «Регионы» и «Города».'

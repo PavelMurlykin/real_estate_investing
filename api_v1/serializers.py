@@ -21,7 +21,7 @@ from bank.models import (
 from customer.models import Customer
 from customer.location_service import CUSTOMER_LOCATION_FIELDS, prepare_customer_locations
 from location.presentation import geographic_label
-from location.models import City, District, Location, Metro, MetroLine, Region
+from location.models import City, District, Location, Metro, MetroLine, MetroSystem, Region
 from property.location_context import (
     building_geography_prefetch, geography_prefetch, locality_filter, set_primary_location,
 )
@@ -355,6 +355,8 @@ class LocationDictionaryListQuerySerializer(serializers.Serializer):
     regionId = serializers.IntegerField(required=False, min_value=1)
     cityId = serializers.IntegerField(required=False, min_value=1)
     metroLineId = serializers.IntegerField(required=False, min_value=1)
+    systemId = serializers.IntegerField(required=False, min_value=1)
+    locationId = serializers.IntegerField(required=False, min_value=1)
     page = serializers.IntegerField(required=False, min_value=1, default=1)
     pageSize = serializers.IntegerField(
         required=False,
@@ -382,6 +384,40 @@ class LocationDictionaryEntrySerializer(serializers.Serializer):
     metroLine = serializers.SerializerMethodField(
         method_name='get_metro_line'
     )
+    system = serializers.SerializerMethodField()
+    location = serializers.SerializerMethodField()
+    lines = serializers.SerializerMethodField()
+    lineColor = serializers.SerializerMethodField(method_name='get_line_color')
+    locationIsInferred = serializers.SerializerMethodField(method_name='get_location_is_inferred')
+
+    def get_system(self, entry):
+        """Return the operating network independently of legacy cities."""
+        system = entry.metro_line.system if isinstance(entry, Metro) else (
+            entry.system if isinstance(entry, MetroLine) else None
+        )
+        return {'id': system.pk, 'name': system.name} if system else None
+
+    def get_location(self, entry):
+        """Expose explicit geography with a bounded, preloaded label."""
+        location = getattr(entry, 'location', None)
+        return {'id': location.pk, 'name': geographic_label(location)} if location else None
+
+    def get_lines(self, entry):
+        """Retain all station memberships including the primary legacy line."""
+        if not isinstance(entry, Metro):
+            return []
+        lines = {line.pk: line for line in entry.lines.all()}
+        lines[entry.metro_line_id] = entry.metro_line
+        return [{'id': line.pk, 'name': line.line, 'color': line.line_color}
+                for line in sorted(lines.values(), key=lambda line: (line.line, line.pk))]
+
+    def get_line_color(self, entry):
+        """Expose a line's editable display color."""
+        return entry.line_color if isinstance(entry, MetroLine) else None
+
+    def get_location_is_inferred(self, entry):
+        """Distinguish a migrated network center from a confirmed station locality."""
+        return entry.location_is_inferred if isinstance(entry, Metro) else None
     usageCount = serializers.IntegerField(
         source='usage_count', read_only=True
     )
@@ -414,10 +450,11 @@ class LocationDictionaryEntrySerializer(serializers.Serializer):
         elif isinstance(dictionary_entry, District):
             region = dictionary_entry.city.region
         elif isinstance(dictionary_entry, Metro):
-            region = dictionary_entry.metro_line.city.region
+            city = dictionary_entry.metro_line.city
+            region = city.region if city else None
         else:
             return None
-        return {'id': region.pk, 'name': region.name}
+        return {'id': region.pk, 'name': region.name} if region else None
 
     def get_city(self, dictionary_entry):
         """Return the owning city for districts and metro stations."""
@@ -427,7 +464,7 @@ class LocationDictionaryEntrySerializer(serializers.Serializer):
             city = dictionary_entry.metro_line.city
         else:
             return None
-        return {'id': city.pk, 'name': city.name}
+        return {'id': city.pk, 'name': city.name} if city else None
 
     def get_metro_line(self, dictionary_entry):
         """Return metro-line identity and color for station entries."""
@@ -3093,7 +3130,7 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'locationId': 'Выберите населённый пункт.'})
         if location is None and 'metroAvailability' in attributes and district:
             for row in attributes['metroAvailability']:
-                if row['metro'].metro_line.city_id != district.city_id:
+                if row['metro'].metro_line.city_id and row['metro'].metro_line.city_id != district.city_id:
                     raise serializers.ValidationError(
                         {
                             'metroAvailability': (

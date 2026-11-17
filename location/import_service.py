@@ -9,7 +9,7 @@ from django.db import IntegrityError, connection, transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from .models import City, District, Metro, MetroLine, Region
+from .models import City, District, Metro, MetroLine, MetroSystem, Region
 from .open_data import OpenDataError, OpenLocationSource, location_key
 
 logger = logging.getLogger(__name__)
@@ -187,6 +187,18 @@ def unique_records(records):
 
 def import_locations(dictionary, region=None, city=None):
     """Fetch open data before atomically preserving and refreshing locations."""
+    if dictionary == 'metro' and city is not None:
+        from .models import LegacyLocationMapping
+        from .metro_import import import_metro
+
+        location_id = LegacyLocationMapping.objects.filter(
+            model_name='city', legacy_id=city.pk,
+        ).values_list('location_id', flat=True).first()
+        system = MetroSystem.objects.select_related('location').filter(
+            location_id=location_id,
+        ).first() if location_id else None
+        if system:
+            return import_metro(system)
     if dictionary not in ('regions', 'cities', 'districts', 'metro'):
         raise LocationImportError('Неизвестный справочник импорта.')
     with import_guard():
@@ -227,6 +239,12 @@ def import_locations(dictionary, region=None, city=None):
                         raise LocationImportError('Конфликт существующего города.')
                 line_counts = {'created': 0, 'updated': 0, 'unchanged': 0}
                 if dictionary == 'metro':
+                    system, _ = MetroSystem.objects.get_or_create(
+                        name=f'Метрополитен: {city.name}',
+                    )
+                    lines = [LocationRecord(row.source_identifier, row.name, {
+                        **row.attributes, 'system_id': system.pk,
+                    }) for row in lines]
                     line_objects, line_counts = upsert_records(
                         MetroLine, lines, 'city_id', city.pk,
                     )
@@ -239,9 +257,13 @@ def import_locations(dictionary, region=None, city=None):
                             for row in records
                             if row.attributes['line_source_identifier'] == identifier
                         ])
-                        _, station_counts = upsert_records(
+                        station_objects, station_counts = upsert_records(
                             Metro, stations, 'metro_line_id', line.pk,
                         )
+                        Metro.lines.through.objects.bulk_create([
+                            Metro.lines.through(metro_id=row.pk, metroline_id=line.pk)
+                            for row in station_objects.values()
+                        ], ignore_conflicts=True)
                         for key in counts:
                             counts[key] += station_counts[key]
                 else:

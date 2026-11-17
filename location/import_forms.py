@@ -2,7 +2,7 @@
 
 from django import forms
 
-from .models import City, Region
+from .models import City, MetroSystem, Region
 
 
 class LocationImportForm(forms.Form):
@@ -16,11 +16,22 @@ class LocationImportForm(forms.Form):
     ))
     regionId = forms.IntegerField(label='Регион', required=False, min_value=1)
     cityId = forms.IntegerField(label='Город', required=False, min_value=1)
+    systemId = forms.ModelChoiceField(
+        label='Система метро', required=False,
+        queryset=MetroSystem.objects.select_related('location').order_by('name'),
+    )
 
     def clean(self):
         """Validate hierarchy before any external network or database writes."""
         cleaned = super().clean()
         dictionary = cleaned.get('dictionary')
+        if dictionary == 'metro' and cleaned.get('systemId'):
+            if cleaned.get('regionId') or cleaned.get('cityId'):
+                raise forms.ValidationError('Для метро выберите только систему.')
+            cleaned['system'] = cleaned['systemId']
+            return cleaned
+        if cleaned.get('systemId'):
+            self.add_error('systemId', 'Система доступна только для импорта метро.')
         if dictionary == 'regions':
             if cleaned.get('regionId') or cleaned.get('cityId'):
                 raise forms.ValidationError('Для регионов родитель не нужен.')

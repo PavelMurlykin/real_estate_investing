@@ -1,6 +1,7 @@
 from django.contrib import admin
 
-from .models import City, District, Location, Metro, MetroLine, Region
+from .models import City, District, Location, Metro, MetroLine, MetroSystem, Region
+from .metro_forms import MetroForm, MetroLineForm, MetroSystemForm
 
 
 @admin.register(Region)
@@ -52,6 +53,10 @@ class DistrictAdmin(admin.ModelAdmin):
 class MetroAdmin(admin.ModelAdmin):
     """Администрирование справочника станций метро."""
 
+    form = MetroForm
+    autocomplete_fields = ('location',)
+    list_select_related = ('metro_line__system', 'location')
+
     list_display = (
         'station',
         'metro_line',
@@ -60,7 +65,7 @@ class MetroAdmin(admin.ModelAdmin):
     )
     list_filter = (
         'is_active',
-        'metro_line__city',
+        'metro_line__system',
         'metro_line__line',
         'created_at',
     )
@@ -70,24 +75,46 @@ class MetroAdmin(admin.ModelAdmin):
         'metro_line__city__name',
     )
     list_editable = ('is_active',)
-    ordering = ('metro_line__city__name', 'metro_line__line', 'station')
+    ordering = ('metro_line__system__name', 'metro_line__line', 'station')
 
 
 @admin.register(MetroLine)
 class MetroLineAdmin(admin.ModelAdmin):
     """Администрирование справочника линий метро."""
 
+    form = MetroLineForm
+    list_select_related = ('system',)
+
     list_display = (
         'line',
         'line_color',
-        'city',
+        'system',
         'is_active',
         'created_at',
     )
-    list_filter = ('is_active', 'city', 'created_at')
-    search_fields = ('line', 'city__name')
+    list_filter = ('is_active', 'system', 'created_at')
+    search_fields = ('line', 'system__name')
     list_editable = ('is_active',)
-    ordering = ('city__name', 'line')
+    ordering = ('system__name', 'line')
+
+    def get_deleted_objects(self, objects, request):
+        """Show protected memberships before individual or bulk deletion."""
+        deleted, counts, permissions, protected = super().get_deleted_objects(objects, request)
+        protected.extend(str(line) for line in MetroLine.objects.filter(
+            pk__in=[item.pk for item in objects], stations__isnull=False,
+        ).select_related('system', 'city').distinct())
+        return deleted, counts, permissions, protected
+
+
+@admin.register(MetroSystem)
+class MetroSystemAdmin(admin.ModelAdmin):
+    """Maintain network centers with bounded canonical autocomplete."""
+
+    form = MetroSystemForm
+    autocomplete_fields = ('location',)
+    list_display = ('name', 'location', 'is_active')
+    list_select_related = ('location',)
+    search_fields = ('name', 'location__name')
 
 
 

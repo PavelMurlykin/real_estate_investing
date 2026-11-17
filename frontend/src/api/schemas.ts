@@ -196,6 +196,8 @@ export const locationDictionaryKeySchema = z.enum([
   'cities',
   'districts',
   'metro',
+  'metro-lines',
+  'metro-systems',
 ])
 
 const locationReferenceSchema = z.object({
@@ -214,6 +216,11 @@ export const locationDictionaryEntrySchema = z.object({
   region: locationReferenceSchema.nullable(),
   city: locationReferenceSchema.nullable(),
   metroLine: metroLineReferenceSchema.nullable(),
+  system: locationReferenceSchema.nullable().optional(),
+  location: locationReferenceSchema.nullable().optional(),
+  lines: z.array(metroLineReferenceSchema).optional(),
+  lineColor: z.string().nullable().optional(),
+  locationIsInferred: z.boolean().nullable().optional(),
   usageCount: z.number().int().nonnegative(),
   isActive: z.boolean(),
   createdAt: z.iso.datetime({ offset: true }),
@@ -1421,6 +1428,11 @@ export type LocationDictionaryWriteRequest = {
   regionId?: number
   cityId?: number
   metroLineId?: number
+  systemId?: number
+  locationId?: number | null
+  lineIds?: number[]
+  lineColor?: string
+  locationIsInferred?: boolean
   isActive: boolean
 }
 

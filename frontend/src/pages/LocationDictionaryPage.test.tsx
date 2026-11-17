@@ -56,6 +56,7 @@ const metroEntry: LocationDictionaryEntry = {
   code: null,
   region: { id: 1, name: 'Москва' },
   city: { id: 2, name: 'Москва' },
+  system: { id: 9, name: 'Московский метрополитен' },
   metroLine: {
     id: 3,
     name: 'Сокольническая',
@@ -225,16 +226,14 @@ describe('LocationDictionaryPage', () => {
       '/locations/districts',
     )
     const table = within(screen.getByRole('table', { name: 'Метро' }))
-    expect(table.getAllByRole('columnheader')).toHaveLength(3)
-    expect(table.getByRole('columnheader', { name: 'Город' })).toBeInTheDocument()
+    expect(table.getAllByRole('columnheader')).toHaveLength(4)
+    expect(table.getByRole('columnheader', { name: 'Территория' })).toBeInTheDocument()
     expect(table.queryByRole('columnheader', { name: 'Регион' })).not.toBeInTheDocument()
     expect(table.queryByRole('columnheader', { name: 'Используется' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Прежняя версия' })).not.toBeInTheDocument()
     expect(screen.getAllByText('Охотный Ряд').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Сокольническая').length).toBeGreaterThan(0)
-    expect(screen.getByLabelText('Регион')).toHaveValue('Москва')
-    expect(screen.getByLabelText('Город')).toHaveValue('Москва')
-    expect(screen.getByLabelText('Линия метро')).toHaveValue('Сокольническая')
+    expect(screen.getByRole('combobox', { name: 'Система метро' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Сохранить' }))
       .not.toBeInTheDocument()
   })
@@ -251,7 +250,8 @@ describe('LocationDictionaryPage', () => {
       }
       const path = String(input)
       if (path.includes('/catalog-options/')) {
-        const choices = path.includes('/regions/') ? options.regions
+        const choices = path.includes('/metro-systems/') ? [{ id: 9, name: 'Московский метрополитен' }]
+          : path.includes('/regions/') ? options.regions
           : path.includes('/cities/') ? options.cities : options.metroLines
         return Response.json({ page: 1, nextPage: null, totalCount: choices.length,
           selected: [], results: choices.map((choice) => ({ id: choice.id, label: choice.name })),
@@ -265,26 +265,22 @@ describe('LocationDictionaryPage', () => {
     const editor = within(screen.getByRole('complementary', {
       name: isEditing ? 'Редактирование записи' : 'Добавить станцию',
     }))
-    const region = editor.getByRole('combobox', { name: 'Регион *' })
-    const city = editor.getByRole('combobox', { name: 'Город *' })
+    const system = editor.getByRole('combobox', { name: 'Система метро *' })
     const metroLine = editor.getByRole('combobox', { name: 'Линия метро *' })
     expect(editor.queryByRole('searchbox')).not.toBeInTheDocument()
     expect(editor.queryByRole('link', { name: 'Django-форма' })).not.toBeInTheDocument()
     if (isEditing) {
       expect(metroLine).toHaveValue('Сокольническая')
     } else {
-      expect(city).toBeDisabled()
       expect(metroLine).toBeDisabled()
     }
-    await user.click(region)
-    await user.click(editor.getByRole('option', { name: 'Москва' }))
-    await user.click(city)
-    await user.click(editor.getByRole('option', { name: 'Москва' }))
-    if (isEditing) expect(metroLine).toHaveValue('Сокольническая')
+    if (!isEditing) {
+      await user.click(system)
+      await user.click(await editor.findByRole('option', { name: 'Московский метрополитен' }))
+    }
     await user.click(metroLine)
     await user.type(metroLine, 'Арбат')
-    expect(editor.queryByRole('option', { name: 'Сокольническая' })).not.toBeInTheDocument()
-    await user.keyboard('{Enter}')
+    await user.click(await editor.findByRole('option', { name: line.name }))
     expect(metroLine).toHaveValue(line.name)
     const name = editor.getByLabelText('Название станции *')
     await user.clear(name)
@@ -296,6 +292,7 @@ describe('LocationDictionaryPage', () => {
     const saveCall = fetchMock.mock.calls.find((call) => call[1]?.method === method)
     expect(JSON.parse(saveCall?.[1]?.body as string)).toEqual({
       name: 'Тестовая станция', isActive: true, metroLineId: line.id,
+      lineIds: [], locationId: null, locationIsInferred: true,
     })
   })
 

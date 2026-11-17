@@ -77,7 +77,8 @@ CATALOG_REACT_ROUTES = {
         'city': 'locations/cities/',
         'district': 'locations/districts/',
         'metro': 'locations/metro/',
-        'metro_line': 'locations/metro/',
+        'metro_line': 'locations/metro-lines/',
+        'metro_system': 'locations/metro-systems/',
     },
     'bank:catalog': {
         'bank': 'banks/',
@@ -98,6 +99,8 @@ EDITABLE_CATALOG_MODELS = {
             'city',
             'district',
             'metro',
+            'metro_line',
+            'metro_system',
         },
     ),
     'bank:catalog': frozenset({'bank', 'mortgage_program'}),
@@ -185,6 +188,7 @@ def translate_legacy_query_parameters(view_name, parameters):
         elif view_name == 'location:location_catalog':
             aliases.update({
                 'filter_city': 'cityId', 'filter_metro_line': 'metroLineId',
+                'filter_system': 'systemId',
             })
             ordering_fields.update({
                 'station': 'name', 'metro_line': 'metroLine',

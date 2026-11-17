@@ -51,7 +51,7 @@ describe('LocationImportPanel', () => {
     let resolveRequest: (response: Response) => void = () => undefined
     const fetchMock = vi.fn<typeof fetch>(() => new Promise((resolve) => { resolveRequest = resolve }))
     vi.stubGlobal('fetch', fetchMock)
-    const { queryClient } = renderWithProviders(<LocationImportPanel dictionaryKey="metro" regionId="1" cityId="2" />)
+    const { queryClient } = renderWithProviders(<LocationImportPanel dictionaryKey="metro" regionId="" cityId="" systemId="9" />)
     queryClient.setQueryData(['location-dictionaries', 'metro', ''], {})
     queryClient.setQueryData(['location-dictionary-options', ''], {})
     const button = screen.getByRole('button', { name: 'Импортировать из API' })
@@ -59,7 +59,7 @@ describe('LocationImportPanel', () => {
     expect(screen.getByRole('button', { name: 'Импортируем…' })).toBeDisabled()
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/location-dictionaries/metro/import/', expect.objectContaining({
-      method: 'POST', credentials: 'same-origin', body: JSON.stringify({ regionId: 1, cityId: 2 }),
+      method: 'POST', credentials: 'same-origin', body: JSON.stringify({ systemId: 9 }),
     }))
     resolveRequest(Response.json(result))
     expect(await screen.findByText(/Импорт завершён. Добавлено: 2; обновлено: 1/)).toBeInTheDocument()

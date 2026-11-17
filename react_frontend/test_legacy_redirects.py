@@ -140,7 +140,7 @@ def test_cutover_preserves_query_parameters(client):
         ),
         (
             '/locations/?model=metro_line&edit=9',
-            '/app/locations/metro/',
+            '/app/locations/metro-lines/9/edit/',
         ),
         (
             '/bank/?model=mortgage_program&edit=10',
