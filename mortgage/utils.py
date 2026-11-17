@@ -3,9 +3,17 @@ from decimal import Decimal, InvalidOperation
 
 from django.db.models import DecimalField, ExpressionWrapper, F, Q, Value
 
+from location.models import LegacyLocationMapping
+from property.location_form_fields import selected_identifier
+from property.location_queries import (
+    annotate_property_geography,
+    filter_property_geography,
+    property_geography_search,
+)
+
 
 CALCULATION_SORT_FIELDS = {
-    'city': 'property__building__real_estate_complex__district__city__name',
+    'city': 'geographic_locality_name',
     'timestamp': 'timestamp',
     'object': 'property__building__real_estate_complex__name',
     'cost': 'final_property_cost',
@@ -16,7 +24,7 @@ CALCULATION_SORT_FIELDS = {
 }
 
 CALCULATION_TABLE_HEADERS = (
-    ('city', 'Город'),
+    ('city', 'Населённый пункт'),
     ('timestamp', 'Дата расчета'),
     ('object', 'Объект'),
     ('cost', 'Стоимость объекта'),
@@ -55,9 +63,9 @@ def _parse_decimal(value):
 
 def get_calculation_filters(request):
     """Возвращает нормализованные значения фильтров таблицы расчетов."""
-    selected_city = (request.GET.get('city') or '').strip()
-    return {
-        'city': selected_city if selected_city.isdecimal() else '',
+    selected_city = selected_identifier(request.GET.get('city'))
+    filters = {
+        'city': str(selected_city) if selected_city else '',
         'q': (request.GET.get('q') or '').strip(),
         'cost_from': (request.GET.get('cost_from') or '').strip(),
         'cost_to': (request.GET.get('cost_to') or '').strip(),
@@ -78,6 +86,16 @@ def get_calculation_filters(request):
         'rate_from': (request.GET.get('rate_from') or '').strip(),
         'rate_to': (request.GET.get('rate_to') or '').strip(),
     }
+    for name in ('regionLocationId', 'districtLocationId', 'localityId', 'locationId'):
+        identifier = selected_identifier(request.GET.get(name))
+        filters[name] = str(identifier) if identifier else ''
+    if selected_identifier(filters['city']) and not filters['localityId']:
+        identifiers = list(LegacyLocationMapping.objects.filter(
+            model_name='city', legacy_id=filters['city'],
+        ).values_list('location_id', flat=True)[:2])
+        if len(identifiers) == 1:
+            filters['localityId'] = str(identifiers[0])
+    return filters
 
 
 def _apply_decimal_range(queryset, filters, prefix, field, filter_name):
@@ -114,21 +132,15 @@ def _apply_years_range(queryset, filters, prefix, field, filter_name):
 
 def apply_calculation_filters(queryset, filters, prefix=''):
     """Применяет фильтры таблицы расчетов к переданному queryset."""
-    city = filters.get('city')
-    if city:
-        queryset = queryset.filter(
-            **{
-                (
-                    f'{_prefixed("property", prefix)}__building'
-                    '__real_estate_complex__district__city_id'
-                ): city
-            }
-        )
+    building_prefix = f'{prefix}property__building__'
+    queryset = filter_property_geography(queryset, filters, building_prefix)
 
     search = filters.get('q')
     if search:
         queryset = queryset.filter(
-            Q(
+            Q(pk__in=property_geography_search(queryset, search, building_prefix).values('pk'))
+            | Q(**{f'{building_prefix}number__icontains': search})
+            | Q(
                 **{
                     (
                         f'{_prefixed("property", prefix)}'
@@ -193,7 +205,11 @@ def get_calculation_sort(
 
 def apply_calculation_sort(queryset, sort, order, prefix=''):
     """Применяет сортировку таблицы расчетов к переданному queryset."""
-    sort_field = _prefixed(CALCULATION_SORT_FIELDS[sort], prefix)
+    if sort == 'city':
+        queryset = annotate_property_geography(queryset, f'{prefix}property__building__')
+        sort_field = 'geographic_locality_name'
+    else:
+        sort_field = _prefixed(CALCULATION_SORT_FIELDS[sort], prefix)
     if order == 'desc':
         sort_field = f'-{sort_field}'
     return queryset.order_by(sort_field)

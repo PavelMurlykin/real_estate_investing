@@ -143,6 +143,26 @@
         form.querySelectorAll('[data-dependent-source]').forEach(syncDependentSelect);
     }
 
+    function resetRemoteDependents(form, changedControl) {
+        const changedIdentifiers = new Set([changedControl.id]);
+        let changed = true;
+        while (changed) {
+            changed = false;
+            form.querySelectorAll('select[data-remote-filters]').forEach(function (control) {
+                if (changedIdentifiers.has(control.id)) return;
+                const parents = Object.values(JSON.parse(control.dataset.remoteFilters));
+                if (!parents.some(function (identifier) { return changedIdentifiers.has(identifier); })) return;
+                control.value = '';
+                control.querySelectorAll('option').forEach(function (option) {
+                    if (option.value) option.remove();
+                });
+                if (window.searchableSelect) window.searchableSelect.refresh(control);
+                changedIdentifiers.add(control.id);
+                changed = true;
+            });
+        }
+    }
+
     function replaceResults(html, targetSelector) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
@@ -242,6 +262,7 @@
                 );
 
                 control.addEventListener(eventName, function () {
+                    if (eventName === 'change') resetRemoteDependents(form, control);
                     if (eventName === 'input') {
                         clearTimeout(debounceTimer);
                         debounceTimer = setTimeout(function () {

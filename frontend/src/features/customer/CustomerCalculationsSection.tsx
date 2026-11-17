@@ -1,3 +1,4 @@
+import { formatCalculationLocation } from '@/features/mortgage/calculationLocation'
 import { Notice } from '@/shared/ui/Notice'
 import { restoreFocus } from '@/shared/lib/restoreFocus'
 import { ModalDialog } from '@/shared/ui/ModalDialog'
@@ -252,7 +253,7 @@ export function CustomerCalculationsSection({
         <CalculationFilters prefix="calculation" />
         <form className="search-form" role="search" onSubmit={handleSearch}>
           <div className="live-search-control">
-            <LiveFilterInput label="Поиск по объекту" id="customer-calculation-search" parameter="calculationQ" placeholder="Город, ЖК, корпус или квартира" pageParameter="calculationPage" />
+            <LiveFilterInput label="Поиск по объекту" id="customer-calculation-search" parameter="calculationQ" placeholder="Локация, ЖК, корпус или квартира" pageParameter="calculationPage" />
             <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
@@ -323,7 +324,7 @@ export function CustomerCalculationsSection({
                     <td>
                       <strong>{calculation.property.realEstateComplex}</strong>
                       <small>
-                        {calculation.property.city}, корп. {calculation.property.building}, кв. {calculation.property.apartmentNumber}
+                        {formatCalculationLocation(calculation.property)}, корп. {calculation.property.building}, кв. {calculation.property.apartmentNumber}
                       </small>
                     </td>
                     <td>{formatCurrency(calculation.finalPropertyCost)}</td>
@@ -377,7 +378,7 @@ export function CustomerCalculationsSection({
                 </div>
                 <p>Расчёт от {formatDateTime(calculation.createdAt)}</p>
                 <dl>
-                  <div><dt>Объект</dt><dd>{calculation.property.city}, корп. {calculation.property.building}, кв. {calculation.property.apartmentNumber}</dd></div>
+                  <div><dt>Объект</dt><dd>{formatCalculationLocation(calculation.property)}, корп. {calculation.property.building}, кв. {calculation.property.apartmentNumber}</dd></div>
                   <div><dt>Первый взнос</dt><dd>{formatCurrency(calculation.initialPaymentRubles)}</dd></div>
                   <div><dt>Платёж</dt><dd>{calculation.monthlyPayment ? formatCurrency(calculation.monthlyPayment) : '—'}</dd></div>
                   <div><dt>Срок</dt><dd>{formatMonths(calculation.mortgageTermMonths)}</dd></div>

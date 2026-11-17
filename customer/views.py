@@ -1,4 +1,5 @@
 from decimal import Decimal, InvalidOperation
+from types import SimpleNamespace
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -15,6 +16,14 @@ from django.views.generic import (
 )
 
 from bank.models import MortgageProgram
+from mortgage.location_filters import CalculationLocationForm
+from property.location_queries import (
+    annotate_property_geography,
+    filter_property_geography,
+    property_geography_search,
+)
+from property.location_filters import selected_scopes
+from property.models import Property
 from mortgage.mortgage_calculator import MortgageCalculator
 from mortgage.utils import (
     build_calculation_table_headers,
@@ -87,9 +96,8 @@ def _get_customer_calculation_property(calculation):
 
 def _get_customer_calculation_city(calculation):
     """Return the city object used by a saved calculation."""
-    complex_object = _get_customer_calculation_property(calculation).building.real_estate_complex
-    return (complex_object.district.city if complex_object.district_id
-            else complex_object.primary_location)
+    geography = _get_customer_calculation_property(calculation).building.geography
+    return SimpleNamespace(pk=geography.locality_id or geography.city_id, name=geography.city)
 
 
 def _get_customer_calculation_object_name(calculation):
@@ -123,7 +131,12 @@ def _prepare_customer_calculation_link(
     )
     link.main_monthly_payment = monthly_payment
     link.timestamp = calculation.timestamp
-    link.city = _get_customer_calculation_city(calculation)
+    if hasattr(link, 'geographic_location_id'):
+        link.city = SimpleNamespace(
+            pk=link.geographic_locality_id, name=link.geographic_locality_name,
+        )
+    else:
+        link.city = _get_customer_calculation_city(calculation)
     link.city_name = link.city.name
     link.object_name = _get_customer_calculation_object_name(calculation)
     link.final_property_cost = calculation.final_property_cost
@@ -192,18 +205,19 @@ def _apply_customer_calculation_decimal_range(
 
 def _apply_customer_calculation_filters(rows, filters):
     """Filter normalized customer calculation rows."""
-    city = filters.get('city')
-    if city:
-        rows = [row for row in rows if str(row.city.pk) == city]
-
-    search = (filters.get('q') or '').casefold()
-    if search:
-        rows = [
-            row
-            for row in rows
-            if search in row.calculation.property.apartment_number.casefold()
-            or search in row.object_name.casefold()
-        ]
+    search = filters.get('q') or ''
+    if filters.get('city') or selected_scopes(filters) or search:
+        properties = filter_property_geography(Property.objects.filter(
+            pk__in=[row.calculation.property_id for row in rows],
+        ), filters, 'building__')
+        if search:
+            properties = properties.filter(
+                Q(pk__in=property_geography_search(properties, search, 'building__').values('pk'))
+                | Q(apartment_number__icontains=search) | Q(building__number__icontains=search)
+                | Q(building__real_estate_complex__name__icontains=search),
+            )
+        identifiers = set(properties.values_list('pk', flat=True))
+        rows = [row for row in rows if row.calculation.property_id in identifiers]
 
     rows = _apply_customer_calculation_decimal_range(
         rows, filters, 'final_property_cost', 'cost'
@@ -658,8 +672,12 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
             .prefetch_related('calculation__trenches')
         )
         customer_calculation_rows = _build_customer_calculation_links(
-            market_customer_calculations,
-            trench_customer_calculations,
+            annotate_property_geography(
+                market_customer_calculations, 'calculation__property__building__',
+            ),
+            annotate_property_geography(
+                trench_customer_calculations, 'calculation__property__building__',
+            ),
         )
         calculation_cities = _build_customer_calculation_city_choices(
             customer_calculation_rows
@@ -677,6 +695,9 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
         context['customer_calculations'] = customer_calculations
         context['calculation_cities'] = calculation_cities
         context['calculation_filters'] = calculation_filters
+        context['calculation_location_form'] = CalculationLocationForm(
+            calculation_filters, 'customer_calculation',
+        )
         context['calculation_sort'] = calculation_sort
         context['calculation_order'] = calculation_order
         context['calculation_filter_reset_url'] = self.request.path

@@ -1,26 +1,17 @@
 <form method="get" class="row g-3 align-items-end mb-4" data-catalog-filter-form data-catalog-results-target="{{ calculation_filter_results_target }}">
+    {% if request.GET.legacy == '1' %}<input type="hidden" name="legacy" value="1">{% endif %}
     {% if target_customer %}
         <input type="hidden" name="customer" value="{{ target_customer.pk }}">
     {% endif %}
     <input type="hidden" name="sort" value="{{ calculation_sort }}">
     <input type="hidden" name="order" value="{{ calculation_order }}">
 
-    <div class="col-lg-3 col-md-6">
-        <label for="{{ calculation_filter_id_prefix }}_city" class="form-label">Город</label>
-        <select
-            id="{{ calculation_filter_id_prefix }}_city"
-            name="city"
-            class="form-select"
-            data-catalog-filter-control
-        >
-            <option value="">Все города</option>
-            {% for city in calculation_cities %}
-                <option value="{{ city.id }}" {% if calculation_filters.city == city.id %}selected{% endif %}>
-                    {{ city.name }}
-                </option>
-            {% endfor %}
-        </select>
-    </div>
+    {% for field in calculation_location_form %}
+        <div class="col-lg-3 col-md-6">
+            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {{ field }}
+        </div>
+    {% endfor %}
     <div class="col-lg-3 col-md-6">
         <label for="{{ calculation_filter_id_prefix }}_q" class="form-label">Объект</label>
         <input
@@ -29,7 +20,7 @@
             name="q"
             value="{{ calculation_filters.q }}"
             class="form-control"
-            placeholder="ЖК или квартира"
+            placeholder="Локация, ЖК, корпус или квартира"
             data-catalog-filter-control
         >
     </div>

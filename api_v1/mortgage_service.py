@@ -6,6 +6,7 @@ from django.urls import reverse
 from mortgage.mortgage_calculator import MortgageCalculator
 from mortgage.excel import MortgageExcelData
 from mortgage.models import MortgageCalculation
+from property.location_queries import geography_payload
 
 
 MONEY_QUANTUM = Decimal('0.01')
@@ -262,13 +263,17 @@ def create_saved_market_mortgage(parameters, property_object, user):
     )
 
 
-def serialize_saved_property(property_object):
+def serialize_saved_property(property_object, calculation=None):
     """Return the property context shared by list and detail responses."""
     real_estate_complex = property_object.building.real_estate_complex
+    if calculation is not None and hasattr(calculation, 'geographic_location_id'):
+        context = geography_payload(calculation)
+    else:
+        geography = property_object.building.geography
+        context = {'city': geography.city, 'district': geography.district}
     return {
         'id': property_object.pk,
-        'city': property_object.building.geography.city,
-        'district': property_object.building.geography.district,
+        **context,
         'layoutImageUrl': (
             property_object.layout_image.url
             if property_object.layout_image else ''
@@ -299,7 +304,7 @@ def serialize_saved_mortgage_list_item(calculation, is_linked=False):
     return {
         'id': calculation.pk,
         'createdAt': calculation.timestamp.isoformat(),
-        'property': serialize_saved_property(calculation.property),
+        'property': serialize_saved_property(calculation.property, calculation),
         'finalPropertyCost': _format_decimal(
             calculation.final_property_cost
         ),
@@ -379,7 +384,7 @@ def serialize_saved_mortgage_detail(calculation):
     return {
         'id': calculation.pk,
         'createdAt': calculation.timestamp.isoformat(),
-        'property': serialize_saved_property(calculation.property),
+        'property': serialize_saved_property(calculation.property, calculation),
         'legacyDetailUrl': reverse(
             'mortgage:calculation_detail',
             kwargs={'pk': calculation.pk},

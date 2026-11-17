@@ -1,3 +1,4 @@
+import { formatCalculationLocation } from '@/features/mortgage/calculationLocation'
 import { Notice } from '@/shared/ui/Notice'
 import { restoreFocus } from '@/shared/lib/restoreFocus'
 import { ModalDialog } from '@/shared/ui/ModalDialog'
@@ -135,7 +136,7 @@ export function SavedTrenchMortgageCalculationDetailPage() {
             {formatDateTime(savedCalculation.createdAt)}
           </h1>
           <p>
-            {property.city}, {property.realEstateComplex}, квартира{' '}
+            {formatCalculationLocation(property)}, {property.realEstateComplex}, квартира{' '}
             {property.apartmentNumber}
           </p>
         </div>

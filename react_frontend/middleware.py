@@ -155,7 +155,9 @@ def translate_legacy_query_parameters(view_name, parameters):
             'term': 'mortgageTermMonths', 'rate': 'annualRate',
         }
         if view_name == 'customer:detail':
-            aliases.update({'city': 'city', 'q': 'q'})
+            aliases.update({'city': 'city', 'q': 'q', **{
+                name: name for name in ('regionLocationId', 'districtLocationId', 'localityId', 'locationId')
+            }})
             aliases = {
                 old: f'calculation{new[0].upper()}{new[1:]}'
                 for old, new in aliases.items()

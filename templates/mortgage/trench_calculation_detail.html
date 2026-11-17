@@ -58,8 +58,8 @@
                             <td>{{ calculation.property.building.real_estate_complex.developer.get_display_name_with_company_group }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">Город</th>
-                            <td>{{ calculation.property.building.geography.city }}</td>
+                            <th scope="row">Населённый пункт</th>
+                            <td>{% include "mortgage/includes/calculation_location.html" with entry=calculation %}</td>
                         </tr>
                         <tr>
                             <th scope="row">Название ЖК</th>

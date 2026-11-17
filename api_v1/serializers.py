@@ -1759,7 +1759,7 @@ class DeveloperSerializer(DeveloperPublicSerializer):
         )
 
 
-class CalculationRangeQuerySerializer(serializers.Serializer):
+class CalculationRangeQuerySerializer(LocationScopeQuerySerializer):
     """Validate the shared history filters and inclusive numeric ranges."""
 
     city = serializers.IntegerField(required=False, min_value=1)

@@ -14,8 +14,12 @@ from django.db.models import (
 from django.db.models.functions import Round
 
 from customer.models import CustomerCalculation, CustomerTrenchCalculation
+from property.location_queries import (
+    filter_property_geography, property_geography_search,
+)
 from trench_mortgage.models import Trench
 from users.roles import can_view_all_private_records
+
 from .calculation_filters import apply_calculation_ranges
 
 
@@ -28,6 +32,12 @@ CUSTOMER_CALCULATION_VALUE_FIELDS = (
     'createdAt',
     'propertyId',
     'city',
+    'region',
+    'district',
+    'regionLocationId',
+    'districtLocationId',
+    'localityId',
+    'locationId',
     'realEstateComplex',
     'building',
     'apartmentNumber',
@@ -76,11 +86,9 @@ def _filter_link_queryset(queryset, user, search):
                     search
                 )
             )
-            | Q(
-                calculation__property__building__real_estate_complex__district__city__name__icontains=(
-                    search
-                )
-            )
+            | Q(pk__in=property_geography_search(
+                queryset, search, 'calculation__property__building__',
+            ).values('pk'))
         )
     return queryset
 
@@ -98,10 +106,13 @@ def _annotate_link_values(
         programType=Value(program_type, output_field=CharField()),
         createdAt=F('calculation__timestamp'),
         propertyId=F('calculation__property_id'),
-        city=F(
-            'calculation__property__building__real_estate_complex'
-            '__district__city__name'
-        ),
+        city=F('geographic_locality_name'),
+        region=F('geographic_region_name'),
+        district=F('geographic_district_name'),
+        regionLocationId=F('geographic_region_id'),
+        districtLocationId=F('geographic_district_id'),
+        localityId=F('geographic_locality_id'),
+        locationId=F('geographic_location_id'),
         realEstateComplex=F(
             'calculation__property__building__real_estate_complex__name'
         ),
@@ -129,6 +140,12 @@ def build_customer_calculation_queryset(customer, user, filters):
         user,
         search,
     )
+    market_links = filter_property_geography(
+        market_links, filters, 'calculation__property__building__',
+    )
+    trench_links = filter_property_geography(
+        trench_links, filters, 'calculation__property__building__',
+    )
     last_trench_monthly_payment = (
         Trench.objects.filter(calculation_id=OuterRef('calculation_id'))
         .order_by('-trench_number', '-pk')
@@ -151,8 +168,6 @@ def build_customer_calculation_queryset(customer, user, filters):
     )
 
     range_fields = {
-        'city': ('calculation__property__building__real_estate_complex'
-                 '__district__city_id'),
         'cost': 'finalPropertyCost', 'initialPayment': 'initialPaymentRubles',
         'monthlyPayment': 'monthlyPayment', 'term': 'mortgageTermMonths',
         'rate': 'annualRate',
@@ -186,6 +201,10 @@ def serialize_customer_calculation_link(row):
         'property': {
             'id': row['propertyId'],
             'city': row['city'],
+            **{name: row[name] for name in (
+                'region', 'district', 'regionLocationId', 'districtLocationId',
+                'localityId', 'locationId',
+            )},
             'realEstateComplex': row['realEstateComplex'],
             'building': row['building'],
             'apartmentNumber': row['apartmentNumber'],

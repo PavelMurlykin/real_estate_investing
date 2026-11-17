@@ -1,3 +1,4 @@
+import { formatCalculationLocation } from '@/features/mortgage/calculationLocation'
 import { Notice } from '@/shared/ui/Notice'
 import { TableScrollArea } from '@/shared/ui/TableScrollArea'
 import { Pagination } from '@/shared/ui/Pagination'
@@ -53,7 +54,7 @@ function TrenchCalculationMobileCard({
       ) : null}
       <div className="property-mobile-card__heading">
         <div>
-          <span>{calculation.property.city}</span>
+          <span>{formatCalculationLocation(calculation.property)}</span>
           <h2>{calculation.property.realEstateComplex}</h2>
         </div>
         <strong>{formatCurrency(calculation.finalPropertyCost)}</strong>
@@ -230,7 +231,7 @@ export function SavedTrenchMortgageCalculationListPage() {
         <CalculationFilters />
         <form className="search-form" role="search" onSubmit={handleSearch}>
           <div className="live-search-control">
-            <LiveFilterInput label="Поиск по объекту" id="trench-calculation-search" parameter="q" placeholder="Город, ЖК, корпус или квартира" />
+            <LiveFilterInput label="Поиск по объекту" id="trench-calculation-search" parameter="q" placeholder="Локация, ЖК, корпус или квартира" />
             <button className="button button--dark" type="submit">Найти</button>
           </div>
         </form>
@@ -284,7 +285,7 @@ export function SavedTrenchMortgageCalculationListPage() {
                 <tr>
                   {customerIdentifier ? <th scope="col"><span className="visually-hidden">Выбор</span></th> : null}
                   <SortableHeader field="createdAt" defaultOrdering="-createdAt">Дата</SortableHeader>
-                  <SortableHeader field="city" defaultOrdering="-createdAt">Город</SortableHeader>
+                  <SortableHeader field="city" defaultOrdering="-createdAt">Населённый пункт</SortableHeader>
                   <SortableHeader field="realEstateComplex" defaultOrdering="-createdAt">Объект</SortableHeader>
                   <SortableHeader field="finalPropertyCost" defaultOrdering="-createdAt">Стоимость</SortableHeader>
                   <SortableHeader field="initialPaymentRubles" defaultOrdering="-createdAt">Первый взнос</SortableHeader>
@@ -314,7 +315,7 @@ export function SavedTrenchMortgageCalculationListPage() {
                       </td>
                     ) : null}
                     <td>{formatDateTime(calculation.createdAt)}</td>
-                    <td>{calculation.property.city}</td>
+                    <td>{formatCalculationLocation(calculation.property)}</td>
                     <td>
                       <strong>{calculation.property.realEstateComplex}</strong>
                       <small>

@@ -4,13 +4,12 @@ from django.db.models import DecimalField, F, OuterRef, Subquery
 from django.db.models.functions import Round
 
 from mortgage.utils import annotate_calculation_table_values
+from property.location_queries import filter_property_geography
 from trench_mortgage.models import Trench
 
 
 def apply_calculation_ranges(queryset, filters, fields):
     """Filter in PostgreSQL before pagination, with terms entered in years."""
-    if filters.get('city'):
-        queryset = queryset.filter(**{fields['city']: filters['city']})
     for name in ('cost', 'initialPayment', 'monthlyPayment', 'term', 'rate'):
         for suffix, lookup, rounding in (
             ('From', 'gte', ROUND_CEILING), ('To', 'lte', ROUND_FLOOR),
@@ -26,6 +25,7 @@ def apply_calculation_ranges(queryset, filters, fields):
 
 def filter_saved_calculations(queryset, filters, *, tranche=False):
     """Annotate the legacy down payment and last tranche payment once."""
+    queryset = filter_property_geography(queryset, filters)
     queryset = annotate_calculation_table_values(queryset)
     queryset = queryset.annotate(
         table_initial_payment_amount=Round(
@@ -48,7 +48,6 @@ def filter_saved_calculations(queryset, filters, *, tranche=False):
     else:
         queryset = queryset.annotate(monthlyPayment=F('main_monthly_payment'))
     return apply_calculation_ranges(queryset, filters, {
-        'city': 'property__building__real_estate_complex__district__city_id',
         'cost': 'final_property_cost',
         'initialPayment': 'table_initial_payment_amount',
         'monthlyPayment': 'monthlyPayment', 'term': 'mortgage_term',

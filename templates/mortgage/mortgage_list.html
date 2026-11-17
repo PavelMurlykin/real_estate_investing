@@ -74,7 +74,7 @@
                                             >
                                         </td>
                                     {% endif %}
-                                    <td>{{ calculation.property.building.geography.city }}</td>
+                                    <td>{% include "mortgage/includes/calculation_location.html" with entry=calculation %}</td>
                                     <td>{{ calculation.property.building.real_estate_complex.name }}, кв. {{ calculation.property.apartment_number }}</td>
                                     <td>{{ calculation.final_property_cost|currency }} руб.</td>
                                     <td>{{ calculation.table_initial_payment_amount|currency }} руб.</td>

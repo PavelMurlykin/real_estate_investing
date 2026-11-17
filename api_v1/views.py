@@ -1,5 +1,6 @@
 from property.location_filters import apply_location_scopes, geographic_search_ids
 from property.location_context import building_geography_prefetch, geography_prefetch
+from property.location_queries import annotate_property_geography, property_geography_search
 from django.conf import settings
 from django.contrib.auth import (
     get_user_model,
@@ -840,6 +841,7 @@ def _saved_trench_mortgage_calculation_queryset(user):
         geography_prefetch('property__building__real_estate_complex__'),
         building_geography_prefetch('property__building__'),
     )
+    queryset = annotate_property_geography(queryset)
     if can_view_all_private_records(user):
         return queryset
     return queryset.filter(user=user)
@@ -851,7 +853,7 @@ class SavedTrenchMortgageCalculationListCreateAPIView(APIView):
 
     permission_classes = (IsAuthenticated,)
     ordering_fields = {
-        'city': 'property__building__real_estate_complex__district__city__name',
+        'city': 'geographic_locality_name',
         'realEstateComplex': 'property__building__real_estate_complex__name',
         'initialPaymentRubles': 'table_initial_payment_amount',
         'monthlyPayment': 'monthlyPayment',
@@ -885,11 +887,7 @@ class SavedTrenchMortgageCalculationListCreateAPIView(APIView):
                         search
                     )
                 )
-                | Q(
-                    property__building__real_estate_complex__district__city__name__icontains=(
-                        search
-                    )
-                )
+                | Q(pk__in=property_geography_search(queryset, search).values('pk'))
             )
 
         ordering = filters['ordering']
@@ -1028,6 +1026,7 @@ def _saved_mortgage_calculation_queryset(user):
         geography_prefetch('property__building__real_estate_complex__'),
         building_geography_prefetch('property__building__'),
     )
+    queryset = annotate_property_geography(queryset)
     if can_view_all_private_records(user):
         return queryset
     return queryset.filter(user=user)
@@ -1053,7 +1052,7 @@ class SavedMortgageCalculationListCreateAPIView(APIView):
 
     permission_classes = (IsAuthenticated,)
     ordering_fields = {
-        'city': 'property__building__real_estate_complex__district__city__name',
+        'city': 'geographic_locality_name',
         'realEstateComplex': 'property__building__real_estate_complex__name',
         'initialPaymentRubles': 'table_initial_payment_amount',
         'monthlyPayment': 'monthlyPayment',
@@ -1085,11 +1084,7 @@ class SavedMortgageCalculationListCreateAPIView(APIView):
                         search
                     )
                 )
-                | Q(
-                    property__building__real_estate_complex__district__city__name__icontains=(
-                        search
-                    )
-                )
+                | Q(pk__in=property_geography_search(queryset, search).values('pk'))
             )
 
         ordering = filters['ordering']

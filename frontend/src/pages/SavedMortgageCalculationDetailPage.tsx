@@ -1,3 +1,4 @@
+import { formatCalculationLocation } from '@/features/mortgage/calculationLocation'
 import { Notice } from '@/shared/ui/Notice'
 import { restoreFocus } from '@/shared/lib/restoreFocus'
 import { ModalDialog } from '@/shared/ui/ModalDialog'
@@ -119,7 +120,7 @@ export function SavedMortgageCalculationDetailPage() {
         <div>
           <span className="eyebrow">Сохранённый сценарий</span>
           <h1>Расчёт от {formatDateTime(savedCalculation.createdAt)}</h1>
-          <p>{property.city}, {property.realEstateComplex}, квартира {property.apartmentNumber}</p>
+          <p>{formatCalculationLocation(property)}, {property.realEstateComplex}, квартира {property.apartmentNumber}</p>
         </div>
         <div className="page-header__actions">
           <Link className="button button--secondary" to="/mortgage/calculations">

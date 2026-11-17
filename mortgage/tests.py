@@ -738,13 +738,15 @@ class MortgageCalculatorViewTests(TestCase):
             response.context['calculation_table_headers'][1]['field'],
             'object',
         )
-        self.assertContains(response, 'Город')
+        self.assertContains(response, 'Населённый пункт')
         self.assertNotContains(response, 'Дата расчета')
         self.assertNotContains(
             response,
             calculation.timestamp.strftime('%d.%m.%Y %H:%M'),
         )
-        self.assertContains(response, 'name="city"')
+        self.assertContains(response, 'name="localityId"')
+        self.assertContains(response, 'name="regionLocationId"')
+        self.assertContains(response, 'name="districtLocationId"')
         self.assertContains(response, 'Город 1')
         self.assertContains(
             response,

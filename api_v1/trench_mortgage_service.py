@@ -262,7 +262,7 @@ def serialize_saved_trench_mortgage_list_item(
     return {
         'id': calculation.pk,
         'createdAt': calculation.timestamp.isoformat(),
-        'property': serialize_saved_property(calculation.property),
+        'property': serialize_saved_property(calculation.property, calculation),
         'finalPropertyCost': _format_decimal(
             calculation.final_property_cost
         ),
@@ -299,7 +299,7 @@ def serialize_saved_trench_mortgage_detail(calculation):
     return {
         'id': calculation.pk,
         'createdAt': calculation.timestamp.isoformat(),
-        'property': serialize_saved_property(calculation.property),
+        'property': serialize_saved_property(calculation.property, calculation),
         'legacyDetailUrl': reverse(
             'mortgage:trench_calculation_detail',
             kwargs={'pk': calculation.pk},

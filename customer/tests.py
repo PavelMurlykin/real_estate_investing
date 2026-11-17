@@ -597,7 +597,7 @@ class CustomerDeleteViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-catalog-filter-form')
-        self.assertContains(response, 'data-catalog-filter-control', count=12)
+        self.assertContains(response, 'data-catalog-filter-control', count=14)
         self.assertContains(response, 'customer-calculation-results')
         self.assertContains(response, 'static/js/catalog.js')
         self.assertContains(response, 'dropdown-toggle')
@@ -1034,8 +1034,10 @@ class CustomerDeleteViewTests(TestCase):
             response.context['calculation_table_headers'][1]['field'],
             'object',
         )
-        self.assertContains(response, 'Город')
-        self.assertContains(response, 'name="city"')
+        self.assertContains(response, 'Населённый пункт')
+        self.assertContains(response, 'name="localityId"')
+        self.assertContains(response, 'name="regionLocationId"')
+        self.assertContains(response, 'name="districtLocationId"')
         self.assertEqual(len(calculations), 1)
         self.assertEqual(calculations[0].calculation, moscow_calculation)
 

@@ -13,6 +13,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
 from location.models import City, District
+from property.location_queries import annotate_property_geography
 from property.models import (
     ApartmentDecoration,
     ApartmentLayout,
@@ -52,6 +53,7 @@ from .excel import (
     export_saved_mortgage_calculation_excel,
 )
 from .forms import MortgageForm
+from .location_filters import CalculationLocationForm
 from .models import MortgageCalculation
 from .mortgage_calculator import MortgageCalculator
 from .utils import (
@@ -1387,6 +1389,9 @@ def calculation_list(request):
             'target_customer': target_customer,
             'linked_calculation_ids': linked_calculation_ids,
             'calculation_filters': calculation_filters,
+            'calculation_location_form': CalculationLocationForm(
+                calculation_filters, 'mortgage_calculation',
+            ),
             'calculation_cities': calculation_cities,
             'calculation_sort': calculation_sort,
             'calculation_order': calculation_order,
@@ -1427,6 +1432,7 @@ def calculation_detail(request, pk):
         'property__building__real_estate_complex__district__city',
         'property__building__real_estate_complex__real_estate_class',
     )
+    calculation_queryset = annotate_property_geography(calculation_queryset)
     calculation = get_object_or_404(
         _filter_private_queryset_for_user(calculation_queryset, request.user),
         pk=pk,
@@ -1480,6 +1486,7 @@ def _get_trench_calculation_queryset(user=None):
         'property__building__real_estate_complex__district__city',
         'property__building__real_estate_complex__real_estate_class',
     ).prefetch_related('trenches')
+    queryset = annotate_property_geography(queryset)
     if user is None:
         return queryset
     return _filter_private_queryset_for_user(queryset, user)
@@ -1622,6 +1629,9 @@ def trench_calculation_list(request):
             'target_customer': target_customer,
             'linked_calculation_ids': linked_calculation_ids,
             'calculation_filters': calculation_filters,
+            'calculation_location_form': CalculationLocationForm(
+                calculation_filters, 'trench_calculation',
+            ),
             'calculation_cities': calculation_cities,
             'calculation_sort': calculation_sort,
             'calculation_order': calculation_order,
