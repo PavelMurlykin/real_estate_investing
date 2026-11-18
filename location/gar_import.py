@@ -11,12 +11,23 @@ from .models import (
 )
 from .administrative_overrides import SPB_DISTRICTS
 from .catalog_service import lock_location_catalog
+from .district_verification import verify_legacy_districts
 
 
 def normalized_name(value):
     """Compare only within a known parent and category, never across Russia."""
     value = value.casefold().replace('ё', 'е')
     return re.sub(r'\s+(?:район|р-н)$', '', value).strip()
+
+
+def gar_location_type(record, region_code, root_id):
+    """Classify verified city types directly under either audited GAR subject."""
+    level, abbreviation = record['level'], record['type']
+    if (region_code in {'50', '52'} and level == '2' and record['parent'] == root_id
+            and abbreviation == 'г.'):
+        return 'gar:2:locality:г.', 'locality'
+    category = {'1': 'region', '2': 'district'}.get(level, 'locality')
+    return f'gar:{level}:{abbreviation}', category
 
 
 @transaction.atomic
@@ -87,26 +98,29 @@ def load_region(records, code, version):
     source_ids = dict(LocationIdentifier.objects.filter(
         provider='fias', value__in=[row['guid'] for row in records],
     ).values_list('value', 'location_id'))
+    claimed_locations = set(source_ids.values())
+    if root:
+        claimed_locations.update(LocationIdentifier.objects.filter(
+            provider__in=('fias', 'gar'), location__region_id=root.pk,
+        ).values_list('location_id', flat=True))
     for row in Location.objects.filter(pk__in=set(source_ids.values()) - by_id.keys()):
         existing.append(row)
         by_id[row.pk] = row
+    types = {}
+    for row in records:
+        type_code, category = gar_location_type(row, code, root_record['id'])
+        if type_code not in types:
+            types[type_code], _ = LocationType.objects.update_or_create(
+                code=type_code, defaults={
+                    'category': category, 'name': row['typeName'],
+                    'abbreviation': row['type'],
+                },
+            )
     categories = dict(LocationType.objects.values_list('pk', 'category'))
     natural = {}
     for row in existing:
         key = (row.parent_id, categories[row.location_type_id], normalized_name(row.name))
         natural.setdefault(key, []).append(row)
-    types = {}
-    for row in records:
-        key = (row['level'], row['type'])
-        if key not in types:
-            category = ('region' if row['level'] == '1' else 'district'
-                        if row['level'] == '2' else 'locality')
-            types[key], _ = LocationType.objects.update_or_create(
-                code=f'gar:{row["level"]}:{row["type"]}', defaults={
-                    'category': category, 'name': row['typeName'],
-                    'abbreviation': row['type'],
-                },
-            )
     resolved, remaining = {}, {row['id']: row for row in records}
     identifiers, aliases = [], []
     changed, created = [], []
@@ -119,18 +133,20 @@ def load_region(records, code, version):
             raise ValueError('An extract contains a cycle or missing parent.')
         new_rows, assignments = [], []
         for record in ready:
-            location_type = types[(record['level'], record['type'])]
+            type_code, _ = gar_location_type(record, code, root_record['id'])
+            location_type = types[type_code]
             parent = (overrides.get(record['guid'])
                       if record['level'] in {'5', '6'} else None) or resolved.get(record['parent'])
             row = by_id.get(source_ids.get(record['guid']))
             if record['level'] == '1':
                 row = row or root
             if row is None:
-                candidates = natural.get((
-                    parent.pk if parent else None, location_type.category,
-                    normalized_name(record['name']),
-                ), [])
+                key = (parent.pk if parent else None, location_type.category, normalized_name(record['name']))
+                candidates = [candidate for candidate in natural.get(key, [])
+                              if candidate.pk not in claimed_locations]
                 row = candidates[0] if len(candidates) == 1 else None
+                if row:
+                    claimed_locations.add(row.pk)
             values = {
                 'name': record['name'], 'location_type_id': location_type.pk,
                 'parent_id': parent.pk if parent else None,
@@ -138,8 +154,9 @@ def load_region(records, code, version):
                 'source_status': 'verified', 'source_version': version,
                 'needs_review': False,
             }
-            count_key = ('regions' if record['level'] == '1' else 'districts'
-                         if record['level'] == '2' else 'cities')
+            count_key = {'region': 'regions', 'district': 'districts', 'locality': 'cities'}[
+                location_type.category
+            ]
             if row is None:
                 row = Location(**values)
                 new_rows.append(row)
@@ -195,4 +212,5 @@ def load_region(records, code, version):
                 ancestor, depth = parents.get(ancestor), depth + 1
         LocationClosure.objects.filter(descendant_id__in=parents).delete()
         LocationClosure.objects.bulk_create(closure, batch_size=2000)
+    counts['districts']['updated'] += verify_legacy_districts(region_id=root.pk, region_code=code)
     return counts

@@ -90,6 +90,8 @@ Forms use consistent single-line field and primary button dimensions, typography
 
 The Regions (“Регионы”), Localities (“Населённые пункты”) and Administrative districts (“Административные районы”) pages use the unified location dictionary. The former Cities link also opens localities, including Russian cities, towns, villages and rural settlements. Pushkin belongs to Pushkinsky District and Strelna to Petrodvortsovy District of Saint Petersburg. Municipal entities remain separate from administrative districts.
 
+Odintsovo, Pushkino, Klin and other verified cities in Moscow Oblast, as well as Nizhny Novgorod, are available under Localities. They may report directly to the federal subject in the hierarchy. For districts absent from the loaded GAR administrative hierarchy, verification uses city records and the parent's FIAS ID. Odintsovsky Urban District remains a legacy association flagged for refinement of the complex's territory.
+
 Location catalog editors appear beside the list on wide screens and above it on phones. To open an existing entry in the editor, select “Изменить” in its row.
 
 Search matches current and former names. Region, administrative district, type and activity filters update results automatically. Sorting and pages of 20 records are available. Enter a name, type and parent territory in the editor; a region has no parent. Parent choices are searched on the server, and the parent-region selector narrows them. Homonyms in different territories are allowed; an identical name and type under the same parent are rejected.

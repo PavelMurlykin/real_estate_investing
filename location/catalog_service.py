@@ -1,7 +1,7 @@
 """Maintain canonical dictionaries without changing legacy or business identities."""
 
 from django.core.exceptions import ValidationError
-from django.db import connection, transaction
+from django.db import connections, transaction
 from django.db.models import Q
 
 from .models import Location, LocationAlias, LocationClosure
@@ -13,9 +13,9 @@ CATALOG_CATEGORIES = {
 CATALOG_KEYS = {category: key for key, category in CATALOG_CATEGORIES.items()}
 
 
-def lock_location_catalog():
+def lock_location_catalog(database='default'):
     """Serialize tree writes with each atomic GAR region load."""
-    with connection.cursor() as cursor:
+    with connections[database].cursor() as cursor:
         cursor.execute('SELECT pg_advisory_xact_lock(%s)', [78001109])
 
 

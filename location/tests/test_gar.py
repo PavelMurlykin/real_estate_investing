@@ -2,10 +2,13 @@
 
 import io
 import zipfile
+from importlib import import_module
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 from django.apps import apps
+from django.db import connection
 
 from location.gar_source import GarSource, GarSourceError
 from location.gar_source import validate_source_url
@@ -14,7 +17,7 @@ from location.jobs import run_import_job, start_import_job
 from location.migration_support import backfill_locations
 from location.models import (
     City, District, LegacyLocationMapping, Location, LocationClosure,
-    LocationIdentifier, Region,
+    LocationIdentifier, LocationType, MetroSystem, Region,
 )
 
 
@@ -128,6 +131,79 @@ def test_rename_keeps_guid_district_and_search_alias():
     assert previous.parent.name == 'Пушкинский район'
     assert previous.aliases.filter(name='Пушкин').exists()
     assert result['cities']['created'] == 0
+
+
+@pytest.mark.django_db
+def test_audited_gar_city_keeps_its_identity_in_migration_and_repeat_import(client):
+    """Correct the direct city role while retaining old search, IDs and metro links."""
+    root = dict(SPB[0], id='807356', guid='29251dcf-00a1-4e34-98d4-5c47484a36d4',
+                name='Московская', type='обл.', typeName='Область', path=['807356'])
+    town = dict(SPB[1], id='862378', guid='6ae8ad9e-aa6c-4849-92d8-8e637059c9b0',
+                name='Одинцово', level='2', path=['807356', '862378'], parent=root['id'])
+    namesake = dict(town, id='862377', guid='namesake', level='5', path=['807356', '862377'])
+    region = Region.objects.create(name='Московская область', code='50')
+    city = City.objects.create(name='Одинцово', region=region, source_identifier=f'fias/{town["guid"]}')
+    backfill_locations(apps)
+    counts = load_region([root, town, namesake], '50', '20261113')
+    previous = LocationIdentifier.objects.get(provider='fias', value=town['guid']).location
+    other = LocationIdentifier.objects.get(provider='fias', value=namesake['guid']).location
+    assert previous.pk != other.pk
+    assert counts['districts']['created'] == 0
+    legacy_type = LocationType.objects.create(
+        code='gar:2:г.', name='Город', abbreviation='г.', category='district',
+    )
+    Location.objects.filter(pk=previous.pk).update(location_type=legacy_type)
+    Location.objects.filter(pk=other.pk).update(location_type=legacy_type)
+    system = MetroSystem.objects.create(name='Тестовая система', location=previous)
+    migration = import_module('location.migrations.0012_reconcile_gar_city_and_district_roles')
+    migration.reconcile_gar_geography(apps, SimpleNamespace(connection=connection))
+    migration.reconcile_gar_geography(apps, SimpleNamespace(connection=connection))
+    previous.refresh_from_db()
+    other.refresh_from_db()
+    assert previous.location_type.category == 'locality'
+    assert other.location_type_id == legacy_type.pk
+    assert previous.parent_id == previous.region_id == other.region_id
+    assert LegacyLocationMapping.objects.get(model_name='city', legacy_id=city.pk).location_id == previous.pk
+    assert MetroSystem.objects.get(pk=system.pk).location_id == previous.pk
+    assert LocationClosure.objects.filter(ancestor_id=previous.region_id, descendant=previous, depth=1).exists()
+    for _ in range(2):
+        load_region([root, town, namesake], '50', '20261113')
+        assert LocationIdentifier.objects.get(provider='gar', value=town['id']).location_id == previous.pk
+    previous.refresh_from_db()
+    assert previous.location_type.category == 'locality'
+    assert client.get(f'/api/v1/location-dictionaries/cities/{city.pk}/').json()['name'] == 'Одинцово'
+    assert client.get(f'/api/v1/location-catalogs/localities/{city.pk}/?legacy=1').json()['id'] == previous.pk
+
+
+@pytest.mark.django_db
+def test_administrative_review_retains_district_identity_and_suburbs(client):
+    """Confirm only the evidenced district under the exact federal city."""
+    region = Region.objects.create(name='Санкт-Петербург', code='78')
+    city = City.objects.create(name=region.name, region=region)
+    pushkin_district = District.objects.create(
+        name='Пушкинский район', city=city, source_identifier='wikidata/Q220316',
+    )
+    petrodvorets_district = District.objects.create(
+        name='Петродворцовый район', city=city, source_identifier='wikidata/Q270114',
+    )
+    unresolved = District.objects.create(name='Прежний округ', city=city)
+    backfill_locations(apps)
+    mappings = dict(LegacyLocationMapping.objects.filter(
+        model_name='district',
+    ).values_list('legacy_id', 'location_id'))
+    for attempt in range(2):
+        counts = load_region(SPB, '78', '20261113')
+        assert counts['districts']['updated'] == (2 if attempt == 0 else 0)
+    for district, suburb in [(pushkin_district, 'Пушкин'), (petrodvorets_district, 'Стрельна')]:
+        district_location = Location.objects.get(pk=mappings[district.pk])
+        assert not district_location.needs_review
+        assert district_location.source_status == 'verified'
+        assert district_location.source_version.startswith('administrative:')
+        assert Location.objects.get(name=suburb).parent_id == district_location.pk
+        assert client.get(f'/api/v1/location-dictionaries/districts/{district.pk}/').json()['name'] == district.name
+        resolved = client.get(f'/api/v1/location-catalogs/districts/{district.pk}/?legacy=1').json()
+        assert resolved['id'] == district_location.pk
+    assert Location.objects.get(pk=mappings[unresolved.pk]).needs_review
 
 
 @pytest.mark.django_db
