@@ -53,7 +53,7 @@ describe('LocationImportPanel', () => {
     vi.stubGlobal('fetch', fetchMock)
     const { queryClient } = renderWithProviders(<LocationImportPanel dictionaryKey="metro" regionId="" cityId="" systemId="9" />)
     queryClient.setQueryData(['location-dictionaries', 'metro', ''], {})
-    queryClient.setQueryData(['location-dictionary-options', ''], {})
+    queryClient.setQueryData(['catalog-options', 'metro-lines'], {})
     const button = screen.getByRole('button', { name: 'Импортировать из API' })
     await user.click(button)
     expect(screen.getByRole('button', { name: 'Импортируем…' })).toBeDisabled()
@@ -64,7 +64,7 @@ describe('LocationImportPanel', () => {
     resolveRequest(Response.json(result))
     expect(await screen.findByText(/Импорт завершён. Добавлено: 2; обновлено: 1/)).toBeInTheDocument()
     expect(queryClient.getQueryState(['location-dictionaries', 'metro', ''])?.isInvalidated).toBe(true)
-    expect(queryClient.getQueryState(['location-dictionary-options', ''])?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(['catalog-options', 'metro-lines'])?.isInvalidated).toBe(true)
     expect(button).toBeEnabled()
   })
 

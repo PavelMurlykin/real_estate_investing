@@ -30,9 +30,9 @@ const managerSession: Session = {
 }
 
 const formOptions: PropertyFormOptions = {
-  regions: [{ id: 1, name: 'Ленинградская область' }],
-  cities: [{ id: 2, name: 'Санкт-Петербург' }],
-  districts: [{ id: 3, name: 'Петроградский' }],
+  regions: [],
+  cities: [],
+  districts: [],
   developers: [{ id: 4, label: 'Северный девелопер' }],
   realEstateComplexes: [{ id: 5, name: 'Белые ночи' }],
   buildings: [{ id: 6, number: '1' }],
@@ -104,18 +104,6 @@ const propertyDetail: PropertyDetail = {
   legacyDeleteUrl: '/property/12/delete/',
 }
 
-const optionQueryStrings = [
-  '',
-  'regionLocationId=101',
-  'regionLocationId=101&districtLocationId=103',
-  'regionLocationId=101&districtLocationId=103&localityId=102',
-  'regionLocationId=101&districtLocationId=103&localityId=102&developerId=4',
-  (
-    'regionLocationId=101&districtLocationId=103&localityId=102&developerId=4'
-    + '&realEstateComplexId=5'
-  ),
-]
-
 function mockLocationCatalogs() {
   const original = globalThis.fetch
   vi.stubGlobal('fetch', vi.fn(async (path: string, options?: RequestInit) => {
@@ -138,12 +126,7 @@ function mockLocationCatalogs() {
 function createManagerQueryClient() {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['session'], managerSession)
-  optionQueryStrings.forEach((queryString) => {
-    queryClient.setQueryData(
-      ['property-form-options', queryString],
-      formOptions,
-    )
-  })
+  queryClient.setQueryData(['property-form-options', 'canonical'], formOptions)
   return queryClient
 }
 
@@ -236,7 +219,7 @@ describe('PropertyFormPage', () => {
     vi.stubGlobal('fetch', fetchMock)
     const { queryClient } = renderCreateForm()
     await fillRequiredFields(user)
-    optionQueryStrings.forEach((queryString) => queryClient.setQueryData(['property-form-options', queryString], { ...formOptions, truncated: { ...formOptions.truncated, layouts: true } }))
+    queryClient.setQueryData(['property-form-options', 'canonical'], { ...formOptions, truncated: { ...formOptions.truncated, layouts: true } })
     await user.click(screen.getByRole('combobox', { name: 'Планировка *' }))
     await user.type(screen.getByRole('combobox', { name: 'Планировка *' }), 'Редкая')
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Планировка *' })).not.toHaveAttribute('aria-busy', 'true'))

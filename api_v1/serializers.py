@@ -1939,9 +1939,10 @@ class CustomerCalculationExportRequestSerializer(serializers.Serializer):
 
 
 class CustomerFormOptionsQuerySerializer(serializers.Serializer):
-    """Validate the city used to load a bounded district list."""
+    """Validate the choice of options contract and the legacy city filter."""
 
     desiredCity = serializers.IntegerField(required=False, min_value=1)
+    canonicalLocations = serializers.BooleanField(default=False)
 
 
 class CustomerWriteSerializer(serializers.ModelSerializer):
@@ -3604,6 +3605,7 @@ class PropertyFormOptionsQuerySerializer(LocationScopeQuerySerializer):
     regionId = serializers.IntegerField(required=False, min_value=1)
     cityId = serializers.IntegerField(required=False, min_value=1)
     districtId = serializers.IntegerField(required=False, min_value=1)
+    canonicalLocations = serializers.BooleanField(default=False)
     developerId = serializers.IntegerField(required=False, min_value=1)
     realEstateComplexId = serializers.IntegerField(
         required=False,

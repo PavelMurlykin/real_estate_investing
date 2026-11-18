@@ -154,10 +154,7 @@ export function PropertyFormPage() {
   const [formState, setFormState] = useState(emptyFormState)
   const [files, setFiles] = useState<Partial<Record<ImageFieldName, File>>>({})
   const optionsQuery = useQuery({
-    ...propertyFormOptionsQueryOptions({
-      developerId: null,
-      realEstateComplexId: null,
-    }),
+    ...propertyFormOptionsQueryOptions,
     enabled: hasValidIdentifier && canManageCatalogs,
   })
   const mutation = useMutation({

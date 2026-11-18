@@ -18,6 +18,7 @@ def test_property_form_options_use_canonical_localities_and_building_overrides(c
     strelna, veren, building, apartment = filtered_catalog['strelna']
     pushkin = filtered_catalog['pushkin'][0]
     parameters = {
+        'canonicalLocations': 'true',
         'regionLocationId': strelna.region_id, 'districtLocationId': strelna.parent_id,
         'localityId': strelna.pk, 'developerId': veren.developer_id, 'realEstateComplexId': veren.pk,
     }

@@ -28,7 +28,7 @@ export function LocationImportPanel({ dictionaryKey, regionId, cityId, systemId 
       void queryClient.invalidateQueries({
         predicate: (query) => [
           'location-dictionaries', 'location-dictionary',
-          'location-dictionary-options', 'catalog-options',
+          'catalog-options',
         ].includes(String(query.queryKey[0])),
       })
     },

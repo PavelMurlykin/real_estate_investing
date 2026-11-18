@@ -6,7 +6,6 @@ import { describe, expect, it, vi } from 'vitest'
 import type {
   LocationDictionaryEntry,
   LocationDictionaryListResponse,
-  LocationDictionaryOptions,
   LocationDictionaryKey,
   Session,
 } from '@/api/schemas'
@@ -33,32 +32,10 @@ const metroEntry: LocationDictionaryEntry = {
   legacyEditUrl: '/locations/?model=metro&edit=5',
 }
 
-const options: LocationDictionaryOptions = {
-  regions: [{ id: 1, name: 'Москва' }],
-  cities: [{ id: 2, name: 'Москва', regionId: 1 }],
-  metroLines: [{
-    id: 3,
-    name: 'Сокольническая',
-    color: '#D92B2B',
-    cityId: 2,
-  }, {
-    id: 7,
-    name: 'Арбатско-Покровская',
-    color: '#0078BF',
-    cityId: 2,
-  }],
-  truncated: {
-    regions: false,
-    cities: false,
-    metroLines: false,
-  },
-}
-
-const rootOptions: LocationDictionaryOptions = {
-  ...options,
-  cities: [],
-  metroLines: [],
-}
+const metroLines = [
+  { id: 3, name: 'Сокольническая', color: '#D92B2B' },
+  { id: 7, name: 'Арбатско-Покровская', color: '#0078BF' },
+]
 
 const anonymousSession: Session = {
   isAuthenticated: false,
@@ -111,15 +88,6 @@ function renderLocationPage(
     ['location-dictionaries', dictionaryKey, ''],
     listResponse(entry),
   )
-  queryClient.setQueryData(['location-dictionary-options', ''], rootOptions)
-  if (entry.region) {
-    queryClient.setQueryData(['location-dictionary-options', 'regionId=1'], {
-      ...options, metroLines: [],
-    })
-  }
-  if (entry.city) {
-    queryClient.setQueryData(['location-dictionary-options', 'regionId=1&cityId=2'], options)
-  }
   queryClient.setQueryData(['location-dictionary', dictionaryKey, entry.id], entry)
   return renderWithProviders(
     <Routes>
@@ -159,10 +127,6 @@ describe('LocationDictionaryPage', () => {
         'regionId=1&cityId=2&metroLineId=3',
       ],
       listResponse(metroEntry),
-    )
-    queryClient.setQueryData(
-      ['location-dictionary-options', 'regionId=1&cityId=2'],
-      options,
     )
     renderWithProviders(
       <Routes>
@@ -205,7 +169,7 @@ describe('LocationDictionaryPage', () => {
   it.each(['POST', 'PATCH'])('selects a station line through a searchable editor and saves with %s', async (method) => {
     const user = userEvent.setup()
     const isEditing = method === 'PATCH'
-    const line = options.metroLines[1]
+    const line = metroLines[1]
     const fetchMock = vi.fn<typeof fetch>(async (input, requestOptions) => {
       if (requestOptions?.method === method) {
         return Response.json({ ...metroEntry, metroLine: line, name: 'Тестовая станция' }, {
@@ -215,8 +179,7 @@ describe('LocationDictionaryPage', () => {
       const path = String(input)
       if (path.includes('/catalog-options/')) {
         const choices = path.includes('/metro-systems/') ? [{ id: 9, name: 'Московский метрополитен' }]
-          : path.includes('/regions/') ? options.regions
-          : path.includes('/cities/') ? options.cities : options.metroLines
+          : metroLines
         return Response.json({ page: 1, nextPage: null, totalCount: choices.length,
           selected: [], results: choices.map((choice) => ({ id: choice.id, label: choice.name })),
         })

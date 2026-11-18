@@ -30,11 +30,8 @@ const authenticatedSession: Session = {
 }
 
 const formOptions: CustomerFormOptions = {
-  cities: [
-    { id: 1, name: 'Химки' },
-    { id: 2, name: 'Москва' },
-  ],
-  districts: [{ id: 4, name: 'Хамовники' }],
+  cities: [],
+  districts: [],
   layouts: [{ id: 5, name: 'Евро-3' }],
   preferentialPrograms: [{ id: 3, name: 'Семейная ипотека' }],
   purchaseGoals: [
@@ -122,7 +119,7 @@ function mockLocationCatalogs() {
 function createAuthenticatedQueryClient() {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['session'], authenticatedSession)
-  queryClient.setQueryData(['customer-form-options', ''], formOptions)
+  queryClient.setQueryData(['customer-form-options', 'canonical'], formOptions)
   return queryClient
 }
 
@@ -196,8 +193,7 @@ describe('CustomerFormPage', () => {
     const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (_path, options) =>
       Response.json(options?.method === 'POST' ? { id: 99 } : formOptions, { status: options?.method === 'POST' ? 201 : 200 }))
     vi.stubGlobal('fetch', fetchMock)
-    const { queryClient } = renderCreateForm()
-    for (const city of ['1', '2']) queryClient.setQueryData(['customer-form-options', city], formOptions)
+    renderCreateForm()
     await user.type(screen.getByLabelText('Имя *'), 'Мария')
     await chooseOption(user, 'Регион покупки', 'Москва')
     await chooseOption(user, 'Административный район покупки', 'Хамовники')

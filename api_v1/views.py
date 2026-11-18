@@ -3425,29 +3425,33 @@ class PropertyFormOptionsAPIView(APIView):
         filters = query_serializer.validated_data
         maximum_results = settings.PUBLIC_CATALOG_API_MAX_RESULTS
 
-        regions, regions_truncated = _build_bounded_option_rows(
-            Region.objects.order_by('name', 'pk'),
-            maximum_results,
-        )
-        cities_queryset = City.objects.none()
-        if filters.get('regionId'):
-            cities_queryset = City.objects.filter(
-                region_id=filters['regionId']
-            ).order_by('name', 'pk')
-        cities, cities_truncated = _build_bounded_option_rows(
-            cities_queryset,
-            maximum_results,
-        )
+        if filters['canonicalLocations']:
+            regions, cities, districts = [], [], []
+            regions_truncated = cities_truncated = districts_truncated = False
+        else:
+            regions, regions_truncated = _build_bounded_option_rows(
+                Region.objects.order_by('name', 'pk'),
+                maximum_results,
+            )
+            cities_queryset = City.objects.none()
+            if filters.get('regionId'):
+                cities_queryset = City.objects.filter(
+                    region_id=filters['regionId']
+                ).order_by('name', 'pk')
+            cities, cities_truncated = _build_bounded_option_rows(
+                cities_queryset,
+                maximum_results,
+            )
 
-        districts_queryset = District.objects.none()
-        if filters.get('cityId'):
-            districts_queryset = District.objects.filter(
-                city_id=filters['cityId']
-            ).order_by('name', 'pk')
-        districts, districts_truncated = _build_bounded_option_rows(
-            districts_queryset,
-            maximum_results,
-        )
+            districts_queryset = District.objects.none()
+            if filters.get('cityId'):
+                districts_queryset = District.objects.filter(
+                    city_id=filters['cityId']
+                ).order_by('name', 'pk')
+            districts, districts_truncated = _build_bounded_option_rows(
+                districts_queryset,
+                maximum_results,
+            )
 
         developer_objects = list(
             Developer.objects.select_related('company_group').order_by(
@@ -3541,30 +3545,34 @@ class CustomerFormOptionsAPIView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def get(self, request):
-        """Return active choices and districts for the selected city."""
+        """Return active form choices, with old city lists for legacy callers."""
         query_serializer = CustomerFormOptionsQuerySerializer(
             data=request.query_params
         )
         query_serializer.is_valid(raise_exception=True)
         maximum_results = settings.PUBLIC_CATALOG_API_MAX_RESULTS
-        desired_city_identifier = query_serializer.validated_data.get(
-            'desiredCity'
-        )
+        if query_serializer.validated_data['canonicalLocations']:
+            cities, districts = [], []
+            cities_truncated = districts_truncated = False
+        else:
+            desired_city_identifier = query_serializer.validated_data.get(
+                'desiredCity'
+            )
 
-        cities, cities_truncated = _build_bounded_option_rows(
-            City.objects.filter(is_active=True).order_by('name', 'pk'),
-            maximum_results,
-        )
-        districts_queryset = District.objects.none()
-        if desired_city_identifier:
-            districts_queryset = District.objects.filter(
-                is_active=True,
-                city_id=desired_city_identifier,
-            ).order_by('name', 'pk')
-        districts, districts_truncated = _build_bounded_option_rows(
-            districts_queryset,
-            maximum_results,
-        )
+            cities, cities_truncated = _build_bounded_option_rows(
+                City.objects.filter(is_active=True).order_by('name', 'pk'),
+                maximum_results,
+            )
+            districts_queryset = District.objects.none()
+            if desired_city_identifier:
+                districts_queryset = District.objects.filter(
+                    is_active=True,
+                    city_id=desired_city_identifier,
+                ).order_by('name', 'pk')
+            districts, districts_truncated = _build_bounded_option_rows(
+                districts_queryset,
+                maximum_results,
+            )
         layouts, layouts_truncated = _build_bounded_option_rows(
             ApartmentLayout.objects.filter(is_active=True).order_by(
                 'name',

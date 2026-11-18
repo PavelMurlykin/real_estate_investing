@@ -12,7 +12,12 @@ test('edits residence and purchase geography in React and Django while retaining
   const pushkin = localities.find((row) => row.name === 'Пушкин')
   const strelna = (await read('/api/v1/locations/?category=locality&q=%D0%A1%D1%82%D1%80%D0%B5%D0%BB%D1%8C%D0%BD%D0%B0')).results.find((row) => row.name === 'Стрельна')
   const programs = await read('/api/v1/catalog-options/preferential-programs/')
+  const formOptions = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/v1/customers/options/')
   await page.goto(url('/app/customers/new'))
+  const optionsResponse = await formOptions
+  assert.equal(new URL(optionsResponse.url()).searchParams.get('canonicalLocations'), 'true')
+  const options = await optionsResponse.json()
+  assert.deepEqual([options.cities, options.districts], [[], []])
   await page.getByLabel('Имя *', { exact: true }).fill('E2E новые локации клиента')
   for (const [label, name] of [['Населённый пункт проживания', 'Пушкин'], ['Населённый пункт покупки', 'Стрельна']]) {
     await page.getByRole('combobox', { name: label, exact: true }).fill(name)

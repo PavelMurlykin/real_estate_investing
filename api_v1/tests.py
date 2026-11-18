@@ -5,7 +5,9 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import connection
 from django.test import Client
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from location.models import City, District, Region
@@ -495,6 +497,23 @@ def test_property_form_options_are_manager_only_and_hierarchical(
     assert payload['windowViews'] == [
         {'id': window_view.pk, 'name': 'Парк'}
     ]
+
+    with CaptureQueriesContext(connection) as queries:
+        canonical_response = client.get(reverse('api_v1:property_form_options'), {
+            'canonicalLocations': 'true',
+            'regionId': city.region_id,
+            'cityId': city.pk,
+            'districtId': district.pk,
+            'developerId': real_estate_complex.developer_id,
+            'realEstateComplexId': real_estate_complex.pk,
+        })
+    assert canonical_response.status_code == 200
+    assert canonical_response.json() == {
+        **payload, 'regions': [], 'cities': [], 'districts': [],
+        'truncated': {**payload['truncated'], 'regions': False, 'cities': False, 'districts': False},
+    }
+    for model in (Region, City, District):
+        assert not any(f'FROM "{model._meta.db_table}"' in query['sql'] for query in queries)
     assert not any(payload['truncated'].values())
 
 

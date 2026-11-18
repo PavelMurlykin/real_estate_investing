@@ -177,7 +177,7 @@ export function CustomerFormPage() {
     emptyFormState,
   )
   const optionsQuery = useQuery({
-    ...customerFormOptionsQueryOptions(null),
+    ...customerFormOptionsQueryOptions,
     enabled: hasValidIdentifier
       && sessionQuery.data?.isAuthenticated === true,
   })

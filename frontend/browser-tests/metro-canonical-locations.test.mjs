@@ -6,6 +6,12 @@ test('edits metro systems, lines and suburban station geography while preserving
   skip: isolatedWritesEnabled ? false : 'requires isolated stack', timeout: 120000,
 }, async (context) => {
   const { page, trackCleanup } = await createAuthenticatedPage(context, 'moderator', { width: 1440, height: 1100 })
+  const legacyOptionsRequests = []
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/v1/location-dictionaries/options/') {
+      legacyOptionsRequests.push(request.url())
+    }
+  })
   const url = (path) => new URL(path, isolatedBaseUrl).href
   const read = async (path) => (await page.context().request.get(url(path))).json()
   const choose = async (label, query, option) => {
@@ -89,4 +95,5 @@ test('edits metro systems, lines and suburban station geography while preserving
     await page.getByRole('heading', { name: 'Локации', exact: true }).waitFor()
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true)
   }
+  assert.deepEqual(legacyOptionsRequests, [])
 })

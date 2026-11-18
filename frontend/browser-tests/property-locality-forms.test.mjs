@@ -6,6 +6,11 @@ test('creates apartments in Pushkin and Strelna and edits effective building geo
   skip: isolatedWritesEnabled ? false : 'requires isolated stack', timeout: 120000,
 }, async (context) => {
   const { page, trackCleanup } = await createAuthenticatedPage(context, 'moderator', { width: 1440, height: 1100 })
+  const propertyOptionsRequests = []
+  page.on('request', (request) => {
+    const endpoint = new URL(request.url())
+    if (endpoint.pathname === '/api/v1/properties/options/') propertyOptionsRequests.push(endpoint)
+  })
   const request = page.context().request
   const url = (path) => new URL(path, isolatedBaseUrl).href
   const headers = { 'X-CSRFToken': await getCsrfToken(page.context()) }
@@ -49,6 +54,8 @@ test('creates apartments in Pushkin and Strelna and edits effective building geo
     assert.equal(record.apartment.buildingId, record.project.buildings[0].id)
     assert.equal(record.apartment.districtId, null)
   }
+  assert.ok(propertyOptionsRequests.length > 0)
+  assert.ok(propertyOptionsRequests.every((endpoint) => endpoint.searchParams.get('canonicalLocations') === 'true'))
   const [pushkin, strelna] = projects
   const bindings = { locations: [
     { locationId: pushkin.locality.id, isPrimary: false, isHistorical: true },

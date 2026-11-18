@@ -237,21 +237,6 @@ export const locationDictionaryListResponseSchema = z.object({
   results: z.array(locationDictionaryEntrySchema),
 })
 
-export const locationDictionaryOptionsSchema = z.object({
-  regions: z.array(locationReferenceSchema),
-  cities: z.array(locationReferenceSchema.extend({
-    regionId: z.number().int().positive(),
-  })),
-  metroLines: z.array(metroLineReferenceSchema.extend({
-    cityId: z.number().int().positive(),
-  })),
-  truncated: z.object({
-    regions: z.boolean(),
-    cities: z.boolean(),
-    metroLines: z.boolean(),
-  }),
-})
-
 export const locationImportResultSchema = z.object({
   created: z.number().int().nonnegative(),
   updated: z.number().int().nonnegative(),
@@ -1281,9 +1266,6 @@ export type LocationDictionaryEntry = z.infer<
 >
 export type LocationDictionaryListResponse = z.infer<
   typeof locationDictionaryListResponseSchema
->
-export type LocationDictionaryOptions = z.infer<
-  typeof locationDictionaryOptionsSchema
 >
 export type DeveloperPublic = z.infer<typeof developerPublicSchema>
 export type Developer = z.infer<typeof developerSchema>

@@ -3,7 +3,9 @@ from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import Client, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from bank.models import (
@@ -183,6 +185,18 @@ def test_customer_form_options_are_filtered_and_bounded(
     }
     assert payload['truncated']['cities'] is True
     assert payload['truncated']['layouts'] is True
+
+    with CaptureQueriesContext(connection) as queries:
+        canonical_response = client.get(reverse('api_v1:customer_form_options'), {
+            'canonicalLocations': 'true', 'desiredCity': customer_profile.desired_city_id,
+        })
+    assert canonical_response.status_code == 200
+    assert canonical_response.json() == {
+        **payload, 'cities': [], 'districts': [],
+        'truncated': {**payload['truncated'], 'cities': False, 'districts': False},
+    }
+    for model in (City, District):
+        assert not any(f'FROM "{model._meta.db_table}"' in query['sql'] for query in queries)
 
 
 @pytest.mark.django_db

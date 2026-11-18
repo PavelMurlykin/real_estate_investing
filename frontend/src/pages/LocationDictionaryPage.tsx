@@ -15,7 +15,6 @@ import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { RemoteMultiSelect } from '@/shared/ui/RemoteMultiSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { NationalLocationImportPanel } from './NationalLocationImportPanel'
 import type { FormEvent } from 'react'
 import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -26,14 +25,12 @@ import {
   deleteLocationDictionaryEntry,
   locationDictionaryDetailQueryOptions,
   locationDictionaryListQueryOptions,
-  locationDictionaryOptionsQueryOptions,
   sessionQueryOptions,
   updateLocationDictionaryEntry,
 } from '@/api/queries'
 import { locationDictionaryKeySchema } from '@/api/schemas'
 import type {
   LocationDictionaryEntry,
-  LocationDictionaryKey,
   LocationDictionaryWriteRequest,
 } from '@/api/schemas'
 import { formatInteger } from '@/shared/lib/formatters'
@@ -41,8 +38,11 @@ import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 import { LocationImportPanel } from './LocationImportPanel'
 
+const metroDictionaryKeySchema = locationDictionaryKeySchema.extract(['metro', 'metro-lines', 'metro-systems'])
+type MetroDictionaryKey = (typeof metroDictionaryKeySchema.options)[number]
+
 type LocationDictionaryConfiguration = {
-  key: LocationDictionaryKey
+  key: MetroDictionaryKey
   title: string
   singular: string
   nameLabel: string
@@ -51,9 +51,6 @@ type LocationDictionaryConfiguration = {
 
 type LocationFormState = {
   name: string
-  code: string
-  regionId: string
-  cityId: string
   metroLineId: string
   systemId: string
   locationId: string
@@ -67,27 +64,6 @@ type FieldErrors = Record<string, string>
 
 const locationDictionaryConfigurations: LocationDictionaryConfiguration[] = [
   {
-    key: 'regions',
-    title: 'Регионы',
-    singular: 'регион',
-    nameLabel: 'Название региона',
-    description: 'Регионы присутствия застройщиков, объектов и программ.',
-  },
-  {
-    key: 'cities',
-    title: 'Города',
-    singular: 'город',
-    nameLabel: 'Название города',
-    description: 'Города с обязательной привязкой к региону.',
-  },
-  {
-    key: 'districts',
-    title: 'Административные районы',
-    singular: 'район',
-    nameLabel: 'Название района',
-    description: 'Административные районы, используемые в карточках жилых комплексов.',
-  },
-  {
     key: 'metro',
     title: 'Метро',
     singular: 'станцию',
@@ -100,9 +76,6 @@ const locationDictionaryConfigurations: LocationDictionaryConfiguration[] = [
 
 const emptyFormState: LocationFormState = {
   name: '',
-  code: '',
-  regionId: '',
-  cityId: '',
   metroLineId: '',
   systemId: '', locationId: '', lineIds: [], lineColor: '#777777', locationIsInferred: true,
   isActive: true,
@@ -152,7 +125,7 @@ function FieldError({ id, message }: { id: string, message?: string }) {
 
 type LocationDictionaryEditorProps = {
   configuration: LocationDictionaryConfiguration
-  dictionaryKey: LocationDictionaryKey
+  dictionaryKey: MetroDictionaryKey
   entry: LocationDictionaryEntry | null
 }
 
@@ -166,9 +139,6 @@ function LocationDictionaryEditor({
   const isEditing = entry !== null
   const [formState, setFormState] = useState<LocationFormState>(() => ({
     name: entry?.name ?? '',
-    code: entry?.code ?? '',
-    regionId: entry?.region ? String(entry.region.id) : '',
-    cityId: entry?.city ? String(entry.city.id) : '',
     metroLineId: entry?.metroLine ? String(entry.metroLine.id) : '',
     systemId: entry?.system ? String(entry.system.id) : '',
     locationId: entry?.location ? String(entry.location.id) : '',
@@ -178,10 +148,6 @@ function LocationDictionaryEditor({
     isActive: entry?.isActive ?? true,
   }))
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
-  const optionsQuery = useQuery(locationDictionaryOptionsQueryOptions(
-    formState.regionId,
-    formState.cityId,
-  ))
   const saveMutation = useMutation({
     mutationFn: (payload: LocationDictionaryWriteRequest) => isEditing
       ? updateLocationDictionaryEntry(dictionaryKey, entry.id, payload)
@@ -209,50 +175,10 @@ function LocationDictionaryEditor({
     setFieldErrors((current) => ({ ...current, [fieldName]: '' }))
   }
 
-  const updateRegion = (regionId: string) => {
-    setFormState((current) => ({
-      ...current,
-      regionId,
-      cityId: '',
-      metroLineId: '',
-    }))
-    setFieldErrors((current) => ({
-      ...current,
-      regionId: '',
-      cityId: '',
-      metroLineId: '',
-    }))
-  }
-
-  const updateCity = (cityId: string) => {
-    setFormState((current) => ({
-      ...current,
-      cityId,
-      metroLineId: '',
-    }))
-    setFieldErrors((current) => ({
-      ...current,
-      cityId: '',
-      metroLineId: '',
-    }))
-  }
-
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const errors: FieldErrors = {}
     if (!formState.name.trim()) errors.name = 'Укажите название.'
-    if (dictionaryKey === 'regions' && !formState.code.trim()) {
-      errors.code = 'Укажите код региона.'
-    }
-    if ((dictionaryKey === 'cities' || dictionaryKey === 'districts') && !formState.regionId) {
-      errors.regionId = 'Выберите регион.'
-    }
-    if (
-      dictionaryKey === 'districts'
-      && !formState.cityId
-    ) {
-      errors.cityId = 'Выберите город.'
-    }
     if (dictionaryKey === 'metro' && !formState.metroLineId) {
       errors.metroLineId = 'Выберите линию метро.'
     }
@@ -264,13 +190,6 @@ function LocationDictionaryEditor({
     const payload: LocationDictionaryWriteRequest = {
       name: formState.name.trim(),
       isActive: formState.isActive,
-    }
-    if (dictionaryKey === 'regions') payload.code = formState.code.trim()
-    if (dictionaryKey === 'cities') {
-      payload.regionId = Number(formState.regionId)
-    }
-    if (dictionaryKey === 'districts') {
-      payload.cityId = Number(formState.cityId)
     }
     if (dictionaryKey === 'metro') {
       payload.metroLineId = Number(formState.metroLineId)
@@ -286,9 +205,7 @@ function LocationDictionaryEditor({
     saveMutation.mutate(payload)
   }
 
-  const requiresRegion = dictionaryKey === 'cities' || dictionaryKey === 'districts'
   const isMetro = dictionaryKey === 'metro'
-  const requiresCity = dictionaryKey === 'districts'
 
   return (
     <aside
@@ -301,11 +218,6 @@ function LocationDictionaryEditor({
           ? 'Редактирование записи'
           : `Добавить ${configuration.singular}`}
       </h2>
-      {optionsQuery.isError ? (
-        <Notice as="p" tone="error" role="alert" className="form-error">
-          Не удалось загрузить связанные справочники.
-        </Notice>
-      ) : null}
       <form noValidate onSubmit={handleSubmit}>
         <div className="form-field">
           <label htmlFor="location-name">{configuration.nameLabel} *</label>
@@ -321,50 +233,6 @@ function LocationDictionaryEditor({
           />
           <FieldError id="location-name-error" message={fieldErrors.name} />
         </div>
-
-        {dictionaryKey === 'regions' ? (
-          <div className="form-field">
-            <label htmlFor="location-code">Код региона *</label>
-            <input
-              id="location-code"
-              value={formState.code}
-              maxLength={10}
-              aria-invalid={Boolean(fieldErrors.code)}
-              aria-describedby={fieldErrors.code
-                ? 'location-code-error'
-                : undefined}
-              onChange={(event) => updateFormField('code', event.target.value)}
-            />
-            <FieldError id="location-code-error" message={fieldErrors.code} />
-          </div>
-        ) : null}
-
-        {requiresRegion ? (
-          <RemoteSelect
-            searchable
-            dictionary="regions" label={"Регион"}
-            value={formState.regionId} onChange={(value) => updateRegion(value)}
-            initialOptions={(optionsQuery.data?.regions ?? []).map((option) => ({ id: option.id, label: option.name }))}
-            truncated={optionsQuery.data?.truncated.regions}
-            disabled={optionsQuery.isLoading}
-            error={fieldErrors.regionId}
-            required
-          />
-        ) : null}
-
-        {requiresCity ? (
-          <RemoteSelect
-            searchable
-            dictionary="cities" label={"Город"}
-            value={formState.cityId} onChange={(value) => updateCity(value)}
-            initialOptions={(optionsQuery.data?.cities ?? []).map((option) => ({ id: option.id, label: option.name }))}
-            truncated={optionsQuery.data?.truncated.cities}
-            filters={{ regionId: formState.regionId }}
-            disabled={!formState.regionId || optionsQuery.isFetching}
-            error={fieldErrors.cityId}
-            required
-          />
-        ) : null}
 
         {dictionaryKey === 'metro-lines' || isMetro ? (
           <RemoteSelect searchable dictionary="metro-systems" label="Система метро"
@@ -412,14 +280,6 @@ function LocationDictionaryEditor({
           <p className="field-hint">Основная линия всегда входит в список линий. Если местоположение станции неизвестно, населённый пункт можно не указывать.</p>
         </> : null}
 
-        {optionsQuery.data && Object.values(optionsQuery.data.truncated).some(
-          Boolean,
-        ) ? (
-          <p className="field-hint">
-            Введите текст в поле выбора. Остальные варианты подгружаются при прокрутке списка.
-          </p>
-        ) : null}
-
         <label className="developer-active-field">
           <input
             type="checkbox"
@@ -438,7 +298,7 @@ function LocationDictionaryEditor({
           <button
             className="button button--primary"
             type="submit"
-            disabled={saveMutation.isPending || optionsQuery.isError}
+            disabled={saveMutation.isPending}
           >
             {saveMutation.isPending ? 'Сохраняем…' : 'Сохранить'}
           </button>
@@ -475,17 +335,17 @@ export function LocationDictionaryPage() {
   if (dictionaryKey === 'regions' || dictionaryKey === 'districts' || dictionaryKey === 'cities' || dictionaryKey === 'localities') {
     return <CanonicalLocationDictionaryPage key={dictionaryKey} dictionaryKey={dictionaryKey === 'cities' ? 'localities' : dictionaryKey} />
   }
-  return <LegacyLocationDictionaryPage />
+  return <MetroDictionaryPage />
 }
 
-function LegacyLocationDictionaryPage() {
+function MetroDictionaryPage() {
   const { dictionaryKey: routeDictionaryKey = '', entryId = '' } = useParams()
-  const parsedDictionaryKey = locationDictionaryKeySchema.safeParse(
+  const parsedDictionaryKey = metroDictionaryKeySchema.safeParse(
     routeDictionaryKey,
   )
   const dictionaryKey = parsedDictionaryKey.success
     ? parsedDictionaryKey.data
-    : 'regions'
+    : 'metro'
   const configuration = locationDictionaryConfigurations.find(
     (item) => item.key === dictionaryKey,
   ) as LocationDictionaryConfiguration
@@ -511,10 +371,6 @@ function LegacyLocationDictionaryPage() {
     enabled: parsedDictionaryKey.success && isEditing
       && hasValidEntryIdentifier,
   })
-  const filterOptionsQuery = useQuery(locationDictionaryOptionsQueryOptions(
-    searchParameters.get('regionId') ?? '',
-    searchParameters.get('cityId') ?? '',
-  ))
   const [selectedEntry, setSelectedEntry] = (
     useState<LocationDictionaryEntry | null>(null)
   )
@@ -556,18 +412,6 @@ function LegacyLocationDictionaryPage() {
     setSearchParameters(nextParameters)
   }
 
-  const updateRegionFilter = (regionId: string) => {
-    updateParameters({
-      regionId,
-      ...(regionId && regionId !== searchParameters.get('regionId') ? { cityId: null, metroLineId: null } : {}),
-      page: null,
-    })
-  }
-
-  const updateCityFilter = (cityId: string) => {
-    updateParameters({ cityId, ...(cityId && cityId !== searchParameters.get('cityId') ? { metroLineId: null } : {}), page: null })
-  }
-
   const openDeleteDialog = (
     entry: LocationDictionaryEntry,
     trigger: HTMLButtonElement,
@@ -598,17 +442,13 @@ function LegacyLocationDictionaryPage() {
   }
   if (
     listQuery.isLoading
-    || filterOptionsQuery.isLoading
     || (isEditing && sessionQuery.isLoading)
   ) {
     return <PageLoadingState />
   }
   if (isEditing && sessionQuery.isError) return <ErrorState title="Не удалось проверить вход" isRetrying={sessionQuery.isFetching} onRetry={() => sessionQuery.refetch()} />
   if (listQuery.isError || !listQuery.data) {
-    return <ErrorState onRetry={() => retryFailedQueries(listQuery, filterOptionsQuery, detailQuery)} />
-  }
-  if (filterOptionsQuery.isError || !filterOptionsQuery.data) {
-    return <ErrorState onRetry={() => retryFailedQueries(filterOptionsQuery, listQuery, detailQuery)} />
+    return <ErrorState onRetry={() => retryFailedQueries(listQuery, detailQuery)} />
   }
   if (isEditing && !canManageCatalogs) {
     return (
@@ -628,16 +468,11 @@ function LegacyLocationDictionaryPage() {
   }
   if (isEditing && detailQuery.isLoading) return <PageLoadingState />
   if (isEditing && (detailQuery.isError || !detailQuery.data)) {
-    return <ErrorState onRetry={() => retryFailedQueries(detailQuery, listQuery, filterOptionsQuery)} />
+    return <ErrorState onRetry={() => retryFailedQueries(detailQuery, listQuery)} />
   }
 
   const { results, page, totalCount, totalPages } = listQuery.data
-  const options = filterOptionsQuery.data
-  const isMetroDictionary = dictionaryKey.startsWith('metro')
-  const showRegion = dictionaryKey === 'cities' || dictionaryKey === 'districts'
-  const showCity = dictionaryKey === 'districts'
   const showMetroLine = dictionaryKey === 'metro'
-  const showRegionColumn = showRegion && !showMetroLine
 
   return (
     <div className="page-stack location-dictionary-page">
@@ -651,15 +486,12 @@ function LegacyLocationDictionaryPage() {
 
       <SectionNavigation label="Справочники локаций" items={locationNavigation} />
 
-      {sessionQuery.data?.capabilities.syncExternalData === true && !isMetroDictionary ? (
-        <NationalLocationImportPanel />
-      ) : null}
-      {sessionQuery.data?.capabilities.syncExternalData === true && (!isMetroDictionary || showMetroLine) ? (
+      {sessionQuery.data?.capabilities.syncExternalData === true && showMetroLine ? (
         <LocationImportPanel
-          key={`${dictionaryKey}:${searchParameters.get('regionId')}:${searchParameters.get('cityId')}:${searchParameters.get('systemId')}`}
+          key={searchParameters.get('systemId')}
           dictionaryKey={dictionaryKey}
-          regionId={searchParameters.get('regionId') ?? ''}
-          cityId={searchParameters.get('cityId') ?? ''}
+          regionId=""
+          cityId=""
           systemId={searchParameters.get('systemId') ?? ''}
         />
       ) : null}
@@ -673,17 +505,6 @@ function LegacyLocationDictionaryPage() {
             <LiveFilterInput label="Поиск" id="location-search" parameter="q" placeholder="Название или связанная локация" />
           </div>
         </form>
-        {showRegion ? (
-          <RemoteSelect filter dictionary="regions" label="Регион" value={searchParameters.get('regionId') ?? ''}
-            initialOptions={options.regions.map((option) => ({ id: option.id, label: option.name }))}
-            onChange={(value) => updateRegionFilter(value)} />
-        ) : null}
-        {showCity ? (
-          <RemoteSelect filter dictionary="cities" label="Город" value={searchParameters.get('cityId') ?? ''}
-            initialOptions={options.cities.map((option) => ({ id: option.id, label: option.name }))}
-            filters={{ regionId: searchParameters.get('regionId') }}
-            onChange={(value) => updateCityFilter(value)} />
-        ) : null}
         {showMetroLine ? (
           <RemoteSelect filter dictionary="metro-lines" label="Линия метро" value={searchParameters.get('metroLineId') ?? ''}
             truncated
@@ -693,12 +514,12 @@ function LegacyLocationDictionaryPage() {
                 page: null,
               })} />
         ) : null}
-        {isMetroDictionary && dictionaryKey !== 'metro-systems' ? (
+        {dictionaryKey !== 'metro-systems' ? (
           <RemoteSelect filter dictionary="metro-systems" label="Система метро" truncated
             value={searchParameters.get('systemId') ?? ''}
             onChange={(value) => updateParameters({ systemId: value, metroLineId: null, page: null })} />
         ) : null}
-        {isMetroDictionary && dictionaryKey !== 'metro-lines' ? (
+        {dictionaryKey !== 'metro-lines' ? (
           <RemoteSelect filter dictionary="locations" label={showMetroLine ? 'Населённый пункт станции' : 'Центр системы'} truncated
             filters={{ category: 'locality' }} value={searchParameters.get('locationId') ?? ''}
             onChange={(value) => updateParameters({ locationId: value, page: null })} />
@@ -710,7 +531,7 @@ function LegacyLocationDictionaryPage() {
 
       <div className="results-heading" aria-live="polite">
         <p>{configuration.title}: <strong>{formatInteger(totalCount)}</strong></p>
-        {listQuery.isFetching || filterOptionsQuery.isFetching
+        {listQuery.isFetching
           ? <span>Обновляем…</span>
           : null}
       </div>
@@ -735,13 +556,9 @@ function LegacyLocationDictionaryPage() {
                   <thead>
                     <tr>
                       <SortableHeader field="name" defaultOrdering="default">{configuration.nameLabel}</SortableHeader>
-                      {dictionaryKey === 'regions'
-                        ? <SortableHeader field="code" defaultOrdering="default">Код</SortableHeader>
-                        : null}
-                      {showRegionColumn ? <SortableHeader field="region" defaultOrdering="default">Регион</SortableHeader> : null}
-                      {showCity ? <SortableHeader field="city" defaultOrdering="default">Город</SortableHeader> : null}
                       {showMetroLine ? <SortableHeader field="metroLine" defaultOrdering="default">Линия</SortableHeader> : null}
-                      {isMetroDictionary ? <><th scope="col">Система / линии</th><th scope="col">Территория</th></> : null}
+                      <th scope="col">Система / линии</th>
+                      <th scope="col">Территория</th>
 
                       {canManageCatalogs ? (
                         <th scope="col">
@@ -754,21 +571,12 @@ function LegacyLocationDictionaryPage() {
                     {results.map((entry) => (
                       <tr key={entry.id}>
                         <td><strong>{entry.name}</strong></td>
-                        {dictionaryKey === 'regions'
-                          ? <td>{entry.code ?? '—'}</td>
-                          : null}
-                        {showRegionColumn
-                          ? <td>{entry.region?.name ?? '—'}</td>
-                          : null}
-                        {showCity
-                          ? <td>{entry.city?.name ?? '—'}</td>
-                          : null}
                         {showMetroLine
                           ? <td><MetroLineLabel entry={entry} /></td>
                           : null}
-                        {isMetroDictionary ? <><td>{entry.system?.name ?? '—'}{entry.lines?.length ? <p>{entry.lines.map((line) => line.name).join(', ')}</p> : null}
+                        <td>{entry.system?.name ?? '—'}{entry.lines?.length ? <p>{entry.lines.map((line) => line.name).join(', ')}</p> : null}
                           {entry.lineColor ? <span style={{ color: entry.lineColor }}>● {entry.lineColor}</span> : null}</td>
-                          <td>{entry.location?.name ?? 'Не указана'}{entry.locationIsInferred ? <p className="field-hint">Приблизительно, по системе метро</p> : null}</td></> : null}
+                          <td>{entry.location?.name ?? 'Не указана'}{entry.locationIsInferred ? <p className="field-hint">Приблизительно, по системе метро</p> : null}</td>
 
                         {canManageCatalogs ? (
                           <td>
@@ -813,17 +621,10 @@ function LegacyLocationDictionaryPage() {
 
                     </div>
                     <dl>
-                      {isMetroDictionary ? <><div><dt>Система / линии</dt><dd>{entry.system?.name ?? '—'} {entry.lines?.map((line) => line.name).join(', ')}</dd></div>
-                        <div><dt>Территория</dt><dd>{entry.location?.name ?? 'Не указана'}{entry.locationIsInferred ? ' (приблизительно)' : ''}</dd></div></> : null}
-                      {entry.code ? (
-                        <div><dt>Код</dt><dd>{entry.code}</dd></div>
-                      ) : null}
-                      {showRegionColumn && entry.region ? (
-                        <div><dt>Регион</dt><dd>{entry.region.name}</dd></div>
-                      ) : null}
-                      {entry.city ? (
-                        <div><dt>Город</dt><dd>{entry.city.name}</dd></div>
-                      ) : null}
+                      <div><dt>Система / линии</dt><dd>{entry.system?.name ?? '—'} {entry.lines?.map((line) => line.name).join(', ')}</dd></div>
+                      <div><dt>Территория</dt><dd>{entry.location?.name ?? 'Не указана'}{entry.locationIsInferred ? ' (приблизительно)' : ''}</dd></div>
+                      {entry.code ? <div><dt>Код</dt><dd>{entry.code}</dd></div> : null}
+                      {entry.city ? <div><dt>Город</dt><dd>{entry.city.name}</dd></div> : null}
                       {entry.metroLine ? (
                         <div>
                           <dt>Линия</dt>

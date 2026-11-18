@@ -28,7 +28,6 @@ import {
   keyRateSyncResultSchema,
   locationDictionaryEntrySchema,
   locationDictionaryListResponseSchema,
-  locationDictionaryOptionsSchema,
   locationImportResultSchema,
   locationImportJobResponseSchema,
   mortgageCalculationResponseSchema,
@@ -700,26 +699,6 @@ export function locationDictionaryDetailQueryOptions(
   })
 }
 
-export function locationDictionaryOptionsQueryOptions(
-  regionIdentifier: string,
-  cityIdentifier: string,
-) {
-  const searchParameters = new URLSearchParams()
-  if (regionIdentifier) searchParameters.set('regionId', regionIdentifier)
-  if (cityIdentifier) searchParameters.set('cityId', cityIdentifier)
-  const queryString = searchParameters.toString()
-
-  return queryOptions({
-    queryKey: ['location-dictionary-options', queryString],
-    queryFn: ({ signal }) => requestJson(
-      `/api/v1/location-dictionaries/options/${queryString ? `?${queryString}` : ''}`,
-      locationDictionaryOptionsSchema,
-      { signal },
-    ),
-    staleTime: 60_000,
-  })
-}
-
 export function createLocationDictionaryEntry(
   dictionaryKey: LocationDictionaryKey,
   payload: LocationDictionaryWriteRequest,
@@ -1212,26 +1191,15 @@ export function deleteCustomer(customerIdentifier: number) {
   })
 }
 
-export function customerFormOptionsQueryOptions(
-  desiredCityIdentifier: number | null,
-) {
-  const queryString = desiredCityIdentifier
-    ? `?desiredCity=${desiredCityIdentifier}`
-    : ''
-  return queryOptions({
-    queryKey: [
-      'customer-form-options',
-      desiredCityIdentifier?.toString() ?? '',
-    ],
-    queryFn: ({ signal }) =>
-      requestJson(
-        `/api/v1/customers/options/${queryString}`,
-        customerFormOptionsSchema,
-        { signal },
-      ),
-    staleTime: 5 * 60_000,
-  })
-}
+export const customerFormOptionsQueryOptions = queryOptions({
+  queryKey: ['customer-form-options', 'canonical'],
+  queryFn: ({ signal }) => requestJson(
+    '/api/v1/customers/options/?canonicalLocations=true',
+    customerFormOptionsSchema,
+    { signal },
+  ),
+  staleTime: 5 * 60_000,
+})
 
 export function createCustomer(payload: CustomerWriteRequest) {
   return requestJson(
@@ -1310,36 +1278,15 @@ export function propertyDetailQueryOptions(propertyIdentifier: number) {
   })
 }
 
-export type PropertyFormOptionFilters = {
-  regionId?: number | null
-  cityId?: number | null
-  districtId?: number | null
-  regionLocationId?: number | null
-  districtLocationId?: number | null
-  localityId?: number | null
-  developerId: number | null
-  realEstateComplexId: number | null
-}
-
-export function propertyFormOptionsQueryOptions(
-  filters: PropertyFormOptionFilters,
-) {
-  const searchParameters = new URLSearchParams()
-  Object.entries(filters).forEach(([fieldName, value]) => {
-    if (value) searchParameters.set(fieldName, String(value))
-  })
-  const queryString = searchParameters.toString()
-
-  return queryOptions({
-    queryKey: ['property-form-options', queryString],
-    queryFn: ({ signal }) => requestJson(
-      `/api/v1/properties/options/${queryString ? `?${queryString}` : ''}`,
-      propertyFormOptionsSchema,
-      { signal },
-    ),
-    staleTime: 5 * 60_000,
-  })
-}
+export const propertyFormOptionsQueryOptions = queryOptions({
+  queryKey: ['property-form-options', 'canonical'],
+  queryFn: ({ signal }) => requestJson(
+    '/api/v1/properties/options/?canonicalLocations=true',
+    propertyFormOptionsSchema,
+    { signal },
+  ),
+  staleTime: 5 * 60_000,
+})
 
 export function createProperty(formData: FormData) {
   return requestJson(
