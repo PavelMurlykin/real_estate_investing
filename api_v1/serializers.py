@@ -1593,6 +1593,9 @@ class DeveloperListQuerySerializer(serializers.Serializer):
     )
     companyGroupId = serializers.IntegerField(required=False, min_value=1)
     regionId = serializers.IntegerField(required=False, min_value=1)
+    regionLocationId = serializers.PrimaryKeyRelatedField(
+        queryset=Location.objects.filter(location_type__category='region'), required=False,
+    )
     status = serializers.ChoiceField(
         required=False,
         choices=('all', 'active', 'inactive'),
@@ -1630,6 +1633,8 @@ class DeveloperPublicSerializer(serializers.ModelSerializer):
         method_name='get_company_group'
     )
     regions = serializers.SerializerMethodField(method_name='get_regions')
+    regionLocations = serializers.SerializerMethodField(method_name='get_region_locations')
+    unmappedRegions = serializers.SerializerMethodField(method_name='get_unmapped_regions')
     complexCount = serializers.IntegerField(
         source='complex_count',
         read_only=True,
@@ -1645,6 +1650,8 @@ class DeveloperPublicSerializer(serializers.ModelSerializer):
             'name',
             'companyGroup',
             'regions',
+            'regionLocations',
+            'unmappedRegions',
             'complexCount',
             'isActive',
         )
@@ -1668,6 +1675,16 @@ class DeveloperPublicSerializer(serializers.ModelSerializer):
             )
         ]
 
+    def get_region_locations(self, developer):
+        """Return canonical working regions independently of legacy IDs."""
+        from property.developer_locations import canonical_regions
+        return [{'id': row.pk, 'name': row.name} for row in canonical_regions(developer)]
+
+    def get_unmapped_regions(self, developer):
+        """Keep unconverted legacy associations visible for manual review."""
+        from property.developer_locations import unresolved_regions
+        return unresolved_regions(developer)
+
 
 class DeveloperSerializer(DeveloperPublicSerializer):
     """Validate mutations and expose full data only to catalog managers."""
@@ -1685,6 +1702,10 @@ class DeveloperSerializer(DeveloperPublicSerializer):
         many=True,
         required=False,
         write_only=True,
+    )
+    regionLocationIds = serializers.PrimaryKeyRelatedField(
+        queryset=Location.objects.filter(location_type__category='region'),
+        many=True, required=False, write_only=True,
     )
     legalAddress = serializers.CharField(
         source='legal_address',
@@ -1733,6 +1754,7 @@ class DeveloperSerializer(DeveloperPublicSerializer):
             'description',
             'companyGroupId',
             'regionIds',
+            'regionLocationIds',
             'legalAddress',
             'actualAddress',
             'taxpayerIdentificationNumber',
@@ -1743,6 +1765,34 @@ class DeveloperSerializer(DeveloperPublicSerializer):
             'legacyEditUrl',
             'legacyDeleteUrl',
         )
+
+    def validate(self, attributes):
+        """Reject mixed ID domains rather than guessing which list is authoritative."""
+        if 'regions' in attributes and 'regionLocationIds' in attributes:
+            raise serializers.ValidationError({'regionLocationIds': 'Передайте только один формат регионов.'})
+        return super().validate(attributes)
+
+    def create(self, validated_data):
+        """Create the developer and working regions atomically."""
+        from property.developer_locations import set_developer_regions
+        regions = validated_data.pop('regions', None)
+        locations = validated_data.pop('regionLocationIds', None)
+        with transaction.atomic():
+            developer = super().create(validated_data)
+            if regions is not None or locations is not None:
+                set_developer_regions(developer, locations=locations, legacy_regions=regions)
+        return developer
+
+    def update(self, instance, validated_data):
+        """Keep unspecified associations and synchronize explicit region edits."""
+        from property.developer_locations import set_developer_regions
+        regions = validated_data.pop('regions', None)
+        locations = validated_data.pop('regionLocationIds', None)
+        with transaction.atomic():
+            instance = super().update(instance, validated_data)
+            if regions is not None or locations is not None:
+                set_developer_regions(instance, locations=locations, legacy_regions=regions)
+        return instance
 
     def get_legacy_edit_url(self, developer):
         """Return the preserved Django developer edit form URL."""

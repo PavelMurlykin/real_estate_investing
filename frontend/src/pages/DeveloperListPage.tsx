@@ -28,6 +28,13 @@ import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState
 
 import { DeveloperRegistryImportPanel } from './DeveloperRegistryImportPanel'
 
+function regionNames(developer: DeveloperPublic) {
+  const canonical = developer.regionLocations ?? developer.regions
+  const pending = developer.regionLocations ? developer.unmappedRegions ?? [] : []
+  return [...canonical.map((region) => region.name),
+    ...pending.map((region) => `${region.name} (требует уточнения)`)].join(', ') || 'Не указаны'
+}
+
 export function DeveloperListPage() {
   useDocumentTitle('Застройщики')
   const [searchParameters, setSearchParameters] = useSearchParams()
@@ -98,7 +105,6 @@ export function DeveloperListPage() {
   )
   const { results, page, totalCount, totalPages } = developerQuery.data
   const companyGroups = optionsQuery.data?.companyGroups ?? []
-  const regions = optionsQuery.data?.regions ?? []
 
   return (
     <div className="page-stack developer-list-page">
@@ -138,14 +144,14 @@ export function DeveloperListPage() {
               companyGroupId: value || null,
               page: null,
             })} />
-        <RemoteSelect filter dictionary="regions" label="Регион" value={searchParameters.get('regionId') ?? ''}
-            initialOptions={regions.map((option) => ({ id: option.id, label: option.name }))}
+        <RemoteSelect filter dictionary="locations" filters={{ category: 'region' }} label="Регион" value={searchParameters.get('regionLocationId') ?? ''}
             onChange={(value) => updateParameters({
-              regionId: value || null,
+              regionLocationId: value || null, regionId: null,
               page: null,
             })} />
         <SelectFilter label="Статус" parameter="status" emptyLabel="Все"
           options={[{ value: 'active', label: 'Активные' }, { value: 'inactive', label: 'Неактивные' }]} />
+        {searchParameters.has('regionId') ? <p className="field-hint">Применён регион из прежней ссылки. Выберите регион выше или сбросьте фильтры.</p> : null}
         <ResetFilters />
 
       </section>
@@ -190,9 +196,7 @@ export function DeveloperListPage() {
                     <td><strong>{developer.name}</strong></td>
                     <td>{developer.companyGroup?.name ?? 'Без группы'}</td>
                     <td>
-                      {developer.regions.length
-                        ? developer.regions.map((region) => region.name).join(', ')
-                        : 'Не указаны'}
+                      {regionNames(developer)}
                     </td>
                     <td>{formatInteger(developer.complexCount)}</td>
 
@@ -242,9 +246,7 @@ export function DeveloperListPage() {
                   <div>
                     <dt>Регионы</dt>
                     <dd>
-                      {developer.regions.length
-                        ? developer.regions.map((region) => region.name).join(', ')
-                        : 'Не указаны'}
+                      {regionNames(developer)}
                     </dd>
                   </div>
                   <div>

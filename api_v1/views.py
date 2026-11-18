@@ -1,3 +1,4 @@
+from location.models import LegacyLocationMapping
 from property.location_filters import (
     apply_catalog_location_filters, apply_location_scopes, geographic_search_ids,
 )
@@ -36,7 +37,7 @@ from django.db.models import (
     When,
 )
 from django.db.models.deletion import ProtectedError
-from django.db.models.functions import Cast
+from django.db.models.functions import Cast, Coalesce
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -2688,7 +2689,7 @@ def _developer_queryset():
     """Return developers with all data needed by their API representation."""
     return (
         Developer.objects.select_related('company_group')
-        .prefetch_related('regions')
+        .prefetch_related('regions', 'region_locations', 'region_links')
         .annotate(
             complex_count=Count('realestatecomplex', distinct=True)
         )
@@ -2784,7 +2785,7 @@ class DeveloperListCreateAPIView(ListCreateAPIView):
         query_serializer.is_valid(raise_exception=True)
         filters = query_serializer.validated_data
         queryset = _developer_queryset().annotate(
-            first_region_name=Min('regions__name')
+            first_region_name=Coalesce(Min('region_locations__name'), Min('regions__name'))
         )
 
         search = filters.get('q', '')
@@ -2798,7 +2799,12 @@ class DeveloperListCreateAPIView(ListCreateAPIView):
                 company_group_id=filters['companyGroupId']
             )
         if filters.get('regionId'):
-            queryset = queryset.filter(regions__id=filters['regionId'])
+            mapped = LegacyLocationMapping.objects.filter(
+                model_name='region', legacy_id=filters['regionId'],
+            ).values('location_id')
+            queryset = queryset.filter(Q(regions__id=filters['regionId']) | Q(region_locations__pk__in=mapped))
+        if filters.get('regionLocationId'):
+            queryset = queryset.filter(region_locations=filters['regionLocationId'])
         if filters['status'] != 'all':
             queryset = queryset.filter(
                 is_active=filters['status'] == 'active'
@@ -2881,7 +2887,8 @@ class DeveloperOptionsAPIView(APIView):
             maximum_results,
         )
         regions, regions_truncated = _build_bounded_option_rows(
-            Region.objects.order_by('name', 'pk'),
+            Region.objects.none() if request.query_params.get('canonicalLocations') == 'true'
+            else Region.objects.order_by('name', 'pk'),
             maximum_results,
         )
         return Response(

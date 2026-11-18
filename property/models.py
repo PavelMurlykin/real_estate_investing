@@ -39,6 +39,10 @@ class Developer(BaseModel):
         blank=True,
         verbose_name='Регионы',
     )
+    region_locations = models.ManyToManyField(
+        Location, through='DeveloperRegion', through_fields=('developer', 'location'),
+        related_name='working_developers', blank=True, verbose_name='Регионы работы',
+    )
     legal_address = models.TextField(
         blank=True, null=True, verbose_name='Юридический адрес'
     )
@@ -90,6 +94,11 @@ class DeveloperRegion(BaseModel):
         on_delete=models.PROTECT,
         related_name='developer_links',
         verbose_name='Регион',
+        null=True, blank=True,
+    )
+    location = models.ForeignKey(
+        Location, null=True, blank=True, on_delete=models.PROTECT,
+        related_name='developer_region_links', verbose_name='Регион Location',
     )
 
     class Meta(BaseModel.Meta):
@@ -100,6 +109,14 @@ class DeveloperRegion(BaseModel):
         verbose_name_plural = 'Регионы застройщиков'
         ordering = ['developer__name', 'region__name']
         constraints = [
+            models.CheckConstraint(
+                condition=models.Q(region__isnull=False) | models.Q(location__isnull=False),
+                name='developer_region_has_territory',
+            ),
+            models.UniqueConstraint(
+                fields=['developer', 'location'], condition=models.Q(region__isnull=True),
+                name='unique_canonical_only_developer_region',
+            ),
             models.UniqueConstraint(
                 fields=['developer', 'region'],
                 name='unique_developer_region',

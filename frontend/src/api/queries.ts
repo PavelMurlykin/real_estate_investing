@@ -761,6 +761,7 @@ export function developerListQueryOptions(
     'q',
     'companyGroupId',
     'regionId',
+    'regionLocationId',
     'status',
     'ordering',
     'page',
@@ -784,9 +785,9 @@ export function developerListQueryOptions(
 }
 
 export const developerOptionsQueryOptions = queryOptions({
-  queryKey: ['developer-options'],
+  queryKey: ['developer-options', 'canonical'],
   queryFn: ({ signal }) => requestJson(
-    '/api/v1/developers/options/',
+    '/api/v1/developers/options/?canonicalLocations=true',
     developerOptionsSchema,
     { signal },
   ),

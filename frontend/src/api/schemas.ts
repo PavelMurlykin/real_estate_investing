@@ -594,6 +594,8 @@ export const developerPublicSchema = z.object({
   name: z.string(),
   companyGroup: namedOptionSchema.nullable(),
   regions: z.array(namedOptionSchema),
+  regionLocations: z.array(namedOptionSchema).optional(),
+  unmappedRegions: z.array(namedOptionSchema).optional(),
   complexCount: z.number().int().nonnegative(),
   isActive: z.boolean(),
 })
@@ -1377,7 +1379,8 @@ export type CustomerWriteRequest = {
 export type DeveloperWriteRequest = {
   name: string
   companyGroupId: number | null
-  regionIds: number[]
+  regionIds?: number[]
+  regionLocationIds?: number[]
   legalAddress: string | null
   actualAddress: string | null
   taxpayerIdentificationNumber: string | null

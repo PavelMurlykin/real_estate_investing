@@ -22,7 +22,7 @@ import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState
 type DeveloperFormState = {
   name: string
   companyGroupId: string
-  regionIds: string[]
+  regionLocationIds: string[]
   legalAddress: string
   actualAddress: string
   taxpayerIdentificationNumber: string
@@ -37,7 +37,7 @@ type FieldErrors = Record<string, string>
 const emptyFormState: DeveloperFormState = {
   name: '',
   companyGroupId: '',
-  regionIds: [],
+  regionLocationIds: [],
   legalAddress: '',
   actualAddress: '',
   taxpayerIdentificationNumber: '',
@@ -100,6 +100,7 @@ export function DeveloperFormPage() {
   const queryClient = useQueryClient()
   const initializedDeveloperRef = useRef<number | null>(null)
   const [formState, setFormState] = useState(emptyFormState)
+  const [regionsChanged, setRegionsChanged] = useState(false)
   const sessionQuery = useQuery(sessionQueryOptions)
   const canManageCatalogs = (
     sessionQuery.data?.capabilities.manageCatalogs === true
@@ -139,7 +140,7 @@ export function DeveloperFormPage() {
     setFormState({
       name: developer.name,
       companyGroupId: developer.companyGroup?.id.toString() ?? '',
-      regionIds: developer.regions.map((region) => region.id.toString()),
+      regionLocationIds: (developer.regionLocations ?? []).map((region) => region.id.toString()),
       legalAddress: developer.legalAddress ?? '',
       actualAddress: developer.actualAddress ?? '',
       taxpayerIdentificationNumber:
@@ -161,6 +162,7 @@ export function DeveloperFormPage() {
       ...currentState,
       [fieldName]: value,
     }))
+    if (fieldName === 'regionLocationIds') setRegionsChanged(true)
     if (mutation.isError) mutation.reset()
   }
 
@@ -169,9 +171,9 @@ export function DeveloperFormPage() {
     mutation.mutate({
       name: formState.name.trim(),
       companyGroupId: selectedIdentifier(formState.companyGroupId),
-      regionIds: formState.regionIds
+      ...(!isEditing || regionsChanged ? { regionLocationIds: formState.regionLocationIds
         .map(selectedIdentifier)
-        .filter((identifier): identifier is number => identifier !== null),
+        .filter((identifier): identifier is number => identifier !== null) } : {}),
       legalAddress: nullableText(formState.legalAddress),
       actualAddress: nullableText(formState.actualAddress),
       taxpayerIdentificationNumber: nullableText(
@@ -321,10 +323,13 @@ export function DeveloperFormPage() {
               truncated={optionsQuery.data?.truncated.companyGroups}
               error={fieldErrors.companyGroupId}
             />
-            <RemoteMultiSelect dictionary="regions" label="Регионы"
-              values={formState.regionIds} onChange={(values) => updateField('regionIds', values)}
-              initialOptions={optionsQuery.data.regions.map((option) => ({ id: option.id, label: option.name }))}
-              truncated={optionsQuery.data.truncated.regions} error={fieldErrors.regionIds} />
+            <RemoteMultiSelect dictionary="locations" filters={{ category: 'region' }} label="Регионы"
+              values={formState.regionLocationIds} onChange={(values) => updateField('regionLocationIds', values)}
+              truncated error={fieldErrors.regionLocationIds} />
+            {developerQuery.data?.unmappedRegions?.length ? <Notice tone="info">
+              Требуют уточнения: {developerQuery.data.unmappedRegions.map((region) => region.name).join(', ')}.
+              Эти связи сохраняются при редактировании.
+            </Notice> : null}
             {optionsAreTruncated ? (
               <Notice as="p" tone="error" role="alert" className="form-error form-field--wide">
             Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».

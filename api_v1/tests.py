@@ -839,7 +839,7 @@ def test_developer_list_api_is_public_filtered_and_hides_sensitive_fields(
     developer.regions.add(region)
     Developer.objects.create(name='Южный девелопер', is_active=False)
 
-    with django_assert_num_queries(3):
+    with django_assert_num_queries(5):
         response = client.get(
             reverse('api_v1:developer_list'),
             {
@@ -863,6 +863,8 @@ def test_developer_list_api_is_public_filtered_and_hides_sensitive_fields(
                 'name': 'Группа Север',
             },
             'regions': [{'id': region.pk, 'name': 'Тестовый регион'}],
+            'regionLocations': [],
+            'unmappedRegions': [{'id': region.pk, 'name': 'Тестовый регион'}],
             'complexCount': 1,
             'isActive': True,
         }

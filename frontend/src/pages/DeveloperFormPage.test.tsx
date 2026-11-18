@@ -42,6 +42,8 @@ const developer: Developer = {
   name: 'Северный девелопер',
   companyGroup: { id: 4, name: 'Группа Север' },
   regions: [{ id: 8, name: 'Санкт-Петербург' }],
+  regionLocations: [{ id: 108, name: 'Санкт-Петербург' }],
+  unmappedRegions: [],
   complexCount: 3,
   isActive: true,
   description: 'Надёжный застройщик',
@@ -59,7 +61,14 @@ const developer: Developer = {
 function createManagerQueryClient() {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['session'], managerSession)
-  queryClient.setQueryData(['developer-options'], options)
+  queryClient.setQueryData(['developer-options', 'canonical'], options)
+  for (const selected of ['', '108', '108,109', '109']) {
+    queryClient.setQueryData(['catalog-options', 'locations', 'category=region', '', selected], {
+      pages: [{ results: [{ id: 108, label: 'Санкт-Петербург' }, { id: 109, label: 'Ленинградская область' }], selected: [],
+        page: 1, totalCount: 2, nextPage: null }], pageParams: [1],
+    })
+  }
+
   return queryClient
 }
 
@@ -139,7 +148,7 @@ describe('DeveloperFormPage', () => {
     expect(JSON.parse(requestOptions.body as string)).toEqual({
       name: 'Новый девелопер',
       companyGroupId: 4,
-      regionIds: [8, 9],
+      regionLocationIds: [108, 109],
       legalAddress: null,
       actualAddress: null,
       taxpayerIdentificationNumber: '7812345678',
@@ -226,5 +235,25 @@ describe('DeveloperFormPage', () => {
     expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/developers/7/')
     const requestOptions = fetchMock.mock.calls[0][1] as RequestInit
     expect(requestOptions.method).toBe('PATCH')
+    expect(JSON.parse(requestOptions.body as string)).not.toHaveProperty('regionIds')
+    expect(JSON.parse(requestOptions.body as string)).not.toHaveProperty('regionLocationIds')
+  })
+
+  it('preserves unresolved region associations while editing other details', async () => {
+    const user = userEvent.setup()
+    const queryClient = createManagerQueryClient()
+    queryClient.setQueryData(['developer', 7], {
+      ...developer, regionLocations: [], unmappedRegions: [{ id: 8, name: 'Не сопоставлен' }],
+    })
+    const fetchMock = vi.fn().mockResolvedValue(Response.json(developer))
+    vi.stubGlobal('fetch', fetchMock)
+    renderWithProviders(<Routes>
+      <Route path="/developers/:developerId/edit" element={<DeveloperFormPage />} />
+      <Route path="/developers" element={<h1>Справочник сохранён</h1>} />
+    </Routes>, { initialRoute: '/developers/7/edit', queryClient })
+    expect(await screen.findByText(/Требуют уточнения: Не сопоставлен/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }))
+    await screen.findByRole('heading', { name: 'Справочник сохранён' })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).not.toHaveProperty('regionLocationIds')
   })
 })

@@ -5,7 +5,8 @@ from dataclasses import dataclass, field
 
 from django.db import transaction
 
-from location.models import Region
+from location.models import Location, LocationIdentifier, Region
+from property.developer_locations import region_mapping, set_developer_regions
 from property.models import CompanyGroup, Developer, DeveloperRegion
 
 from .developer_registry_client import (
@@ -217,6 +218,7 @@ class DeveloperRegistryImporter:
     def load_records(self, records, summary, dry_run=False):
         """Load normalized records into CompanyGroup and Developer models."""
         with transaction.atomic():
+            self.region_lookup = DeveloperRegionLookup()
             for record in records:
                 self.load_record(record, summary)
 
@@ -246,7 +248,7 @@ class DeveloperRegistryImporter:
             )
             summary.created_developers += 1
             summary.created_developer_region_links += (
-                sync_developer_regions(developer, record.source_regions)
+                sync_developer_regions(developer, record.source_regions, self.region_lookup, summary.errors)
             )
             return
 
@@ -258,6 +260,7 @@ class DeveloperRegistryImporter:
         created_region_links = sync_developer_regions(
             developer,
             record.source_regions,
+            self.region_lookup, summary.errors,
         )
         summary.created_developer_region_links += created_region_links
         if changed_fields:
@@ -471,57 +474,62 @@ def find_existing_developer(record):
     return None
 
 
-def sync_developer_regions(developer, source_region_codes):
-    """Create missing region links for the developer from source references."""
-    source_region_references = set(
-        normalize_region_references(*source_region_codes)
-    )
-    if not source_region_references:
-        return 0
+class DeveloperRegionLookup:
+    """Preload region identities once per import and reject ambiguous references."""
 
-    region_codes = set()
-    region_names = set()
-    for region_reference in source_region_references:
-        region_codes.update(get_region_code_lookup_values(region_reference))
-        if not normalize_text(region_reference).isdigit():
-            region_names.add(normalize_region_name(region_reference))
+    def __init__(self):
+        """Keep canonical identities and the legacy compatibility adapter separate."""
+        self.mappings = region_mapping()
+        self.locations = {row.pk: row for row in Location.objects.filter(location_type__category='region')}
+        self.legacy = list(Region.objects.all())
+        self.names = {}
+        self.codes = {}
+        for location in self.locations.values():
+            self.names.setdefault(normalize_region_name(location.name), set()).add(location.pk)
+        for value, identifier in LocationIdentifier.objects.filter(
+            provider='ru-region-code', location_id__in=self.locations,
+        ).values_list('value', 'location_id'):
+            self.codes.setdefault(value, set()).add(identifier)
+        for region in self.legacy:
+            if region.pk not in self.mappings:
+                continue
+            identifier = self.mappings[region.pk]
+            self.names.setdefault(normalize_region_name(region.name), set()).add(identifier)
+            for code in get_region_code_lookup_values(region.code):
+                self.codes.setdefault(code, set()).add(identifier)
 
-    region_ids = set()
-    if region_codes:
-        region_ids.update(
-            Region.objects.filter(code__in=region_codes).values_list(
-                'pk',
-                flat=True,
-            )
-        )
-    if region_names:
-        region_ids.update(
-            region.pk
-            for region in Region.objects.all()
-            if normalize_region_name(region.name) in region_names
-        )
+    def resolve(self, reference):
+        """Return one subject identity or preserve an unresolved legacy association."""
+        codes = get_region_code_lookup_values(reference)
+        name = normalize_region_name(reference)
+        identifiers = set(self.names.get(name, set()))
+        identifiers.update(set().union(*(self.codes.get(code, set()) for code in codes)))
+        legacy = [row for row in self.legacy if row.code in codes or normalize_region_name(row.name) == name]
+        if len(identifiers) == 1:
+            return self.locations[next(iter(identifiers))], None
+        return None, legacy[0] if not identifiers and len(legacy) == 1 else None
 
-    if not region_ids:
-        return 0
 
-    existing_region_ids = set(
-        DeveloperRegion.objects.filter(
-            developer=developer,
-            region_id__in=region_ids,
-        ).values_list('region_id', flat=True)
-    )
-    new_region_ids = region_ids - existing_region_ids
-    if not new_region_ids:
-        return 0
-
-    DeveloperRegion.objects.bulk_create(
-        [
-            DeveloperRegion(developer=developer, region_id=region_id)
-            for region_id in sorted(new_region_ids)
-        ],
-        ignore_conflicts=True,
-    )
-    return len(new_region_ids)
+def sync_developer_regions(developer, source_region_codes, lookup=None, errors=None):
+    """Add canonical working regions without deleting manual or historical links."""
+    lookup = lookup or DeveloperRegionLookup()
+    locations, legacy = {}, {}
+    for reference in normalize_region_references(*source_region_codes):
+        location, old = lookup.resolve(reference)
+        if location:
+            locations[location.pk] = location
+        elif old:
+            legacy[old.pk] = old
+        elif errors is not None:
+            message = f'Регион «{reference}» не сопоставлен однозначно; связь не добавлена.'
+            if message not in errors:
+                errors.append(message)
+    created = 0
+    if locations:
+        created += set_developer_regions(developer, locations=locations.values(), additive=True, mappings=lookup.mappings)
+    if legacy:
+        created += set_developer_regions(developer, legacy_regions=legacy.values(), additive=True, mappings=lookup.mappings)
+    return created
 
 
 def get_region_code_lookup_values(region_reference):
