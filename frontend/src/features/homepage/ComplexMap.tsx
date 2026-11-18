@@ -5,7 +5,10 @@ import type { HomepageComplex } from '@/api/schemas'
 import { coordinatesFromLink, escapeMapText, geocode, loadMapsSdk, safeMapUrl } from './mapSdk'
 import type { MapInstance } from './mapSdk'
 
-export default function ComplexMap({ complexes, city }: { complexes: Pick<HomepageComplex, 'id' | 'name' | 'mapUrl'>[]; city: string }) {
+export default function ComplexMap({ complexes, territoryLabel }: {
+  complexes: Pick<HomepageComplex, 'name' | 'mapUrl' | 'locationLabel'>[]
+  territoryLabel: string
+}) {
   const element = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
   const [retry, setRetry] = useState(0)
@@ -29,7 +32,7 @@ export default function ComplexMap({ complexes, city }: { complexes: Pick<Homepa
       const sdk = await loadMapsSdk()
       if (cancelled || !element.current) return
       map = new sdk.Map(element.current, {
-        center: [59.939095, 30.315868], zoom: 11,
+        center: [61.524, 90], zoom: 4,
         controls: ['zoomControl', 'fullscreenControl'],
       }, { suppressMapOpenBlock: true })
       const currentMap = map
@@ -40,7 +43,7 @@ export default function ComplexMap({ complexes, city }: { complexes: Pick<Homepa
           if (!complex) return
           const coordinates = coordinatesFromLink(complex.mapUrl)
             ?? await geocode(sdk, complex.mapUrl)
-            ?? await geocode(sdk, `${complex.name}, ${city}`)
+            ?? await geocode(sdk, `${complex.name}, ${complex.locationLabel || territoryLabel}`)
           if (cancelled) return
           if (!coordinates) continue
           const label = escapeMapText(complex.name)
@@ -56,16 +59,16 @@ export default function ComplexMap({ complexes, city }: { complexes: Pick<Homepa
       if (currentMap.geoObjects.getLength()) {
         await Promise.resolve(currentMap.setBounds(currentMap.geoObjects.getBounds(), { checkZoomRange: true, zoomMargin: 32 }))
       } else {
-        const center = await geocode(sdk, city)
-        if (!cancelled && center) await Promise.resolve(currentMap.setCenter(center, 11))
+        const center = await geocode(sdk, territoryLabel)
+        if (!cancelled && center) await Promise.resolve(currentMap.setCenter(center, territoryLabel === 'Россия' ? 4 : 11))
       }
       if (!cancelled) setStatus(currentMap.geoObjects.getLength() ? 'ready' : 'empty')
     }).catch(() => { if (!cancelled) setStatus('error') }).finally(complete)
     return () => { cancelled = true; map?.destroy(); complete() }
-  }, [city, complexes, retry])
+  }, [territoryLabel, complexes, retry])
   return (
     <div className="complex-map-shell">
-      <div ref={element} className="complex-map-canvas" role="region" aria-label={`Карта ЖК: ${city}`} hidden={status === 'error'} />
+      <div ref={element} className="complex-map-canvas" role="region" aria-label={`Карта ЖК: ${territoryLabel}`} hidden={status === 'error'} />
       {status === 'loading' ? <PageLoadingState compact title="Загружаем карту и координаты ЖК…" /> : null}
       {status === 'empty' ? <EmptyState compact title="Координаты ЖК не найдены. Прямые ссылки на карты доступны в карточках ниже."
         action={<RetryButton onRetry={reload} label="Повторить загрузку карты" />} /> : null}

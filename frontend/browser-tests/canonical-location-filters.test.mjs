@@ -38,10 +38,39 @@ test('filters Veren Village by Strelna, excludes historical links and respects b
     await page.getByRole('link', { name: veren.project.name, exact: true }).waitFor()
     if (parameter !== 'regionLocationId') assert.equal(await page.getByRole('link', { name: other.project.name, exact: true }).count(), 0)
   }
-  await page.goto(url(`/app/?localityId=${strelna.id}`))
-  const homepage = page.getByRole('region', { name: 'Жилые комплексы по территориям' })
-  await homepage.getByRole('heading', { name: veren.project.name, exact: true }).waitFor()
-  assert.equal(await homepage.getByRole('heading', { name: other.project.name, exact: true }).count(), 0)
+  await page.addInitScript(() => {
+    window.homepageMapQueries = []
+    window.ymaps = {
+      ready: (callback) => callback(),
+      Map: class {
+        geoObjects = { add: () => undefined, getLength: () => 1, getBounds: () => [[59, 30], [60, 31]] }
+        setBounds() {}
+        destroy() {}
+      },
+      Placemark: class {},
+      geocode: async (query) => {
+        window.homepageMapQueries.push(query)
+        return { geoObjects: { get: () => ({ geometry: { getCoordinates: () => [59.9, 30.3] } }) } }
+      },
+    }
+  })
+  for (const [location, included, excluded, width] of [
+    [strelna, veren, other, 1440], [pushkin, other, veren, 360],
+  ]) {
+    await page.setViewportSize({ width, height: 1000 })
+    await page.goto(url(`/app/?localityId=${location.id}`))
+    const homepage = page.getByRole('region', { name: 'Жилые комплексы по территориям' })
+    await page.getByRole('region', { name: 'Портфель платформы' }).getByText('Населённые пункты', { exact: true }).waitFor()
+    await homepage.getByRole('heading', { name: included.project.name, exact: true }).waitFor()
+    assert.equal(await homepage.getByRole('heading', { name: excluded.project.name, exact: true }).count(), 0)
+    await homepage.getByRole('button', { name: 'На карте', exact: true }).click()
+    await homepage.getByRole('region', { name: `Карта ЖК: ${location.name}`, exact: true }).waitFor()
+    await page.waitForFunction((name) => window.homepageMapQueries.some(
+      (query) => query.includes(name) && query.includes('Санкт-Петербург'),
+    ), location.name)
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 })
   await page.goto(url(`/app/properties?customerId=${fixtureManifest.otherCustomerId}&localityId=${strelna.id}`))
   await page.getByRole('cell', { name: veren.project.name, exact: true }).waitFor()
   assert.ok((await ids(`/api/v1/properties/?localityId=${strelna.id}`)).has(veren.apartment.id))

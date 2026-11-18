@@ -90,14 +90,11 @@ export const sessionQueryOptions = queryOptions({
   staleTime: 60_000,
 })
 
-export function importLocationDictionary(
-  dictionaryKey: LocationDictionaryKey,
-  parents: { regionId?: number, cityId?: number, systemId?: number },
-) {
+export function importMetroStations(systemId: number) {
   return requestJson(
-    `/api/v1/location-dictionaries/${dictionaryKey}/import/`,
+    '/api/v1/location-dictionaries/metro/import/',
     locationImportResultSchema,
-    { method: 'POST', body: JSON.stringify(parents), signal: AbortSignal.timeout(55_000) },
+    { method: 'POST', body: JSON.stringify({ systemId }), signal: AbortSignal.timeout(55_000) },
   )
 }
 
@@ -193,19 +190,16 @@ export function confirmPasswordReset(
 export const overviewQueryOptions = queryOptions({
   queryKey: ['overview'],
   queryFn: ({ signal }) =>
-    requestJson('/api/v1/overview/', overviewSchema, { signal }),
+    requestJson('/api/v1/overview/?canonicalLocations=true', overviewSchema, { signal }),
   staleTime: 60_000,
 })
 
-export function fetchHomepageComplexes(city: string, page: number, signal?: AbortSignal, scopes?: URLSearchParams) {
-  const parameters = new URLSearchParams({ page: String(page), pageSize: '50' })
-  if (city) parameters.set('city', city)
-  if (scopes) {
-    if (!city || ['regionLocationId', 'districtLocationId', 'localityId'].some((field) => scopes.has(field))) parameters.set('allLocations', 'true')
-    for (const field of ['regionLocationId', 'districtLocationId', 'localityId']) {
-      const value = scopes.get(field); if (value) parameters.set(field, value)
-    }
-  }
+export function fetchHomepageComplexes(scopes: URLSearchParams, page: number, signal?: AbortSignal) {
+  const parameters = new URLSearchParams(scopes)
+  parameters.set('page', String(page))
+  parameters.set('pageSize', '50')
+  parameters.set('canonicalLocations', 'true')
+  if (!parameters.has('city')) parameters.set('allLocations', 'true')
   return requestJson(`/api/v1/homepage/complexes/?${parameters}`, homepageComplexListSchema, { signal })
 }
 

@@ -21,12 +21,12 @@ class FakePlacemark {
   constructor(_coordinates: [number, number], properties: Record<string, string>) { markerProperties.push(properties) }
 }
 const sdk: MapsSdk = { ready: (callback) => callback(), Map: FakeMap, Placemark: FakePlacemark, geocode: vi.fn() }
-const markers = [{ id: 1, name: '<img src=x onerror=alert(1)>', mapUrl: 'https://yandex.ru/maps/?ll=30.3,59.9' }]
+const markers = [{ name: '<img src=x onerror=alert(1)>', mapUrl: 'https://yandex.ru/maps/?ll=30.3,59.9', locationLabel: 'Стрельна, Санкт-Петербург' }]
 
 describe('ComplexMap', () => {
   it('uses explicit coordinates, escapes SDK markup and destroys the map on exit', async () => {
     window.ymaps = sdk
-    const rendered = renderWithProviders(<ComplexMap city="Петербург" complexes={markers} />)
+    const rendered = renderWithProviders(<ComplexMap territoryLabel="Петербург" complexes={markers} />)
     await waitFor(() => expect(markerProperties).toHaveLength(1))
     expect(markerProperties[0].hintContent).toBe('&lt;img src=x onerror=alert(1)&gt;')
     expect(markerProperties[0].balloonContent).not.toContain('<img')
@@ -39,7 +39,7 @@ describe('ComplexMap', () => {
     const user = userEvent.setup()
     window.ymaps = sdk
     failCreation = true
-    renderWithProviders(<ComplexMap city="Петербург" complexes={markers} />)
+    renderWithProviders(<ComplexMap territoryLabel="Петербург" complexes={markers} />)
     expect(await screen.findByText(/Карта временно недоступна/)).toBeInTheDocument()
     failCreation = false
     await user.click(screen.getByRole('button', { name: 'Повторить загрузку карты' }))

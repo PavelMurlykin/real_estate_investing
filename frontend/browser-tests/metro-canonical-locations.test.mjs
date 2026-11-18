@@ -38,7 +38,16 @@ test('edits metro systems, lines and suburban station geography while preserving
     await page.goto(url('/app/locations/metro-lines'))
     await page.getByLabel('Название линии *', { exact: true }).fill(`E2E ${suffix}`)
     await choose('Система метро *', systemName, systemName)
+    await page.getByLabel('Цвет линии *', { exact: true }).fill('#1582c4')
     lines.push(await save('metro-lines'))
+  }
+  await page.waitForURL(url('/app/locations/metro-lines'))
+  const lineRow = page.getByRole('row', { name: /E2E первая/ })
+  assert.equal(await lineRow.locator('.location-line-swatch').evaluate((swatch) =>
+    getComputedStyle(swatch).backgroundColor), 'rgb(21, 130, 196)')
+  assert.doesNotMatch(await lineRow.innerText(), /#[\da-f]{6}/i)
+  if (process.env.BROWSER_TEST_SCREENSHOTS) {
+    await page.screenshot({ path: `${process.env.BROWSER_TEST_SCREENSHOTS}/location-metro-lines-desktop.png`, fullPage: true })
   }
   await page.goto(url('/app/locations/metro'))
   await page.getByLabel('Название станции *', { exact: true }).fill('E2E пригородная станция')
@@ -93,7 +102,14 @@ test('edits metro systems, lines and suburban station geography while preserving
     await page.setViewportSize({ width, height: 1000 })
     await page.goto(url('/app/locations/metro'))
     await page.getByRole('heading', { name: 'Локации', exact: true }).waitFor()
+    const card = page.locator('.property-mobile-card').filter({ hasText: 'E2E станция после Django' })
+    await card.waitFor({ state: width === 360 ? 'visible' : 'attached' })
+    assert.equal(await card.getByText('Город', { exact: true }).count(), 0)
+    assert.match(await card.textContent(), /Стрельна/)
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true)
+    if (process.env.BROWSER_TEST_SCREENSHOTS) {
+      await page.screenshot({ path: `${process.env.BROWSER_TEST_SCREENSHOTS}/location-metro-${width}.png`, fullPage: true })
+    }
   }
   assert.deepEqual(legacyOptionsRequests, [])
 })

@@ -2,7 +2,7 @@ from location.models import LegacyLocationMapping
 from property.location_filters import (
     apply_catalog_location_filters, apply_location_scopes, geographic_search_ids,
 )
-from property.location_context import building_geography_prefetch, geography_prefetch
+from property.location_context import building_geography_prefetch, geography_prefetch, locality_filter
 from property.location_queries import (
     annotate_complex_geography, annotate_property_geography, property_geography_search,
 )
@@ -90,7 +90,7 @@ from customer.views import (
     _get_selected_customer_calculation_links,
 )
 from location.import_forms import LocationImportForm
-from location.models import City, District, Metro, MetroLine, MetroSystem, Region
+from location.models import City, District, Location, Metro, MetroLine, MetroSystem, Region
 from location.metro_import import import_metro
 from .metro_serializers import MetroDictionaryWriteSerializer
 from location.import_service import LocationImportError, import_locations
@@ -624,6 +624,7 @@ class OverviewAPIView(APIView):
 
     def get(self, request):
         """Return bounded catalog counts and recently updated properties."""
+        canonical_locations = request.query_params.get('canonicalLocations') == 'true'
         recent_properties = (
             Property.objects.select_related(
                 'building__real_estate_complex__developer__company_group',
@@ -633,6 +634,22 @@ class OverviewAPIView(APIView):
             )
             .order_by('-updated_at', '-id')[:4]
         )
+        if canonical_locations:
+            recent_properties = recent_properties.prefetch_related(
+                geography_prefetch('building__real_estate_complex__'),
+                building_geography_prefetch('building__'),
+            )
+            locality_statistic = {
+                'key': 'localities',
+                'label': 'Населённые пункты',
+                'value': Location.objects.filter(locality_filter(), is_active=True).count(),
+            }
+        else:
+            locality_statistic = {
+                'key': 'cities',
+                'label': 'Города',
+                'value': City.objects.filter(is_active=True).count(),
+            }
         return Response(
             {
                 'statistics': [
@@ -655,11 +672,7 @@ class OverviewAPIView(APIView):
                             is_active=True
                         ).count(),
                     },
-                    {
-                        'key': 'cities',
-                        'label': 'Города',
-                        'value': City.objects.filter(is_active=True).count(),
-                    },
+                    locality_statistic,
                     {
                         'key': 'banks',
                         'label': 'Банки',

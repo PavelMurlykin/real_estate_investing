@@ -1053,20 +1053,6 @@ textarea:focus-visible {
   box-shadow: var(--shadow-sm);
 }
 
-.location-import-panel > button {
-  align-self: start;
-}
-
-.location-import-panel h2 {
-  margin: 0 0 8px;
-  font-size: 20px;
-}
-
-.location-import-panel__feedback {
-  grid-column: 1 / -1;
-  min-width: 0;
-}
-
 .search-form > label,
 .sort-control label {
   display: block;
@@ -2202,30 +2188,37 @@ textarea:focus-visible {
   grid-column: 1 / -1;
 }
 
-.location-national-import {
+.location-update {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 1rem;
-  align-items: start;
+  gap: 0.75rem;
 }
 
-.location-national-import h2,
-.location-national-import p {
+.location-update .notice p {
   margin: 0;
 }
 
-.location-national-import > button {
-  justify-self: start;
-  max-width: 100%;
+.location-update .notice p + p {
+  margin-top: 0.4rem;
 }
 
-.location-national-import > div {
-  display: grid;
-  gap: 0.6rem;
+.location-update__action {
+  justify-self: end;
 }
 
-.location-national-import progress {
-  width: 100%;
+.location-update__action button[aria-busy="true"]::before {
+  content: "";
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .location-update__action button[aria-busy="true"]::before {
+    animation: async-state-spin 1s linear infinite;
+  }
 }
 
 .location-line-label {
@@ -2240,6 +2233,24 @@ textarea:focus-visible {
   height: 0.45rem;
   flex: 0 0 auto;
   border: 1px solid rgb(0 0 0 / 14%);
+  border-radius: 999px;
+}
+
+.form-field input.location-color-input {
+  width: 4.5rem;
+  padding: 0.5rem;
+  cursor: pointer;
+}
+
+.location-color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.location-color-input::-webkit-color-swatch {
+  border-radius: 999px;
+}
+
+.location-color-input::-moz-color-swatch {
   border-radius: 999px;
 }
 
@@ -2288,6 +2299,20 @@ textarea:focus-visible {
 }
 
 @media (max-width: 720px) {
+  .location-dictionary-page .location-metro-table {
+    display: none;
+  }
+
+  .location-dictionary-page .location-metro-cards {
+    display: grid;
+  }
+
+  .location-metro-cards h2 .location-line-label {
+    color: inherit;
+    font: inherit;
+    text-transform: inherit;
+  }
+
   .dictionary-filter-panel {
     grid-template-columns: minmax(0, 1fr);
   }

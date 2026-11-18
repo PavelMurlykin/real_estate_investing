@@ -7,8 +7,9 @@ test('finds Pushkin and Strelna and refines complex territory without changing l
 }, async (context) => {
   const { page } = await createAuthenticatedPage(context, 'moderator', { width: 1440, height: 1100 })
   await page.goto(new URL('/app/locations/localities', isolatedBaseUrl).href)
-  assert.equal(await page.getByRole('button', { name: 'Импортировать все населённые пункты России' }).count(), 0)
-  const search = page.getByLabel('Поиск населённого пункта', { exact: true })
+  assert.equal(await page.getByRole('button', { name: 'Обновить данные' }).count(), 0)
+  const search = page.getByRole('region', { name: 'Фильтры: Населённые пункты' })
+    .getByLabel('Поиск', { exact: true })
   await search.fill('Пушкин')
   await page.getByRole('cell', { name: 'Пушкин', exact: true }).waitFor()
   await page.getByRole('cell', { name: 'Пушкинский район', exact: true }).waitFor()

@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { fetchHomepageComplexes } from '@/api/queries'
@@ -10,23 +10,26 @@ const ComplexMap = lazy(() => import('./ComplexMap'))
 
 export function HomepageComplexes() {
   const [parameters, setParameters] = useSearchParams()
-  const city = parameters.get('city') ?? ''
   const scopeParameters = new URLSearchParams()
   for (const name of ['regionLocationId', 'districtLocationId', 'localityId']) {
     const value = parameters.get(name); if (value) scopeParameters.set(name, value)
   }
+  const legacyCity = parameters.get('cityId') ?? parameters.get('city')
+  if (!scopeParameters.size && legacyCity) scopeParameters.set('city', legacyCity)
   const scopeKey = scopeParameters.toString()
   const view = parameters.get('view') === 'map' ? 'map' : 'list'
   const complexesQuery = useInfiniteQuery({
-    queryKey: ['homepage-complexes', city, scopeKey], initialPageParam: 1,
-    queryFn: ({ pageParam, signal }) => fetchHomepageComplexes(city, pageParam, signal, scopeParameters),
+    queryKey: ['homepage-complexes', scopeKey], initialPageParam: 1,
+    queryFn: ({ pageParam, signal }) => fetchHomepageComplexes(scopeParameters, pageParam, signal),
     getNextPageParam: (last) => last.page < last.totalPages ? last.page + 1 : undefined,
     placeholderData: (previous) => previous,
     staleTime: 60_000,
   })
   const data = complexesQuery.data?.pages[0]
-  const selectedCity = data?.selectedCity
-  const complexes = [...new Map(complexesQuery.data?.pages.flatMap((page) => page.results).map((item) => [item.id, item]) ?? []).values()]
+  const territoryLabel = data?.territoryLabel ?? 'Россия'
+  const complexes = useMemo(() => [...new Map(
+    complexesQuery.data?.pages.flatMap((page) => page.results).map((item) => [item.id, item]) ?? [],
+  ).values()], [complexesQuery.data])
   const update = (name: string, value: string) => {
     const next = new URLSearchParams(parameters)
     if (value) next.set(name, value)
@@ -50,10 +53,10 @@ export function HomepageComplexes() {
       {complexesQuery.isError ? <ErrorState title="Не удалось загрузить жилые комплексы"
         onRetry={() => data ? complexesQuery.fetchNextPage() : complexesQuery.refetch()} /> : null}
       {data && !complexesQuery.isPlaceholderData ? <>
-        <div className="results-heading" aria-live="polite"><p>ЖК: {selectedCity?.name ?? 'выбранные территории России'}: <strong>{data.totalCount}</strong>. Показано: {complexes.length}.</p></div>
+        <div className="results-heading" aria-live="polite"><p>{territoryLabel} · ЖК: <strong>{data.totalCount}</strong>. Показано: {complexes.length}.</p></div>
         {view === 'map' && complexes.length ? (
           <Suspense fallback={<PageLoadingState compact title="Загружаем карту…" />}>
-            <ComplexMap complexes={complexes} city={selectedCity?.name ?? 'Россия'} />
+            <ComplexMap complexes={complexes} territoryLabel={territoryLabel} />
           </Suspense>
         ) : null}
         {complexes.length ? <div className="homepage-complex-grid">
@@ -64,7 +67,7 @@ export function HomepageComplexes() {
                 <h3>{complex.name}</h3>
                 <dl className="saved-property-grid">
                   <div><dt>Застройщик</dt><dd>{complex.developer.label}</dd></div>
-                  <div><dt>Район</dt><dd>{complex.district}</dd></div>
+                  <div><dt>Территория</dt><dd>{complex.locationLabel || '—'}</dd></div>
                   <div><dt>Класс</dt><dd>{complex.realEstateClass}</dd></div>
                   <div><dt>Тип недвижимости</dt><dd>{complex.realEstateType}</dd></div>
                 </dl>

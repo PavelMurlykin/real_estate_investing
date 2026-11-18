@@ -10,7 +10,7 @@ from django.test import Client
 from api_v1.test_complex_localities import locality_catalog
 from api_v1.test_location_import import import_user
 from api_v1.test_real_estate_complexes import complex_catalog
-from location.models import Location, LocationClosure
+from location.models import City, LegacyLocationMapping, Location, LocationClosure
 from property.location_context import set_primary_location
 from property.models import (
     ApartmentDecoration, ApartmentLayout, Property, RealEstateComplex,
@@ -66,6 +66,61 @@ def test_veren_village_matches_region_district_and_settlement(filtered_catalog):
     assert result_ids(client, '/api/v1/properties/', {'localityId': pushkin.pk}) == {other_apartment.pk}
     assert result_ids(client, '/api/v1/homepage/complexes/', {'districtLocationId': strelna.parent_id}) == {veren.pk}
     assert veren.pk in result_ids(client, '/api/v1/catalog-options/complexes/', {'localityId': strelna.pk})
+
+
+@pytest.mark.django_db
+def test_homepage_map_labels_and_legacy_city_link(client, filtered_catalog):
+    """Use only the requested locality for the map and retain the old response contract."""
+    url = '/api/v1/homepage/complexes/'
+    for key in ('pushkin', 'strelna'):
+        locality, project, _, _ = filtered_catalog[key]
+        response = client.get(url, {
+            'canonicalLocations': 'true', 'regionLocationId': locality.region_id, 'localityId': locality.pk,
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert data['territoryLabel'] == locality.name
+        row, = data['results']
+        assert row['id'] == project.pk
+        assert row['locationLabel'] == f'{locality.name}, {locality.parent.name}, Санкт-Петербург'
+
+    locality, project, _, _ = filtered_catalog['pushkin']
+    old_city = City.objects.create(name='Пушкин', region=filtered_catalog['legacy'].district.city.region)
+    LegacyLocationMapping.objects.create(model_name='city', legacy_id=old_city.pk, location=locality)
+    data = client.get(url, {'canonicalLocations': 'true', 'city': old_city.pk}).json()
+    assert data['territoryLabel'] == 'Пушкин'
+    assert [row['id'] for row in data['results']] == [project.pk]
+    legacy = client.get(url, {'city': old_city.pk}).json()
+    assert legacy['selectedCity'] == {'id': old_city.pk, 'name': 'Пушкин'}
+    assert 'territoryLabel' not in legacy
+    assert 'locationLabel' not in legacy['results'][0]
+
+
+@pytest.mark.django_db
+def test_overview_counts_active_localities_without_legacy_cities(client, filtered_catalog):
+    """Count GAR villages, exclude inactive entries and preserve the old statistic."""
+    locality = filtered_catalog['strelna'][0]
+    endpoint = '/api/v1/overview/'
+    parameters = {'canonicalLocations': 'true'}
+    legacy = client.get(endpoint).json()
+    assert any(stat['key'] == 'cities' for stat in legacy['statistics'])
+
+    def locality_count():
+        """Read the active locality statistic from the public canonical overview."""
+        statistics = client.get(endpoint, parameters).json()['statistics']
+        assert all(stat['key'] != 'cities' for stat in statistics)
+        return next(stat['value'] for stat in statistics if stat['label'] == 'Населённые пункты')
+
+    initial = locality_count()
+    village = Location.objects.create(
+        name='Тестовая деревня', location_type=locality.location_type,
+        parent=locality.parent, region=locality.region,
+    )
+    assert locality_count() == initial + 1
+    village.is_active = False
+    village.save(update_fields=['is_active'])
+    assert locality_count() == initial
+    assert client.get(endpoint).json()['statistics'] == legacy['statistics']
 
 
 @pytest.mark.django_db

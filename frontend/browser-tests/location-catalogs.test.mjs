@@ -35,7 +35,7 @@ test('manages canonical dictionaries in React and Django while preserving Pushki
     const [pushkin, strelna] = snapshots
     await page.goto(url('/app/locations/localities?q=' + encodeURIComponent('Пушкин')))
     await page.getByRole('table', { name: 'Населённые пункты', exact: true }).getByText('Пушкинский район', { exact: true }).waitFor()
-    assert.equal(await page.getByRole('button', { name: 'Импортировать все населённые пункты России' }).count(), 0)
+    assert.equal(await page.getByRole('button', { name: 'Обновить данные' }).count(), 0)
     await page.getByRole('link', { name: 'Изменить: Пушкин', exact: true }).click()
     const editor = page.getByRole('complementary', { name: 'Редактирование записи' })
     await editor.getByLabel('Название *', { exact: true }).fill('Пушкин E2E')

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import { renderWithProviders } from '@/test/render'
-import { NationalLocationImportPanel } from './NationalLocationImportPanel'
+import { NationalLocationUpdateAction } from './NationalLocationUpdateAction'
 
 const job = {
   id: '382079fb-2acf-48e1-a8ba-47d49a468d55', status: 'running', phase: 'districts',
@@ -11,25 +11,29 @@ const job = {
   coverage: {}, errorMessage: '', updatedAt: '2026-11-15T10:00:00Z',
 }
 
-describe('NationalLocationImportPanel', () => {
+describe('NationalLocationUpdateAction', () => {
   it('starts a national import without parent filters and restores progress', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn<typeof fetch>().mockImplementation((_url, options) => Promise.resolve(
       Response.json({ job: options?.method === 'POST' ? job : null }),
     ))
     vi.stubGlobal('fetch', fetchMock)
-    renderWithProviders(<NationalLocationImportPanel />)
-    await user.click(screen.getByRole('button', { name: 'Импортировать все населённые пункты России' }))
-    expect(await screen.findByRole('status')).toHaveTextContent('10 из 1117')
-    expect(screen.getByRole('button', { name: 'Общий импорт выполняется…' })).toBeDisabled()
+    renderWithProviders(<NationalLocationUpdateAction />)
+    const button = screen.getByRole('button', { name: 'Обновить данные' })
+    expect(screen.getAllByRole('button')).toEqual([button])
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    await user.click(button)
+    expect(await screen.findByRole('status')).toHaveTextContent('Обработано населённых пунктов 10')
+    expect(button).toBeDisabled()
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/location-imports/', expect.objectContaining({ method: 'POST', body: '{}' }))
   })
 
   it('restores a running job after opening the page again', async () => {
     vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockResolvedValue(Response.json({ job })))
-    renderWithProviders(<NationalLocationImportPanel />)
-    expect(await screen.findByRole('status')).toHaveTextContent('Казань')
-    expect(screen.getByRole('progressbar')).toHaveAttribute('value', '10')
+    renderWithProviders(<NationalLocationUpdateAction />)
+    expect(await screen.findByRole('status')).toHaveTextContent('Обработано населённых пунктов 10')
+    expect(screen.getByRole('button', { name: 'Обновить данные' })).toBeDisabled()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 
   it('allows a failed job to resume and allows another run after completion', async () => {
@@ -37,10 +41,11 @@ describe('NationalLocationImportPanel', () => {
     vi.stubGlobal('fetch', vi.fn<typeof fetch>()
       .mockResolvedValueOnce(Response.json({ job: { ...job, status: 'failed', errorMessage: 'Источник недоступен.' } }))
       .mockResolvedValueOnce(Response.json({ job: { ...job, status: 'completed', processedCities: 1117 } })))
-    renderWithProviders(<NationalLocationImportPanel />)
-    await user.click(await screen.findByRole('button', { name: 'Продолжить импорт России' }))
-    expect(await screen.findByRole('status')).toHaveTextContent('Общий импорт завершён')
-    expect(screen.getByRole('button', { name: 'Импортировать все населённые пункты России' })).toBeEnabled()
+    renderWithProviders(<NationalLocationUpdateAction />)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Источник недоступен.')
+    await user.click(screen.getByRole('button', { name: 'Обновить данные' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Справочники обновлены')
+    expect(screen.getByRole('button', { name: 'Обновить данные' })).toBeEnabled()
   })
 
   it('recovers when the start response has an unexpected format', async () => {
@@ -48,8 +53,8 @@ describe('NationalLocationImportPanel', () => {
     vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation((_url, options) => Promise.resolve(
       Response.json(options?.method === 'POST' ? { bad: true } : { job: null }),
     )))
-    renderWithProviders(<NationalLocationImportPanel />)
-    const button = screen.getByRole('button', { name: 'Импортировать все населённые пункты России' })
+    renderWithProviders(<NationalLocationUpdateAction />)
+    const button = screen.getByRole('button', { name: 'Обновить данные' })
     await user.click(button)
     expect(await screen.findByRole('alert')).toBeInTheDocument()
     await waitFor(() => expect(button).toBeEnabled())

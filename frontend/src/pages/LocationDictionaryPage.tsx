@@ -36,7 +36,7 @@ import type {
 import { formatInteger } from '@/shared/lib/formatters'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
 import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
-import { LocationImportPanel } from './LocationImportPanel'
+import { MetroUpdateAction } from './MetroUpdateAction'
 
 const metroDictionaryKeySchema = locationDictionaryKeySchema.extract(['metro', 'metro-lines', 'metro-systems'])
 type MetroDictionaryKey = (typeof metroDictionaryKeySchema.options)[number]
@@ -177,6 +177,7 @@ function LocationDictionaryEditor({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (saveMutation.isPending) return
     const errors: FieldErrors = {}
     if (!formState.name.trim()) errors.name = 'Укажите название.'
     if (dictionaryKey === 'metro' && !formState.metroLineId) {
@@ -212,7 +213,6 @@ function LocationDictionaryEditor({
       className="dictionary-form-card"
       aria-labelledby="location-form-title"
     >
-      <span className="eyebrow">Управление локациями</span>
       <h2 id="location-form-title">
         {isEditing
           ? 'Редактирование записи'
@@ -249,8 +249,12 @@ function LocationDictionaryEditor({
             error={fieldErrors.locationId} required={!isMetro} />
         ) : null}
         {dictionaryKey === 'metro-lines' ? (
-          <label className="form-field">Цвет линии *
-            <input type="color" value={formState.lineColor} onChange={(event) => updateFormField('lineColor', event.target.value)} />
+          <label className="form-field">
+            <span>Цвет линии *</span>
+            <input className="location-color-input" type="color" value={formState.lineColor}
+              aria-invalid={Boolean(fieldErrors.lineColor)}
+              aria-describedby={fieldErrors.lineColor ? 'line-color-error' : undefined}
+              onChange={(event) => updateFormField('lineColor', event.target.value)} />
             <FieldError id="line-color-error" message={fieldErrors.lineColor} />
           </label>
         ) : null}
@@ -316,16 +320,15 @@ function LocationDictionaryEditor({
   )
 }
 
-function MetroLineLabel({ entry }: { entry: LocationDictionaryEntry }) {
-  if (!entry.metroLine) return <>—</>
+function MetroLineLabel({ name, color }: { name: string; color?: string | null }) {
   return (
     <span className="location-line-label">
-      <span
+      {color ? <span
         className="location-line-swatch"
-        style={{ backgroundColor: entry.metroLine.color }}
+        style={{ backgroundColor: color }}
         aria-hidden="true"
-      />
-      <span>{entry.metroLine.name}</span>
+      /> : null}
+      {name}
     </span>
   )
 }
@@ -478,7 +481,6 @@ function MetroDictionaryPage() {
     <div className="page-stack location-dictionary-page">
       <header className="page-header">
         <div>
-          <span className="eyebrow">Справочники</span>
           <h1>Локации</h1>
           <p>{configuration.description}</p>
         </div>
@@ -487,11 +489,8 @@ function MetroDictionaryPage() {
       <SectionNavigation label="Справочники локаций" items={locationNavigation} />
 
       {sessionQuery.data?.capabilities.syncExternalData === true && showMetroLine ? (
-        <LocationImportPanel
+        <MetroUpdateAction
           key={searchParameters.get('systemId')}
-          dictionaryKey={dictionaryKey}
-          regionId=""
-          cityId=""
           systemId={searchParameters.get('systemId') ?? ''}
         />
       ) : null}
@@ -548,7 +547,7 @@ function MetroDictionaryPage() {
             />
           ) : (
             <>
-              <TableScrollArea className="table-card property-table-wrapper" label={configuration.title}>
+              <TableScrollArea className="table-card property-table-wrapper location-metro-table" label={configuration.title}>
                 <table className="property-table catalog-table location-table">
                   <caption className="visually-hidden">
                     {configuration.title}
@@ -570,12 +569,11 @@ function MetroDictionaryPage() {
                   <tbody>
                     {results.map((entry) => (
                       <tr key={entry.id}>
-                        <td><strong>{entry.name}</strong></td>
+                        <td><strong><MetroLineLabel name={entry.name} color={entry.lineColor} /></strong></td>
                         {showMetroLine
-                          ? <td><MetroLineLabel entry={entry} /></td>
+                          ? <td>{entry.metroLine ? <MetroLineLabel name={entry.metroLine.name} color={entry.metroLine.color} /> : '—'}</td>
                           : null}
-                        <td>{entry.system?.name ?? '—'}{entry.lines?.length ? <p>{entry.lines.map((line) => line.name).join(', ')}</p> : null}
-                          {entry.lineColor ? <span style={{ color: entry.lineColor }}>● {entry.lineColor}</span> : null}</td>
+                        <td>{entry.system?.name ?? '—'}{entry.lines?.length ? <p>{entry.lines.map((line) => line.name).join(', ')}</p> : null}</td>
                           <td>{entry.location?.name ?? 'Не указана'}{entry.locationIsInferred ? <p className="field-hint">Приблизительно, по системе метро</p> : null}</td>
 
                         {canManageCatalogs ? (
@@ -607,7 +605,7 @@ function MetroDictionaryPage() {
                   </tbody>
                 </table>
               </TableScrollArea>
-              <div className="property-mobile-list">
+              <div className="property-mobile-list location-metro-cards">
                 {results.map((entry) => (
                   <article
                     className="property-mobile-card catalog-mobile-card"
@@ -616,19 +614,17 @@ function MetroDictionaryPage() {
                     <div className="property-mobile-card__heading">
                       <div>
                         <span>{configuration.title}</span>
-                        <h2>{entry.name}</h2>
+                        <h2>{entry.lineColor ? <MetroLineLabel name={entry.name} color={entry.lineColor} /> : entry.name}</h2>
                       </div>
 
                     </div>
                     <dl>
                       <div><dt>Система / линии</dt><dd>{entry.system?.name ?? '—'} {entry.lines?.map((line) => line.name).join(', ')}</dd></div>
                       <div><dt>Территория</dt><dd>{entry.location?.name ?? 'Не указана'}{entry.locationIsInferred ? ' (приблизительно)' : ''}</dd></div>
-                      {entry.code ? <div><dt>Код</dt><dd>{entry.code}</dd></div> : null}
-                      {entry.city ? <div><dt>Город</dt><dd>{entry.city.name}</dd></div> : null}
                       {entry.metroLine ? (
                         <div>
                           <dt>Линия</dt>
-                          <dd><MetroLineLabel entry={entry} /></dd>
+                          <dd><MetroLineLabel name={entry.metroLine.name} color={entry.metroLine.color} /></dd>
                         </div>
                       ) : null}
                     </dl>

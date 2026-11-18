@@ -14,8 +14,8 @@ for (const role of ['owner', 'moderator']) {
   }, async (context) => {
     const { page } = await createAuthenticatedPage(context, role, { width: 1280, height: 900 })
     await page.goto(new URL('/app/locations/regions', isolatedBaseUrl).href)
-    await page.getByRole('heading', { name: 'Локации', exact: true }).waitFor()
-    assert.equal(await page.getByRole('button', { name: 'Импортировать из API' }).count(), 0)
+    await page.getByRole('heading', { name: 'Регионы', exact: true }).waitFor()
+    assert.equal(await page.getByRole('button', { name: 'Обновить данные' }).count(), 0)
     const response = await page.context().request.post(
       new URL('/api/v1/location-dictionaries/regions/import/', isolatedBaseUrl).href,
       { data: {}, headers: { 'X-CSRFToken': await getCsrfToken(page.context()) } },
@@ -29,9 +29,10 @@ test('administrator sees accessible import controls on desktop and phone', {
 }, async (context) => {
   const { page } = await createAuthenticatedPage(context, 'administrator', { width: 1280, height: 1000 })
   await page.goto(new URL('/app/locations/cities', isolatedBaseUrl).href)
-  const button = page.getByRole('button', { name: 'Импортировать из API' })
+  const button = page.getByRole('button', { name: 'Обновить данные' })
   await button.waitFor()
-  assert.equal(await button.isDisabled(), true)
+  assert.equal(await button.isEnabled(), true)
+  assert.equal(await button.count(), 1)
   await page.goto(new URL('/app/locations/regions', isolatedBaseUrl).href)
   await button.waitFor()
   assert.equal(await button.isEnabled(), true)
@@ -44,9 +45,13 @@ test('administrator sees accessible import controls on desktop and phone', {
       await page.screenshot({ path: `${process.env.BROWSER_TEST_SCREENSHOTS}/location-import-controls-${width}.png`, fullPage: true })
     }
   }
+  await page.goto(new URL('/app/locations/metro', isolatedBaseUrl).href)
+  await button.waitFor()
+  assert.equal(await button.count(), 1)
+  assert.equal(await button.isDisabled(), true)
 })
 
-test('administrator imports Russian regions, city districts and metro without duplicates', {
+test('legacy import API still updates regions, city districts and metro without duplicates', {
   skip: isolatedWritesEnabled && process.env.BROWSER_TEST_LOCATION_LIVE === '1'
     ? false : 'requires isolated stack and BROWSER_TEST_LOCATION_LIVE=1',
   timeout: 900000,
@@ -55,28 +60,20 @@ test('administrator imports Russian regions, city districts and metro without du
   const cityName = process.env.BROWSER_TEST_LOCATION_CITY || 'Санкт-Петербург'
   const regionName = process.env.BROWSER_TEST_LOCATION_REGION || cityName
   const results = []
+  const request = page.context().request
+  const headers = { 'X-CSRFToken': await getCsrfToken(page.context()) }
   async function importDictionary(key, parents = {}) {
-    const parameters = new URLSearchParams(parents)
-    await page.goto(new URL(`/app/locations/${key}?${parameters}`, isolatedBaseUrl).href)
-    const button = page.getByRole('button', { name: 'Импортировать из API' })
-    await button.waitFor()
-    assert.equal(await button.isEnabled(), true)
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      const responsePromise = page.waitForResponse((response) => (
-        response.request().method() === 'POST'
-        && new URL(response.url()).pathname === `/api/v1/location-dictionaries/${key}/import/`
-      ), { timeout: 60000 })
-      await button.click()
-      const response = await responsePromise
+      const response = await request.post(new URL(`/api/v1/location-dictionaries/${key}/import/`, isolatedBaseUrl).href, {
+        headers, data: parents, timeout: 60000,
+      })
       const result = await response.json()
       console.log(JSON.stringify({ locationImport: key, attempt: attempt + 1, result }))
       if (response.status() === 200) {
         results.push({ dictionary: key, ...result })
-        await page.getByRole('status').filter({ hasText: 'Импорт завершён' }).waitFor()
         return result
       }
       assert.equal(response.status(), 502, JSON.stringify(result))
-      await page.getByRole('alert').waitFor()
       if (attempt === 2) assert.fail(`Live source unavailable: ${JSON.stringify(result)}`)
       await new Promise((resolve) => setTimeout(resolve, 3000))
     }
@@ -119,6 +116,7 @@ test('administrator imports Russian regions, city districts and metro without du
     `/api/v1/location-dictionaries/metro/?cityId=${city.id}&pageSize=100`, isolatedBaseUrl,
   ).href)
   assert.equal((await stationTable.json()).totalCount, metroAgain.unchanged)
+  await page.goto(new URL('/app/locations/metro', isolatedBaseUrl).href)
   if (process.env.BROWSER_TEST_SCREENSHOTS) {
     await page.screenshot({ path: `${process.env.BROWSER_TEST_SCREENSHOTS}/location-import-desktop.png`, fullPage: true })
   }

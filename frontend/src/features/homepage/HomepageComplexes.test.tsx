@@ -8,21 +8,22 @@ import { createTestQueryClient, renderWithProviders } from '@/test/render'
 
 import { HomepageComplexes } from './HomepageComplexes'
 
-vi.mock('./ComplexMap', () => ({ default: ({ city }: { city: string }) => <div role="region" aria-label={`Карта ЖК: ${city}`} /> }))
+vi.mock('./ComplexMap', () => ({ default: ({ territoryLabel }: { territoryLabel: string }) => <div role="region" aria-label={`Карта ЖК: ${territoryLabel}`} /> }))
 
 const complex: HomepageComplex = {
   id: 1, name: 'ЖК Петербург', developer: { id: 2, name: 'Застройщик', label: 'Застройщик (Группа)' },
   city: 'Санкт-Петербург', district: 'Приморский', realEstateClass: 'Комфорт', realEstateType: 'Квартира',
   description: 'Описание локации', photoUrl: '/media/complex.jpg', mapUrl: 'https://yandex.ru/maps/?ll=30.3,59.9',
   presentationUrl: null, isActive: true, buildingCount: 2,
+  locationLabel: 'Приморский',
 }
-const firstPage = { selectedCity: { id: 7, name: 'Санкт-Петербург' }, page: 1, pageSize: 50, totalCount: 2, totalPages: 2, results: [complex] }
+const firstPage = { territoryLabel: 'Санкт-Петербург', page: 1, pageSize: 50, totalCount: 2, totalPages: 2, results: [complex] }
 
 function Address() { return <output aria-label="Адрес">{useLocation().search}</output> }
 
 function renderComplexes() {
   const queryClient = createTestQueryClient()
-  queryClient.setQueryData(['homepage-complexes', '7', ''], { pages: [firstPage], pageParams: [1] })
+  queryClient.setQueryData(['homepage-complexes', 'city=7'], { pages: [firstPage], pageParams: [1] })
   return renderWithProviders(<><HomepageComplexes /><Address /></>, { queryClient, initialRoute: '/?city=7' })
 }
 
@@ -31,7 +32,8 @@ describe('HomepageComplexes', () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn().mockImplementation(async (path: string) => Response.json(path.includes('/catalog-options/')
       ? { results: [{ id: 7, label: 'Санкт-Петербург' }], selected: [], page: 1, nextPage: null, totalCount: 1 }
-      : { ...firstPage, page: 2, results: [{ ...complex, id: 3, name: 'Второй ЖК' }] }))
+      : path.includes('legacyCityId') ? { results: [], totalCount: 0, nextPage: null }
+        : { ...firstPage, page: 2, results: [{ ...complex, id: 3, name: 'Второй ЖК' }] }))
     vi.stubGlobal('fetch', fetchMock)
     renderComplexes()
     expect(screen.getByRole('img', { name: 'ЖК Петербург' })).toHaveAttribute('src', '/media/complex.jpg')
@@ -48,8 +50,9 @@ describe('HomepageComplexes', () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn().mockImplementation(async (path: string) => new Response(JSON.stringify(path.includes('/catalog-options/') ? {
       results: [{ id: 8, label: 'Москва' }], selected: [{ id: 7, label: 'Санкт-Петербург' }], page: 1, nextPage: null, totalCount: 1,
-    } : { ...firstPage, selectedCity: { id: 8, name: 'Москва' }, totalCount: 1, totalPages: 1,
-      results: [{ ...complex, id: 8, name: 'ЖК Москва', city: 'Москва' }],
+    } : path.includes('legacyCityId') ? { results: [], totalCount: 0, nextPage: null }
+      : { ...firstPage, territoryLabel: 'Москва', totalCount: 1, totalPages: 1,
+      results: [{ ...complex, id: 8, name: 'ЖК Москва', city: 'Москва', locationLabel: 'Москва' }],
     }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     vi.stubGlobal('fetch', fetchMock)
     renderComplexes()

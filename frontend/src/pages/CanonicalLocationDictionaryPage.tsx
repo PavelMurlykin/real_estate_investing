@@ -8,9 +8,10 @@ import { locationCatalogEntrySchema, locationCatalogPageSchema, locationCatalogT
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { useTableSearchParams } from '@/shared/lib/useTableSearchParams'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
-import { ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
+import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState'
 import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { ModalDialog } from '@/shared/ui/ModalDialog'
+import { Notice } from '@/shared/ui/Notice'
 import { Pagination } from '@/shared/ui/Pagination'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { ResetFilters } from '@/shared/ui/ResetFilters'
@@ -18,7 +19,7 @@ import { SearchableSelect } from '@/shared/ui/SearchableSelect'
 import { SectionNavigation } from '@/shared/ui/SectionNavigation'
 import { SelectFilter } from '@/shared/ui/SelectFilter'
 import { TableScrollArea } from '@/shared/ui/TableScrollArea'
-import { NationalLocationImportPanel } from './NationalLocationImportPanel'
+import { NationalLocationUpdateAction } from './NationalLocationUpdateAction'
 
 function errorText(error: unknown) {
   if (error instanceof ApiError && error.details && typeof error.details === 'object') {
@@ -48,21 +49,27 @@ function LocationEditor({ dictionaryKey, entry, types, onSaved }: {
   const choices = types.map((type) => ({ value: String(type.id), label: type.name }))
   if (entry && !choices.some((choice) => choice.value === String(entry.typeId))) choices.push({ value: String(entry.typeId), label: entry.type })
   const submit = (event: FormEvent) => { event.preventDefault(); if (!save.isPending) save.mutate() }
-  return <aside className="panel" aria-label={entry ? 'Редактирование записи' : 'Добавление записи'}>
-    <h2>{entry ? 'Редактирование записи' : 'Добавление записи'}</h2>
-    <form className="form-stack" onSubmit={submit}>
+  return <aside className="dictionary-form-card" aria-labelledby="location-form-title">
+    <h2 id="location-form-title">{entry ? 'Редактирование записи' : 'Добавление записи'}</h2>
+    <form onSubmit={submit}>
       <label className="form-field"><span>Название *</span><input required maxLength={255} value={name} onChange={(event) => setName(event.target.value)} /></label>
       <SearchableSelect label="Тип *" value={typeId} options={choices} onChange={setTypeId} />
       {dictionaryKey !== 'regions' ? <>
         <RemoteSelect dictionary="locations" label="Регион родителя" value={regionId} filters={{ category: 'region' }}
           onChange={(value) => { setRegionId(value); setParentId('') }} />
-        <RemoteSelect dictionary="locations" label="Родительская территория *" value={parentId} filters={{ regionId }} onChange={setParentId} />
+        <RemoteSelect dictionary="locations" label="Родительская территория" value={parentId}
+          filters={{ regionId }} onChange={setParentId} required />
       </> : null}
-      <label><input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} /> Активно</label>
-      {entry?.identifiers?.length ? <p className="text-muted">Идентификаторы источника сохраняются. Повторный импорт может обновить официальное название и иерархию.</p> : null}
-      {save.isError ? <p role="alert">{errorText(save.error)}</p> : null}
-      <div className="page-header__actions"><button className="button button--primary" disabled={save.isPending} type="submit">{save.isPending ? 'Сохранение…' : 'Сохранить'}</button>
-        {entry ? <button type="button" className="button button--secondary" onClick={onSaved}>Отмена</button> : null}</div>
+      <label className="developer-active-field">
+        <input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} />
+        <span>Запись активна</span>
+      </label>
+      {entry?.identifiers?.length ? <p className="field-hint">Повторный импорт может обновить официальное название и иерархию.</p> : null}
+      {save.isError ? <Notice tone="error" className="form-error">{errorText(save.error)}</Notice> : null}
+      <div className="dictionary-form-actions">
+        <button className="button button--primary" disabled={save.isPending} type="submit">{save.isPending ? 'Сохраняем…' : 'Сохранить'}</button>
+        {entry ? <button type="button" className="button button--secondary" disabled={save.isPending} onClick={onSaved}>Отмена</button> : null}
+      </div>
     </form>
   </aside>
 }
@@ -96,12 +103,14 @@ export function CanonicalLocationDictionaryPage({ dictionaryKey }: { dictionaryK
   const manage = session.data?.capabilities.manageCatalogs === true
   const region = parameters.get('regionId') ?? ''
   return <div className="page-stack location-dictionary-page">
-    <header className="page-header"><div><span className="eyebrow">Справочники</span><h1>{title}</h1>
+    <header className="page-header"><div><h1>{title}</h1>
       <p>{dictionaryKey === 'localities' ? 'Все города, посёлки, сёла и деревни России.' : dictionaryKey === 'districts' ? 'Административные районы; муниципальные образования ведутся отдельно.' : 'Регионы России.'}</p></div></header>
     <SectionNavigation label="Справочники локаций" items={locationNavigation} />
-    {session.data?.capabilities.syncExternalData ? <NationalLocationImportPanel /> : null}
-    <section className="filter-panel field-grid" aria-label="Фильтры локаций">
-      <LiveFilterInput label="Поиск" parameter="q" placeholder="Название или прежнее название" />
+    {session.data?.capabilities.syncExternalData ? <NationalLocationUpdateAction /> : null}
+    <section className="filter-panel location-filter-panel" aria-label={`Фильтры: ${title}`}>
+      <form className="search-form" role="search" onSubmit={(event) => event.preventDefault()}>
+        <LiveFilterInput label="Поиск" parameter="q" placeholder="Название или прежнее название" />
+      </form>
       {dictionaryKey !== 'regions' ? <RemoteSelect filter dictionary="locations" label="Регион" value={region} filters={{ category: 'region' }}
         onChange={(value) => updateParameters((next) => { if (value) next.set('regionId', value); else next.delete('regionId'); next.delete('ancestorId'); next.delete('page') })} /> : null}
       {dictionaryKey === 'localities' ? <RemoteSelect filter dictionary="locations" label="Административный район" value={parameters.get('ancestorId') ?? ''}
@@ -112,16 +121,20 @@ export function CanonicalLocationDictionaryPage({ dictionaryKey }: { dictionaryK
       <ResetFilters />
     </section>
     {query.isLoading ? <PageLoadingState /> : query.isError || !query.data ? <ErrorState onRetry={() => query.refetch()} /> : <>
-      <p role="status">Найдено: {query.data.totalCount}</p>
-      <TableScrollArea label={title}><table aria-label={title}><thead><tr><th>Название</th><th>Тип</th><th>Родительская территория</th><th>Регион</th><th>Статус</th>{manage ? <th>Действия</th> : null}</tr></thead>
+      <div className="results-heading" aria-live="polite"><p>Найдено: <strong>{query.data.totalCount}</strong></p></div>
+      <div className={manage ? 'dictionary-workspace' : 'dictionary-workspace dictionary-workspace--public'}>
+      <section aria-label={title}>
+      {query.data.results.length ? <TableScrollArea className="table-card property-table-wrapper" label={title}><table className="property-table catalog-table" aria-label={title}><thead><tr><th>Название</th><th>Тип</th><th>Родительская территория</th><th>Регион</th><th>Статус</th>{manage ? <th>Действия</th> : null}</tr></thead>
         <tbody>{query.data.results.map((row) => <tr key={row.id}><td>{row.name}{row.needsReview ? ' · требуется сверка' : ''}</td><td>{row.type}</td><td>{row.parent ?? '—'}</td><td>{row.region ?? '—'}</td><td>{row.isActive ? 'Активно' : 'Неактивно'}</td>
           {manage ? <td><div className="table-actions"><Link className="text-link" to={`/locations/${row.category === 'region' ? 'regions' : dictionaryKey}?editLocationId=${row.id}`}>Изменить: {row.name}</Link>
             <button className="button button--secondary" type="button" onClick={() => { remove.reset(); setDeleting(row) }}>Удалить: {row.name}</button></div></td> : null}</tr>)}</tbody></table></TableScrollArea>
-      {!query.data.results.length ? <p>По выбранным условиям ничего не найдено.</p> : null}
+      : <EmptyState title="Записей не найдено" description="Измените фильтры или добавьте первую запись." />}
       <Pagination label="Страницы локаций" page={query.data.page} totalPages={query.data.totalPages} onPageChange={(page) => updateParameters((next) => next.set('page', String(page)))} />
+      </section>
       {manage ? (editId && detail.isLoading ? <PageLoadingState /> : editId && (detail.isError || !detail.data) ? <ErrorState onRetry={() => detail.refetch()} />
         : <LocationEditor key={editId ? detail.data?.id : `new-${dictionaryKey}`} dictionaryKey={editId && detail.data?.category === 'region' ? 'regions' : dictionaryKey}
           entry={editId ? detail.data ?? null : null} types={query.data.types} onSaved={closeEditor} />) : null}
+      </div>
     </>}
     {deleting ? <ModalDialog label="Удалить локацию?" pending={remove.isPending} onClose={() => setDeleting(null)}>
       <h2>Удалить локацию?</h2><p>{deleting.name}. Связанные и импортированные записи защищены от удаления.</p>

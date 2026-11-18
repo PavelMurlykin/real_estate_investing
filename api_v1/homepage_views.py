@@ -4,7 +4,8 @@ from rest_framework import serializers
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
 
-from location.models import City
+from location.models import City, Location
+from property.location_context import geography_prefetch
 from property.models import RealEstateComplex
 from property.location_filters import apply_location_scopes, selected_scopes
 from .location_parameters import LocationScopeQuerySerializer
@@ -22,6 +23,7 @@ class HomepageQuerySerializer(LocationScopeQuerySerializer):
     page = serializers.IntegerField(required=False, min_value=1)
     pageSize = serializers.IntegerField(required=False, min_value=1, max_value=100)
     allLocations = serializers.BooleanField(default=False)
+    canonicalLocations = serializers.BooleanField(default=False)
 
 
 class HomepageComplexSerializer(RealEstateComplexListItemSerializer):
@@ -58,6 +60,15 @@ class HomepageComplexSerializer(RealEstateComplexListItemSerializer):
         """Return the validated optional presentation link."""
         return _validate_external_url(complex_object.presentation_link)
 
+    def to_representation(self, instance):
+        """Include precise place names for geocoding in the canonical map."""
+        payload = super().to_representation(instance)
+        if self.context['view'].canonical_locations:
+            geography = instance.geography
+            components = (geography.city, geography.district, geography.region)
+            payload['locationLabel'] = ', '.join(dict.fromkeys(filter(None, components)))
+        return payload
+
 
 class HomepageComplexListAPIView(ListAPIView):
     """Restore active complexes in the selected city with bounded pagination."""
@@ -71,17 +82,38 @@ class HomepageComplexListAPIView(ListAPIView):
         serializer = HomepageQuerySerializer(data=self.request.query_params)
         serializer.is_valid(raise_exception=True)
         self.location_scopes = serializer.validated_data
-        if selected_scopes(self.location_scopes) or self.location_scopes['allLocations']:
-            self.selected_city = None
-            return apply_location_scopes(RealEstateComplex.objects.filter(is_active=True).select_related(
+        self.canonical_locations = self.location_scopes['canonicalLocations']
+        self.selected_city = None
+        self.territory_label = None
+        identifier = serializer.validated_data.get('city', '')
+        city_id = int(identifier) if identifier.isdecimal() else None
+        if city_id and city_id > 9223372036854775807:
+            city_id = None
+        scopes = selected_scopes(self.location_scopes)
+        if self.canonical_locations:
+            if scopes:
+                most_specific = next((self.location_scopes[field] for field in (
+                    'localityId', 'districtLocationId', 'regionLocationId', 'locationId',
+                ) if self.location_scopes.get(field)))
+                self.territory_label = Location.objects.filter(pk=most_specific).values_list('name', flat=True).first()
+            elif city_id:
+                mapped = Location.objects.filter(
+                    legacy_mappings__model_name='city', legacy_mappings__legacy_id=city_id,
+                    is_active=True,
+                ).values_list('pk', 'name').first()
+                if mapped:
+                    self.location_scopes['localityId'], self.territory_label = mapped
+                    scopes = [mapped[0]]
+        if scopes or self.location_scopes['allLocations']:
+            complexes = RealEstateComplex.objects.filter(is_active=True).select_related(
                 'developer__company_group', 'district__city__region',
                 'real_estate_class', 'real_estate_type',
-            ).annotate(building_count=Count('realestatecomplexbuilding', distinct=True)), self.location_scopes).order_by('name', 'pk')
-        identifier = serializer.validated_data.get('city', '')
+            ).annotate(building_count=Count('realestatecomplexbuilding', distinct=True)).order_by('name', 'pk')
+            if self.canonical_locations:
+                complexes = complexes.prefetch_related(geography_prefetch())
+            return apply_location_scopes(complexes, self.location_scopes)
         cities = City.objects.filter(is_active=True).order_by('name', 'pk')
-        selected = None
-        if identifier.isdecimal() and 0 < int(identifier) <= 9223372036854775807:
-            selected = cities.filter(pk=int(identifier)).first()
+        selected = cities.filter(pk=city_id).first() if city_id else None
         self.selected_city = selected or (
             cities.filter(name='Санкт-Петербург').first() or cities.first()
         )
@@ -107,4 +139,8 @@ class HomepageComplexListAPIView(ListAPIView):
             {'id': self.selected_city.pk, 'name': self.selected_city.name}
             if self.selected_city else None
         )
+        if self.canonical_locations:
+            response.data['territoryLabel'] = self.territory_label or (
+                self.selected_city.name if self.selected_city else None
+            )
         return response

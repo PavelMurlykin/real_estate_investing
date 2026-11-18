@@ -13,24 +13,34 @@ test('location filters are live and import errors leave controls reusable after 
   const filters = page.getByRole('region', { name: 'Фильтры: Административные районы' })
   await filters.waitFor()
   assert.equal(await filters.getByRole('button', { name: 'Найти', exact: true }).count(), 0)
-  for (const name of ['Регион', 'Город']) {
-    const bounds = await filters.getByRole('combobox', { name, exact: true }).boundingBox()
-    assert.ok(bounds.width >= 350, `${name}: ${bounds.width}`)
-  }
+  const bounds = await filters.getByRole('combobox', { name: 'Регион', exact: true }).boundingBox()
+  assert.ok(bounds.width >= 350)
   await filters.getByLabel('Поиск', { exact: true }).fill('Тверской')
   await page.waitForURL((url) => url.searchParams.get('q') === 'Тверской')
   await page.goto(new URL('/app/locations/regions', isolatedBaseUrl).href)
-  const importButton = page.getByRole('button', { name: 'Импортировать из API', exact: true })
-  await page.route('**/api/v1/location-dictionaries/regions/import/', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"created":"invalid"}' })
-  }, { times: 1 })
+  const importButton = page.getByRole('button', { name: 'Обновить данные', exact: true })
+  let tries = 0
+  await page.route('**/api/v1/location-imports/', async (route) => {
+    if (route.request().method() !== 'POST') return route.continue()
+    assert.deepEqual(route.request().postDataJSON(), {})
+    tries += 1
+    await route.fulfill({ json: tries === 1 ? { bad: true } : { job: {
+      id: '382079fb-2acf-48e1-a8ba-47d49a468d55', status: 'completed', phase: 'completed',
+      processedCities: 2, totalCities: 2, currentCity: '', counts: {}, coverage: {},
+      errorMessage: '', updatedAt: '2026-11-18T10:00:00Z',
+    } } })
+  })
   await importButton.click()
   await page.getByRole('alert').filter({ hasText: 'Сервер вернул данные в неожиданном формате.' }).waitFor()
   assert.equal(await importButton.isEnabled(), true)
   await page.reload()
   await importButton.waitFor()
   assert.equal(await importButton.isEnabled(), true)
-  assert.equal(await page.getByRole('button', { name: 'Импортировать все населённые пункты России' }).isEnabled(), true)
+  assert.equal(await importButton.count(), 1)
+  await importButton.click()
+  await page.getByRole('status').filter({ hasText: 'Справочники обновлены' }).waitFor()
+  assert.equal(await importButton.isEnabled(), true)
+  assert.equal(tries, 2)
 })
 
 test('national import starts with no selected parents and survives a browser reload', {
@@ -38,7 +48,8 @@ test('national import starts with no selected parents and survives a browser rel
 }, async (context) => {
   const { page } = await createAuthenticatedPage(context, 'administrator', { width: 1280, height: 1000 })
   await page.goto(new URL('/app/locations/cities', isolatedBaseUrl).href)
-  await page.getByRole('button', { name: 'Импортировать все населённые пункты России' }).click()
+  const button = page.getByRole('button', { name: 'Обновить данные' })
+  await button.click()
   const endpoint = new URL('/api/v1/location-imports/', isolatedBaseUrl).href
   let job
   for (let attempt = 0; attempt < 80; attempt += 1) {
@@ -55,8 +66,8 @@ test('national import starts with no selected parents and survives a browser rel
   assert.equal(again.status(), 202)
   assert.equal((await again.json()).job.id, job.id)
   await page.reload()
-  await page.getByRole('progressbar', { name: 'Прогресс общего импорта' }).waitFor()
-  assert.equal(await page.getByRole('button', { name: 'Общий импорт выполняется…' }).isDisabled(), true)
+  await page.locator('.location-update button[aria-busy="true"]').waitFor()
+  assert.equal(await button.isDisabled(), true)
   const cities = await page.context().request.get(new URL('/api/v1/locations/?category=locality&pageSize=100', isolatedBaseUrl).href)
   assert.ok((await cities.json()).totalCount >= 1000)
   for (const width of [1280, 360]) {

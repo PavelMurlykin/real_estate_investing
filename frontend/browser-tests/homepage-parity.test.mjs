@@ -1,4 +1,3 @@
-import { chooseDictionary } from './dictionary-helpers.mjs'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
@@ -39,27 +38,28 @@ for (const width of [360, 1280]) {
     const response = await page.request.get(new URL('/api/v1/homepage/complexes/', baseUrl).href)
     const data = await response.json()
     assert.ok(data.selectedCity && data.results.length, 'Acceptance fixture must contain an active city and complex')
-    await page.goto(new URL('/app/', baseUrl).href)
-    const section = page.getByRole('region', { name: 'Жилые комплексы по городам' })
-    const complex = data.results[0]
+    await page.goto(new URL(`/app/?city=${data.selectedCity.id}`, baseUrl).href)
+    const section = page.getByRole('region', { name: 'Жилые комплексы по территориям' })
+    const scope = new URLSearchParams({ city: String(data.selectedCity.id), canonicalLocations: 'true' })
+    const canonical = await page.request.get(new URL(`/api/v1/homepage/complexes/?${scope}`, baseUrl).href).then((reply) => reply.json())
+    const complex = canonical.results[0]
     await section.getByRole('heading', { name: complex.name, exact: true }).waitFor()
-    assert.equal(await section.getByLabel('Город на главной', { exact: true }).inputValue(), data.selectedCity.name)
     assert.equal(await section.getByRole('link', { name: 'Подробнее о ЖК', exact: true }).first().getAttribute('href'), `/app/complexes/${complex.id}`)
     assert.equal(await section.getByRole('link', { name: 'Объекты ЖК', exact: true }).first().getAttribute('href'), `/app/properties?realEstateComplex=${complex.id}`)
     assert.equal(sdkRequests, 0, 'List view should not download the map SDK')
     await section.getByRole('button', { name: 'На карте', exact: true }).click()
-    const map = section.getByRole('region', { name: `Карта ЖК: ${data.selectedCity.name}` })
+    const map = section.getByRole('region', { name: `Карта ЖК: ${canonical.territoryLabel}` })
     await map.getByText('Карта загружена', { exact: true }).waitFor()
     await page.waitForFunction(() => window.__homepageMaps?.markers > 0)
     assert.equal(sdkRequests, 1)
-    await chooseDictionary(page, 'Город на главной', data.selectedCity.name)
-    await page.waitForURL((url) => url.searchParams.get('city') === String(data.selectedCity.id) && url.searchParams.get('view') === 'map')
-    await section.getByRole('heading', { name: complex.name, exact: true }).waitFor()
+    const address = new URL(page.url())
+    assert.ok(address.searchParams.has('localityId') || address.searchParams.has('city'))
+    assert.equal(address.searchParams.get('view'), 'map')
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
     await screenshot(page, `homepage-map-${width}.png`)
     await section.getByRole('button', { name: 'Списком', exact: true }).click()
     await section.getByRole('region', { name: /^Карта ЖК:/ }).waitFor({ state: 'detached' })
-    assert.equal(new URL(page.url()).searchParams.get('city'), String(data.selectedCity.id))
+    assert.ok(new URL(page.url()).searchParams.has('localityId') || new URL(page.url()).searchParams.has('city'))
     assert.equal(await section.getByRole('region', { name: /^Карта ЖК:/ }).count(), 0)
   })
 }
@@ -72,7 +72,7 @@ test('homepage retains complex cards and retries after map provider failure', as
     else await route.fulfill({ contentType: 'application/javascript', body: mapScript })
   })
   await page.goto(new URL('/app/?view=map', baseUrl).href)
-  const section = page.getByRole('region', { name: 'Жилые комплексы по городам' })
+  const section = page.getByRole('region', { name: 'Жилые комплексы по территориям' })
   await section.getByText('Карта временно недоступна. Список ЖК и прямые ссылки доступны ниже.', { exact: true }).waitFor()
   assert.ok(await section.getByRole('link', { name: 'Подробнее о ЖК', exact: true }).count())
   unavailable = false

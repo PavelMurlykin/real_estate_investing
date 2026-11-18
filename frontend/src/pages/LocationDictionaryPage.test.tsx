@@ -110,12 +110,13 @@ describe('LocationDictionaryPage', () => {
       ...managerSession,
       capabilities: { ...managerSession.capabilities, syncExternalData: true },
     })
-    expect(screen.getByRole('button', { name: 'Импортировать из API' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Обновить данные' })).toBeDisabled()
+    expect(screen.queryByText('Москва', { exact: true })).not.toBeInTheDocument()
   })
 
   it('hides external import from catalog moderators', () => {
     renderLocationPage('metro', metroEntry, managerSession)
-    expect(screen.queryByRole('button', { name: 'Импортировать из API' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Обновить данные' })).not.toBeInTheDocument()
   })
   it('renders the public metro hierarchy and all location tabs', () => {
     const queryClient = createTestQueryClient()

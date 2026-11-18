@@ -24,11 +24,11 @@ In the React Developers section, “Регионы” and the “Регион”
 
 ### Importing Russian locations
 
-On the Regions, Localities and Administrative districts pages, application administrators (`application_administrators`) and superusers can run the national import. On Metro, they can use “Импортировать из API”. Regular users, staff with only `is_staff`, and moderators cannot import. Moderators retain manual dictionary editing rights. The server enforces these restrictions; writes require a session and CSRF protection.
+On Regions, Localities, Administrative districts and Metro, application administrators (`application_administrators`) and superusers see “Обновить данные” (Update data). Regular users, staff with only `is_staff`, and moderators cannot import. Moderators retain manual dictionary editing rights. The server checks permissions, the session and CSRF protection.
 
-“Импортировать все населённые пункты России” starts a background import of the official FNS GAR: subjects, administrative districts and all current cities, towns, settlements and villages. The free metadata API is `https://fias.nalog.ru/WebServices/Public/GetLastDownloadFileInfo`; no key or registration is required. One source version is pinned per run. HTTPS ZIP ranges retrieve only address objects and administrative hierarchy, without importing houses, apartments or streets. Section 99 (Baikonur outside Russia) is excluded. Filters do not restrict the run. Initial download may take tens of minutes; the interface shows processed regional sections and localities.
+On any of the three geographic tabs, “Обновить данные” starts one background import of regions, administrative districts and all current cities, towns, settlements and villages from the official FNS GAR. The free metadata API `https://fias.nalog.ru/WebServices/Public/GetLastDownloadFileInfo` requires no key or registration. One source version is pinned per run. HTTPS ZIP ranges retrieve address objects and administrative hierarchy. Section 99 (Baikonur outside Russia) is excluded. Filters do not restrict the run. The initial download can take tens of minutes. The button is disabled while the job runs and the summary appears after completion.
 
-Closing the tab or reloading does not interrupt the import. Repeated clicks reuse an active job. After failure, “Продолжить импорт России” resumes after the last completely committed region of the same version. A checksum failure or incomplete hierarchy rejects the entire current region. A restarted worker resumes unfinished jobs. After completion the button starts a fresh update; repeating the same version uses verified cached extracts and creates no duplicates. Retired objects are retained as inactive; manual deactivation is preserved. Historic regional sections without current objects do not create empty subjects.
+Closing the tab or reloading does not interrupt the import. Repeated clicks reuse an active job. After failure, “Обновить данные” resumes after the last completely committed region of the same version. A checksum failure or incomplete hierarchy rejects the entire current region. A restarted worker resumes unfinished jobs. After completion the button starts a fresh update. Repeating the same version uses verified cached extracts and creates no duplicates. Retired objects are retained as inactive and manual deactivation is preserved. Historic regional sections without current objects do not create empty subjects.
 
 The full locality catalog is at `/app/locations/localities`: search matches names and aliases, with region, administrative district, type and activity filters. Homonyms remain distinct by type, parent territory, region and FIAS identifier. Pushkin is imported as a city in Pushkinsky District and Strelna as a settlement in Petrodvortsovy District of Saint Petersburg.
 
@@ -44,7 +44,7 @@ Search updates results while typing; a separate “Найти” button is unnec
 
 Use the national GAR import to refresh canonical regions, localities and administrative districts. Selected-parent imports remain in the old API for compatibility and do not replace loading the new catalog.
 
-On Metro, select a system and click “Импортировать из API”. No legacy region or city is required. The network center must have a confirmed FIAS identifier. Lines and stations are loaded together. Existing manual and imported entries retain their IDs; precise station geography, all line memberships, active states and complex links are preserved.
+On Metro, select a system and click “Обновить данные”. The network center must have a confirmed FIAS identifier. Lines and stations are loaded together. Existing entries retain their IDs, precise geography, line memberships, active states and complex links. The lines list shows a color swatch beside each name. To pick a color, use “Цвет линии” in the editor. A station card shows the station's locality.
 
 Free sources for legacy selected-parent dictionaries and metro, without API keys or registration: [HFLabs/city](https://github.com/hflabs/city) (CSV over HTTPS, Russian regions and cities, CC BY-SA 4.0), [Wikidata API](https://www.wikidata.org/wiki/Wikidata:Data_access) (urban districts, lines and operating regional metro stations, CC0), and [Wikipedia API](https://ru.wikipedia.org/w/api.php) (open JSON metro schemes for the two capitals and station catalogs for the other cities, CC BY-SA). Overpass is no longer used. Attribution to [OpenStreetMap, ODbL](https://www.openstreetmap.org/copyright) is retained for older records.
 
@@ -89,6 +89,8 @@ Forms use consistent single-line field and primary button dimensions, typography
 ### Territory dictionaries
 
 The Regions (“Регионы”), Localities (“Населённые пункты”) and Administrative districts (“Административные районы”) pages use the unified location dictionary. The former Cities link also opens localities, including Russian cities, towns, villages and rural settlements. Pushkin belongs to Pushkinsky District and Strelna to Petrodvortsovy District of Saint Petersburg. Municipal entities remain separate from administrative districts.
+
+Location catalog editors appear beside the list on wide screens and above it on phones. To open an existing entry in the editor, select “Изменить” in its row.
 
 Search matches current and former names. Region, administrative district, type and activity filters update results automatically. Sorting and pages of 20 records are available. Enter a name, type and parent territory in the editor; a region has no parent. Parent choices are searched on the server, and the parent-region selector narrows them. Homonyms in different territories are allowed; an identical name and type under the same parent are rejected.
 
@@ -150,9 +152,9 @@ Implementation and verification results are tracked in `.audit/REACT_PARITY_IMPL
 
 ## Homepage and complex map
 
-In “Жилые комплексы по городам”, select an active city; typing in the dictionary search finds it. The default is active Saint Petersburg, or the first active city by name. Cards show active complexes in active districts of that city, with a photo, developer, district, class, type and description. Links open complex details, its properties, and the map or presentation when available.
+In “Жилые комплексы по территориям”, select a region, administrative district or locality. With no filters, active complexes across Russia are listed. Cards show the complex's territory, photo, developer, class, type and description. Links open complex details, its properties, and the map or presentation when available. The “Населённые пункты” statistic in “Портфель платформы” counts active localities in Location, including villages.
 
-“Списком” and “На карте” switch views; the city and view remain in the URL. The first 50 complexes load immediately; “Показать ещё ЖК” loads more. The counter shows total and loaded counts; the map contains loaded complexes. Coordinates come from the map link or are resolved by complex name and city. When the map provider is unavailable or coordinates cannot be found, cards and direct links remain available; use “Повторить загрузку карты” to retry.
+“Списком” and “На карте” switch views. The territory and view stay in the URL, and old city links still open. The first 50 complexes load immediately. Use “Показать ещё ЖК” to load more. The map shows loaded complexes. Coordinates come from the map link or are resolved by complex name and territory. When the map provider is unavailable or coordinates cannot be found, cards and direct links remain available. Use “Повторить загрузку карты” to retry.
 
 ## Bank list
 
