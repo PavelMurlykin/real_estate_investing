@@ -3,9 +3,12 @@
 import json
 from copy import deepcopy
 from decimal import Decimal
+from importlib import import_module
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from django.apps import apps
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -21,6 +24,8 @@ from api_v1.test_real_estate_complexes import create_catalog_manager
 from bank.models import MortgageProgram, MortgageProgramRegionalCreditLimit
 from core.json_import import JsonImportError
 from customer.models import Customer, CustomerCalculation, CustomerTrenchCalculation
+from location.gar_import import load_region
+from location.migration_support import backfill_locations
 from location.models import City, District, Location, LocationAlias, LocationIdentifier, Metro, MetroLine, MetroSystem, Region
 from mortgage.models import MortgageCalculation
 from property.complex_import import import_complex_catalog
@@ -192,6 +197,81 @@ def test_old_file_keeps_confirmed_suburb(import_payload, import_geography, setti
     assert first['created'] == second['created'] == 0
     assert existing.primary_location.name == 'Стрельна'
     assert existing.district_id == import_geography['district'].pk
+
+
+@pytest.mark.django_db
+def test_mys_migration_and_legacy_import_preserve_likino(
+    import_payload, complex_catalog, settings, tmp_path, client,
+):
+    """Refine the retained district link by GAR and preserve it on legacy reimport."""
+    settings.MEDIA_ROOT = tmp_path
+    region = complex_catalog['region']
+    region.name, region.code = 'Московская область', '50'
+    region.save(update_fields=['name', 'code'])
+    city = complex_catalog['city']
+    city.name = 'Одинцово'
+    city.save(update_fields=['name'])
+    district = complex_catalog['district']
+    district.name = 'Одинцовский городской округ'
+    district.save(update_fields=['name'])
+    original = complex_catalog['complex']
+    original.name, original.source_key = 'Мыс', 'ru:complex:mys'
+    original.save(update_fields=['name', 'source_key'])
+    legacy_location = original.location_links.get(is_primary=True).location
+    Location.objects.filter(pk=legacy_location.pk).update(name=district.name)
+    Location.objects.filter(pk=legacy_location.parent_id).update(name=city.name)
+    records = [
+        {
+            'id': '807356', 'guid': '29251dcf-00a1-4e34-98d4-5c47484a36d4',
+            'name': region.name, 'level': '1', 'type': 'обл.', 'typeName': 'Область',
+            'parent': None,
+        },
+        {
+            'id': '862378', 'guid': '6ae8ad9e-aa6c-4849-92d8-8e637059c9b0',
+            'name': city.name, 'level': '2', 'type': 'г.', 'typeName': 'Город',
+            'parent': '807356',
+        },
+        {
+            'id': '868510', 'guid': 'f45a3692-93c0-42d2-807a-80112e346a13',
+            'name': 'Ликино', 'level': '6', 'type': 'д.', 'typeName': 'Деревня',
+            'parent': '862378',
+        },
+    ]
+    load_region(records, '50', '20261113')
+    locality = LocationIdentifier.objects.get(provider='gar', value='868510').location
+    row = import_payload['complexes'][0]
+    row.update(key=original.source_key, name=original.name, region_code=region.code,
+               region=region.name, city=city.name, district=district.name)
+    import_complex_catalog(import_payload)
+    old_link = original.location_links.get(is_primary=True)
+    old_complex = RealEstateComplex.objects.values().get(pk=original.pk)
+    old_building = original.realestatecomplexbuilding_set.values().get()
+    old_metro_id = original.metro_availability.get().pk
+    migration = import_module('property.migrations.0021_refine_mys_location')
+    for _ in range(2):
+        migration.refine_mys_location(apps, SimpleNamespace(connection=connection))
+    old_link.refresh_from_db()
+    assert old_link.is_historical and not old_link.is_primary
+    assert RealEstateComplex.objects.values().get(pk=original.pk) == old_complex
+    assert original.realestatecomplexbuilding_set.values().get() == old_building
+    assert original.location_links.get(is_primary=True).location_id == locality.pk
+    for _ in range(2):
+        result = import_complex_catalog(import_payload)
+        assert result['created'] == result['photos'] == 0
+    assert original.location_links.count() == 2
+    assert original.location_links.get(is_primary=True).location_id == locality.pk
+    assert original.metro_availability.get().pk == old_metro_id
+    detail = client.get(f'/api/v1/complexes/{original.pk}/').json()
+    assert detail['districtId'] == district.pk
+    assert detail['localityId'] == locality.pk
+    assert detail['city'] == 'Ликино'
+
+    unrelated = District.objects.create(name='Другой район', city=city)
+    backfill_locations(apps)
+    row['district'] = unrelated.name
+    with pytest.raises(JsonImportError, match='противоречит'):
+        import_complex_catalog(import_payload)
+    assert original.location_links.get(is_primary=True).location_id == locality.pk
 
 
 @pytest.mark.django_db

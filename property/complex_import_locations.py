@@ -159,6 +159,15 @@ class ImportLocationResolver:
             return territory.primary
         if self.contains(territory.primary, current):
             return current
+        if (
+            territory.primary.needs_review and current.source_status == 'verified'
+            and not current.needs_review and self.contains(territory.locality, current)
+            and existing.location_links.filter(location=territory.primary, is_historical=True).exists()
+            and territory.primary.legacy_mappings.filter(
+                model_name='district', legacy_id=existing.district_id,
+            ).exists()
+        ):
+            return current
         if current.location_type.category != 'district':
             raise JsonImportError('Старый файл противоречит уточнённой территории ЖК. Укажите location в версии 2.')
         return territory.primary
