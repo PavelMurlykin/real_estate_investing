@@ -42,13 +42,15 @@ def test_schema_migration_retains_original_profiles_calculation_links_and_limits
     customer = geographic_customer
     market, trench = create_customer_calculations(client, customer, filtered_catalog['strelna'][3])
     executor = MigrationExecutor(connection)
-    previous = [('customer', '0005_customertrenchcalculation_and_more')]
-    target = [('customer', '0006_customer_desired_district_location_and_more')]
+    previous = [('customer', '0005_customertrenchcalculation_and_more'),
+                ('bank', '0016_delete_mortgage_program_alias')]
+    target = [('customer', '0007_financial_locations'), ('bank', '0017_financial_locations')]
     old_model = executor.loader.project_state(previous).apps.get_model('customer', 'Customer')
     original_fields = [field.attname for field in old_model._meta.concrete_fields]
     snapshot = Customer.objects.filter(pk=customer.pk).values(*original_fields).get()
     old_region = customer.get_desired_region().pk
     old_limit = customer.get_preferential_credit_limit()
+    original_limit = MortgageProgramRegionalCreditLimit.objects.values().get()
     try:
         executor.migrate(previous)
         assert old_model.objects.filter(pk=customer.pk).values(*original_fields).get() == snapshot
@@ -56,6 +58,10 @@ def test_schema_migration_retains_original_profiles_calculation_links_and_limits
         customer.refresh_from_db()
         assert customer.purchase_uses_canonical_locations and customer.residence_uses_canonical_location
         assert customer.desired_financial_region_id == old_region
+        assert customer.desired_financial_region_location_id == filtered_catalog['strelna'][0].region_id
+        migrated_limit = MortgageProgramRegionalCreditLimit.objects.values().get(pk=original_limit['id'])
+        assert migrated_limit.pop('region_location_id') == customer.desired_financial_region_location_id
+        assert migrated_limit == {key: value for key, value in original_limit.items() if key != 'region_location_id'}
         assert customer.get_preferential_credit_limit() == old_limit == Decimal('12000000')
         assert Customer.objects.filter(pk=customer.pk).values(*original_fields).get() == snapshot
         assert CustomerCalculation.objects.filter(customer=customer, calculation_id=market).exists()
@@ -93,6 +99,8 @@ def test_new_localities_and_clearing_preserve_snapshots_and_financial_identity(c
     assert customer.get_preferential_credit_limit() == Decimal('12000000')
     data = client.get(url).json()
     assert data['residenceLocality'] == 'Пушкин' and data['desiredLocality'] == 'Стрельна'
+    assert data['desiredFinancialRegionLocationId'] == strelna.region_id
+    assert data['desiredFinancialRegionId'] == customer.desired_city.region_id
     assert data['calculated']['preferentialCreditLimit'] == '12000000.00'
     response = client.patch(url, {
         'residenceLocalityId': None, 'desiredLocalityId': None,

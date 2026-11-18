@@ -9,10 +9,11 @@ RESIDENCE_FIELDS = ('residence_locality',)
 PURCHASE_FIELDS = ('desired_region_location', 'desired_district_location', 'desired_locality')
 CUSTOMER_LOCATION_FIELDS = RESIDENCE_FIELDS + PURCHASE_FIELDS + (
     'residence_uses_canonical_location', 'purchase_uses_canonical_locations', 'desired_financial_region',
+    'desired_financial_region_location',
 )
 CUSTOMER_LOCATION_RELATED = (
     'residence_locality', 'desired_region_location', 'desired_district_location',
-    'desired_locality', 'desired_financial_region',
+    'desired_locality', 'desired_financial_region', 'desired_financial_region_location',
     'residence_locality__location_type', 'residence_locality__parent', 'residence_locality__region',
     'desired_locality__location_type', 'desired_locality__parent', 'desired_locality__region',
 )
@@ -95,6 +96,7 @@ def prepare_customer_locations(customer, changed_fields, previous=None):
         )
         if not unchanged:
             region = customer.desired_region_location
+            customer.desired_financial_region_location = region
             candidates = list(LegacyLocationMapping.objects.filter(
                 model_name='region', location=region,
             ).values_list('legacy_id', flat=True)) if region else []
@@ -103,8 +105,6 @@ def prepare_customer_locations(customer, changed_fields, previous=None):
                 customer.desired_financial_region = previous_region
             elif len(candidates) == 1:
                 customer.desired_financial_region_id = candidates[0]
-            elif len(candidates) > 1:
-                raise ValidationError({'desired_region_location': 'Регион ипотечных лимитов требует сверки соответствий.'})
             else:
                 customer.desired_financial_region = None
         customer.purchase_uses_canonical_locations = True
@@ -116,6 +116,7 @@ def prepare_customer_locations(customer, changed_fields, previous=None):
         target = customer.desired_locality or customer.desired_district_location
         customer.desired_region_location = _region_of(target) if target else None
         customer.desired_financial_region = customer.desired_city.region if customer.desired_city_id else None
+        customer.desired_financial_region_location = _mapped_territory('region', customer.desired_financial_region_id)
         customer.purchase_uses_canonical_locations = (
             (customer.desired_city_id is None or customer.desired_locality is not None)
             and (customer.desired_district_id is None or customer.desired_district_location is not None)

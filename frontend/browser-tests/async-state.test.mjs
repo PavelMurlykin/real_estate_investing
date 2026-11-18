@@ -11,7 +11,7 @@ for (const width of [360, 1280]) for (const mode of ['market', 'trench']) {
   test(`async mortgage ${mode} options recover by keyboard without losing inputs at ${width}px`, async (context) => {
     const page = await createPage(context, { width, height: 900 })
     let failed = true
-    await page.route('**/api/v1/mortgage/options/', (route) => failed
+    await page.route('**/api/v1/mortgage/options/**', (route) => failed
       ? route.fulfill({ status: 503, json: { detail: 'Временный сбой.' } }) : route.fallback())
     await page.goto(baseUrl + '/app/mortgage' + (mode === 'trench' ? '/trench' : ''))
     const error = page.getByRole('alert', { name: /Программы банков временно недоступны/ })

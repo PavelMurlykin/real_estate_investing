@@ -29,10 +29,10 @@ export function PropertyFields({ value, onChange, errors }: {
         onChange={(regionLocationId) => update({ regionLocationId, regionId: '', districtLocationId: '', localityId: '', cityId: '', districtId: '', realEstateComplexId: '', buildingId: '' })} />
       <RemoteSelect searchable dictionary="locations" label="Населённый пункт" value={value.localityId ?? ''}
         filters={{ category: 'locality', regionId: value.regionLocationId }}
-        onChange={(localityId) => update({ localityId, regionId: '', districtLocationId: '', cityId: '', districtId: '', realEstateComplexId: '', buildingId: '' })} />
+        onChange={(localityId, option) => update({ localityId, regionLocationId: value.regionLocationId || String(option?.regionId ?? ''), regionId: '', districtLocationId: '', cityId: '', districtId: '', realEstateComplexId: '', buildingId: '' })} />
       <RemoteSelect searchable dictionary="locations" label="Административный район" value={value.districtLocationId ?? ''}
         filters={{ category: 'district', regionId: value.regionLocationId, relatedToId: value.localityId }}
-        onChange={(districtLocationId) => update({ districtLocationId, cityId: '', districtId: '', realEstateComplexId: '', buildingId: '' })} />
+        onChange={(districtLocationId, option) => update({ districtLocationId, regionLocationId: value.regionLocationId || String(option?.regionId ?? ''), regionId: '', cityId: '', districtId: '', realEstateComplexId: '', buildingId: '' })} />
       <RemoteSelect searchable dictionary="developers" label="Застройщик" value={value.developerId}
         error={errors['manualProperty.developerId']}
         onChange={(developerId) => update({ developerId, realEstateComplexId: '', buildingId: '' })} />

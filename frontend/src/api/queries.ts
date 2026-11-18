@@ -34,7 +34,6 @@ import {
   mortgageOptionsSchema,
   mortgageProgramDetailSchema,
   mortgageProgramListResponseSchema,
-  mortgageProgramOptionsSchema,
   overviewSchema,
   homepageComplexListSchema,
   passwordChangeResultSchema,
@@ -315,7 +314,7 @@ export function mortgageProgramDetailQueryOptions(
   return queryOptions({
     queryKey: ['mortgage-program', mortgageProgramIdentifier],
     queryFn: ({ signal }) => requestJson(
-      `/api/v1/mortgage-programs/${mortgageProgramIdentifier}/`,
+      `/api/v1/mortgage-programs/${mortgageProgramIdentifier}/?canonicalLocations=true`,
       mortgageProgramDetailSchema,
       { signal },
     ),
@@ -323,19 +322,9 @@ export function mortgageProgramDetailQueryOptions(
   })
 }
 
-export const mortgageProgramOptionsQueryOptions = queryOptions({
-  queryKey: ['mortgage-program-options'],
-  queryFn: ({ signal }) => requestJson(
-    '/api/v1/mortgage-programs/options/',
-    mortgageProgramOptionsSchema,
-    { signal },
-  ),
-  staleTime: 5 * 60_000,
-})
-
 export function createMortgageProgram(payload: MortgageProgramWriteRequest) {
   return requestJson(
-    '/api/v1/mortgage-programs/',
+    '/api/v1/mortgage-programs/?canonicalLocations=true',
     mortgageProgramDetailSchema,
     { method: 'POST', body: JSON.stringify(payload) },
   )
@@ -346,7 +335,7 @@ export function updateMortgageProgram(
   payload: MortgageProgramWriteRequest,
 ) {
   return requestJson(
-    `/api/v1/mortgage-programs/${mortgageProgramIdentifier}/`,
+    `/api/v1/mortgage-programs/${mortgageProgramIdentifier}/?canonicalLocations=true`,
     mortgageProgramDetailSchema,
     { method: 'PATCH', body: JSON.stringify(payload) },
   )
@@ -932,7 +921,7 @@ export function deleteRealEstateComplex(
 export const mortgageOptionsQueryOptions = queryOptions({
   queryKey: ['mortgage-options'],
   queryFn: ({ signal }) =>
-    requestJson('/api/v1/mortgage/options/', mortgageOptionsSchema, { signal }),
+    requestJson('/api/v1/mortgage/options/?canonicalLocations=true', mortgageOptionsSchema, { signal }),
   staleTime: 5 * 60_000,
 })
 
@@ -940,7 +929,7 @@ export function mortgageDeveloperOptionsQueryOptions(developerIdentifier: number
   return queryOptions({
     queryKey: ['mortgage-developer-options', developerIdentifier],
     queryFn: ({ signal }) => requestJson(
-      `/api/v1/mortgage/options/?developerId=${developerIdentifier}`,
+      `/api/v1/mortgage/options/?developerId=${developerIdentifier}&canonicalLocations=true`,
       mortgageOptionsSchema,
       { signal },
     ),

@@ -263,6 +263,9 @@ export function CustomerDetailPage() {
                 )}
               </dd>
             </div>
+            {customer.desiredFinancialRegionLocation ? (
+              <div><dt>Регион лимита</dt><dd>{customer.desiredFinancialRegionLocation}</dd></div>
+            ) : null}
           </dl>
         </section>
       ) : null}

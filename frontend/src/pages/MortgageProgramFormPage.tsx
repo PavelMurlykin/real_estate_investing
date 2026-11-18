@@ -1,4 +1,3 @@
-import { retryFailedQueries } from '@/shared/lib/retryFailedQueries'
 import { Notice } from '@/shared/ui/Notice'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -10,7 +9,6 @@ import { ApiError } from '@/api/client'
 import {
   createMortgageProgram,
   mortgageProgramDetailQueryOptions,
-  mortgageProgramOptionsQueryOptions,
   sessionQueryOptions,
   updateMortgageProgram,
 } from '@/api/queries'
@@ -20,7 +18,9 @@ import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState
 
 type RegionalLimit = {
   key: string
-  regionId: string
+  regionLocationId: string
+  legacyRegionId: string
+  regionName: string
   creditLimit: string
   isActive: boolean
 }
@@ -105,17 +105,15 @@ export function MortgageProgramFormPage() {
     ...mortgageProgramDetailQueryOptions(identifier),
     enabled: isEditing && hasValidIdentifier && canManage,
   })
-  const optionsQuery = useQuery({
-    ...mortgageProgramOptionsQueryOptions,
-    enabled: canManage,
-  })
   const mutation = useMutation({
     mutationFn: (payload: MortgageProgramWriteRequest) => isEditing
       ? updateMortgageProgram(identifier, payload)
       : createMortgageProgram(payload),
     onSuccess: async (program) => {
       queryClient.setQueryData(['mortgage-program', program.id], program)
-      await queryClient.invalidateQueries({ queryKey: ['mortgage-programs'] })
+      await Promise.all(['mortgage-programs', 'mortgage-options', 'mortgage-developer-options'].map(
+        (key) => queryClient.invalidateQueries({ queryKey: [key] }),
+      ))
       navigate(`/mortgage-programs/${program.id}`)
     },
   })
@@ -134,7 +132,9 @@ export function MortgageProgramFormPage() {
       isActive: program.isActive,
       regionalCreditLimits: program.regionalCreditLimits.map((limit) => ({
         key: `limit-${limit.id}`,
-        regionId: String(limit.regionId),
+        regionLocationId: String(limit.regionLocationId ?? ''),
+        legacyRegionId: limit.regionLocationId ? '' : String(limit.regionId ?? ''),
+        regionName: limit.regionName,
         creditLimit: limit.creditLimit,
         isActive: limit.isActive,
       })),
@@ -159,20 +159,19 @@ export function MortgageProgramFormPage() {
       ...current,
       regionalCreditLimits: [
         ...current.regionalCreditLimits,
-        { key, regionId: '', creditLimit: '', isActive: true },
+        { key, regionLocationId: '', legacyRegionId: '', regionName: '', creditLimit: '', isActive: true },
       ],
     }))
     changed()
   }
   const updateLimit = (
     key: string,
-    field: keyof Omit<RegionalLimit, 'key'>,
-    value: string | boolean,
+    values: Partial<Omit<RegionalLimit, 'key'>>,
   ) => {
     setFormState((current) => ({
       ...current,
       regionalCreditLimits: current.regionalCreditLimits.map((limit) => (
-        limit.key === key ? { ...limit, [field]: value } : limit
+        limit.key === key ? { ...limit, ...values } : limit
       )),
     }))
     changed()
@@ -196,10 +195,11 @@ export function MortgageProgramFormPage() {
     const regions = new Set<string>()
     for (const limit of formState.regionalCreditLimits) {
       const row: { regionId?: string; creditLimit?: string } = {}
-      if (!limit.regionId) row.regionId = 'Выберите регион.'
-      else if (regions.has(limit.regionId)) {
+      const regionKey = limit.regionLocationId ? `location:${limit.regionLocationId}` : `legacy:${limit.legacyRegionId}`
+      if (!limit.regionLocationId && !limit.legacyRegionId) row.regionId = 'Выберите регион.'
+      else if (regions.has(regionKey)) {
         row.regionId = 'Этот регион уже добавлен.'
-      } else regions.add(limit.regionId)
+      } else regions.add(regionKey)
       row.creditLimit = creditLimitError(limit.creditLimit, true)
       if (row.regionId || row.creditLimit) nextErrors.limits[limit.key] = row
     }
@@ -222,7 +222,9 @@ export function MortgageProgramFormPage() {
       isPreferential: formState.isPreferential,
       isActive: formState.isActive,
       regionalCreditLimits: formState.regionalCreditLimits.map((limit) => ({
-        regionId: Number(limit.regionId),
+        ...(limit.regionLocationId
+          ? { regionLocationId: Number(limit.regionLocationId) }
+          : { regionId: Number(limit.legacyRegionId) }),
         creditLimit: normalizeDecimal(limit.creditLimit),
         isActive: limit.isActive,
       })),
@@ -273,33 +275,18 @@ export function MortgageProgramFormPage() {
       />
     )
   }
-  if (optionsQuery.isLoading || (isEditing && detailQuery.isLoading)) {
+  if (isEditing && detailQuery.isLoading) {
     return <PageLoadingState />
-  }
-  if (optionsQuery.isError || !optionsQuery.data) {
-    return (
-      <ErrorState
-        title="Не удалось загрузить список регионов"
-        onRetry={() => retryFailedQueries(optionsQuery, detailQuery)}
-      />
-    )
   }
   if (isEditing && (detailQuery.isError || !detailQuery.data)) {
     return (
       <ErrorState
         title="Ипотечная программа не найдена или недоступна"
-        onRetry={() => retryFailedQueries(detailQuery, optionsQuery)}
+        onRetry={() => detailQuery.refetch()}
       />
     )
   }
 
-  const regions = [...optionsQuery.data.regions]
-  for (const limit of detailQuery.data?.regionalCreditLimits ?? []) {
-    if (!regions.some((region) => region.id === limit.regionId)) {
-      regions.push({ id: limit.regionId, name: limit.regionName })
-    }
-  }
-  regions.sort((left, right) => left.name.localeCompare(right.name, 'ru'))
   return (
     <div className="page-stack mortgage-program-form-page">
       <header className="page-header">
@@ -431,11 +418,6 @@ export function MortgageProgramFormPage() {
             </button>
           </div>
           <div className="nested-editor-list">
-            {optionsQuery.data.truncated ? (
-              <Notice as="p" tone="error" role="alert" className="form-error">
-            Для поиска остальных значений используйте поле поиска в справочнике или кнопку «Показать ещё варианты».
-          </Notice>
-            ) : null}
             {formState.regionalCreditLimits.length === 0 ? (
               <EmptyState compact title="Региональные лимиты не заданы" description="Будет использоваться общий федеральный лимит." />
             ) : null}
@@ -456,18 +438,18 @@ export function MortgageProgramFormPage() {
                     </button>
                   </div>
                   <div className="field-grid nested-editor-fields">
-                    <RemoteSelect
-                      dictionary="regions" label={"Регион"}
-                      value={limit.regionId} onChange={(value) => updateLimit(
-                          limit.key,
-                          'regionId',
-                          value,
-                        )}
-                      initialOptions={(regions ?? []).map((option) => ({ id: option.id, label: option.name }))}
-                      truncated={optionsQuery.data.truncated}
-                      error={rowErrors.regionId}
-                      required
-                    />
+                    <RemoteSelect dictionary="locations" label="Регион"
+                      filters={{ category: 'region' }}
+                      value={limit.regionLocationId}
+                      onChange={(value, option) => updateLimit(limit.key, {
+                        regionLocationId: value, legacyRegionId: '', regionName: option?.label ?? '',
+                      })}
+                      initialOptions={limit.regionLocationId && limit.regionName
+                        ? [{ id: Number(limit.regionLocationId), label: limit.regionName }] : undefined}
+                      truncated error={rowErrors.regionId} required={!limit.legacyRegionId} />
+                    {!limit.regionLocationId && limit.legacyRegionId ? (
+                      <p className="field-hint">Сохранённый регион: {limit.regionName}. Можно выбрать регион из нового справочника.</p>
+                    ) : null}
                     <label className="form-field">
                       Лимит, ₽ *
                       <input
@@ -478,11 +460,7 @@ export function MortgageProgramFormPage() {
                         step="0.01"
                         inputMode="decimal"
                         value={limit.creditLimit}
-                        onChange={(event) => updateLimit(
-                          limit.key,
-                          'creditLimit',
-                          event.target.value,
-                        )}
+                        onChange={(event) => updateLimit(limit.key, { creditLimit: event.target.value })}
                         required
                         aria-invalid={Boolean(rowErrors.creditLimit)}
                       />
@@ -496,11 +474,7 @@ export function MortgageProgramFormPage() {
                       <input
                         type="checkbox"
                         checked={limit.isActive}
-                        onChange={(event) => updateLimit(
-                          limit.key,
-                          'isActive',
-                          event.target.checked,
-                        )}
+                        onChange={(event) => updateLimit(limit.key, { isActive: event.target.checked })}
                       />
                       <span><strong>Активен</strong><small>Участвует в расчётах.</small></span>
                     </label>

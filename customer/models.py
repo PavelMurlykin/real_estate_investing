@@ -117,6 +117,10 @@ class Customer(BaseModel):
         Region, on_delete=models.PROTECT, null=True, blank=True,
         related_name='interested_financial_customers', verbose_name='Регион ипотечных лимитов',
     )
+    desired_financial_region_location = models.ForeignKey(
+        Location, on_delete=models.PROTECT, null=True, blank=True,
+        related_name='financial_region_customers', verbose_name='Регион ипотечных лимитов Location',
+    )
 
     # Платежеспособность
     initial_payment_amount = models.DecimalField(
@@ -490,7 +494,7 @@ class Customer(BaseModel):
         """Возвращает максимальный лимит кредита среди выбранных льготных программ."""
         region = self.get_desired_region()
         credit_limits = [
-            program.get_credit_limit(region)
+            program.get_credit_limit(region, region_location_id=self.desired_financial_region_location_id)
             for program in self.preferential_programs.all()
             if program.is_preferential
         ]

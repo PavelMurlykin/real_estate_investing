@@ -306,6 +306,8 @@ export const customerDetailSchema = z.object({
   desiredLocalityId: z.number().int().positive().nullable().optional(),
   desiredLocality: z.string().nullable().optional(),
   desiredLocalityLabel: z.string().nullable().optional(),
+  desiredFinancialRegionLocationId: z.number().int().positive().nullable().optional(),
+  desiredFinancialRegionLocation: z.string().nullable().optional(),
   desiredFinancialRegionId: z.number().int().positive().nullable().optional(),
   residenceUsesCanonicalLocation: z.boolean().optional(),
   purchaseUsesCanonicalLocations: z.boolean().optional(),
@@ -441,7 +443,8 @@ export const mortgageProgramListItemSchema = z.object({
 
 const mortgageProgramRegionalLimitSchema = z.object({
   id: z.number().int().positive(),
-  regionId: z.number().int().positive(),
+  regionId: z.number().int().positive().nullable(),
+  regionLocationId: z.number().int().positive().nullable().optional(),
   regionName: z.string(),
   creditLimit: z.string(),
   isActive: z.boolean(),
@@ -469,11 +472,6 @@ export const mortgageProgramListResponseSchema = z.object({
   totalCount: z.number().int().nonnegative(),
   totalPages: z.number().int().nonnegative(),
   results: z.array(mortgageProgramListItemSchema),
-})
-
-export const mortgageProgramOptionsSchema = z.object({
-  regions: z.array(namedOptionSchema),
-  truncated: z.boolean(),
 })
 
 export const developerMortgageProgramSchema = z.object({
@@ -915,7 +913,8 @@ export const mortgageOptionsSchema = z.object({
       creditLimit: z.string().nullable(),
       regionalCreditLimits: z.array(
         z.object({
-          regionId: z.number().int().positive(),
+          regionId: z.number().int().positive().nullable(),
+          regionLocationId: z.number().int().positive().nullable().optional(),
           creditLimit: z.string(),
         }),
       ),
@@ -1230,9 +1229,6 @@ export type MortgageProgramListResponse = z.infer<
 export type MortgageProgramDetail = z.infer<
   typeof mortgageProgramDetailSchema
 >
-export type MortgageProgramOptions = z.infer<
-  typeof mortgageProgramOptionsSchema
->
 export type DeveloperMortgageProgram = z.infer<
   typeof developerMortgageProgramSchema
 >
@@ -1387,7 +1383,8 @@ export type BankWriteRequest = {
 }
 
 export type MortgageProgramRegionalLimitWriteRequest = {
-  regionId: number
+  regionId?: number
+  regionLocationId?: number
   creditLimit: string
   isActive: boolean
 }

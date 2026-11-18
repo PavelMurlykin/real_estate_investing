@@ -481,7 +481,13 @@ export function MortgageCalculatorPage({
   const canAssociateProperty = Boolean(selectedPropertyIdentifier || hasCompletePropertyFields)
   const developerIdentifier = selectedProperty?.developerId || Number(manualProperty?.developerId) || null
   const complexIdentifier = selectedProperty?.realEstateComplexId || Number(manualProperty?.realEstateComplexId) || null
-  const regionIdentifier = selectedProperty?.regionId || Number(manualProperty?.regionId) || null
+  const financialRegion = selectedProperty ? {
+    locationId: selectedProperty.regionLocationId ?? null,
+    legacyId: selectedProperty.regionId ?? null,
+  } : {
+    locationId: Number(manualProperty?.regionLocationId) || null,
+    legacyId: Number(manualProperty?.regionId) || null,
+  }
   const developerOptionsQuery = useQuery({
     ...mortgageDeveloperOptionsQueryOptions(developerIdentifier ?? 0),
     enabled: developerIdentifier !== null,
@@ -576,7 +582,7 @@ export function MortgageCalculatorPage({
   const finalPropertyCost = getFinalPropertyCost(formState)
   const loanAmount = getLoanAmount(formState)
   const creditLimit = selectedBankProgram
-    ? getProgramCreditLimit(selectedBankProgram, regionIdentifier, selectedDeveloperProgram)
+    ? getProgramCreditLimit(selectedBankProgram, financialRegion, selectedDeveloperProgram)
     : null
   const exceedsCreditLimit = creditLimit !== null && loanAmount > creditLimit
   const calculationQueryString = searchParameters.toString()

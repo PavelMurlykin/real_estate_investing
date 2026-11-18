@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { MortgageProgramDetail, MortgageProgramOptions, Session } from '@/api/schemas'
+import type { MortgageProgramDetail, Session } from '@/api/schemas'
 import { createTestQueryClient, renderWithProviders } from '@/test/render'
 
 import { MortgageProgramFormPage } from './MortgageProgramFormPage'
@@ -18,10 +18,6 @@ const manager: Session = {
     viewPrivateRecords: true,
     viewAllPrivateRecords: false,
   },
-}
-const options: MortgageProgramOptions = {
-  regions: [{ id: 77, name: 'Москва' }, { id: 78, name: 'Санкт-Петербург' }],
-  truncated: false,
 }
 const program: MortgageProgramDetail = {
   id: 5,
@@ -37,6 +33,7 @@ const program: MortgageProgramDetail = {
   regionalCreditLimits: [{
     id: 7,
     regionId: 77,
+    regionLocationId: 501,
     regionName: 'Москва',
     creditLimit: '15000000.00',
     isActive: true,
@@ -48,7 +45,12 @@ const program: MortgageProgramDetail = {
 function managerClient() {
   const client = createTestQueryClient()
   client.setQueryData(['session'], manager)
-  client.setQueryData(['mortgage-program-options'], options)
+  for (const selected of ['', '501']) {
+    client.setQueryData(['catalog-options', 'locations', 'category=region', '', selected], {
+      pages: [{ results: [{ id: 501, label: 'Москва' }], selected: [], page: 1, totalCount: 1, nextPage: null }],
+      pageParams: [1],
+    })
+  }
   return client
 }
 
@@ -114,7 +116,7 @@ describe('MortgageProgramFormPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Программа сохранена' }))
       .toBeInTheDocument()
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/mortgage-programs/')
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/mortgage-programs/?canonicalLocations=true')
     const request = fetchMock.mock.calls[0][1] as RequestInit
     expect(request.method).toBe('POST')
     expect(JSON.parse(request.body as string)).toEqual({
@@ -124,7 +126,7 @@ describe('MortgageProgramFormPage', () => {
       isPreferential: true,
       isActive: true,
       regionalCreditLimits: [{
-        regionId: 77,
+        regionLocationId: 501,
         creditLimit: '15000000',
         isActive: true,
       }],
@@ -157,7 +159,7 @@ describe('MortgageProgramFormPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Программа сохранена' }))
       .toBeInTheDocument()
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/mortgage-programs/5/')
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/mortgage-programs/5/?canonicalLocations=true')
     expect((fetchMock.mock.calls[0][1] as RequestInit).method).toBe('PATCH')
   })
 })

@@ -688,6 +688,7 @@ class MortgageOptionsAPIView(APIView):
         developer_identifier = query_serializer.validated_data.get(
             'developerId'
         )
+        canonical_locations = query_serializer.validated_data['canonicalLocations']
         developer_programs = []
         if developer_identifier:
             developer_programs = DeveloperMortgageProgramSerializer(
@@ -763,6 +764,7 @@ class MortgageOptionsAPIView(APIView):
                     'regionalCreditLimits': [
                         {
                             'regionId': regional_limit.region_id,
+                            **({'regionLocationId': regional_limit.region_location_id} if canonical_locations else {}),
                             'creditLimit': str(
                                 regional_limit.credit_limit
                             ),
@@ -770,6 +772,7 @@ class MortgageOptionsAPIView(APIView):
                         for regional_limit in (
                             mortgage_program.active_regional_credit_limits
                         )
+                        if canonical_locations or regional_limit.region_id is not None
                     ],
                 }
             )
@@ -2115,7 +2118,7 @@ def _mortgage_program_list_queryset():
 def _mortgage_program_detail_queryset():
     """Return canonical programs with bounded nested data prefetched."""
     regional_limits = MortgageProgramRegionalCreditLimit.objects.select_related(
-        'region'
+        'region', 'region_location',
     ).order_by('region__name', 'pk')
     return _mortgage_program_list_queryset().prefetch_related(
         Prefetch(
@@ -2134,6 +2137,13 @@ class MortgageProgramAPIViewMixin:
         if self.request.method == 'GET':
             return (AllowAny(),)
         return (IsAuthenticated(), CanManageCatalogs())
+
+    def get_serializer_context(self):
+        """Expose Location limits when the caller requests the new contract."""
+        return {
+            **super().get_serializer_context(),
+            'canonical_locations': self.request.query_params.get('canonicalLocations') == 'true',
+        }
 
     def get_response_serializer(self, mortgage_program):
         """Serialize a refreshed program after a successful mutation."""

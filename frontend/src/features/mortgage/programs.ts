@@ -49,12 +49,17 @@ export function getProgramConditions(
 
 export function getProgramCreditLimit(
   program: BankMortgageProgram,
-  regionIdentifier: number | null,
+  region: { locationId: number | null, legacyId: number | null },
   developerProgram?: DeveloperMortgageProgram,
 ) {
-  const regional = program.regionalCreditLimits.find(
-    (limit) => limit.regionId === regionIdentifier,
+  const legacy = region.legacyId === null ? undefined : program.regionalCreditLimits.find(
+    (limit) => limit.regionId === region.legacyId
+      && (region.locationId === null || limit.regionLocationId == null),
   )
+  const canonical = region.locationId === null ? undefined : program.regionalCreditLimits.find(
+    (limit) => limit.regionLocationId === region.locationId,
+  )
+  const regional = legacy ?? canonical
   const programLimit = program.isPreferential
     ? Number(regional?.creditLimit ?? program.creditLimit ?? 0) : 0
   const developerLimit = Number(developerProgram?.maximumLoanAmount ?? 0)

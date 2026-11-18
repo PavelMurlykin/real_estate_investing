@@ -21,7 +21,7 @@ from bank.models import (
 from customer.models import Customer
 from customer.location_service import CUSTOMER_LOCATION_FIELDS, prepare_customer_locations
 from location.presentation import geographic_label
-from location.models import City, District, Location, Metro, MetroLine, MetroSystem, Region
+from location.models import City, District, LegacyLocationMapping, Location, Metro, MetroLine, MetroSystem, Region
 from property.location_context import (
     building_geography_prefetch, geography_prefetch, locality_filter, set_primary_location,
 )
@@ -988,7 +988,7 @@ class MortgageProgramRegionalLimitReadSerializer(serializers.Serializer):
 
     id = serializers.IntegerField(read_only=True)
     regionId = serializers.IntegerField(source='region_id', read_only=True)
-    regionName = serializers.CharField(source='region.name', read_only=True)
+    regionName = serializers.SerializerMethodField(method_name='get_region_name')
     creditLimit = serializers.DecimalField(
         source='credit_limit',
         max_digits=15,
@@ -996,6 +996,18 @@ class MortgageProgramRegionalLimitReadSerializer(serializers.Serializer):
         read_only=True,
     )
     isActive = serializers.BooleanField(source='is_active', read_only=True)
+
+    def get_region_name(self, limit):
+        """Display the region name in the requested contract."""
+        region = limit.region_location if self.context.get('canonical_locations') else None
+        return (region or limit.region).name
+
+    def to_representation(self, instance):
+        """Extend the canonical response without changing the legacy object shape."""
+        payload = super().to_representation(instance)
+        if self.context.get('canonical_locations'):
+            payload['regionLocationId'] = instance.region_location_id
+        return payload
 
 
 class MortgageProgramDetailSerializer(serializers.ModelSerializer):
@@ -1052,10 +1064,10 @@ class MortgageProgramDetailSerializer(serializers.ModelSerializer):
 
     def get_regional_credit_limits(self, mortgage_program):
         """Return regional limits from the optimized detail prefetch."""
-        return MortgageProgramRegionalLimitReadSerializer(
-            mortgage_program.api_regional_credit_limits,
-            many=True,
-        ).data
+        limits = mortgage_program.api_regional_credit_limits
+        if not self.context.get('canonical_locations'):
+            limits = [limit for limit in limits if limit.region_id is not None]
+        return MortgageProgramRegionalLimitReadSerializer(limits, many=True, context=self.context).data
 
     def get_legacy_edit_url(self, mortgage_program):
         """Return the preserved Django catalog edit URL."""
@@ -1078,7 +1090,11 @@ class MortgageProgramRegionalLimitWriteSerializer(serializers.Serializer):
 
     regionId = serializers.PrimaryKeyRelatedField(
         source='region',
-        queryset=Region.objects.all(),
+        queryset=Region.objects.all(), required=False,
+    )
+    regionLocationId = serializers.PrimaryKeyRelatedField(
+        source='region_location', required=False,
+        queryset=Location.objects.filter(location_type__category='region'),
     )
     creditLimit = serializers.DecimalField(
         source='credit_limit',
@@ -1091,6 +1107,14 @@ class MortgageProgramRegionalLimitWriteSerializer(serializers.Serializer):
         required=False,
         default=True,
     )
+
+    def validate(self, attributes):
+        """Accept one region identity per row and a complete amount on PATCH."""
+        if ('region' in attributes) == ('region_location' in attributes):
+            raise serializers.ValidationError({'regionLocationId': 'Укажите один регион лимита.'})
+        if 'credit_limit' not in attributes:
+            raise serializers.ValidationError({'creditLimit': 'Укажите сумму лимита.'})
+        return attributes
 
 
 class MortgageProgramWriteSerializer(serializers.Serializer):
@@ -1140,11 +1164,31 @@ class MortgageProgramWriteSerializer(serializers.Serializer):
         return normalized_name
 
     def validate_regionalCreditLimits(self, regional_limits):
-        """Require each region at most once in the override table."""
-        region_identifiers = [
-            regional_limit['region'].pk
-            for regional_limit in regional_limits
-        ]
+        """Resolve unique compatibility pairs and reject duplicates across ID domains."""
+        self.replaces_canonical_limits = self.context.get('canonical_locations') or any(
+            'region_location' in limit for limit in regional_limits
+        )
+        legacy_by_location = {}
+        mappings = LegacyLocationMapping.objects.filter(
+            model_name='region', location__location_type__category='region',
+            legacy_id__in=Region.objects.values('pk'),
+        ).values_list('legacy_id', 'location_id')
+        for legacy_id, location_id in mappings:
+            legacy_by_location.setdefault(location_id, []).append(legacy_id)
+        unique_pairs = {location_id: ids[0] for location_id, ids in legacy_by_location.items() if len(ids) == 1}
+        locations_by_legacy = {legacy_id: location_id for location_id, legacy_id in unique_pairs.items()}
+        region_identifiers = []
+        for limit in regional_limits:
+            location = limit.pop('region_location', None)
+            region = limit.pop('region', None)
+            if location:
+                limit['region_location_id'] = location.pk
+                limit['region_id'] = unique_pairs.get(location.pk)
+            else:
+                limit['region_id'] = region.pk
+                limit['region_location_id'] = locations_by_legacy.get(region.pk)
+            location_id = limit['region_location_id']
+            region_identifiers.append(('location', location_id) if location_id else ('legacy', region.pk))
         if len(region_identifiers) != len(set(region_identifiers)):
             raise serializers.ValidationError(
                 'Один регион указан в лимитах несколько раз.'
@@ -1156,26 +1200,44 @@ class MortgageProgramWriteSerializer(serializers.Serializer):
         mortgage_program,
         regional_limits,
     ):
-        """Replace submitted related rows using bounded bulk operations."""
-        if regional_limits is not None:
-            MortgageProgramRegionalCreditLimit.objects.filter(
-                mortgage_program=mortgage_program
-            ).delete()
-            MortgageProgramRegionalCreditLimit.objects.bulk_create(
-                [
-                    MortgageProgramRegionalCreditLimit(
-                        mortgage_program=mortgage_program,
-                        **regional_limit,
-                    )
-                    for regional_limit in regional_limits
-                ]
-            )
+        """Update matching rows in place and retain rows invisible to old clients."""
+        if regional_limits is None:
+            return
+        queryset = mortgage_program.regional_credit_limits.order_by()
+        existing = list(queryset.select_for_update())
+        by_location = {limit.region_location_id: limit for limit in existing if limit.region_location_id is not None}
+        by_legacy = {limit.region_id: limit for limit in existing if limit.region_id is not None}
+        keep = set()
+        changed = []
+        created = []
+        for fields in regional_limits:
+            row = by_location.get(fields['region_location_id']) or by_legacy.get(fields['region_id'])
+            if row is None:
+                created.append(MortgageProgramRegionalCreditLimit(mortgage_program=mortgage_program, **fields))
+                continue
+            if row.pk in keep:
+                raise serializers.ValidationError({'regionalCreditLimits': 'Один регион указан в лимитах несколько раз.'})
+            keep.add(row.pk)
+            if any(getattr(row, key) != value for key, value in fields.items()):
+                for key, value in fields.items():
+                    setattr(row, key, value)
+                row.updated_at = timezone.now()
+                changed.append(row)
+        removable = queryset.exclude(pk__in=keep)
+        if not self.replaces_canonical_limits:
+            removable = removable.filter(region__isnull=False)
+        removable.delete()
+        MortgageProgramRegionalCreditLimit.objects.bulk_update(
+            changed, ['region', 'region_location', 'credit_limit', 'is_active', 'updated_at'],
+        )
+        MortgageProgramRegionalCreditLimit.objects.bulk_create(created)
+
     @transaction.atomic
     def create(self, validated_data):
         """Create a canonical program with all submitted related rows."""
         regional_limits = validated_data.pop(
             'regional_credit_limits_payload',
-            [],
+            None,
         )
         mortgage_program = MortgageProgram.objects.create(**validated_data)
         self.replace_related_rows(mortgage_program, regional_limits)
@@ -2330,6 +2392,9 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         result['purchaseUsesCanonicalLocations'] = instance.purchase_uses_canonical_locations
         region = instance.get_desired_region()
         result['desiredFinancialRegionId'] = region.pk if region else None
+        result['desiredFinancialRegionLocationId'] = instance.desired_financial_region_location_id
+        financial_location = instance.desired_financial_region_location
+        result['desiredFinancialRegionLocation'] = financial_location.name if financial_location else None
         return result
 
     firstName = serializers.CharField(source='first_name', read_only=True)
@@ -4157,6 +4222,7 @@ class MortgageOptionsQuerySerializer(serializers.Serializer):
     """Validate the optional developer context for calculator programs."""
 
     developerId = serializers.IntegerField(required=False, min_value=1)
+    canonicalLocations = serializers.BooleanField(default=False)
 
 
 class MortgageCalculationRequestSerializer(serializers.Serializer):
