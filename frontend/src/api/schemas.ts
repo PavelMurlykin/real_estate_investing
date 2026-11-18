@@ -9,6 +9,7 @@ export const capabilitiesSchema = z.object({
 })
 
 export const catalogOptionSchema = z.object({
+  retainedRegionKey: z.string().optional(),
   regionLocationId: z.number().int().positive().nullable().optional(),
   districtLocationId: z.number().int().positive().nullable().optional(),
   localityId: z.number().int().positive().nullable().optional(),
@@ -112,6 +113,7 @@ export type PasswordResetConfirmRequest = {
 }
 
 export const propertyListItemSchema = z.object({
+  retainedRegionKey: z.string().optional(),
   regionLocationId: z.number().int().positive().nullable().optional(),
   districtLocationId: z.number().int().positive().nullable().optional(),
   localityId: z.number().int().positive().nullable().optional(),
@@ -296,6 +298,9 @@ export const customerListResponseSchema = z.object({
 })
 
 export const customerDetailSchema = z.object({
+  locationDisplay: z.object({
+    residence: z.string().nullable(), locality: z.string().nullable(), district: z.string().nullable(),
+  }).optional(),
   residenceLocalityId: z.number().int().positive().nullable().optional(),
   residenceLocality: z.string().nullable().optional(),
   residenceLocalityLabel: z.string().nullable().optional(),
@@ -694,6 +699,7 @@ const realEstateComplexMetroAvailabilitySchema = z.object({
 })
 
 export const realEstateComplexDetailSchema = z.object({
+  hasRetainedTerritory: z.boolean().optional(),
   regionLocationId: z.number().int().positive().nullable().optional(),
   districtLocationId: z.number().int().positive().nullable().optional(),
   localityId: z.number().int().positive().nullable().optional(),
@@ -797,6 +803,7 @@ export const customerMutationResponseSchema = z.object({
 })
 
 export const propertyDetailSchema = z.object({
+  retainedRegionKey: z.string().optional(),
   regionLocationId: z.number().int().positive().nullable().optional(),
   districtLocationId: z.number().int().positive().nullable().optional(),
   localityId: z.number().int().positive().nullable().optional(),
@@ -916,6 +923,7 @@ export const mortgageOptionsSchema = z.object({
         z.object({
           regionId: z.number().int().positive().nullable(),
           regionLocationId: z.number().int().positive().nullable().optional(),
+          retainedRegionKey: z.string().nullable().optional(),
           creditLimit: z.string(),
         }),
       ),
@@ -1137,8 +1145,9 @@ export const customerCalculationLinkResponseSchema = z.object({
 })
 
 export type ManualCalculationProperty = {
-  cityId: number | null
-  districtId: number | null
+  regionLocationId?: number
+  districtLocationId?: number
+  localityId?: number
   developerId: number
   realEstateComplexId: number
   buildingId: number
@@ -1384,8 +1393,8 @@ export type BankWriteRequest = {
 }
 
 export type MortgageProgramRegionalLimitWriteRequest = {
-  regionId?: number
   regionLocationId?: number
+  retainedLimitId?: number
   creditLimit: string
   isActive: boolean
 }

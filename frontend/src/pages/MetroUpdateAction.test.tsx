@@ -25,6 +25,9 @@ describe('MetroUpdateAction', () => {
     await user.click(button)
     expect(await screen.findByText(/Станции обновлены/)).toBeInTheDocument()
     expect(button).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Закрыть уведомление' }))
+    expect(screen.queryByText(/Станции обновлены/)).not.toBeInTheDocument()
+    expect(button).toHaveFocus()
   })
 
   it('releases the button without waiting for list refresh', async () => {

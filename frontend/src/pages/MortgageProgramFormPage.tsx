@@ -19,7 +19,7 @@ import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState
 type RegionalLimit = {
   key: string
   regionLocationId: string
-  legacyRegionId: string
+  retainedLimitId: number | null
   regionName: string
   creditLimit: string
   isActive: boolean
@@ -133,7 +133,7 @@ export function MortgageProgramFormPage() {
       regionalCreditLimits: program.regionalCreditLimits.map((limit) => ({
         key: `limit-${limit.id}`,
         regionLocationId: String(limit.regionLocationId ?? ''),
-        legacyRegionId: limit.regionLocationId ? '' : String(limit.regionId ?? ''),
+        retainedLimitId: limit.regionLocationId ? null : limit.id,
         regionName: limit.regionName,
         creditLimit: limit.creditLimit,
         isActive: limit.isActive,
@@ -159,7 +159,7 @@ export function MortgageProgramFormPage() {
       ...current,
       regionalCreditLimits: [
         ...current.regionalCreditLimits,
-        { key, regionLocationId: '', legacyRegionId: '', regionName: '', creditLimit: '', isActive: true },
+        { key, regionLocationId: '', retainedLimitId: null, regionName: '', creditLimit: '', isActive: true },
       ],
     }))
     changed()
@@ -195,8 +195,8 @@ export function MortgageProgramFormPage() {
     const regions = new Set<string>()
     for (const limit of formState.regionalCreditLimits) {
       const row: { regionId?: string; creditLimit?: string } = {}
-      const regionKey = limit.regionLocationId ? `location:${limit.regionLocationId}` : `legacy:${limit.legacyRegionId}`
-      if (!limit.regionLocationId && !limit.legacyRegionId) row.regionId = 'Выберите регион.'
+      const regionKey = limit.regionLocationId ? `location:${limit.regionLocationId}` : `limit:${limit.retainedLimitId}`
+      if (!limit.regionLocationId && !limit.retainedLimitId) row.regionId = 'Выберите регион.'
       else if (regions.has(regionKey)) {
         row.regionId = 'Этот регион уже добавлен.'
       } else regions.add(regionKey)
@@ -224,7 +224,7 @@ export function MortgageProgramFormPage() {
       regionalCreditLimits: formState.regionalCreditLimits.map((limit) => ({
         ...(limit.regionLocationId
           ? { regionLocationId: Number(limit.regionLocationId) }
-          : { regionId: Number(limit.legacyRegionId) }),
+          : { retainedLimitId: limit.retainedLimitId ?? undefined }),
         creditLimit: normalizeDecimal(limit.creditLimit),
         isActive: limit.isActive,
       })),
@@ -442,12 +442,12 @@ export function MortgageProgramFormPage() {
                       filters={{ category: 'region' }}
                       value={limit.regionLocationId}
                       onChange={(value, option) => updateLimit(limit.key, {
-                        regionLocationId: value, legacyRegionId: '', regionName: option?.label ?? '',
+                        regionLocationId: value, retainedLimitId: null, regionName: option?.label ?? '',
                       })}
                       initialOptions={limit.regionLocationId && limit.regionName
                         ? [{ id: Number(limit.regionLocationId), label: limit.regionName }] : undefined}
-                      truncated error={rowErrors.regionId} required={!limit.legacyRegionId} />
-                    {!limit.regionLocationId && limit.legacyRegionId ? (
+                      truncated error={rowErrors.regionId} required={!limit.retainedLimitId} />
+                    {!limit.regionLocationId && limit.retainedLimitId ? (
                       <p className="field-hint">Сохранённый регион: {limit.regionName}. Можно выбрать регион из нового справочника.</p>
                     ) : null}
                     <label className="form-field">

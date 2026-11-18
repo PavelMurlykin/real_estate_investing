@@ -85,17 +85,31 @@ test('manages canonical dictionaries in React and Django while preserving Pushki
       assert.equal(row.parentId, createdRows.length > 1 ? createdRows.at(-2).id : null)
     }
     const village = createdRows.at(-1)
+    const hidden = await request.patch(url(`/api/v1/location-catalogs/localities/${village.id}/`), {
+      headers, data: { isActive: false },
+    })
+    assert.equal(hidden.status(), 200, await hidden.text())
+    await page.goto(url('/app/locations/localities?status=inactive&q=' + encodeURIComponent(village.name)))
+    await page.getByText('Записей не найдено').waitFor()
+    const visible = await request.patch(url(`/api/v1/location-catalogs/localities/${village.id}/`), {
+      headers, data: { isActive: true },
+    })
+    assert.equal(visible.status(), 200, await visible.text())
     await page.goto(url('/app/locations/localities?q=' + encodeURIComponent(village.name)))
     await page.getByRole('button', { name: `Удалить: ${village.name}`, exact: true }).click()
     const removed = page.waitForResponse((response) => response.request().method() === 'DELETE' && new URL(response.url()).pathname === `/api/v1/location-catalogs/localities/${village.id}/`)
     await page.getByRole('alertdialog').getByRole('button', { name: 'Удалить', exact: true }).click()
     assert.equal((await removed).status(), 204)
-    for (const width of [1440, 360]) {
+    for (const width of [1440, 1280, 360]) {
       await page.setViewportSize({ width, height: 1000 })
       for (const key of ['regions', 'localities', 'districts']) {
         await page.goto(url(`/app/locations/${key}`))
         await page.getByRole('table').waitFor()
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth))
+        const table = page.getByRole('table')
+        assert.equal(await table.getByRole('columnheader', { name: 'Статус' }).count(), 0)
+        assert.ok(await table.evaluate(({ parentElement }) => parentElement.scrollWidth <= parentElement.clientWidth))
+        assert.equal(await table.locator('.row-actions .row-action').first().isVisible(), true)
       }
     }
     const { page: other } = await createAuthenticatedPage(context, 'other', { width: 1280, height: 900 })

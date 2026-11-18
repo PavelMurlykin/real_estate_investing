@@ -169,8 +169,8 @@ export function RealEstateComplexFormPage() {
   const hasInitialized = useRef(false)
   const [locationChanged, setLocationChanged] = useState(false)
   const canPreserveLocation = isEditing && !locationChanged
-    && Boolean(complexQuery.data?.location || complexQuery.data?.districtId)
-  const optionsQuery = useQuery(realEstateComplexOptionsQueryOptions({ canonicalLocations: true }))
+    && Boolean(complexQuery.data?.location || complexQuery.data?.hasRetainedTerritory)
+  const optionsQuery = useQuery(realEstateComplexOptionsQueryOptions())
   const mutation = useMutation({
     mutationFn: (formData: FormData) => isEditing
       ? updateRealEstateComplex(complexIdentifier, formData)

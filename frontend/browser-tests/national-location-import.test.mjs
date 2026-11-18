@@ -13,22 +13,27 @@ test('location filters are live and import errors leave controls reusable after 
   const filters = page.getByRole('region', { name: 'Фильтры: Административные районы' })
   await filters.waitFor()
   assert.equal(await filters.getByRole('button', { name: 'Найти', exact: true }).count(), 0)
-  const bounds = await filters.getByRole('combobox', { name: 'Регион', exact: true }).boundingBox()
-  assert.ok(bounds.width >= 350)
+  assert.equal(await filters.getByRole('combobox', { name: 'Статус', exact: true }).count(), 0)
+  assert.equal(await filters.getByRole('combobox', { name: 'Сортировка', exact: true }).count(), 0)
+  const tabs = await page.getByRole('navigation', { name: 'Справочники локаций' }).boundingBox()
+  const action = await page.getByRole('button', { name: 'Обновить данные' }).boundingBox()
+  assert.ok(Math.abs(tabs.y + tabs.height / 2 - action.y - action.height / 2) < 12)
+  assert.ok(action.x >= tabs.x + tabs.width)
   await filters.getByLabel('Поиск', { exact: true }).fill('Тверской')
   await page.waitForURL((url) => url.searchParams.get('q') === 'Тверской')
   await page.goto(new URL('/app/locations/regions', isolatedBaseUrl).href)
   const importButton = page.getByRole('button', { name: 'Обновить данные', exact: true })
   let tries = 0
+  const completed = { job: {
+    id: '382079fb-2acf-48e1-a8ba-47d49a468d55', status: 'completed', phase: 'completed',
+    processedCities: 2, totalCities: 2, currentCity: '', counts: {}, coverage: {},
+    errorMessage: '', updatedAt: '2026-11-18T10:00:00Z',
+  } }
   await page.route('**/api/v1/location-imports/', async (route) => {
-    if (route.request().method() !== 'POST') return route.continue()
+    if (route.request().method() !== 'POST') return route.fulfill({ json: tries >= 2 ? completed : { job: null } })
     assert.deepEqual(route.request().postDataJSON(), {})
     tries += 1
-    await route.fulfill({ json: tries === 1 ? { bad: true } : { job: {
-      id: '382079fb-2acf-48e1-a8ba-47d49a468d55', status: 'completed', phase: 'completed',
-      processedCities: 2, totalCities: 2, currentCity: '', counts: {}, coverage: {},
-      errorMessage: '', updatedAt: '2026-11-18T10:00:00Z',
-    } } })
+    await route.fulfill({ json: tries === 1 ? { bad: true } : completed })
   })
   await importButton.click()
   await page.getByRole('alert').filter({ hasText: 'Сервер вернул данные в неожиданном формате.' }).waitFor()
@@ -38,9 +43,19 @@ test('location filters are live and import errors leave controls reusable after 
   assert.equal(await importButton.isEnabled(), true)
   assert.equal(await importButton.count(), 1)
   await importButton.click()
-  await page.getByRole('status').filter({ hasText: 'Справочники обновлены' }).waitFor()
+  const notice = page.getByRole('status').filter({ hasText: 'Справочники обновлены' })
+  await notice.waitFor()
   assert.equal(await importButton.isEnabled(), true)
   assert.equal(tries, 2)
+  await notice.getByRole('button', { name: 'Закрыть уведомление' }).click()
+  await notice.waitFor({ state: 'hidden' })
+  await importButton.click()
+  await notice.waitFor()
+  const restored = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/v1/location-imports/')
+  await page.reload()
+  assert.equal((await restored).status(), 200)
+  await importButton.waitFor()
+  assert.equal(await notice.count(), 0)
 })
 
 test('national import starts with no selected parents and survives a browser reload', {

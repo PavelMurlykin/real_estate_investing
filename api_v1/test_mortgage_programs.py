@@ -71,6 +71,27 @@ def create_catalog_manager():
 
 
 @pytest.mark.django_db
+def test_react_edit_keeps_unmapped_regional_limit_by_row_identity(client, mortgage_program_catalog):
+    """Update the original amount and reject a row owned by another program."""
+    client.force_login(create_catalog_manager())
+    program = mortgage_program_catalog['family_program']
+    regional_limit = mortgage_program_catalog['regional_limit']
+    payload = {'regionalCreditLimits': [{
+        'retainedLimitId': regional_limit.pk, 'creditLimit': '16000000', 'isActive': True,
+    }]}
+    path = reverse('api_v1:mortgage_program_detail', kwargs={'pk': program.pk})
+    response = client.patch(path + '?canonicalLocations=true', payload, content_type='application/json')
+    assert response.status_code == 200, response.content
+    regional_limit.refresh_from_db()
+    assert regional_limit.credit_limit == Decimal('16000000')
+    assert regional_limit.region_id == mortgage_program_catalog['moscow'].pk
+    other_path = reverse('api_v1:mortgage_program_detail', kwargs={
+        'pk': mortgage_program_catalog['market_program'].pk,
+    })
+    assert client.patch(other_path + '?canonicalLocations=true', payload, content_type='application/json').status_code == 400
+
+
+@pytest.mark.django_db
 def test_mortgage_program_list_is_public_filtered_and_query_efficient(
     client,
     mortgage_program_catalog,

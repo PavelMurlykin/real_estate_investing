@@ -5,7 +5,6 @@ import { retryFailedQueries } from '@/shared/lib/retryFailedQueries'
 import { Notice } from '@/shared/ui/Notice'
 import { restoreFocus } from '@/shared/lib/restoreFocus'
 import { ModalDialog } from '@/shared/ui/ModalDialog'
-import { SelectFilter } from '@/shared/ui/SelectFilter'
 import { TableScrollArea } from '@/shared/ui/TableScrollArea'
 import { Pagination } from '@/shared/ui/Pagination'
 import { ResetFilters } from '@/shared/ui/ResetFilters'
@@ -359,6 +358,7 @@ function MetroDictionaryPage() {
   )
   const [searchParameters, setSearchParameters] = useSearchParams()
   const tableParameters = useTableParameters(searchParameters)
+  tableParameters.set('status', 'active')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const sessionQuery = useQuery(sessionQueryOptions)
@@ -476,6 +476,9 @@ function MetroDictionaryPage() {
 
   const { results, page, totalCount, totalPages } = listQuery.data
   const showMetroLine = dictionaryKey === 'metro'
+  const hasSystem = dictionaryKey !== 'metro-systems'
+  const hasTerritory = dictionaryKey !== 'metro-lines'
+  const tabs = <SectionNavigation label="Справочники локаций" items={locationNavigation} />
 
   return (
     <div className="page-stack location-dictionary-page">
@@ -486,24 +489,17 @@ function MetroDictionaryPage() {
         </div>
       </header>
 
-      <SectionNavigation label="Справочники локаций" items={locationNavigation} />
-
       {sessionQuery.data?.capabilities.syncExternalData === true && showMetroLine ? (
         <MetroUpdateAction
           key={searchParameters.get('systemId')}
           systemId={searchParameters.get('systemId') ?? ''}
-        />
-      ) : null}
+        >{tabs}</MetroUpdateAction>
+      ) : tabs}
 
       <section
         className="filter-panel location-filter-panel"
         aria-label={`Фильтры: ${configuration.title}`}
       >
-        <form className="search-form" role="search" onSubmit={(event) => event.preventDefault()}>
-          <div className="live-search-control">
-            <LiveFilterInput label="Поиск" id="location-search" parameter="q" placeholder="Название или связанная локация" />
-          </div>
-        </form>
         {showMetroLine ? (
           <RemoteSelect filter dictionary="metro-lines" label="Линия метро" value={searchParameters.get('metroLineId') ?? ''}
             truncated
@@ -523,9 +519,10 @@ function MetroDictionaryPage() {
             filters={{ category: 'locality' }} value={searchParameters.get('locationId') ?? ''}
             onChange={(value) => updateParameters({ locationId: value, page: null })} />
         ) : null}
-        <SelectFilter label="Статус" parameter="status" emptyLabel="Все"
-          options={[{ value: 'active', label: 'Активные' }, { value: 'inactive', label: 'Неактивные' }]} />
-        <ResetFilters />
+        <div className="live-search-control" role="search">
+          <LiveFilterInput label="Поиск" id="location-search" parameter="q" placeholder="Название или связанная локация" />
+          <ResetFilters />
+        </div>
       </section>
 
       <div className="results-heading" aria-live="polite">
@@ -548,16 +545,23 @@ function MetroDictionaryPage() {
           ) : (
             <>
               <TableScrollArea className="table-card property-table-wrapper location-metro-table" label={configuration.title}>
-                <table className="property-table catalog-table location-table">
+                <table className="property-table location-catalog-table">
                   <caption className="visually-hidden">
                     {configuration.title}
                   </caption>
+                  <colgroup>
+                    <col className="location-catalog-table__name" />
+                    {showMetroLine ? <col /> : null}
+                    {hasSystem ? <col /> : null}
+                    {hasTerritory ? <col /> : null}
+                    {canManageCatalogs ? <col className="location-catalog-table__actions" /> : null}
+                  </colgroup>
                   <thead>
                     <tr>
                       <SortableHeader field="name" defaultOrdering="default">{configuration.nameLabel}</SortableHeader>
                       {showMetroLine ? <SortableHeader field="metroLine" defaultOrdering="default">Линия</SortableHeader> : null}
-                      <th scope="col">Система / линии</th>
-                      <th scope="col">Территория</th>
+                      {hasSystem ? <SortableHeader field="system" defaultOrdering="default">Система метро</SortableHeader> : null}
+                      {hasTerritory ? <SortableHeader field="location" defaultOrdering="default">{showMetroLine ? 'Населённый пункт' : 'Центр системы'}</SortableHeader> : null}
 
                       {canManageCatalogs ? (
                         <th scope="col">
@@ -573,8 +577,8 @@ function MetroDictionaryPage() {
                         {showMetroLine
                           ? <td>{entry.metroLine ? <MetroLineLabel name={entry.metroLine.name} color={entry.metroLine.color} /> : '—'}</td>
                           : null}
-                        <td>{entry.system?.name ?? '—'}{entry.lines?.length ? <p>{entry.lines.map((line) => line.name).join(', ')}</p> : null}</td>
-                          <td>{entry.location?.name ?? 'Не указана'}{entry.locationIsInferred ? <p className="field-hint">Приблизительно, по системе метро</p> : null}</td>
+                        {hasSystem ? <td>{entry.system?.name ?? '—'}{entry.lines?.length ? <p className="field-hint">{entry.lines.map((line) => line.name).join(', ')}</p> : null}</td> : null}
+                        {hasTerritory ? <td>{entry.location?.name ?? 'Не указана'}{entry.locationIsInferred ? <p className="field-hint">Приблизительно, по системе метро</p> : null}</td> : null}
 
                         {canManageCatalogs ? (
                           <td>
@@ -619,8 +623,8 @@ function MetroDictionaryPage() {
 
                     </div>
                     <dl>
-                      <div><dt>Система / линии</dt><dd>{entry.system?.name ?? '—'} {entry.lines?.map((line) => line.name).join(', ')}</dd></div>
-                      <div><dt>Территория</dt><dd>{entry.location?.name ?? 'Не указана'}{entry.locationIsInferred ? ' (приблизительно)' : ''}</dd></div>
+                      {hasSystem ? <div><dt>Система метро</dt><dd>{entry.system?.name ?? '—'} {entry.lines?.map((line) => line.name).join(', ')}</dd></div> : null}
+                      {hasTerritory ? <div><dt>Территория</dt><dd>{entry.location?.name ?? 'Не указана'}{entry.locationIsInferred ? ' (приблизительно)' : ''}</dd></div> : null}
                       {entry.metroLine ? (
                         <div>
                           <dt>Линия</dt>
@@ -631,13 +635,14 @@ function MetroDictionaryPage() {
                     {canManageCatalogs ? (
                       <div className="row-actions">
                         <Link
-                          className="text-link"
+                          className="row-action"
+                          aria-label={`Редактировать: ${entry.name}`}
                           to={`/locations/${dictionaryKey}/${entry.id}/edit`}
                         >
-                          Редактировать
+                          ✎
                         </Link>
                         <button
-                          className="text-button text-button--danger"
+                          className="row-action row-action--danger"
                           type="button"
                           aria-label={`Удалить: ${entry.name}`}
                           onClick={(event) => openDeleteDialog(
@@ -645,7 +650,7 @@ function MetroDictionaryPage() {
                             event.currentTarget,
                           )}
                         >
-                          Удалить
+                          ×
                         </button>
                       </div>
                     ) : null}

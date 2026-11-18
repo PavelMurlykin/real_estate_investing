@@ -55,7 +55,7 @@ from property.models import (
 from property.validators import validate_property_image_upload
 
 from .customer_service import build_customer_financial_capacity
-from .location_parameters import LocationScopeQuerySerializer
+from .location_parameters import LocationScopeQuerySerializer, retained_region_key
 
 
 class LoginRequestSerializer(serializers.Serializer):
@@ -347,6 +347,10 @@ class LocationDictionaryListQuerySerializer(serializers.Serializer):
             '-city',
             'metroLine',
             '-metroLine',
+            'system',
+            '-system',
+            'location',
+            '-location',
             'usageCount',
             '-usageCount',
         ),
@@ -357,6 +361,7 @@ class LocationDictionaryListQuerySerializer(serializers.Serializer):
     metroLineId = serializers.IntegerField(required=False, min_value=1)
     systemId = serializers.IntegerField(required=False, min_value=1)
     locationId = serializers.IntegerField(required=False, min_value=1)
+    canonicalLocations = serializers.BooleanField(default=False)
     page = serializers.IntegerField(required=False, min_value=1, default=1)
     pageSize = serializers.IntegerField(
         required=False,
@@ -445,6 +450,8 @@ class LocationDictionaryEntrySerializer(serializers.Serializer):
 
     def get_region(self, dictionary_entry):
         """Return the owning region for nested location entries."""
+        if self.context.get('canonical_metro'):
+            return None
         if isinstance(dictionary_entry, City):
             region = dictionary_entry.region
         elif isinstance(dictionary_entry, District):
@@ -458,6 +465,8 @@ class LocationDictionaryEntrySerializer(serializers.Serializer):
 
     def get_city(self, dictionary_entry):
         """Return the owning city for districts and metro stations."""
+        if self.context.get('canonical_metro'):
+            return None
         if isinstance(dictionary_entry, District):
             city = dictionary_entry.city
         elif isinstance(dictionary_entry, Metro):
@@ -1096,6 +1105,9 @@ class MortgageProgramRegionalLimitWriteSerializer(serializers.Serializer):
         source='region_location', required=False,
         queryset=Location.objects.filter(location_type__category='region'),
     )
+    retainedLimitId = serializers.IntegerField(
+        source='retained_limit_id', required=False, min_value=1,
+    )
     creditLimit = serializers.DecimalField(
         source='credit_limit',
         max_digits=15,
@@ -1110,7 +1122,7 @@ class MortgageProgramRegionalLimitWriteSerializer(serializers.Serializer):
 
     def validate(self, attributes):
         """Accept one region identity per row and a complete amount on PATCH."""
-        if ('region' in attributes) == ('region_location' in attributes):
+        if sum(field in attributes for field in ('region', 'region_location', 'retained_limit_id')) != 1:
             raise serializers.ValidationError({'regionLocationId': 'Укажите один регион лимита.'})
         if 'credit_limit' not in attributes:
             raise serializers.ValidationError({'creditLimit': 'Укажите сумму лимита.'})
@@ -1179,6 +1191,11 @@ class MortgageProgramWriteSerializer(serializers.Serializer):
         locations_by_legacy = {legacy_id: location_id for location_id, legacy_id in unique_pairs.items()}
         region_identifiers = []
         for limit in regional_limits:
+            if 'retained_limit_id' in limit:
+                if self.instance is None or not self.context.get('canonical_locations'):
+                    raise serializers.ValidationError('Сохранённый лимит доступен только при редактировании программы.')
+                region_identifiers.append(('retained', limit['retained_limit_id']))
+                continue
             location = limit.pop('region_location', None)
             region = limit.pop('region', None)
             if location:
@@ -1207,11 +1224,18 @@ class MortgageProgramWriteSerializer(serializers.Serializer):
         existing = list(queryset.select_for_update())
         by_location = {limit.region_location_id: limit for limit in existing if limit.region_location_id is not None}
         by_legacy = {limit.region_id: limit for limit in existing if limit.region_id is not None}
+        by_id = {limit.pk: limit for limit in existing}
         keep = set()
         changed = []
         created = []
         for fields in regional_limits:
-            row = by_location.get(fields['region_location_id']) or by_legacy.get(fields['region_id'])
+            retained_id = fields.pop('retained_limit_id', None)
+            if retained_id:
+                row = by_id.get(retained_id)
+                if row is None:
+                    raise serializers.ValidationError({'regionalCreditLimits': 'Лимит не найден в этой программе.'})
+            else:
+                row = by_location.get(fields['region_location_id']) or by_legacy.get(fields['region_id'])
             if row is None:
                 created.append(MortgageProgramRegionalCreditLimit(mortgage_program=mortgage_program, **fields))
                 continue
@@ -2375,6 +2399,34 @@ class CustomerListItemSerializer(serializers.ModelSerializer):
 class CustomerDetailSerializer(serializers.ModelSerializer):
     """Serialize an owner-scoped customer profile and financial capacity."""
 
+    def location_display(self, result):
+        """Resolve preserved addresses by identity for the React profile."""
+        bindings = {
+            'residence': ('residenceLocalityLabel', 'residenceUsesCanonicalLocation', 'city', 'residenceCity'),
+            'locality': ('desiredLocalityLabel', 'purchaseUsesCanonicalLocations', 'city', 'desiredCity'),
+            'district': ('desiredDistrictLocation', 'purchaseUsesCanonicalLocations', 'district', 'desiredDistrict'),
+        }
+        legacy_ids = {
+            result[f'{field}Id'] for _, flag, _, field in bindings.values()
+            if not result[flag] and result.get(f'{field}Id')
+        }
+        mappings = {}
+        if legacy_ids:
+            mappings = {
+                (mapping.model_name, mapping.legacy_id): mapping.location
+                for mapping in LegacyLocationMapping.objects.filter(
+                    model_name__in=('city', 'district'), legacy_id__in=legacy_ids,
+                ).select_related('location__location_type', 'location__parent', 'location__region')
+            }
+        display = {}
+        for key, (label, flag, model_name, field) in bindings.items():
+            location = mappings.get((model_name, result.get(f'{field}Id')))
+            display[key] = (
+                result[label] if result[flag]
+                else geographic_label(location) if location else result[field]
+            )
+        return display
+
     def to_representation(self, instance):
         """Expose new territories alongside preserved legacy snapshot identifiers."""
         result = super().to_representation(instance)
@@ -2395,6 +2447,8 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         result['desiredFinancialRegionLocationId'] = instance.desired_financial_region_location_id
         financial_location = instance.desired_financial_region_location
         result['desiredFinancialRegionLocation'] = financial_location.name if financial_location else None
+        if self.context.get('canonical_locations'):
+            result['locationDisplay'] = self.location_display(result)
         return result
 
     firstName = serializers.CharField(source='first_name', read_only=True)
@@ -2691,6 +2745,10 @@ class GeographicModelSerializer(serializers.ModelSerializer):
         result.update(regionLocationId=geography.region_location_id,
                       districtLocationId=geography.district_location_id,
                       localityId=geography.locality_id)
+        if isinstance(instance, Property) and not geography.region_location_id and geography.region_id:
+            result['retainedRegionKey'] = retained_region_key(geography.region_id)
+        if isinstance(instance, RealEstateComplex) and instance.district_id and not instance.primary_location:
+            result['hasRetainedTerritory'] = True
         if hasattr(instance, 'geographic_location_id'):
             from property.location_queries import geography_payload
             result.update(geography_payload(instance))
@@ -4200,6 +4258,9 @@ class ManualCalculationPropertySerializer(serializers.Serializer):
 
     cityId = serializers.IntegerField(min_value=1, required=False, allow_null=True)
     districtId = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+    regionLocationId = serializers.IntegerField(min_value=1, required=False)
+    districtLocationId = serializers.IntegerField(min_value=1, required=False)
+    localityId = serializers.IntegerField(min_value=1, required=False)
     developerId = serializers.IntegerField(min_value=1)
     realEstateComplexId = serializers.IntegerField(min_value=1)
     buildingId = serializers.IntegerField(min_value=1)

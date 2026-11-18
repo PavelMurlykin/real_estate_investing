@@ -113,9 +113,9 @@ export function CustomerDetailPage() {
   }
 
   const customer = customerQuery.data
-  const residence = customer.residenceUsesCanonicalLocation ? customer.residenceLocalityLabel ?? customer.residenceLocality : customer.residenceCity
-  const purchaseLocality = customer.purchaseUsesCanonicalLocations ? customer.desiredLocalityLabel ?? customer.desiredLocality : customer.desiredCity
-  const purchaseDistrict = customer.purchaseUsesCanonicalLocations ? customer.desiredDistrictLocation : customer.desiredDistrict
+  const residence = customer.locationDisplay?.residence ?? customer.residenceLocalityLabel ?? customer.residenceLocality
+  const purchaseLocality = customer.locationDisplay?.locality ?? customer.desiredLocalityLabel ?? customer.desiredLocality
+  const purchaseDistrict = customer.locationDisplay?.district ?? customer.desiredDistrictLocation
   const selection = new URLSearchParams({ customerId: String(customer.id) })
   if (customer.purchaseUsesCanonicalLocations) {
     for (const [parameter, value] of [['regionLocationId', customer.desiredRegionLocationId], ['districtLocationId', customer.desiredDistrictLocationId], ['localityId', customer.desiredLocalityId]] as const) {

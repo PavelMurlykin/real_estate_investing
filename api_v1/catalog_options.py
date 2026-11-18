@@ -15,7 +15,7 @@ from property.models import (
     RealEstateType, TransportAccessibilityType, WindowView,
 )
 
-from .location_parameters import LocationScopeQuerySerializer
+from .location_parameters import LocationScopeQuerySerializer, retained_region_key
 
 
 class CatalogOptionQuerySerializer(LocationScopeQuerySerializer):
@@ -104,6 +104,8 @@ def serialize_catalog_option(item, label_field):
         option.update(regionLocationId=geography.region_location_id,
                       districtLocationId=geography.district_location_id,
                       localityId=geography.locality_id)
+        if not geography.region_location_id and geography.region_id:
+            option['retainedRegionKey'] = retained_region_key(geography.region_id)
     return option
 
 

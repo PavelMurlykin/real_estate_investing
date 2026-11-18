@@ -53,6 +53,7 @@ def filter_catalog_locations(queryset, parameters):
     ordering = parameters.get('ordering') or 'name'
     field = {
         'name': 'name', 'region': 'region__name', 'type': 'location_type__name',
+        'parent': 'parent__name',
     }[ordering.lstrip('-')]
     return queryset.order_by(
         ('-' if ordering.startswith('-') else '') + field, 'name', 'pk',

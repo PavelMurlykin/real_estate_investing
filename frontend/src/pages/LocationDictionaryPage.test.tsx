@@ -85,7 +85,7 @@ function renderLocationPage(
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(['session'], session)
   queryClient.setQueryData(
-    ['location-dictionaries', dictionaryKey, ''],
+    ['location-dictionaries', dictionaryKey, 'canonicalLocations=true&status=active'],
     listResponse(entry),
   )
   queryClient.setQueryData(['location-dictionary', dictionaryKey, entry.id], entry)
@@ -125,7 +125,7 @@ describe('LocationDictionaryPage', () => {
       [
         'location-dictionaries',
         'metro',
-        'regionId=1&cityId=2&metroLineId=3',
+        'canonicalLocations=true&status=active&regionId=1&cityId=2&metroLineId=3',
       ],
       listResponse(metroEntry),
     )
@@ -156,7 +156,7 @@ describe('LocationDictionaryPage', () => {
     )
     const table = within(screen.getByRole('table', { name: 'Метро' }))
     expect(table.getAllByRole('columnheader')).toHaveLength(4)
-    expect(table.getByRole('columnheader', { name: 'Территория' })).toBeInTheDocument()
+    expect(table.getByRole('columnheader', { name: 'Населённый пункт' })).toBeInTheDocument()
     expect(table.queryByRole('columnheader', { name: 'Регион' })).not.toBeInTheDocument()
     expect(table.queryByRole('columnheader', { name: 'Используется' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Прежняя версия' })).not.toBeInTheDocument()

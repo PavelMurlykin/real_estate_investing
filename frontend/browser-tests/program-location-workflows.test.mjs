@@ -53,10 +53,13 @@ async function selectLocationChoice(page, name, choice) {
   await page.getByRole('option', { name: choice, exact: true }).click()
 }
 
+function locationEndpoint(dictionaryKey, identifier) {
+  const endpoint = dictionaryKey.startsWith('metro') ? 'location-dictionaries' : 'location-catalogs'
+  return `/api/v1/${endpoint}/${dictionaryKey}/${identifier ? `${identifier}/` : ''}`
+}
+
 async function saveLocation(page, dictionaryKey, fields, identifier = null) {
-  const apiPath = identifier
-    ? `/api/v1/location-dictionaries/${dictionaryKey}/${identifier}/`
-    : `/api/v1/location-dictionaries/${dictionaryKey}/`
+  const apiPath = locationEndpoint(dictionaryKey, identifier)
   const responsePromise = page.waitForResponse((response) => (
     response.request().method() === (identifier ? 'PATCH' : 'POST')
     && new URL(response.url()).pathname === apiPath
@@ -70,7 +73,7 @@ async function saveLocation(page, dictionaryKey, fields, identifier = null) {
 
 async function deleteLocation(page, dictionaryKey, entry, expectedStatus = 204) {
   await openRoute(page, `locations/${dictionaryKey}?q=${encodeURIComponent(entry.name)}`)
-  const apiPath = `/api/v1/location-dictionaries/${dictionaryKey}/${entry.id}/`
+  const apiPath = locationEndpoint(dictionaryKey, entry.id)
   const responsePromise = page.waitForResponse((response) => (
     response.request().method() === 'DELETE'
     && new URL(response.url()).pathname === apiPath
@@ -177,52 +180,68 @@ for (const width of [360, 1280]) {
 
     await openRoute(page, 'locations/regions')
     await page.getByRole('button', { name: 'Сохранить' }).click()
-    await page.getByText('Укажите название.', { exact: true }).waitFor()
+    assert.equal(await page.getByLabel('Название *', { exact: true }).evaluate((input) => input.validity.valueMissing), true)
     const region = await saveLocation(page, 'regions', async () => {
-      await page.getByLabel(/^Название региона/).fill(regionName)
-      await page.getByLabel(/^Код региона/).fill(`T${suffix.slice(0, 6)}`)
+      await page.getByLabel('Название *', { exact: true }).fill(regionName)
     })
-    trackCleanup(`/api/v1/location-dictionaries/regions/${region.id}/`)
-
-    await openRoute(page, 'locations/cities')
-    const city = await saveLocation(page, 'cities', async () => {
-      await page.getByLabel(/^Название города/).fill(cityName)
-      await selectLocationChoice(page, 'Регион *', regionName)
-    })
-    trackCleanup(`/api/v1/location-dictionaries/cities/${city.id}/`)
+    trackCleanup(locationEndpoint('regions', region.id))
 
     await openRoute(page, 'locations/districts')
     const district = await saveLocation(page, 'districts', async () => {
-      await page.getByLabel(/^Название района/).fill(districtName)
-      await selectLocationChoice(page, 'Регион *', regionName)
-      await selectLocationChoice(page, 'Город *', cityName)
+      await page.getByLabel('Название *', { exact: true }).fill(districtName)
+      await selectLocationChoice(page, 'Родительская территория *', region.label)
     })
-    trackCleanup(`/api/v1/location-dictionaries/districts/${district.id}/`)
-    assert.equal(district.city.id, city.id)
+    trackCleanup(locationEndpoint('districts', district.id))
+    assert.equal(district.parentId, region.id)
+
+    await openRoute(page, 'locations/cities')
+    const city = await saveLocation(page, 'localities', async () => {
+      await page.getByLabel('Название *', { exact: true }).fill(cityName)
+      await selectLocationChoice(page, 'Родительская территория *', district.label)
+    })
+    trackCleanup(locationEndpoint('localities', city.id))
+    assert.equal(city.parentId, district.id)
+
+    const systemName = `E2E система ${suffix}`
+    await openRoute(page, 'locations/metro-systems')
+    const system = await saveLocation(page, 'metro-systems', async () => {
+      await page.getByLabel('Название системы *', { exact: true }).fill(systemName)
+      await selectLocationChoice(page, 'Центр системы *', city.label)
+    })
+    trackCleanup(locationEndpoint('metro-systems', system.id))
+
+    const lineName = `E2E линия ${suffix}`
+    await openRoute(page, 'locations/metro-lines')
+    const line = await saveLocation(page, 'metro-lines', async () => {
+      await page.getByLabel('Название линии *', { exact: true }).fill(lineName)
+      await selectLocationChoice(page, 'Система метро *', systemName)
+    })
+    trackCleanup(locationEndpoint('metro-lines', line.id))
 
     await openRoute(page, 'locations/metro')
     const station = await saveLocation(page, 'metro', async () => {
       await page.getByLabel(/^Название станции/).fill(stationName)
       for (const [name, choice] of [
-        ['Регион *', 'E2E регион'],
-        ['Город *', 'E2E город'],
-        ['Линия метро *', 'E2E линия'],
+        ['Система метро *', systemName],
+        ['Линия метро *', lineName],
       ]) {
         await selectLocationChoice(page, name, choice)
       }
     })
-    trackCleanup(`/api/v1/location-dictionaries/metro/${station.id}/`)
+    trackCleanup(locationEndpoint('metro', station.id))
     await openRoute(page, `locations/metro/${station.id}/edit`)
     const updatedStation = await saveLocation(page, 'metro', async () => {
       await page.getByLabel(/^Название станции/).fill(`${stationName} новая`)
     }, station.id)
-    assert.equal(updatedStation.metroLine.id, fixtureManifest.metroLineId)
+    assert.equal(updatedStation.metroLine.id, line.id)
     await assertNoPageOverflow(page)
 
     await deleteLocation(page, 'regions', region, 409)
     await deleteLocation(page, 'metro', updatedStation)
+    await deleteLocation(page, 'metro-lines', line)
+    await deleteLocation(page, 'metro-systems', system)
+    await deleteLocation(page, 'localities', city)
     await deleteLocation(page, 'districts', district)
-    await deleteLocation(page, 'cities', city)
     await deleteLocation(page, 'regions', region)
   })
 }

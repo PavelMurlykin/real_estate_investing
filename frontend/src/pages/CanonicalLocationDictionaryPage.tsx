@@ -5,6 +5,7 @@ import { ApiError, requestJson, requestWithoutResponse } from '@/api/client'
 import { sessionQueryOptions } from '@/api/queries'
 import { locationCatalogEntrySchema, locationCatalogPageSchema, locationCatalogTitles, locationNavigation,
   type LocationCatalogEntry, type LocationCatalogKey } from '@/features/locations/catalog'
+import { useLegacyLocation } from '@/features/locations/useLegacyLocation'
 import { useTableParameters } from '@/shared/lib/useTableParameters'
 import { useTableSearchParams } from '@/shared/lib/useTableSearchParams'
 import { useDocumentTitle } from '@/shared/lib/useDocumentTitle'
@@ -18,6 +19,7 @@ import { ResetFilters } from '@/shared/ui/ResetFilters'
 import { SearchableSelect } from '@/shared/ui/SearchableSelect'
 import { SectionNavigation } from '@/shared/ui/SectionNavigation'
 import { SelectFilter } from '@/shared/ui/SelectFilter'
+import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { TableScrollArea } from '@/shared/ui/TableScrollArea'
 import { NationalLocationUpdateAction } from './NationalLocationUpdateAction'
 
@@ -75,11 +77,23 @@ function LocationEditor({ dictionaryKey, entry, types, onSaved }: {
 }
 
 export function CanonicalLocationDictionaryPage({ dictionaryKey }: { dictionaryKey: LocationCatalogKey }) {
-  const { entryId = '' } = useParams()
+  const { dictionaryKey: routeKey, entryId = '' } = useParams()
   const navigate = useNavigate()
   const [parameters, setParameters] = useSearchParams()
   const [, updateParameters] = useTableSearchParams()
   const tableParameters = useTableParameters(parameters)
+  tableParameters.set('status', 'active')
+  const legacyCityCatalog = routeKey === 'cities' && !entryId
+  if (legacyCityCatalog) {
+    const oldRegionId = tableParameters.get('regionId')
+    if (oldRegionId && !tableParameters.has('legacyRegionId')) {
+      tableParameters.set('legacyRegionId', oldRegionId)
+    }
+    tableParameters.delete('regionId')
+  }
+  const oldCityId = dictionaryKey === 'districts' ? tableParameters.get('cityId') : null
+  if (oldCityId) tableParameters.set('legacyCityId', oldCityId)
+  const mappedRegion = useLegacyLocation('legacyRegionLookupId', tableParameters.get('legacyRegionId') ?? '').data
   const queryClient = useQueryClient()
   const session = useQuery(sessionQueryOptions)
   const title = locationCatalogTitles[dictionaryKey]
@@ -101,33 +115,70 @@ export function CanonicalLocationDictionaryPage({ dictionaryKey }: { dictionaryK
     onSuccess: async () => { setDeleting(null); await queryClient.invalidateQueries() } })
   const closeEditor = () => { const next = new URLSearchParams(parameters); next.delete('editLocationId'); if (legacyId) navigate(`/locations/${dictionaryKey}?${next}`); else setParameters(next, { replace: true }) }
   const manage = session.data?.capabilities.manageCatalogs === true
-  const region = parameters.get('regionId') ?? ''
+  const region = mappedRegion ? String(mappedRegion.id) : legacyCityCatalog ? '' : parameters.get('regionId') ?? ''
+  const hasTerritory = dictionaryKey !== 'regions'
+  const tabs = <SectionNavigation label="Справочники локаций" items={locationNavigation} />
   return <div className="page-stack location-dictionary-page">
     <header className="page-header"><div><h1>{title}</h1>
       <p>{dictionaryKey === 'localities' ? 'Все города, посёлки, сёла и деревни России.' : dictionaryKey === 'districts' ? 'Административные районы; муниципальные образования ведутся отдельно.' : 'Регионы России.'}</p></div></header>
-    <SectionNavigation label="Справочники локаций" items={locationNavigation} />
-    {session.data?.capabilities.syncExternalData ? <NationalLocationUpdateAction /> : null}
+    {session.data?.capabilities.syncExternalData ? <NationalLocationUpdateAction>{tabs}</NationalLocationUpdateAction> : tabs}
     <section className="filter-panel location-filter-panel" aria-label={`Фильтры: ${title}`}>
-      <form className="search-form" role="search" onSubmit={(event) => event.preventDefault()}>
-        <LiveFilterInput label="Поиск" parameter="q" placeholder="Название или прежнее название" />
-      </form>
       {dictionaryKey !== 'regions' ? <RemoteSelect filter dictionary="locations" label="Регион" value={region} filters={{ category: 'region' }}
-        onChange={(value) => updateParameters((next) => { if (value) next.set('regionId', value); else next.delete('regionId'); next.delete('ancestorId'); next.delete('page') })} /> : null}
+        onChange={(value) => {
+          const updateRegion = (next: URLSearchParams) => {
+            if (value) next.set('regionId', value)
+            else next.delete('regionId')
+            for (const field of ['legacyRegionId', 'legacyCityId', 'cityId', 'ancestorId', 'page']) next.delete(field)
+          }
+          if (legacyCityCatalog) {
+            const next = new URLSearchParams(parameters)
+            updateRegion(next)
+            navigate(`/locations/localities?${next}`)
+          } else updateParameters(updateRegion)
+        }} /> : null}
       {dictionaryKey === 'localities' ? <RemoteSelect filter dictionary="locations" label="Административный район" value={parameters.get('ancestorId') ?? ''}
         filters={{ category: 'district', regionId: region }} onChange={(value) => updateParameters((next) => { if (value) next.set('ancestorId', value); else next.delete('ancestorId'); next.delete('page') })} /> : null}
       <SelectFilter label="Тип" parameter="typeId" options={query.data?.types.map((type) => ({ value: String(type.id), label: type.name })) ?? []} />
-      <SelectFilter label="Статус" parameter="status" options={[{ value: 'active', label: 'Активные' }, { value: 'inactive', label: 'Неактивные' }]} />
-      <SelectFilter label="Сортировка" parameter="ordering" emptyLabel="По названию" options={[{ value: '-name', label: 'Название: Я–А' }, { value: 'region', label: 'По региону' }, { value: 'type', label: 'По типу' }]} />
-      <ResetFilters />
+      <div className="live-search-control" role="search">
+        <LiveFilterInput label="Поиск" parameter="q" placeholder="Название или прежнее название" />
+        <ResetFilters />
+      </div>
     </section>
     {query.isLoading ? <PageLoadingState /> : query.isError || !query.data ? <ErrorState onRetry={() => query.refetch()} /> : <>
       <div className="results-heading" aria-live="polite"><p>Найдено: <strong>{query.data.totalCount}</strong></p></div>
       <div className={manage ? 'dictionary-workspace' : 'dictionary-workspace dictionary-workspace--public'}>
       <section aria-label={title}>
-      {query.data.results.length ? <TableScrollArea className="table-card property-table-wrapper" label={title}><table className="property-table catalog-table" aria-label={title}><thead><tr><th>Название</th><th>Тип</th><th>Родительская территория</th><th>Регион</th><th>Статус</th>{manage ? <th>Действия</th> : null}</tr></thead>
-        <tbody>{query.data.results.map((row) => <tr key={row.id}><td>{row.name}{row.needsReview ? ' · требуется сверка' : ''}</td><td>{row.type}</td><td>{row.parent ?? '—'}</td><td>{row.region ?? '—'}</td><td>{row.isActive ? 'Активно' : 'Неактивно'}</td>
-          {manage ? <td><div className="table-actions"><Link className="text-link" to={`/locations/${row.category === 'region' ? 'regions' : dictionaryKey}?editLocationId=${row.id}`}>Изменить: {row.name}</Link>
-            <button className="button button--secondary" type="button" onClick={() => { remove.reset(); setDeleting(row) }}>Удалить: {row.name}</button></div></td> : null}</tr>)}</tbody></table></TableScrollArea>
+      {query.data.results.length ? <TableScrollArea className="table-card property-table-wrapper" label={title}>
+        <table className="property-table location-catalog-table">
+          <caption className="visually-hidden">{title}</caption>
+          <colgroup>
+            <col className="location-catalog-table__name" />
+            <col />
+            {hasTerritory ? <><col /><col /></> : null}
+            {manage ? <col className="location-catalog-table__actions" /> : null}
+          </colgroup>
+          <thead><tr>
+            <SortableHeader field="name">Название</SortableHeader>
+            <SortableHeader field="type">Тип</SortableHeader>
+            {hasTerritory ? <>
+              <SortableHeader field="parent">Родительская территория</SortableHeader>
+              <SortableHeader field="region">Регион</SortableHeader>
+            </> : null}
+            {manage ? <th scope="col"><span className="visually-hidden">Действия</span></th> : null}
+          </tr></thead>
+          <tbody>{query.data.results.map((row) => <tr key={row.id}>
+            <td><strong>{row.name}</strong>{row.needsReview ? <p className="field-hint">Требуется сверка</p> : null}</td>
+            <td>{row.type}</td>
+            {hasTerritory ? <><td>{row.parent ?? '—'}</td><td>{row.region ?? '—'}</td></> : null}
+            {manage ? <td><div className="row-actions">
+              <Link className="row-action" aria-label={`Изменить: ${row.name}`} title={`Изменить: ${row.name}`}
+                to={`/locations/${row.category === 'region' ? 'regions' : dictionaryKey}?editLocationId=${row.id}`}>✎</Link>
+              <button className="row-action row-action--danger" type="button" aria-label={`Удалить: ${row.name}`} title={`Удалить: ${row.name}`}
+                onClick={() => { remove.reset(); setDeleting(row) }}>×</button>
+            </div></td> : null}
+          </tr>)}</tbody>
+        </table>
+      </TableScrollArea>
       : <EmptyState title="Записей не найдено" description="Измените фильтры или добавьте первую запись." />}
       <Pagination label="Страницы локаций" page={query.data.page} totalPages={query.data.totalPages} onPageChange={(page) => updateParameters((next) => next.set('page', String(page)))} />
       </section>

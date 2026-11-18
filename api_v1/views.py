@@ -1,4 +1,6 @@
 from location.models import LegacyLocationMapping
+
+from .location_parameters import retained_region_key
 from property.location_filters import (
     apply_catalog_location_filters, apply_location_scopes, geographic_search_ids,
 )
@@ -743,6 +745,19 @@ class MortgageOptionsAPIView(APIView):
             .order_by('bank__name', 'mortgage_program__name', 'id')
         )
 
+        mapped_regions = {}
+        if canonical_locations:
+            legacy_region_ids = {
+                limit.region_id
+                for program in bank_programs
+                for limit in program.mortgage_program.active_regional_credit_limits
+                if limit.region_id and not limit.region_location_id
+            }
+            mapped_regions = dict(LegacyLocationMapping.objects.filter(
+                model_name='region', legacy_id__in=legacy_region_ids,
+                location__location_type__category='region',
+            ).values_list('legacy_id', 'location_id'))
+
         banks_by_identifier = {}
         programs = []
         for bank_program in bank_programs:
@@ -777,7 +792,11 @@ class MortgageOptionsAPIView(APIView):
                     'regionalCreditLimits': [
                         {
                             'regionId': regional_limit.region_id,
-                            **({'regionLocationId': regional_limit.region_location_id} if canonical_locations else {}),
+                            **({
+                                'regionLocationId': regional_limit.region_location_id
+                                or mapped_regions.get(regional_limit.region_id),
+                                'retainedRegionKey': retained_region_key(regional_limit.region_id),
+                            } if canonical_locations else {}),
                             'creditLimit': str(
                                 regional_limit.credit_limit
                             ),
@@ -1669,6 +1688,13 @@ class LocationDictionaryImportAPIView(APIView):
 class LocationDictionaryAPIViewMixin:
     """Resolve and serialize only supported location dictionaries."""
 
+    def uses_canonical_metro(self):
+        """Use canonical geography only for opted-in metro consumers."""
+        return (
+            self.get_dictionary_configuration()['key'].startswith('metro')
+            and self.request.query_params.get('canonicalLocations') in ('true', '1')
+        )
+
     def get_dictionary_configuration(self):
         """Return the URL-selected whitelist entry or a safe 404 response."""
         dictionary_key = self.kwargs['dictionary_key']
@@ -1681,10 +1707,13 @@ class LocationDictionaryAPIViewMixin:
         """Return a relation-efficient queryset with dependency counts."""
         configuration = self.get_dictionary_configuration()
         queryset = configuration['model'].objects.all()
-        if configuration['select_related']:
-            queryset = queryset.select_related(
-                *configuration['select_related']
+        related_fields = configuration['select_related']
+        if self.uses_canonical_metro():
+            related_fields = tuple(
+                field for field in related_fields if field not in ('metro_line__city__region', 'city__region')
             )
+        if related_fields:
+            queryset = queryset.select_related(*related_fields)
         if configuration['key'] == 'metro':
             queryset = queryset.prefetch_related('lines')
 
@@ -1704,6 +1733,7 @@ class LocationDictionaryAPIViewMixin:
         context['dictionary_configuration'] = (
             self.get_dictionary_configuration()
         )
+        context['canonical_metro'] = self.uses_canonical_metro()
         return context
 
     def get_permissions(self):
@@ -1747,11 +1777,14 @@ class LocationDictionaryListCreateAPIView(
         filters = query_serializer.validated_data
         configuration = self.get_dictionary_configuration()
         queryset = self.get_base_queryset()
+        canonical_stations = self.uses_canonical_metro() and configuration['key'] == 'metro'
 
         search = filters.get('q', '')
         if search:
             search_query = Q()
             for field_name in configuration['search_fields']:
+                if canonical_stations and field_name == 'metro_line__city__name':
+                    field_name = 'metro_line__system__location__name'
                 search_query |= Q(**{f'{field_name}__icontains': search})
             queryset = queryset.filter(search_query)
         if filters['status'] != 'all':
@@ -1762,7 +1795,16 @@ class LocationDictionaryListCreateAPIView(
             'filter_fields'
         ].items():
             if filters.get(api_field):
-                if configuration['key'] == 'metro' and api_field == 'metroLineId':
+                if canonical_stations and api_field in ('cityId', 'regionId'):
+                    model_name = {'cityId': 'city', 'regionId': 'region'}[api_field]
+                    location_ids = LegacyLocationMapping.objects.filter(
+                        model_name=model_name, legacy_id=filters[api_field],
+                    ).values('location_id')
+                    lookup = 'metro_line__system__location_id__in' if model_name == 'city' else (
+                        'metro_line__system__location__region_id__in'
+                    )
+                    queryset = queryset.filter(**{lookup: location_ids})
+                elif configuration['key'] == 'metro' and api_field == 'metroLineId':
                     queryset = queryset.filter(
                         Q(metro_line_id=filters[api_field]) | Q(lines__pk=filters[api_field]),
                     ).distinct()
@@ -1793,7 +1835,17 @@ class LocationDictionaryListCreateAPIView(
             ordering_fields.update(
                 region='metro_line__city__region__name',
                 city='metro_line__city__name', metroLine='metro_line__line',
+                system='metro_line__system__name', location='location__name',
             )
+            if canonical_stations:
+                ordering_fields.update(
+                    region='metro_line__system__location__region__name',
+                    city='metro_line__system__location__name',
+                )
+        elif model == MetroLine:
+            ordering_fields['system'] = 'system__name'
+        elif model == MetroSystem:
+            ordering_fields['location'] = 'location__name'
         if ordering_name not in ordering_fields:
             raise ValidationError({'ordering': 'Поле здесь недоступно.'})
         ordering_field = ordering_fields[ordering_name]
@@ -2827,7 +2879,14 @@ class DeveloperListCreateAPIView(ListCreateAPIView):
             ).values('location_id')
             queryset = queryset.filter(Q(regions__id=filters['regionId']) | Q(region_locations__pk__in=mapped))
         if filters.get('regionLocationId'):
-            queryset = queryset.filter(region_locations=filters['regionLocationId'])
+            location_id = filters['regionLocationId']
+            mapped_legacy_ids = LegacyLocationMapping.objects.filter(
+                model_name='region', location_id=location_id,
+            ).values('legacy_id')
+            queryset = queryset.filter(
+                Q(region_locations=location_id)
+                | Q(region_locations__isnull=True, regions__pk__in=mapped_legacy_ids),
+            )
         if filters['status'] != 'all':
             queryset = queryset.filter(
                 is_active=filters['status'] == 'active'
@@ -3735,6 +3794,7 @@ class CustomerDetailAPIView(RetrieveUpdateDestroyAPIView):
         context = super().get_serializer_context()
         if self.request.method == 'GET':
             context['key_rate'] = Customer.get_actual_cbr_key_rate()
+            context['canonical_locations'] = self.request.query_params.get('canonicalLocations') == 'true'
         return context
 
 

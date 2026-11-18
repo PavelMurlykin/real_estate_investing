@@ -633,7 +633,7 @@ export function locationDictionaryListQueryOptions(
   dictionaryKey: LocationDictionaryKey,
   searchParameters: URLSearchParams,
 ) {
-  const normalizedParameters = new URLSearchParams()
+  const normalizedParameters = new URLSearchParams({ canonicalLocations: 'true' })
   for (const fieldName of [
     'q',
     'status',
@@ -674,7 +674,7 @@ export function locationDictionaryDetailQueryOptions(
       dictionaryEntryIdentifier,
     ],
     queryFn: ({ signal }) => requestJson(
-      `/api/v1/location-dictionaries/${dictionaryKey}/${dictionaryEntryIdentifier}/`,
+      `/api/v1/location-dictionaries/${dictionaryKey}/${dictionaryEntryIdentifier}/?canonicalLocations=true`,
       locationDictionaryEntrySchema,
       { signal },
     ),
@@ -855,24 +855,8 @@ export function realEstateComplexDetailQueryOptions(
   })
 }
 
-export type RealEstateComplexOptionFilters = {
-  regionId?: number | null
-  cityId?: number | null
-  canonicalLocations?: boolean
-}
-
-export function realEstateComplexOptionsQueryOptions(
-  filters: RealEstateComplexOptionFilters,
-) {
-  const searchParameters = new URLSearchParams()
-  if (filters.regionId) {
-    searchParameters.set('regionId', String(filters.regionId))
-  }
-  if (filters.cityId) {
-    searchParameters.set('cityId', String(filters.cityId))
-  }
-  if (filters.canonicalLocations) searchParameters.set('canonicalLocations', 'true')
-  const queryString = searchParameters.toString()
+export function realEstateComplexOptionsQueryOptions() {
+  const queryString = 'canonicalLocations=true'
   return queryOptions({
     queryKey: ['real-estate-complex-options', queryString],
     queryFn: ({ signal }) => requestJson(
@@ -1099,7 +1083,7 @@ export function customerDetailQueryOptions(customerIdentifier: number) {
     queryKey: ['customer', customerIdentifier],
     queryFn: ({ signal }) =>
       requestJson(
-        `/api/v1/customers/${customerIdentifier}/`,
+        `/api/v1/customers/${customerIdentifier}/?canonicalLocations=true`,
         customerDetailSchema,
         { signal },
       ),

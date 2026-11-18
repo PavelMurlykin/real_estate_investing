@@ -41,7 +41,10 @@ def test_canonical_limits_preserve_old_edits_and_customer_amounts(
     assert program.get_credit_limit(limit.region_id) == Decimal('12000000')
     options = client.get('/api/v1/mortgage/options/', {'canonicalLocations': 'true'}).json()
     row, = options['programs'][0]['regionalCreditLimits']
-    assert row == {'regionId': limit.region_id, 'regionLocationId': region.pk, 'creditLimit': '12000000.00'}
+    assert row == {
+        'regionId': limit.region_id, 'regionLocationId': region.pk,
+        'retainedRegionKey': f'region:{limit.region_id}', 'creditLimit': '12000000.00',
+    }
     legacy, = client.get('/api/v1/mortgage/options/').json()['programs'][0]['regionalCreditLimits']
     assert legacy == {'regionId': limit.region_id, 'creditLimit': '12000000.00'}
     owner, _ = customer_users

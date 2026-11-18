@@ -61,6 +61,7 @@ const formOptions: RealEstateComplexOptions = {
 }
 
 const savedComplex: RealEstateComplexDetail = {
+  hasRetainedTerritory: true,
   id: 99,
   name: 'Новый квартал',
   description: '',

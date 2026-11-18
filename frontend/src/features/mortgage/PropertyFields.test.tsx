@@ -21,7 +21,7 @@ const properties = [1, 2].map((id) => ({
 
 const initial: ManualPropertyState = {
   regionLocationId: '1', districtLocationId: '1', localityId: '1',
-  regionId: '1', cityId: '1', districtId: '1', developerId: '1',
+  developerId: '1',
   realEstateComplexId: '1', buildingId: '1', apartmentNumber: '42',
   area: '50.00', floor: '5', layoutId: '1', decorationId: '1',
 }
@@ -70,10 +70,10 @@ describe('PropertyFields', () => {
   })
 
   it.each([
-    ['Регион', 'Регион 2', { regionLocationId: '2', regionId: '', cityId: '', districtId: '', realEstateComplexId: '', buildingId: '' }],
-    ['Населённый пункт', 'Город 2', { localityId: '2', regionId: '', cityId: '', districtId: '', realEstateComplexId: '', buildingId: '' }],
+    ['Регион', 'Регион 2', { regionLocationId: '2', localityId: '', districtLocationId: '', realEstateComplexId: '', buildingId: '' }],
+    ['Населённый пункт', 'Город 2', { localityId: '2', districtLocationId: '', realEstateComplexId: '', buildingId: '' }],
     ['Застройщик', 'Застройщик 2', { developerId: '2', realEstateComplexId: '', buildingId: '' }],
-    ['Жилой комплекс', 'ЖК 2', { regionId: '2', cityId: '2', districtId: '2', developerId: '2', realEstateComplexId: '2', buildingId: '' }],
+    ['Жилой комплекс', 'ЖК 2', { developerId: '2', realEstateComplexId: '2', buildingId: '' }],
   ] as const)('updates the %s cascade without losing apartment details', async (label, choice, expected) => {
     const user = userEvent.setup()
     const { changed } = renderFields()
@@ -90,7 +90,7 @@ describe('PropertyFields', () => {
     await user.click(screen.getByRole('combobox', { name: 'Населённый пункт' }))
     await user.click(screen.getByRole('option', { name: 'Не выбрано' }))
     expect(changed).toHaveBeenLastCalledWith(expect.objectContaining({
-      regionId: '', cityId: '', districtId: '', realEstateComplexId: '', buildingId: '',
+      regionLocationId: '1', localityId: '', districtLocationId: '', realEstateComplexId: '', buildingId: '',
     }))
   })
 })

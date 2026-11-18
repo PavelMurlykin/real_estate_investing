@@ -5,7 +5,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
 
 from location.models import City, Location
-from property.location_context import geography_prefetch
+from property.location_context import geography_prefetch, locality_filter
 from property.models import RealEstateComplex
 from property.location_filters import apply_location_scopes, selected_scopes
 from .location_parameters import LocationScopeQuerySerializer
@@ -96,14 +96,18 @@ class HomepageComplexListAPIView(ListAPIView):
                     'localityId', 'districtLocationId', 'regionLocationId', 'locationId',
                 ) if self.location_scopes.get(field)))
                 self.territory_label = Location.objects.filter(pk=most_specific).values_list('name', flat=True).first()
-            elif city_id:
-                mapped = Location.objects.filter(
+            elif city_id or not self.location_scopes['allLocations']:
+                localities = Location.objects.filter(locality_filter(), is_active=True).order_by('name', 'pk')
+                mapped = localities.filter(
                     legacy_mappings__model_name='city', legacy_mappings__legacy_id=city_id,
-                    is_active=True,
-                ).values_list('pk', 'name').first()
+                ).values_list('pk', 'name').first() if city_id else None
+                if mapped is None and not self.location_scopes['allLocations']:
+                    mapped = localities.filter(name='Санкт-Петербург').values_list('pk', 'name').first()
                 if mapped:
                     self.location_scopes['localityId'], self.territory_label = mapped
                     scopes = [mapped[0]]
+                elif not self.location_scopes['allLocations']:
+                    return RealEstateComplex.objects.none()
         if scopes or self.location_scopes['allLocations']:
             complexes = RealEstateComplex.objects.filter(is_active=True).select_related(
                 'developer__company_group', 'district__city__region',

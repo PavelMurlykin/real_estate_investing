@@ -44,6 +44,7 @@ class GeographyQuerySerializer(CatalogOptionQuerySerializer):
     relatedToId = serializers.IntegerField(min_value=1, required=False)
     legacyRegionId = serializers.IntegerField(min_value=1, required=False)
     legacyCityId = serializers.IntegerField(min_value=1, required=False)
+    legacyRegionLookupId = serializers.IntegerField(min_value=1, required=False)
     includeContext = serializers.BooleanField(default=False)
 
 
@@ -62,6 +63,12 @@ class GeographyAPIView(APIView):
         if parameters.get('legacyCityId'):
             queryset = queryset.filter(legacy_mappings__model_name='city',
                                        legacy_mappings__legacy_id=parameters['legacyCityId'])
+        if parameters.get('legacyRegionLookupId'):
+            queryset = queryset.filter(
+                legacy_mappings__model_name='region',
+                legacy_mappings__legacy_id=parameters['legacyRegionLookupId'],
+                location_type__category='region',
+            )
         if parameters.get('category') == 'locality':
             queryset = queryset.filter(
                 Q(location_type__category='locality') | Q(

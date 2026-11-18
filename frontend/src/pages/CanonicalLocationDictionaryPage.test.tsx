@@ -109,6 +109,15 @@ describe('canonical location dictionaries', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/v1/location-catalogs/localities/1500/', expect.objectContaining({ method: 'PATCH' })))
   })
 
+  it('keeps old city-list region IDs separate from Location IDs', async () => {
+    const { fetchMock } = setup('localities', { route: '/locations/cities?regionId=7' })
+    await screen.findByRole('table', { name: 'Населённые пункты' })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/location-catalogs/localities/?status=active&legacyRegionId=7',
+      expect.anything(),
+    )
+  })
+
   it('opens the region editor when an old federal-city role maps to the same canonical subject', async () => {
     const { user, fetchMock } = setup('regions', { manage: true, route: '/locations/cities/7/edit' })
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/v1/location-catalogs/regions/64/', expect.anything()))

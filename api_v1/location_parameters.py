@@ -3,6 +3,11 @@
 from rest_framework import serializers
 
 
+def retained_region_key(legacy_id):
+    """Encode an old financial relationship independently of a Location ID."""
+    return f'region:{legacy_id}' if legacy_id else None
+
+
 class LocationScopeQuerySerializer(serializers.Serializer):
     """Accept bounded canonical IDs while retaining older query parameters."""
 

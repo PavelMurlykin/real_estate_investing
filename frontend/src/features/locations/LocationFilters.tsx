@@ -1,7 +1,5 @@
 import { useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { requestJson } from '@/api/client'
-import { geographicPageSchema } from './geography'
+import { useLegacyLocation } from './useLegacyLocation'
 import { useTableSearchParams } from '@/shared/lib/useTableSearchParams'
 import { RemoteSelect } from '@/shared/ui/RemoteSelect'
 
@@ -11,12 +9,10 @@ export function LocationFilters({ prefix = '' }: { prefix?: string }) {
   const region = parameters.get(parameterName('regionLocationId')) ?? ''
   const district = parameters.get(parameterName('districtLocationId')) ?? ''
   const legacyCity = parameters.get(parameterName('cityId')) ?? parameters.get(parameterName('city')) ?? ''
-  const legacy = useQuery({ queryKey: ['legacy-location', legacyCity], enabled: Boolean(legacyCity),
-    queryFn: ({ signal }) => requestJson(`/api/v1/locations/?legacyCityId=${encodeURIComponent(legacyCity)}`, geographicPageSchema, { signal }),
-  })
+  const legacy = useLegacyLocation('legacyCityId', legacyCity)
   useEffect(() => {
-    if (!legacyCity || !legacy.data?.results.length) return
-    const identifier = legacy.data.results[0].id
+    if (!legacyCity || !legacy.data) return
+    const identifier = legacy.data.id
     updateParameters((next) => {
       const name = prefix ? `${prefix}LocalityId` : 'localityId'
       if (!next.has(name)) next.set(name, String(identifier))

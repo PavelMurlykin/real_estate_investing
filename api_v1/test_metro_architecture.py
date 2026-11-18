@@ -11,13 +11,40 @@ from django.db.models.deletion import ProtectedError
 from api_v1.test_location_dictionaries import create_location_manager
 from api_v1.test_location_import import import_user  # noqa: F401
 from location.metro_forms import MetroForm, MetroLineForm, MetroSystemForm
-from location.models import Location, LocationType, Metro, MetroLine, MetroSystem
+from location.models import City, LegacyLocationMapping, Location, LocationType, Metro, MetroLine, MetroSystem, Region
 from location.tests.test_metro_architecture import metro_geography, create_complex_link  # noqa: F401
 
 
 def catalog_url(key, identifier=None):
     """Build the shared metro dictionary endpoint."""
     return f'/api/v1/location-dictionaries/{key}/' + (f'{identifier}/' if identifier else '')
+
+
+@pytest.mark.django_db
+def test_react_station_list_resolves_old_city_links_without_using_line_city(client, metro_geography):
+    """Apply old URL IDs to the canonical network center and keep the old API shape."""
+    system, line, station, _ = metro_geography
+    region = Region.objects.create(name='Прежний регион', code='TEST')
+    city = City.objects.create(region=region, name='Прежний город')
+    LegacyLocationMapping.objects.create(model_name='city', legacy_id=city.pk, location=system.location)
+    filters = {
+        'canonicalLocations': 'true', 'cityId': city.pk,
+        'ordering': '-location', 'status': 'active', 'q': system.location.name,
+    }
+    assert client.get(catalog_url('metro'), filters).json()['results'] == []
+    station.is_active = True
+    station.save(update_fields=['is_active'])
+    result = client.get(catalog_url('metro'), filters)
+    assert result.status_code == 200
+    rows = result.json()['results']
+    assert [row['id'] for row in rows] == [station.pk]
+    assert rows[0]['city'] is None
+    assert client.get(catalog_url('metro'), {'cityId': city.pk}).json()['results'] == []
+    line.city = city
+    line.save(update_fields=['city'])
+    old_row = client.get(catalog_url('metro'), {'cityId': city.pk}).json()['results'][0]
+    assert old_row['city'] == {'id': city.pk, 'name': city.name}
+    assert old_row['region'] == {'id': region.pk, 'name': region.name}
 
 
 @pytest.mark.django_db

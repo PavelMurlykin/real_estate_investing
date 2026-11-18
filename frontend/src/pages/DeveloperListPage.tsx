@@ -11,10 +11,12 @@ import { LiveFilterInput } from '@/shared/ui/LiveFilterInput'
 import { SortableHeader } from '@/shared/ui/SortableHeader'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { ApiError } from '@/api/client'
+import { useLegacyLocation } from '@/features/locations/useLegacyLocation'
+import { useTableSearchParams } from '@/shared/lib/useTableSearchParams'
 import {
   deleteDeveloper,
   developerListQueryOptions,
@@ -29,8 +31,8 @@ import { EmptyState, ErrorState, PageLoadingState } from '@/shared/ui/AsyncState
 import { DeveloperRegistryImportPanel } from './DeveloperRegistryImportPanel'
 
 function regionNames(developer: DeveloperPublic) {
-  const canonical = developer.regionLocations ?? developer.regions
-  const pending = developer.regionLocations ? developer.unmappedRegions ?? [] : []
+  const canonical = developer.regionLocations ?? []
+  const pending = developer.unmappedRegions ?? []
   return [...canonical.map((region) => region.name),
     ...pending.map((region) => `${region.name} (требует уточнения)`)].join(', ') || 'Не указаны'
 }
@@ -38,6 +40,18 @@ function regionNames(developer: DeveloperPublic) {
 export function DeveloperListPage() {
   useDocumentTitle('Застройщики')
   const [searchParameters, setSearchParameters] = useSearchParams()
+  const [, updateTableParameters] = useTableSearchParams()
+  const legacyRegionId = searchParameters.get('regionId') ?? ''
+  const legacyRegion = useLegacyLocation('legacyRegionLookupId', legacyRegionId)
+  const mappedRegionId = legacyRegion.data?.id
+  useEffect(() => {
+    if (!mappedRegionId || !legacyRegionId) return
+    updateTableParameters((next) => {
+      if (next.get('regionId') !== legacyRegionId) return
+      if (!next.has('regionLocationId')) next.set('regionLocationId', String(mappedRegionId))
+      next.delete('regionId')
+    }, { replace: true })
+  }, [legacyRegionId, mappedRegionId, updateTableParameters])
   const tableParameters = useTableParameters(searchParameters)
   const sessionQuery = useQuery(sessionQueryOptions)
   const developerQuery = useQuery(developerListQueryOptions(tableParameters))

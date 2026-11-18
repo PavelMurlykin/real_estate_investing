@@ -148,6 +148,7 @@ describe('CustomerFormPage', () => {
     const queryClient = createAuthenticatedQueryClient()
     queryClient.setQueryData(['customer', 12], { ...customerDetail,
       residenceUsesCanonicalLocation: false, purchaseUsesCanonicalLocations: false,
+      locationDisplay: { residence: 'Пушкин', locality: 'Стрельна', district: null },
       residenceLocalityId: null, desiredRegionLocationId: null, desiredDistrictLocationId: null, desiredLocalityId: null,
     })
     const writes = vi.fn().mockResolvedValue(Response.json({ id: 12 }))
@@ -157,7 +158,7 @@ describe('CustomerFormPage', () => {
       <Route path="/customers/:customerId/edit" element={<CustomerFormPage />} />
       <Route path="/customers/:customerId" element={<h1>Сохранён</h1>} />
     </Routes>, { initialRoute: '/customers/12/edit', queryClient })
-    await screen.findByText(/Сохранённые прежние локации/)
+    await screen.findByText(/Место проживания и территория покупки сохранены/)
     await user.click(screen.getByRole('button', { name: 'Сохранить клиента' }))
     await screen.findByRole('heading', { name: 'Сохранён' })
     const payload = JSON.parse(writes.mock.calls.find(([, options]) => options?.method === 'PATCH')?.[1].body as string)

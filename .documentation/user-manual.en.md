@@ -26,6 +26,8 @@ In the React Developers section, “Регионы” and the “Регион”
 
 On Regions, Localities, Administrative districts and Metro, application administrators (`application_administrators`) and superusers see “Обновить данные” (Update data). Regular users, staff with only `is_staff`, and moderators cannot import. Moderators retain manual dictionary editing rights. The server checks permissions, the session and CSRF protection.
 
+In React, the button sits at the right of the tab row. Use “Закрыть уведомление” (Dismiss notification) to close the result or error for the current run. Reloading clears the result. If the national import is still running, the button stays disabled until it finishes.
+
 On any of the three geographic tabs, “Обновить данные” starts one background import of regions, administrative districts and all current cities, towns, settlements and villages from the official FNS GAR. The free metadata API `https://fias.nalog.ru/WebServices/Public/GetLastDownloadFileInfo` requires no key or registration. One source version is pinned per run. HTTPS ZIP ranges retrieve address objects and administrative hierarchy. Section 99 (Baikonur outside Russia) is excluded. Filters do not restrict the run. The initial download can take tens of minutes. The button is disabled while the job runs and the summary appears after completion.
 
 Closing the tab or reloading does not interrupt the import. Repeated clicks reuse an active job. After failure, “Обновить данные” resumes after the last completely committed region of the same version. A checksum failure or incomplete hierarchy rejects the entire current region. A restarted worker resumes unfinished jobs. After completion the button starts a fresh update. Repeating the same version uses verified cached extracts and creates no duplicates. Retired objects are retained as inactive and manual deactivation is preserved. Historic regional sections without current objects do not create empty subjects.
@@ -80,7 +82,7 @@ Residence is selected in “Населённый пункт проживания
 
 Migration preserves original cities, districts, owners, calculations, associations and each customer's financial region, including an empty region. If a legacy region has an unambiguous mapping, the profile also gets its Location region. Changing the purchase territory sets the financial region to its federal subject. The profile displays it under “Регион лимита”. Saving unrelated profile fields preserves the applicable limit.
 
-If a legacy value cannot be mapped, the form displays its retained description. Other fields can be edited while keeping the original locations and limits, or new territories can be explicitly selected. Clearing a canonical field persists an empty selection and does not revive the old value. The fallback Django form follows the same rules. Profiles and linked calculations remain available only to their owner and appropriately authorized users.
+The profile displays confirmed names from the unified catalog and retained names where a mapping is still needed. Editing other fields keeps the former locations and limits. Select territories in the form to refine them. Clearing a canonical field persists an empty selection. Profiles and linked calculations remain available only to their owner and appropriately authorized users.
 
 The customer section requires authentication. A customer profile contains contacts, preferences, budget and linked market/tranche calculations. Financial capacity is an initial estimate. Select linked calculations for a combined Word report or unlink them; deleting a customer does not delete the calculations themselves.
 
@@ -92,9 +94,9 @@ The Regions (“Регионы”), Localities (“Населённые пунк
 
 Odintsovo, Pushkino, Klin and other verified cities in Moscow Oblast, as well as Nizhny Novgorod, are available under Localities. They may report directly to the federal subject in the hierarchy. For districts absent from the loaded GAR administrative hierarchy, verification uses city records and the parent's FIAS ID. The Mys complex is in Likino village. Its former association with Odintsovsky Urban District is kept in its history. Find the complex with the Likino filter or under Odintsovo, the village's parent city in GAR.
 
-Location catalog editors appear beside the list on wide screens and above it on phones. To open an existing entry in the editor, select “Изменить” in its row.
+Location catalog editors appear beside the list on wide screens and above it on phones. The pencil and delete icons in each row open the editor and the deletion confirmation.
 
-Search matches current and former names. Region, administrative district, type and activity filters update results automatically. Sorting and pages of 20 records are available. Enter a name, type and parent territory in the editor; a region has no parent. Parent choices are searched on the server, and the parent-region selector narrows them. Homonyms in different territories are allowed; an identical name and type under the same parent are rejected.
+The Locations tabs display active entries. Search matches current and former names. Filters update the list automatically. Click a column header to sort entries and click it again to reverse the direction. For a locality or district, enter its name, type and parent territory. Parent choices are searched on the server. The parent region narrows the list. Names may repeat in different territories. Each name must be unique within its type and parent territory.
 
 Renaming preserves the former name for search, source identifiers and every association. Moving a territory changes its administrative affiliation together with its descendants; cycles are rejected. Official imports may update the name and hierarchy again while retaining IDs and links. Manual deactivation survives repeated imports. Imported or referenced records cannot be deleted: clear “Активно” to hide them. Unused manual records can be deleted.
 

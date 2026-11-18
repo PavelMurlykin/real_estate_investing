@@ -363,8 +363,11 @@ export function CustomerFormPage() {
         <PageLoadingState compact title="Обновляем список районов…" />
       ) : null}
 
-      {customerQuery.data && ((!customerQuery.data.residenceUsesCanonicalLocation && customerQuery.data.residenceCity) || (!customerQuery.data.purchaseUsesCanonicalLocations && (customerQuery.data.desiredCity || customerQuery.data.desiredDistrict))) ? <Notice tone="info">
-        Сохранённые прежние локации: {customerQuery.data.residenceCity || '—'}; покупка: {customerQuery.data.desiredCity || '—'}, {customerQuery.data.desiredDistrict || '—'}. Выберите новые территории для уточнения. Остальные изменения сохранят прежние данные и лимиты.
+      {customerQuery.data?.locationDisplay && (
+        (!customerQuery.data.residenceUsesCanonicalLocation && customerQuery.data.locationDisplay.residence)
+        || (!customerQuery.data.purchaseUsesCanonicalLocations && (customerQuery.data.locationDisplay.locality || customerQuery.data.locationDisplay.district))
+      ) ? <Notice tone="info">
+        Место проживания и территория покупки сохранены. Выберите территории в справочнике, если хотите их уточнить.
       </Notice> : null}
       <form className="customer-form" onSubmit={handleSubmit}>
         <section

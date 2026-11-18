@@ -1,19 +1,18 @@
 import type { ManualCalculationProperty, PropertyDetail, PropertyListItem } from '@/api/schemas'
 
-export type ManualPropertyState = Record<keyof ManualCalculationProperty | 'regionId', string> & {
-  regionLocationId?: string
-  districtLocationId?: string
-  localityId?: string
-}
+type TerritoryField = 'regionLocationId' | 'districtLocationId' | 'localityId'
+
+export type ManualPropertyState = Record<Exclude<keyof ManualCalculationProperty, TerritoryField>, string>
+  & Partial<Record<TerritoryField | 'retainedRegionKey', string>>
 
 export const emptyManualProperty: ManualPropertyState = {
-  regionId: '', cityId: '', districtId: '', developerId: '', realEstateComplexId: '',
+  developerId: '', realEstateComplexId: '',
   buildingId: '', apartmentNumber: '', area: '', floor: '', layoutId: '', decorationId: '',
 }
 
 export function isManualPropertyComplete(value: ManualPropertyState | null): boolean {
-  return value !== null && Object.entries(value)
-    .every(([field, entry]) => ['regionId', 'cityId', 'districtId', 'regionLocationId', 'districtLocationId', 'localityId'].includes(field) || entry.trim() !== '')
+  return value !== null && (Object.keys(emptyManualProperty) as (keyof ManualPropertyState)[])
+    .every((field) => Boolean(value[field]?.trim()))
 }
 
 export function manualPropertyFromSelected(property?: PropertyListItem | PropertyDetail): ManualPropertyState {
@@ -22,8 +21,8 @@ export function manualPropertyFromSelected(property?: PropertyListItem | Propert
     regionLocationId: String(property.regionLocationId ?? ''),
     districtLocationId: String(property.districtLocationId ?? ''),
     localityId: String(property.localityId ?? ''),
-    regionId: String(property.regionId ?? ''), cityId: String(property.cityId ?? ''),
-    districtId: String(property.districtId ?? ''), developerId: String(property.developerId ?? ''),
+    retainedRegionKey: property.retainedRegionKey,
+    developerId: String(property.developerId ?? ''),
     realEstateComplexId: String(property.realEstateComplexId ?? ''), buildingId: String(property.buildingId ?? ''),
     apartmentNumber: property.apartmentNumber, area: property.area, floor: String(property.floor),
     layoutId: String(property.layoutId ?? ''), decorationId: String(property.decorationId ?? ''),
@@ -32,8 +31,9 @@ export function manualPropertyFromSelected(property?: PropertyListItem | Propert
 
 export function buildManualPropertyPayload(value: ManualPropertyState): ManualCalculationProperty {
   return {
-    cityId: value.regionLocationId || value.localityId || value.districtLocationId ? null : value.cityId ? Number(value.cityId) : null,
-    districtId: value.regionLocationId || value.localityId || value.districtLocationId ? null : value.districtId ? Number(value.districtId) : null,
+    regionLocationId: value.regionLocationId ? Number(value.regionLocationId) : undefined,
+    districtLocationId: value.districtLocationId ? Number(value.districtLocationId) : undefined,
+    localityId: value.localityId ? Number(value.localityId) : undefined,
     developerId: Number(value.developerId), realEstateComplexId: Number(value.realEstateComplexId),
     buildingId: Number(value.buildingId), apartmentNumber: value.apartmentNumber,
     area: value.area, floor: Number(value.floor), layoutId: Number(value.layoutId),

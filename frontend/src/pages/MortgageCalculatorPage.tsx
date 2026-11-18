@@ -483,10 +483,10 @@ export function MortgageCalculatorPage({
   const complexIdentifier = selectedProperty?.realEstateComplexId || Number(manualProperty?.realEstateComplexId) || null
   const financialRegion = selectedProperty ? {
     locationId: selectedProperty.regionLocationId ?? null,
-    legacyId: selectedProperty.regionId ?? null,
+    retainedKey: selectedProperty.retainedRegionKey,
   } : {
     locationId: Number(manualProperty?.regionLocationId) || null,
-    legacyId: Number(manualProperty?.regionId) || null,
+    retainedKey: manualProperty?.retainedRegionKey,
   }
   const developerOptionsQuery = useQuery({
     ...mortgageDeveloperOptionsQueryOptions(developerIdentifier ?? 0),

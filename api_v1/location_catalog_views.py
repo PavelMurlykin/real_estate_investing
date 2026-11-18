@@ -35,10 +35,14 @@ class LocationCatalogQuerySerializer(serializers.Serializer):
     legacyRegionId = serializers.IntegerField(
         required=False, min_value=1, max_value=9223372036854775807,
     )
+    legacyCityId = serializers.IntegerField(
+        required=False, min_value=1, max_value=9223372036854775807,
+    )
     typeId = serializers.IntegerField(required=False, min_value=1, max_value=9223372036854775807)
     status = serializers.ChoiceField(choices=['all', 'active', 'inactive'], default='all')
     ordering = serializers.ChoiceField(
-        choices=['name', '-name', 'region', '-region', 'type', '-type'], default='name',
+        choices=['name', '-name', 'region', '-region', 'type', '-type', 'parent', '-parent'],
+        default='name',
     )
 
 
@@ -99,6 +103,11 @@ class LocationCatalogAPIView(APIView):
         serializer = LocationCatalogQuerySerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         parameters = serializer.validated_data
+        if parameters.get('legacyCityId'):
+            city_locations = LegacyLocationMapping.objects.filter(
+                model_name='city', legacy_id=parameters['legacyCityId'],
+            ).values('location_id')
+            queryset = queryset.filter(ancestor_links__ancestor_id__in=city_locations)
         queryset = filter_catalog_locations(queryset, parameters)
         paginator = ApplicationPageNumberPagination()
         rows = paginator.paginate_queryset(queryset, request, view=self)

@@ -439,7 +439,7 @@ describe('MortgageCalculatorPage', () => {
     const payload = JSON.parse(saved?.[1]?.body as string)
     expect(payload).not.toHaveProperty('propertyId')
     expect(payload.parameters.manualProperty).toMatchObject({
-      cityId: null, buildingId: 1, apartmentNumber: 'NEW-42', area: '52.40',
+      buildingId: 1, apartmentNumber: 'NEW-42', area: '52.40',
     })
   })
 
@@ -615,7 +615,8 @@ describe('MortgageCalculatorPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Сохранить расчёт' }))
     const calculation = fetchMock.mock.calls.find(([path]) => path === '/api/v1/mortgage/calculate/')
     expect(JSON.parse(calculation?.[1].body as string).manualProperty).toEqual({
-      cityId: null, districtId: null, developerId: 1, realEstateComplexId: 1, buildingId: 1,
+      regionLocationId: 1, districtLocationId: 1, localityId: 1,
+      developerId: 1, realEstateComplexId: 1, buildingId: 1,
       apartmentNumber: 'NEW-42', area: '51.25', floor: 9, layoutId: 1, decorationId: 1,
     })
     const saved = fetchMock.mock.calls.find(([path]) => path === '/api/v1/mortgage/calculations/')
@@ -708,10 +709,10 @@ describe('MortgageCalculatorPage', () => {
     const user = userEvent.setup()
     renderCalculator({
       initialRoute: '/?propertyId=3',
-      properties: { ...propertyList, results: [{ ...propertyList.results[0], regionId: 2 }] },
+      properties: { ...propertyList, results: [{ ...propertyList.results[0], regionId: 2, regionLocationId: 202 }] },
       options: {
         ...mortgageOptions,
-        programs: [{ ...mortgageOptions.programs[0], regionalCreditLimits: [{ regionId: 2, creditLimit: '2000000' }] }],
+        programs: [{ ...mortgageOptions.programs[0], regionalCreditLimits: [{ regionId: 2, regionLocationId: 202, creditLimit: '2000000' }] }],
       },
     })
     await chooseBankOrProgram(user, 'Банк', 'Надёжный банк')

@@ -10,6 +10,7 @@ from django.test import Client
 from api_v1.test_complex_localities import locality_catalog
 from api_v1.test_location_import import import_user
 from api_v1.test_real_estate_complexes import complex_catalog
+from api_v1.serializers import ManualCalculationPropertySerializer
 from location.models import City, LegacyLocationMapping, Location, LocationClosure
 from property.location_context import set_primary_location
 from property.models import (
@@ -46,6 +47,32 @@ def result_ids(client, endpoint, parameters):
     response = client.get(endpoint, parameters)
     assert response.status_code == 200, response.content
     return {row['id'] for row in response.json()['results']}
+
+
+@pytest.mark.django_db
+def test_manual_calculation_checks_location_against_the_building(filtered_catalog):
+    """Accept the new scopes and reject a same-region locality mismatch."""
+    locality, project, building, apartment = filtered_catalog['pushkin']
+    payload = {
+        'regionLocationId': locality.region_id,
+        'districtLocationId': locality.parent_id,
+        'localityId': locality.pk,
+        'developerId': project.developer_id,
+        'realEstateComplexId': project.pk,
+        'buildingId': building.pk,
+        'apartmentNumber': '42',
+        'area': '50.00',
+        'floor': 1,
+        'layoutId': apartment.layout_id,
+        'decorationId': apartment.decoration_id,
+    }
+    serializer = ManualCalculationPropertySerializer(data=payload)
+    assert serializer.is_valid(), serializer.errors
+    assert serializer.validated_data['OBJECT_BUILDING'] == building
+    serializer = ManualCalculationPropertySerializer(data={
+        **payload, 'localityId': filtered_catalog['strelna'][0].pk,
+    })
+    assert not serializer.is_valid()
 
 
 @pytest.mark.django_db
