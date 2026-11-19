@@ -162,7 +162,10 @@ def test_customer_form_options_are_filtered_and_bounded(
     ApartmentLayout.objects.create(name='Студия')
     other_region = Region.objects.create(name='Татарстан', code='CUST16')
     other_city = City.objects.create(name='Казань', region=other_region)
-    District.objects.create(name='Центр', city=other_city)
+    from location.compatibility import canonical_legacy_location
+
+    canonical_legacy_location(District.objects.create(name='Центр', city=other_city))
+    canonical_legacy_location(customer_profile.desired_district)
     client.force_login(owner)
 
     response = client.get(

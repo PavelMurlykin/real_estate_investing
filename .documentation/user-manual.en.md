@@ -50,6 +50,8 @@ Use the national GAR import to refresh canonical regions, localities and adminis
 
 The background GAR import updates Location by FIAS and GAR identifiers and federal subject codes. The worker continues independently of the open page. JSON version 1 and developer registry imports use canonical locations together with retained codes and names. Legacy links, request formats and existing associations are preserved.
 
+The legacy dictionary and selector endpoints retain their URLs, IDs, status, parent filters and response formats. They read the historical geography through `LegacyLocationMapping`. Existing integrations can still edit the legacy entries with their current catalog permissions. The old rows are synchronized while other sections still reference them. Historical aliases retain their scope, while precise settlements such as Pushkin, Strelna and Likino are available in the Location catalog.
+
 On Metro, select a system and click “Обновить данные”. The network center must have a confirmed FIAS identifier. Lines and stations are loaded together. Existing entries retain their IDs, precise geography, line memberships, active states and complex links. The lines list shows a color swatch beside each name. To pick a color, use “Цвет линии” in the editor. A station card shows the station's locality.
 
 The `systemId` filter selects the network. The station locality filter uses the station's own location. Legacy `cityId` and `regionId` filters use the original line association. With `canonicalLocations=true`, they apply to the network center through `LegacyLocationMapping`. A legacy import request with a region and city updates the same network as a request with `systemId`. Select a system explicitly when a city matches multiple networks.

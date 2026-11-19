@@ -117,6 +117,9 @@ class LegacyLocationMapping(models.Model):
     legacy_source_identifier = models.CharField(max_length=200, blank=True)
     legacy_city_id = models.PositiveBigIntegerField(null=True, blank=True)
     legacy_region_id = models.PositiveBigIntegerField(null=True, blank=True)
+    legacy_is_active = models.BooleanField(default=True)
+    legacy_created_at = models.DateTimeField(null=True, blank=True)
+    legacy_updated_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         """Keep legacy identifiers unambiguous within their original model."""

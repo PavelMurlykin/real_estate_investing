@@ -6,6 +6,7 @@ from django.contrib.auth.models import Group
 from django.urls import reverse
 
 from bank.models import Bank, DeveloperMortgageProgram, MortgageProgram
+from location.compatibility import canonical_legacy_location
 from location.models import City, Region
 from property.models import ApartmentLayout, CompanyGroup
 from users.roles import MODERATOR_GROUP_NAME
@@ -38,6 +39,8 @@ def catalog_case_records():
     program = MortgageProgram.objects.create(name=name, condition='Условия')
     layout = ApartmentLayout.objects.create(name=name)
     city = City.objects.create(name=name, region=first_region)
+    canonical_legacy_location(city)
+    canonical_legacy_location(second_region)
     developer_program = DeveloperMortgageProgram.objects.create(
         company_group=CompanyGroup.objects.create(name=name),
         bank=bank,
@@ -103,6 +106,7 @@ def test_catalog_rejects_case_duplicates_without_rejecting_own_name(
     if catalog_key == 'mortgage-programs':
         creation_payload['condition'] = 'Условия'
     if catalog_key == 'cities':
+        canonical_legacy_location(other_entry)
         creation_payload['regionId'] = instance.region_id
     initial_count = model.objects.count()
     response = client.post(

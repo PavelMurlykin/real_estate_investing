@@ -11,6 +11,7 @@ from bank.models import (
     MortgageProgram,
     MortgageProgramRegionalCreditLimit,
 )
+from location.compatibility import canonical_legacy_location
 from location.models import Region
 from users.roles import MODERATOR_GROUP_NAME
 
@@ -193,6 +194,8 @@ def test_mortgage_program_options_are_public_and_bounded(
 ):
     """Expose bounded public region choices with truncation metadata."""
     settings.PUBLIC_CATALOG_API_MAX_RESULTS = 1
+    canonical_legacy_location(mortgage_program_catalog['moscow'])
+    canonical_legacy_location(mortgage_program_catalog['saint_petersburg'])
 
     response = client.get(reverse('api_v1:mortgage_program_options'))
 

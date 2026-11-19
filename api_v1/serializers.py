@@ -21,6 +21,7 @@ from bank.models import (
 from customer.models import Customer
 from customer.location_service import CUSTOMER_LOCATION_FIELDS, prepare_customer_locations
 from location.compatibility import canonical_legacy_location
+from location.legacy_catalog import LEGACY_GEOGRAPHY_MODELS, legacy_catalog
 from location.presentation import geographic_label
 from location.models import City, District, LegacyLocationMapping, Location, Metro, MetroLine, MetroSystem, Region
 from property.location_context import (
@@ -383,7 +384,7 @@ class LocationDictionaryOptionsQuerySerializer(serializers.Serializer):
 class LocationDictionaryEntrySerializer(serializers.Serializer):
     """Serialize one entry from a whitelisted location dictionary."""
 
-    id = serializers.IntegerField(read_only=True)
+    id = serializers.SerializerMethodField()
     name = serializers.SerializerMethodField(method_name='get_name')
     code = serializers.SerializerMethodField(method_name='get_code')
     region = serializers.SerializerMethodField(method_name='get_region')
@@ -406,6 +407,8 @@ class LocationDictionaryEntrySerializer(serializers.Serializer):
 
     def get_location(self, entry):
         """Expose explicit geography with a bounded, preloaded label."""
+        if isinstance(entry, LegacyLocationMapping):
+            return None
         location = getattr(entry, 'location', None)
         return {'id': location.pk, 'name': geographic_label(location)} if location else None
 
@@ -428,7 +431,7 @@ class LocationDictionaryEntrySerializer(serializers.Serializer):
     usageCount = serializers.IntegerField(
         source='usage_count', read_only=True
     )
-    isActive = serializers.BooleanField(source='is_active', read_only=True)
+    isActive = serializers.SerializerMethodField(method_name='get_is_active')
     createdAt = serializers.DateTimeField(source='created_at', read_only=True)
     updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
     legacyEditUrl = serializers.SerializerMethodField(
@@ -439,6 +442,14 @@ class LocationDictionaryEntrySerializer(serializers.Serializer):
         """Return the location dictionary configuration for this request."""
         return self.context['dictionary_configuration']
 
+    def get_id(self, entry):
+        """Keep IDs scoped to their original public dictionary."""
+        return entry.legacy_id if isinstance(entry, LegacyLocationMapping) else entry.pk
+
+    def get_is_active(self, entry):
+        """Expose the status the old catalog assigned to the entry."""
+        return entry.legacy_is_active if isinstance(entry, LegacyLocationMapping) else entry.is_active
+
     def get_name(self, dictionary_entry):
         """Return the configured display field under a stable API name."""
         return getattr(
@@ -448,35 +459,29 @@ class LocationDictionaryEntrySerializer(serializers.Serializer):
 
     def get_code(self, dictionary_entry):
         """Return the region code only when the model supports it."""
-        return getattr(dictionary_entry, 'code', None)
+        return dictionary_entry.legacy_code if self.get_configuration()['key'] == 'regions' else None
 
     def get_region(self, dictionary_entry):
         """Return the owning region for nested location entries."""
         if self.context.get('canonical_metro'):
             return None
-        if isinstance(dictionary_entry, City):
-            region = dictionary_entry.region
-        elif isinstance(dictionary_entry, District):
-            region = dictionary_entry.city.region
-        elif isinstance(dictionary_entry, Metro):
+        if isinstance(dictionary_entry, LegacyLocationMapping) and dictionary_entry.legacy_region_id:
+            return {'id': dictionary_entry.legacy_region_id, 'name': dictionary_entry.region_name}
+        if isinstance(dictionary_entry, Metro):
             identifier = dictionary_entry.legacy_metro_region_id
             return {'id': identifier, 'name': dictionary_entry.legacy_metro_region_name} if identifier else None
-        else:
-            return None
-        return {'id': region.pk, 'name': region.name} if region else None
+        return None
 
     def get_city(self, dictionary_entry):
         """Return the owning city for districts and metro stations."""
         if self.context.get('canonical_metro'):
             return None
-        if isinstance(dictionary_entry, District):
-            city = dictionary_entry.city
-        elif isinstance(dictionary_entry, Metro):
+        if isinstance(dictionary_entry, LegacyLocationMapping) and dictionary_entry.legacy_city_id:
+            return {'id': dictionary_entry.legacy_city_id, 'name': dictionary_entry.city_name}
+        if isinstance(dictionary_entry, Metro):
             identifier = dictionary_entry.metro_line.city_id
             return {'id': identifier, 'name': dictionary_entry.legacy_metro_city_name} if identifier else None
-        else:
-            return None
-        return {'id': city.pk, 'name': city.name} if city else None
+        return None
 
     def get_metro_line(self, dictionary_entry):
         """Return metro-line identity and color for station entries."""
@@ -494,7 +499,7 @@ class LocationDictionaryEntrySerializer(serializers.Serializer):
         query_string = urlencode(
             {
                 'model': self.get_configuration()['legacy_key'],
-                'edit': dictionary_entry.pk,
+                'edit': self.get_id(dictionary_entry),
             }
         )
         return f"{reverse('location:location_catalog')}?{query_string}"
@@ -530,11 +535,7 @@ class LocationDictionaryWriteSerializer(serializers.Serializer):
         configuration = self.context['dictionary_configuration']
         current_entry = self.instance
         dictionary_key = configuration['key']
-        relationship_fields = {
-            'cities': ('regionId', 'region', Region),
-            'districts': ('cityId', 'city', City),
-            'metro': ('metroLineId', 'metro_line', MetroLine),
-        }
+        relationship_fields = {'cities': ('regionId', 'region'), 'districts': ('cityId', 'city')}
         supported_api_fields = {'name', 'is_active'}
         if dictionary_key == 'regions':
             supported_api_fields.add('code')
@@ -550,66 +551,42 @@ class LocationDictionaryWriteSerializer(serializers.Serializer):
                     {field_name: 'Поле недоступно для этого справочника.'}
                 )
 
-        model_name_field = configuration['name_field']
-        if 'name' in attributes:
-            attributes[model_name_field] = attributes.pop('name')
-
+        duplicate_filters = {}
         if dictionary_key == 'regions':
             if current_entry is None and 'code' not in attributes:
                 raise serializers.ValidationError(
                     {'code': 'Укажите код региона.'}
                 )
         else:
-            api_field, model_field, parent_model = relationship_fields[
-                dictionary_key
-            ]
+            api_field, parent_model = relationship_fields[dictionary_key]
+            parent_field = f'{parent_model}_id'
             parent_identifier = attributes.pop(api_field, None)
             if parent_identifier is None and current_entry is None:
                 raise serializers.ValidationError(
                     {api_field: 'Выберите связанную запись.'}
                 )
             if parent_identifier is not None:
-                try:
-                    attributes[model_field] = parent_model.objects.get(
-                        pk=parent_identifier
-                    )
-                except parent_model.DoesNotExist as error:
+                if not legacy_catalog(parent_model).filter(legacy_id=parent_identifier).exists():
                     raise serializers.ValidationError(
                         {api_field: 'Связанная запись не найдена.'}
-                    ) from error
+                    )
+                attributes[parent_field] = parent_identifier
+            duplicate_filters[f'legacy_{parent_field}'] = attributes.get(
+                parent_field, getattr(current_entry, f'legacy_{parent_field}', None),
+            )
 
-        name = attributes.get(
-            model_name_field,
-            getattr(current_entry, model_name_field, ''),
-        )
-        duplicate_filters = {f'{model_name_field}__iexact': name}
-        parent_model_field = configuration.get('parent_model_field')
-        if parent_model_field:
-            current_parent = getattr(
-                current_entry,
-                parent_model_field,
-                None,
-            )
-            duplicate_filters[parent_model_field] = attributes.get(
-                parent_model_field,
-                current_parent,
-            )
-        duplicate_entries = configuration['model'].objects.filter(
-            **duplicate_filters
-        )
+        name = attributes.get('name', getattr(current_entry, 'legacy_name', ''))
+        entries = legacy_catalog(configuration['legacy_key'])
         if current_entry is not None:
-            duplicate_entries = duplicate_entries.exclude(pk=current_entry.pk)
-        if duplicate_entries.exists():
+            entries = entries.exclude(pk=current_entry.pk)
+        if entries.filter(legacy_name__iexact=name, **duplicate_filters).exists():
             raise serializers.ValidationError(
                 {'name': 'Запись с таким названием уже существует.'}
             )
 
         if dictionary_key == 'regions':
-            code = attributes.get('code', getattr(current_entry, 'code', ''))
-            duplicate_codes = Region.objects.filter(code__iexact=code)
-            if current_entry is not None:
-                duplicate_codes = duplicate_codes.exclude(pk=current_entry.pk)
-            if duplicate_codes.exists():
+            code = attributes.get('code', getattr(current_entry, 'legacy_code', ''))
+            if entries.filter(legacy_code__iexact=code).exists():
                 raise serializers.ValidationError(
                     {'code': 'Регион с таким кодом уже существует.'}
                 )
@@ -617,21 +594,21 @@ class LocationDictionaryWriteSerializer(serializers.Serializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        """Create an entry through its whitelisted model configuration."""
-        configuration = self.context['dictionary_configuration']
-        entry = configuration['model'].objects.create(**validated_data)
-        if isinstance(entry, (Region, City, District)):
-            canonical_legacy_location(entry)
-        return entry
+        """Allocate an old ID while remaining foreign keys still need a row."""
+        model = LEGACY_GEOGRAPHY_MODELS[self.context['dictionary_configuration']['key']]
+        entry = model.objects.create(**validated_data)
+        canonical_legacy_location(entry)
+        return legacy_catalog(entry._meta.model_name).get(legacy_id=entry.pk)
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        """Update only validated fields and refresh the modification time."""
+        """Synchronize the retained row and update the same Location mapping."""
+        model = LEGACY_GEOGRAPHY_MODELS[self.context['dictionary_configuration']['key']]
+        entry = model.objects.get(pk=instance.legacy_id)
         for field_name, value in validated_data.items():
-            setattr(instance, field_name, value)
-        instance.save(update_fields=(*validated_data.keys(), 'updated_at'))
-        if isinstance(instance, (Region, City, District)):
-            canonical_legacy_location(instance)
+            setattr(entry, field_name, value)
+        entry.save(update_fields=(*validated_data.keys(), 'updated_at'))
+        canonical_legacy_location(entry)
         return instance
 
 

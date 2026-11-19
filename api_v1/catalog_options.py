@@ -6,7 +6,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from bank.models import Bank, MortgageProgram
-from location.models import City, District, LegacyLocationMapping, Metro, MetroLine, MetroSystem, Region
+from location.legacy_catalog import legacy_catalog
+from location.models import LegacyLocationMapping, Metro, MetroLine, MetroSystem
 from location.metro_geography import filter_metro_geography
 from property.location_context import building_geography_prefetch, prefetch_complex_geography
 from property.location_filters import apply_location_scopes
@@ -43,9 +44,9 @@ class CatalogOptionQuerySerializer(LocationScopeQuerySerializer):
 
 
 CATALOG_OPTIONS = {
-    'regions': (Region, 'name', (), {}),
-    'cities': (City, 'name', (), {'regionId': 'region_id'}),
-    'districts': (District, 'name', ('city',), {'cityId': 'city_id'}),
+    'regions': (LegacyLocationMapping, 'legacy_name', (), {}),
+    'cities': (LegacyLocationMapping, 'legacy_name', (), {'regionId': 'legacy_region_id'}),
+    'districts': (LegacyLocationMapping, 'legacy_name', (), {'cityId': 'legacy_city_id'}),
     'developers': (Developer, 'name', ('company_group',),
                    {'companyGroupId': 'company_group_id'}),
     'company-groups': (CompanyGroup, 'name', (), {}),
@@ -77,6 +78,11 @@ CATALOG_OPTIONS = {
 }
 
 
+def catalog_option_id(item):
+    """Keep selects and their results in the same public ID namespace."""
+    return item.legacy_id if isinstance(item, LegacyLocationMapping) else item.pk
+
+
 def serialize_catalog_option(item, label_field):
     """Expose only a public label and cascade context, never private fields."""
     label = getattr(item, label_field)
@@ -86,11 +92,12 @@ def serialize_catalog_option(item, label_field):
         label = f'{item.station} · {item.metro_line.line}'
         if item.metro_line.system_id:
             label += f' · {item.metro_line.system.name}'
-    option = {'id': item.pk, 'label': str(label)}
-    if isinstance(item, City):
-        option['regionId'] = item.region_id
-    elif isinstance(item, District):
-        option.update(cityId=item.city_id, regionId=item.city.region_id)
+    option = {'id': catalog_option_id(item), 'label': str(label)}
+    if isinstance(item, LegacyLocationMapping):
+        if item.model_name == 'district':
+            option['cityId'] = item.legacy_city_id
+        if item.model_name in ('city', 'district'):
+            option['regionId'] = item.legacy_region_id
     elif isinstance(item, (RealEstateComplex, RealEstateComplexBuilding)):
         complex_object = (item if isinstance(item, RealEstateComplex)
                           else item.real_estate_complex)
@@ -124,9 +131,15 @@ class CatalogOptionsAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         parameters = serializer.validated_data
         model, label_field, related, filters = configuration
-        base_queryset = model.objects.all()
+        is_legacy_geography = model is LegacyLocationMapping
+        identifier_field = 'legacy_id' if is_legacy_geography else 'pk'
+        if is_legacy_geography:
+            base_queryset = legacy_catalog({'regions': 'region', 'cities': 'city', 'districts': 'district'}[dictionary_key])
+        else:
+            base_queryset = model.objects.all()
         if parameters['activeOnly']:
-            base_queryset = base_queryset.filter(is_active=True)
+            status_field = 'legacy_is_active' if is_legacy_geography else 'is_active'
+            base_queryset = base_queryset.filter(**{status_field: True})
         if dictionary_key == 'preferential-programs':
             base_queryset = base_queryset.filter(is_preferential=True)
         if related:
@@ -163,7 +176,7 @@ class CatalogOptionsAPIView(APIView):
             if model == Developer:
                 search_filter |= Q(company_group__name__icontains=search)
             queryset = queryset.filter(search_filter)
-        queryset = queryset.order_by(label_field, 'pk')
+        queryset = queryset.order_by(label_field, identifier_field)
         count = queryset.count()
         page = parameters['page']
         page_size = parameters['pageSize']
@@ -177,13 +190,13 @@ class CatalogOptionsAPIView(APIView):
         selected_identifiers = set(parameters.get('selectedIds', []))
         if parameters.get('selected'):
             selected_identifiers.add(parameters['selected'])
-        selected = {item.pk: item for item in items
-                    if item.pk in selected_identifiers}
+        selected = {catalog_option_id(item): item for item in items
+                    if catalog_option_id(item) in selected_identifiers}
         missing = selected_identifiers - selected.keys()
         if missing:
-            selected.update({item.pk: item for item in base_queryset.filter(
-                pk__in=missing,
-            ).order_by(label_field, 'pk')})
+            selected.update({catalog_option_id(item): item for item in base_queryset.filter(
+                **{f'{identifier_field}__in': missing},
+            ).order_by(label_field, identifier_field)})
         if model in {RealEstateComplex, RealEstateComplexBuilding}:
             prefetch_complex_geography([
                 row if model is RealEstateComplex else row.real_estate_complex

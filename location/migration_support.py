@@ -10,6 +10,15 @@ def legacy_import_reference(row):
     }
 
 
+def legacy_catalog_metadata(row):
+    """Retain the timestamps and status of the original API record."""
+    return {
+        'legacy_is_active': row.is_active,
+        'legacy_created_at': row.created_at,
+        'legacy_updated_at': row.updated_at,
+    }
+
+
 def backfill_locations(registry, database='default', *, geography_only=False):
     """Map legacy records and complexes without changing any legacy field."""
     Location = registry.get_model('location', 'Location')
@@ -37,6 +46,7 @@ def backfill_locations(registry, database='default', *, geography_only=False):
     mappings = {key: row.location_id for key, row in existing_mappings.items()}
     capture_references = any(field.name == 'legacy_name' for field in Mapping._meta.fields)
     capture_region_parent = any(field.name == 'legacy_region_id' for field in Mapping._meta.fields)
+    capture_catalog_metadata = any(field.name == 'legacy_created_at' for field in Mapping._meta.fields)
     references_to_update = []
     aliases_to_preserve = []
     identifiers = {
@@ -46,12 +56,16 @@ def backfill_locations(registry, database='default', *, geography_only=False):
         )
     }
 
-    def preserve(model_name, row, category, parent=None, region=None, reuse=None):
+    def preserve(model_name, row, category, parent=None, region=None, reuse=None, ancestry=None):
         """Retain one identity, with explicit aliases for shared federal-city roles."""
         key = (model_name, row.pk)
         reference = legacy_import_reference(row) if capture_references else {}
         if model_name == 'city' and capture_region_parent:
             reference['legacy_region_id'] = row.region_id
+        if capture_catalog_metadata:
+            reference.update(legacy_catalog_metadata(row))
+            if ancestry:
+                reference.update(ancestry)
         if key in mappings:
             mapping = existing_mappings[key]
             if any(getattr(mapping, field) != value for field, value in reference.items()):
@@ -112,11 +126,14 @@ def backfill_locations(registry, database='default', *, geography_only=False):
         preserve(
             'district', row, 'district', parent=cities[row.city_id],
             region=regions[city_regions[row.city_id]],
+            ancestry={'legacy_city_id': row.city_id, 'legacy_region_id': city_regions[row.city_id]},
         )
     if references_to_update:
         fields = ['legacy_name', 'legacy_code', 'legacy_source_identifier']
         if capture_region_parent:
             fields.append('legacy_region_id')
+        if capture_catalog_metadata:
+            fields.extend(('legacy_city_id', 'legacy_is_active', 'legacy_created_at', 'legacy_updated_at'))
         Mapping.objects.using(database).bulk_update(
             references_to_update, fields,
             batch_size=1000,

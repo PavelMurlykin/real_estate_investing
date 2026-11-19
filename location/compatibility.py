@@ -3,7 +3,7 @@
 from django.db import transaction
 
 from .catalog_service import lock_location_catalog
-from .migration_support import legacy_import_reference
+from .migration_support import legacy_catalog_metadata, legacy_import_reference
 from .models import (
     City, District, LegacyLocationMapping, Location, LocationAlias,
     LocationClosure, LocationIdentifier, LocationType,
@@ -16,7 +16,7 @@ def canonical_legacy_location(row):
     lock_location_catalog()
     model_name = row._meta.model_name
     mapping = LegacyLocationMapping.objects.filter(model_name=model_name, legacy_id=row.pk).first()
-    reference = legacy_import_reference(row)
+    reference = legacy_import_reference(row) | legacy_catalog_metadata(row)
     if isinstance(row, District):
         reference.update(legacy_city_id=row.city_id, legacy_region_id=row.city.region_id)
     elif isinstance(row, City):

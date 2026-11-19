@@ -92,7 +92,11 @@ from customer.views import (
     _get_selected_customer_calculation_links,
 )
 from location.import_forms import LocationImportForm
-from location.models import City, District, Location, Metro, MetroLine, MetroSystem, Region
+from location.catalog_service import lock_location_catalog
+from location.legacy_catalog import (
+    LEGACY_GEOGRAPHY_MODELS, legacy_choices, legacy_dictionary_entries,
+)
+from location.models import Location, Metro, MetroLine, MetroSystem
 from location.metro_import import import_legacy_metro, import_metro
 from location.metro_geography import annotate_legacy_metro_geography, filter_metro_geography
 from .metro_serializers import MetroDictionaryWriteSerializer
@@ -650,7 +654,7 @@ class OverviewAPIView(APIView):
             locality_statistic = {
                 'key': 'cities',
                 'label': 'Города',
-                'value': City.objects.filter(is_active=True).count(),
+                'value': legacy_choices('city', active_only=True).count(),
             }
         return Response(
             {
@@ -1076,6 +1080,12 @@ def _build_bounded_option_rows(queryset, maximum_results):
     """Serialize a name queryset and report whether its bound was reached."""
     rows = list(queryset.values('id', 'name')[:maximum_results + 1])
     return rows[:maximum_results], len(rows) > maximum_results
+
+
+def _build_legacy_option_rows(queryset, maximum_results):
+    """Return the original public IDs, independent of the mapping's primary key."""
+    rows = list(queryset.values_list('legacy_id', 'legacy_name')[:maximum_results + 1])
+    return [{'id': identifier, 'name': name} for identifier, name in rows[:maximum_results]], len(rows) > maximum_results
 
 
 @method_decorator(csrf_protect, name='dispatch')
@@ -1543,55 +1553,27 @@ class PropertyDictionaryDetailAPIView(
 LOCATION_DICTIONARY_CONFIGURATIONS = {
     'regions': {
         'key': 'regions',
-        'model': Region,
         'legacy_key': 'region',
-        'name_field': 'name',
-        'parent_model_field': None,
-        'select_related': (),
-        'search_fields': ('name', 'code'),
+        'name_field': 'legacy_name',
+        'search_fields': ('legacy_name', 'legacy_code'),
         'filter_fields': {},
-        'usage_relations': (
-            'city',
-            'developers',
-            'developer_links',
-            'mortgage_program_credit_limits',
-        ),
-        'default_ordering': ('name', 'pk'),
+        'default_ordering': ('legacy_name', 'legacy_id'),
     },
     'cities': {
         'key': 'cities',
-        'model': City,
         'legacy_key': 'city',
-        'name_field': 'name',
-        'parent_model_field': 'region',
-        'select_related': ('region',),
-        'search_fields': ('name', 'region__name'),
-        'filter_fields': {'regionId': 'region_id'},
-        'usage_relations': (
-            'district',
-            'metroline',
-            'residence_customers',
-            'desired_city_customers',
-        ),
-        'default_ordering': ('name', 'pk'),
+        'name_field': 'legacy_name',
+        'search_fields': ('legacy_name', 'region_name'),
+        'filter_fields': {'regionId': 'legacy_region_id'},
+        'default_ordering': ('legacy_name', 'legacy_id'),
     },
     'districts': {
         'key': 'districts',
-        'model': District,
         'legacy_key': 'district',
-        'name_field': 'name',
-        'parent_model_field': 'city',
-        'select_related': ('city__region',),
-        'search_fields': ('name', 'city__name', 'city__region__name'),
-        'filter_fields': {
-            'regionId': 'city__region_id',
-            'cityId': 'city_id',
-        },
-        'usage_relations': (
-            'realestatecomplex',
-            'desired_district_customers',
-        ),
-        'default_ordering': ('name', 'pk'),
+        'name_field': 'legacy_name',
+        'search_fields': ('legacy_name', 'city_name', 'region_name'),
+        'filter_fields': {'regionId': 'legacy_region_id', 'cityId': 'legacy_city_id'},
+        'default_ordering': ('legacy_name', 'legacy_id'),
     },
     'metro': {
         'key': 'metro',
@@ -1657,7 +1639,7 @@ class LocationDictionaryImportAPIView(APIView):
             raise ValidationError({'detail': 'Передайте регион и город либо систему метро.'})
         import_form = LocationImportForm({
             **request.data, 'dictionary': dictionary_key,
-        })
+        }, mapped_geography=True)
         if not import_form.is_valid():
             raise ValidationError(dict(import_form.errors))
         try:
@@ -1680,6 +1662,14 @@ class LocationDictionaryImportAPIView(APIView):
 class LocationDictionaryAPIViewMixin:
     """Resolve and serialize only supported location dictionaries."""
 
+    lookup_url_kwarg = 'pk'
+
+    def get_object(self):
+        """Keep the public ID in the original dictionary's namespace."""
+        if self.kwargs['dictionary_key'] in LEGACY_GEOGRAPHY_MODELS:
+            self.lookup_field = 'legacy_id'
+        return super().get_object()
+
     def uses_canonical_metro(self):
         """Use canonical geography only for opted-in metro consumers."""
         return (
@@ -1698,6 +1688,8 @@ class LocationDictionaryAPIViewMixin:
     def get_base_queryset(self):
         """Return a relation-efficient queryset with dependency counts."""
         configuration = self.get_dictionary_configuration()
+        if configuration['key'] in LEGACY_GEOGRAPHY_MODELS:
+            return legacy_dictionary_entries(configuration['legacy_key'])
         queryset = configuration['model'].objects.all()
         related_fields = configuration['select_related']
         if related_fields:
@@ -1783,9 +1775,8 @@ class LocationDictionaryListCreateAPIView(
                 search_query |= Q(**{f'{field_name}__icontains': search})
             queryset = queryset.filter(search_query)
         if filters['status'] != 'all':
-            queryset = queryset.filter(
-                is_active=filters['status'] == 'active'
-            )
+            status_field = 'legacy_is_active' if configuration['key'] in LEGACY_GEOGRAPHY_MODELS else 'is_active'
+            queryset = queryset.filter(**{status_field: filters['status'] == 'active'})
         for api_field, model_field in configuration[
             'filter_fields'
         ].items():
@@ -1808,15 +1799,15 @@ class LocationDictionaryListCreateAPIView(
             'status': 'is_active',
             'usageCount': 'usage_count',
         }
-        model = configuration['model']
-        if model == Region:
-            ordering_fields['code'] = 'code'
-        elif model == City:
-            ordering_fields['region'] = 'region__name'
-        elif model == District:
-            ordering_fields.update(
-                region='city__region__name', city='city__name',
-            )
+        model = configuration.get('model')
+        if configuration['key'] in LEGACY_GEOGRAPHY_MODELS:
+            ordering_fields['status'] = 'legacy_is_active'
+            if configuration['key'] == 'regions':
+                ordering_fields['code'] = 'legacy_code'
+            else:
+                ordering_fields['region'] = 'region_name'
+                if configuration['key'] == 'districts':
+                    ordering_fields['city'] = 'city_name'
         elif model == Metro:
             ordering_fields.update(
                 region='legacy_metro_region_name',
@@ -1838,11 +1829,14 @@ class LocationDictionaryListCreateAPIView(
         return queryset.order_by(
             f'{ordering_prefix}{ordering_field}',
             configuration['name_field'],
-            'pk',
+            'legacy_id' if configuration['key'] in LEGACY_GEOGRAPHY_MODELS else 'pk',
         )
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         """Create an entry and return its normalized public representation."""
+        if self.kwargs['dictionary_key'] in LEGACY_GEOGRAPHY_MODELS:
+            lock_location_catalog()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         dictionary_entry = serializer.save()
@@ -1863,8 +1857,11 @@ class LocationDictionaryDetailAPIView(
         """Return annotated entries from the URL-selected dictionary."""
         return self.get_base_queryset()
 
+    @transaction.atomic
     def update(self, request, *args, **kwargs):
         """Update an entry and return its normalized public representation."""
+        if self.kwargs['dictionary_key'] in LEGACY_GEOGRAPHY_MODELS:
+            lock_location_catalog()
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         serializer = self.get_serializer(
@@ -1880,9 +1877,14 @@ class LocationDictionaryDetailAPIView(
 
     def destroy(self, request, *args, **kwargs):
         """Delete an unused entry or explain its protected dependency."""
-        instance = self.get_object()
         try:
             with transaction.atomic():
+                model = LEGACY_GEOGRAPHY_MODELS.get(self.kwargs['dictionary_key'])
+                if model:
+                    lock_location_catalog()
+                instance = self.get_object()
+                if model:
+                    instance = get_object_or_404(model, pk=instance.legacy_id)
                 instance.delete()
         except ProtectedError:
             return Response(
@@ -1911,8 +1913,8 @@ class LocationDictionaryOptionsAPIView(APIView):
         filters = query_serializer.validated_data
         maximum_results = settings.PUBLIC_CATALOG_API_MAX_RESULTS
 
-        regions, regions_truncated = _build_bounded_option_rows(
-            Region.objects.order_by('name', 'pk'),
+        regions, regions_truncated = _build_legacy_option_rows(
+            legacy_choices('region'),
             maximum_results,
         )
 
@@ -1920,18 +1922,17 @@ class LocationDictionaryOptionsAPIView(APIView):
         cities_truncated = False
         if filters.get('regionId'):
             cities = list(
-                City.objects.filter(region_id=filters['regionId'])
-                .order_by('name', 'pk')
-                .values('id', 'name', 'region_id')[:maximum_results + 1]
+                legacy_choices('city', region_id=filters['regionId'])
+                .values_list('legacy_id', 'legacy_name', 'legacy_region_id')[:maximum_results + 1]
             )
             cities_truncated = len(cities) > maximum_results
             city_rows = [
                 {
-                    'id': city['id'],
-                    'name': city['name'],
-                    'regionId': city['region_id'],
+                    'id': identifier,
+                    'name': name,
+                    'regionId': region_id,
                 }
-                for city in cities[:maximum_results]
+                for identifier, name, region_id in cities[:maximum_results]
             ]
 
         metro_line_rows = []
@@ -2331,8 +2332,8 @@ class MortgageProgramOptionsAPIView(APIView):
     def get(self, request):
         """Return public region options with truncation metadata."""
         maximum_results = settings.PUBLIC_CATALOG_API_MAX_RESULTS
-        regions, regions_truncated = _build_bounded_option_rows(
-            Region.objects.order_by('name', 'pk'),
+        regions, regions_truncated = _build_legacy_option_rows(
+            legacy_choices('region'),
             maximum_results,
         )
         return Response(
@@ -3196,25 +3197,15 @@ class RealEstateComplexOptionsAPIView(APIView):
             regions, cities, districts = [], [], []
             regions_truncated = cities_truncated = districts_truncated = False
         else:
-            regions, regions_truncated = _build_bounded_option_rows(
-                Region.objects.order_by('name', 'pk'), maximum_results
+            regions, regions_truncated = _build_legacy_option_rows(legacy_choices('region'), maximum_results)
+            cities, cities_truncated = _build_legacy_option_rows(
+                legacy_choices('city', region_id=filters.get('regionId')), maximum_results,
             )
-            cities_queryset = City.objects.order_by('name', 'pk')
-            if filters.get('regionId'):
-                cities_queryset = cities_queryset.filter(
-                    region_id=filters['regionId']
-                )
-            cities, cities_truncated = _build_bounded_option_rows(
-                cities_queryset, maximum_results
-            )
-            districts_queryset = District.objects.none()
+            districts, districts_truncated = [], False
             if filters.get('cityId'):
-                districts_queryset = District.objects.filter(
-                    city_id=filters['cityId']
-                ).order_by('name', 'pk')
-            districts, districts_truncated = _build_bounded_option_rows(
-                districts_queryset, maximum_results
-            )
+                districts, districts_truncated = _build_legacy_option_rows(
+                    legacy_choices('district', city_id=filters['cityId']), maximum_results,
+                )
 
         developer_objects = list(
             Developer.objects.select_related('company_group').order_by(
@@ -3485,29 +3476,17 @@ class PropertyFormOptionsAPIView(APIView):
             regions, cities, districts = [], [], []
             regions_truncated = cities_truncated = districts_truncated = False
         else:
-            regions, regions_truncated = _build_bounded_option_rows(
-                Region.objects.order_by('name', 'pk'),
-                maximum_results,
-            )
-            cities_queryset = City.objects.none()
+            regions, regions_truncated = _build_legacy_option_rows(legacy_choices('region'), maximum_results)
+            cities, cities_truncated = [], False
             if filters.get('regionId'):
-                cities_queryset = City.objects.filter(
-                    region_id=filters['regionId']
-                ).order_by('name', 'pk')
-            cities, cities_truncated = _build_bounded_option_rows(
-                cities_queryset,
-                maximum_results,
-            )
-
-            districts_queryset = District.objects.none()
+                cities, cities_truncated = _build_legacy_option_rows(
+                    legacy_choices('city', region_id=filters['regionId']), maximum_results,
+                )
+            districts, districts_truncated = [], False
             if filters.get('cityId'):
-                districts_queryset = District.objects.filter(
-                    city_id=filters['cityId']
-                ).order_by('name', 'pk')
-            districts, districts_truncated = _build_bounded_option_rows(
-                districts_queryset,
-                maximum_results,
-            )
+                districts, districts_truncated = _build_legacy_option_rows(
+                    legacy_choices('district', city_id=filters['cityId']), maximum_results,
+                )
 
         developer_objects = list(
             Developer.objects.select_related('company_group').order_by(
@@ -3615,20 +3594,14 @@ class CustomerFormOptionsAPIView(APIView):
                 'desiredCity'
             )
 
-            cities, cities_truncated = _build_bounded_option_rows(
-                City.objects.filter(is_active=True).order_by('name', 'pk'),
-                maximum_results,
+            cities, cities_truncated = _build_legacy_option_rows(
+                legacy_choices('city', active_only=True), maximum_results,
             )
-            districts_queryset = District.objects.none()
+            districts, districts_truncated = [], False
             if desired_city_identifier:
-                districts_queryset = District.objects.filter(
-                    is_active=True,
-                    city_id=desired_city_identifier,
-                ).order_by('name', 'pk')
-            districts, districts_truncated = _build_bounded_option_rows(
-                districts_queryset,
-                maximum_results,
-            )
+                districts, districts_truncated = _build_legacy_option_rows(
+                    legacy_choices('district', city_id=desired_city_identifier, active_only=True), maximum_results,
+                )
         layouts, layouts_truncated = _build_bounded_option_rows(
             ApartmentLayout.objects.filter(is_active=True).order_by(
                 'name',

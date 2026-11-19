@@ -4,7 +4,8 @@ from rest_framework import serializers
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
 
-from location.models import City, Location
+from location.legacy_catalog import legacy_choices
+from location.models import Location
 from property.location_context import geography_prefetch, locality_filter
 from property.models import RealEstateComplex
 from property.location_filters import apply_location_scopes, selected_scopes
@@ -116,18 +117,19 @@ class HomepageComplexListAPIView(ListAPIView):
             if self.canonical_locations:
                 complexes = complexes.prefetch_related(geography_prefetch())
             return apply_location_scopes(complexes, self.location_scopes)
-        cities = City.objects.filter(is_active=True).order_by('name', 'pk')
-        selected = cities.filter(pk=city_id).first() if city_id else None
+        cities = legacy_choices('city', active_only=True)
+        selected = cities.filter(legacy_id=city_id).first() if city_id else None
         self.selected_city = selected or (
-            cities.filter(name='Санкт-Петербург').first() or cities.first()
+            cities.filter(legacy_name='Санкт-Петербург').first() or cities.first()
         )
         if self.selected_city is None:
             return RealEstateComplex.objects.none()
         return RealEstateComplex.objects.filter(
-            Q(district__is_active=True, district__city=self.selected_city)
+            Q(district_id__in=legacy_choices('district', city_id=self.selected_city.legacy_id, active_only=True)
+              .order_by().values('legacy_id'))
             | Q(district__isnull=True, location_links__is_primary=True,
                 location_links__location__ancestor_links__ancestor__legacy_mappings__model_name='city',
-                location_links__location__ancestor_links__ancestor__legacy_mappings__legacy_id=self.selected_city.pk),
+                location_links__location__ancestor_links__ancestor__legacy_mappings__legacy_id=self.selected_city.legacy_id),
             is_active=True,
         ).select_related(
             'developer__company_group',
@@ -140,11 +142,11 @@ class HomepageComplexListAPIView(ListAPIView):
         """Include the resolved city so invalid and missing URLs stay coherent."""
         response = super().list(request, *args, **kwargs)
         response.data['selectedCity'] = (
-            {'id': self.selected_city.pk, 'name': self.selected_city.name}
+            {'id': self.selected_city.legacy_id, 'name': self.selected_city.legacy_name}
             if self.selected_city else None
         )
         if self.canonical_locations:
             response.data['territoryLabel'] = self.territory_label or (
-                self.selected_city.name if self.selected_city else None
+                self.selected_city.legacy_name if self.selected_city else None
             )
         return response

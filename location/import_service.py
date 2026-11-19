@@ -216,6 +216,7 @@ def import_locations(dictionary, region=None, city=None):
                     for identifier, name in source.districts(selected_city)
                 ])
             with transaction.atomic():
+                lock_location_catalog()
                 if region:
                     parents, _ = upsert_records(Region, [region_record(selected_rows[0])])
                     if next(iter(parents.values())).pk != region.pk:
@@ -231,7 +232,6 @@ def import_locations(dictionary, region=None, city=None):
                 parent_field = {'cities': 'region_id', 'districts': 'city_id'}.get(dictionary)
                 parent_identifier = region.pk if dictionary == 'cities' else city.pk if city else None
                 _, counts = upsert_records(model, records, parent_field, parent_identifier)
-                lock_location_catalog()
                 backfill_locations(apps, geography_only=True)
         except OpenDataError as error:
             raise LocationImportError(str(error)) from error

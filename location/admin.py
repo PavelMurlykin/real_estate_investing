@@ -1,5 +1,7 @@
 from django.contrib import admin
+from django.db import transaction
 
+from .catalog_service import lock_location_catalog
 from .compatibility import canonical_legacy_location
 from .models import City, District, Location, Metro, MetroLine, MetroSystem, Region
 from .metro_forms import MetroForm, MetroLineForm, MetroSystemForm
@@ -8,8 +10,10 @@ from .metro_forms import MetroForm, MetroLineForm, MetroSystemForm
 class LegacyLocationAdmin(admin.ModelAdmin):
     """Keep import references available after saving an old dictionary entry."""
 
+    @transaction.atomic
     def save_model(self, request, obj, form, change):
         """Save the legacy row and refresh its canonical lookup metadata."""
+        lock_location_catalog()
         super().save_model(request, obj, form, change)
         canonical_legacy_location(obj)
 

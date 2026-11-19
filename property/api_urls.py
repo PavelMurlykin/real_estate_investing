@@ -4,12 +4,11 @@ from django.http import JsonResponse
 from django.urls import path
 from django.views.decorators.http import require_GET
 
-from location.models import City, District, LegacyLocationMapping
+from location.legacy_catalog import legacy_choices
+from location.models import LegacyLocationMapping
 
 from .models import RealEstateComplex, RealEstateComplexBuilding
 
-CITY_API_FIELDS = ('id', 'name')
-DISTRICT_API_FIELDS = ('id', 'name')
 COMPLEX_API_FIELDS = (
     'id',
     'name',
@@ -57,6 +56,12 @@ def limited_json_response(queryset):
     )
 
 
+def legacy_choice_response(choices):
+    """Keep the flat old selector format and its configured limit."""
+    rows = choices.values_list('legacy_id', 'legacy_name')[:get_public_catalog_api_limit()]
+    return JsonResponse([{'id': identifier, 'name': name} for identifier, name in rows], safe=False)
+
+
 @require_GET
 def cities_api(request):
     """Return cities for a selected region."""
@@ -67,13 +72,8 @@ def cities_api(request):
     if error_response:
         return error_response
 
-    cities = City.objects.none()
-    if region_id is not None:
-        cities = City.objects.filter(region_id=region_id)
-
-    return limited_json_response(
-        cities.order_by('name').values(*CITY_API_FIELDS)
-    )
+    choices = legacy_choices('city', region_id=region_id)
+    return legacy_choice_response(choices if region_id is not None else choices.none())
 
 
 @require_GET
@@ -86,13 +86,8 @@ def districts_api(request):
     if error_response:
         return error_response
 
-    districts = District.objects.none()
-    if city_id is not None:
-        districts = District.objects.filter(city_id=city_id)
-
-    return limited_json_response(
-        districts.order_by('name').values(*DISTRICT_API_FIELDS)
-    )
+    choices = legacy_choices('district', city_id=city_id)
+    return legacy_choice_response(choices if city_id is not None else choices.none())
 
 
 @require_GET

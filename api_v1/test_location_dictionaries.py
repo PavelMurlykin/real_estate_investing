@@ -1,8 +1,12 @@
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from rest_framework.fields import DateTimeField
 
+from location.compatibility import canonical_legacy_location
 from location.models import City, District, LegacyLocationMapping, Location, LocationIdentifier, LocationType, Metro, MetroLine, Region
 from users.roles import MODERATOR_GROUP_NAME
 
@@ -37,6 +41,8 @@ def location_dictionary_catalog():
         city=second_city,
     )
     Metro.objects.create(station='Гостиный двор', metro_line=second_line)
+    canonical_legacy_location(district)
+    canonical_legacy_location(second_city)
     return {
         'regions': region,
         'cities': city,
@@ -88,6 +94,40 @@ def test_old_region_api_refreshes_import_reference_and_keeps_location(client):
     mapping.refresh_from_db()
     assert not mapping.legacy_name and not mapping.legacy_code
     assert mapping.location_id == location.pk
+    assert client.get(endpoint).status_code == 404
+
+
+@pytest.mark.django_db
+def test_legacy_dictionary_and_selectors_read_mapping_with_original_ids(client, location_dictionary_catalog):
+    """Preserve exact parents, dates, activity, and selection IDs without legacy table reads."""
+    catalog = location_dictionary_catalog
+    region, city, district = catalog['regions'], catalog['cities'], catalog['districts']
+    mapping = LegacyLocationMapping.objects.get(model_name='district', legacy_id=district.pk)
+    mapping.location.is_active = False
+    mapping.location.save(update_fields=['is_active'])
+    with CaptureQueriesContext(connection) as queries:
+        rows = client.get('/api/v1/location-dictionaries/districts/', {
+            'regionId': region.pk, 'cityId': city.pk, 'q': region.name,
+            'ordering': 'city', 'status': 'active',
+        }).json()['results']
+        options = client.get('/api/v1/catalog-options/districts/', {
+            'cityId': city.pk, 'q': 'absent', 'selected': district.pk, 'activeOnly': True,
+        }).json()
+        cities = client.get('/api/cities/', {'region_id': region.pk}).json()
+        districts = client.get('/api/districts/', {'city_id': city.pk}).json()
+    row, = rows
+    assert row['id'] == district.pk and row['isActive'] and row['location'] is None
+    assert row['createdAt'] == DateTimeField().to_representation(district.created_at)
+    assert row['region'] == {'id': region.pk, 'name': region.name}
+    assert row['city'] == {'id': city.pk, 'name': city.name}
+    assert row['legacyEditUrl'] == f'/locations/?model=district&edit={district.pk}'
+    assert options['results'] == [] and options['selected'] == [{
+        'id': district.pk, 'label': district.name, 'regionId': region.pk, 'cityId': city.pk,
+    }]
+    assert cities == [{'id': city.pk, 'name': city.name}]
+    assert districts == [{'id': district.pk, 'name': district.name}]
+    assert not any(f'{verb} "{table}"' in query['sql'] for query in queries
+                   for verb in ('FROM', 'JOIN') for table in ('region', 'city', 'district'))
 
 
 @pytest.mark.django_db
