@@ -36,6 +36,7 @@ from trench_mortgage.views import (
 from trench_mortgage.models import Trench, TrenchMortgageCalculation
 from users.roles import can_manage_catalogs, can_view_all_private_records
 
+from bank.limit_regions import active_limit_locations, legacy_limit_locations, limit_prefetch
 from bank.models import (
     Bank,
     BankProgram,
@@ -70,7 +71,7 @@ from .word import (
 
 CALCULATION_LIST_PAGE_SIZE = 20
 FORM_DATA_CACHE_TIMEOUT = 600
-MORTGAGE_PROGRAM_FORM_DATA_CACHE_KEY = 'mortgage:program_form_data:v1'
+MORTGAGE_PROGRAM_FORM_DATA_CACHE_KEY = 'mortgage:program_form_data:v2'
 
 
 def _get_target_customer(request):
@@ -501,12 +502,21 @@ def _build_mortgage_program_form_data():
         is_active=True,
         mortgage_programs__isnull=False,
     ).distinct().order_by('name')
-    bank_programs = (
+    bank_programs = list(
         BankProgram.objects.select_related('bank', 'mortgage_program')
-        .prefetch_related('mortgage_program__regional_credit_limits')
+        .prefetch_related(limit_prefetch('mortgage_program__'))
         .filter(bank__in=banks, is_active=True)
         .order_by('bank__name', 'mortgage_program__name')
     )
+    limit_locations = legacy_limit_locations([
+        limit for program in bank_programs
+        for limit in program.mortgage_program.regional_credit_limits.all() if limit.is_active
+    ])
+    locations_by_program = {
+        program.mortgage_program_id: active_limit_locations(
+            program.mortgage_program.regional_credit_limits.all(), limit_locations,
+        ) for program in bank_programs
+    }
 
     return {
         'key_rate': _decimal_to_json_value(_get_latest_key_rate()),
@@ -535,6 +545,7 @@ def _build_mortgage_program_form_data():
                 'regional_credit_limits': [
                     {
                         'region_id': regional_limit.region_id,
+                        'region_location_id': locations_by_program[bank_program.mortgage_program_id][regional_limit.pk],
                         'credit_limit': _decimal_to_json_value(
                             regional_limit.credit_limit
                         ),

@@ -4,7 +4,7 @@ import {
   createAuthenticatedPage, fixtureManifest, getCsrfToken, isolatedBaseUrl, isolatedWritesEnabled,
 } from './isolated-helpers.mjs'
 
-test('native mortgage and tranche selectors calculate in Pushkin and Strelna', {
+test('native mortgage and tranche selectors apply regional limits in Pushkin, Strelna and Likino', {
   skip: isolatedWritesEnabled ? false : 'requires isolated stack', timeout: 180000,
 }, async (context) => {
   const { page, trackCleanup } = await createAuthenticatedPage(context, 'moderator', { width: 1440, height: 1100 })
@@ -32,20 +32,28 @@ test('native mortgage and tranche selectors calculate in Pushkin and Strelna', {
   const template = await read(`/api/v1/properties/${fixtureManifest.propertyId}/`)
   const sourceProject = await read(`/api/v1/complexes/${template.realEstateComplexId}/`)
   const programPath = `/api/v1/mortgage-programs/${fixtureManifest.mortgageProgramId}/`
-  const originalProgram = await read(programPath)
+  const canonicalProgramPath = `${programPath}?canonicalLocations=true`
+  const originalProgram = await read(canonicalProgramPath)
   const locality = await read(`/api/v1/location-catalogs/localities/${fixtureManifest.pushkinLocationId}/`)
   const financialRegion = (await read(`/mortgage/financial-region/?regionLocationId=${locality.regionId}`)).financialRegionId
   assert.ok(financialRegion)
-  const changed = await request.patch(url(programPath), { headers, data: {
+  const likino = await read(`/api/v1/location-catalogs/localities/${fixtureManifest.likinoLocationId}/`)
+  assert.equal((await read(`/mortgage/financial-region/?regionLocationId=${likino.regionId}`)).financialRegionId, null)
+  const changed = await request.patch(url(canonicalProgramPath), { headers, data: {
     isPreferential: true, creditLimit: '6000000.00',
-    regionalCreditLimits: [{ regionId: financialRegion, creditLimit: '12000000.00', isActive: true }],
+    regionalCreditLimits: [
+      { regionId: financialRegion, creditLimit: '12000000.00', isActive: true },
+      { regionLocationId: likino.regionId, creditLimit: '9500000.00', isActive: true },
+    ],
   } })
   assert.equal(changed.status(), 200, await changed.text())
   const errors = []
   page.on('pageerror', (error) => errors.push(error.message))
   try {
-    for (const [name, identifier] of [
-      ['Пушкин', fixtureManifest.pushkinLocationId], ['Стрельна', fixtureManifest.strelnaLocationId],
+    for (const [name, identifier, expectedLimit] of [
+      ['Пушкин', fixtureManifest.pushkinLocationId, '12000000'],
+      ['Стрельна', fixtureManifest.strelnaLocationId, '12000000'],
+      ['Ликино', fixtureManifest.likinoLocationId, '9500000'],
     ]) {
       const project = await create('/api/v1/complexes/', {
         name: `E2E калькулятор ${name} ${Date.now()}`, locationId: identifier,
@@ -72,7 +80,8 @@ test('native mortgage and tranche selectors calculate in Pushkin and Strelna', {
       await page.locator('#mortgage-program-select').selectOption(String(fixtureManifest.mortgageProgramId), { force: true })
       await page.locator('#property_cost_input').fill('18000000')
       await page.locator('#initial_payment_percent').fill('20')
-      await page.waitForFunction(() => document.querySelector('#mortgage-program-limit-options').textContent.replace(/\s/g, '').includes('лимит12000000'))
+      await page.waitForFunction((limit) => document.querySelector('#mortgage-program-limit-options')
+        .textContent.replace(/\s/g, '').includes(`лимит${limit}`), expectedLimit)
       await page.locator('#property_cost_input').fill('5000000')
       await page.locator('#id_INITIAL_PAYMENT_DATE').fill('2026-01-01')
       await page.locator('#mortgage_term_months').fill('240')
@@ -112,9 +121,11 @@ test('native mortgage and tranche selectors calculate in Pushkin and Strelna', {
     }
     assert.deepEqual(errors, [])
   } finally {
-    const restored = await request.patch(url(programPath), { headers, data: {
+    const restored = await request.patch(url(canonicalProgramPath), { headers, data: {
       isPreferential: originalProgram.isPreferential, creditLimit: originalProgram.creditLimit,
-      regionalCreditLimits: originalProgram.regionalCreditLimits,
+      regionalCreditLimits: originalProgram.regionalCreditLimits.map(({ regionLocationId, regionId, creditLimit, isActive }) => ({
+        ...(regionLocationId ? { regionLocationId } : { regionId }), creditLimit, isActive,
+      })),
     } })
     assert.equal(restored.status(), 200)
   }

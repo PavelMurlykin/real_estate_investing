@@ -82,7 +82,7 @@ The fallback Django form uses the same territories and server-side checks that t
 
 Residence is selected in “Населённый пункт проживания” from the complete Russian catalog, including Pushkin, Strelna and villages. Purchase preferences use “Регион покупки”, “Административный район покупки” and “Населённый пункт покупки”. Select a region or district alone, or search for a locality directly. The region is inferred from the selected territory if omitted. Choice and profile labels include type, parent and region to distinguish homonyms. Changing the region clears district and locality; changing the district clears locality. “Рассчитать ипотеку” opens property selection with the saved territory and customer context.
 
-Migration preserves original cities, districts, owners, calculations, associations and each customer's financial region, including an empty region. If a legacy region has an unambiguous mapping, the profile also gets its Location region. Changing the purchase territory sets the financial region to its federal subject. The profile displays it under “Регион лимита”. Saving unrelated profile fields preserves the applicable limit.
+Migration preserves original cities, districts, owners, calculations, associations and each customer's financial region, including an empty region. Changing the purchase territory sets the financial region to its federal subject in Location. The profile displays it under “Регион лимита”. Existing associations without an unambiguous Location limit retain the amount keyed by the exact legacy region ID. Saving unrelated profile fields preserves the financial association.
 
 The profile displays confirmed names from the unified catalog and retained names where a mapping is still needed. Editing other fields keeps the former locations and limits. Select territories in the form to refine them. Clearing a canonical field persists an empty selection. Profiles and linked calculations remain available only to their owner and appropriately authorized users.
 
@@ -151,6 +151,8 @@ When legacy URLs redirect to React, property/customer context is translated from
 The developer program list updates as you type the name of a company group, residential complex, bank or program. The same options are available in separate filters. The “Сбросить” button sits to the right of the final program filter on the same row and restores the full list.
 
 Selecting a property and bank program applies active developer conditions: a specific complex takes priority over group-wide conditions. The adjustment, down payment, term, rate and grace period are populated; changing the program restores the base conditions. Zero rates are supported, including during the grace period. Exceeding the regional limit (or the federal fallback) shows the required/additional down payment and combined rate; apply your chosen option by editing the form fields. This is guidance, not an automatic calculation prohibition. A developer program's maximum loan amount is also considered when provided.
+
+React and the fallback Django calculator use the federal subject of the property's effective territory in Location. Pushkin and Strelna use Saint Petersburg, and Likino uses Moscow Oblast. A limit can be set for a subject that only has a Location ID. When legacy records are ambiguous and the subject has no active Location limit, selecting the subject uses the program's general limit. The legacy API still accepts and returns legacy region IDs.
 
 ## Current migration limitations
 

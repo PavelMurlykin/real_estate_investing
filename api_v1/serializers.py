@@ -2451,11 +2451,8 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
                 result[api_name + 'Label'] = geographic_label(territory) if territory else None
         result['residenceUsesCanonicalLocation'] = instance.residence_uses_canonical_location
         result['purchaseUsesCanonicalLocations'] = instance.purchase_uses_canonical_locations
-        region = instance.get_desired_region()
-        result['desiredFinancialRegionId'] = region.pk if region else None
-        result['desiredFinancialRegionLocationId'] = instance.desired_financial_region_location_id
-        financial_location = instance.desired_financial_region_location
-        result['desiredFinancialRegionLocation'] = financial_location.name if financial_location else None
+        result['desiredFinancialRegionId'] = instance.get_legacy_financial_region_id()
+        result['desiredFinancialRegionLocationId'], result['desiredFinancialRegionLocation'] = instance.get_financial_region()
         if self.context.get('canonical_locations'):
             result['locationDisplay'] = self.location_display(result)
         return result

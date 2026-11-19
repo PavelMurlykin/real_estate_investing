@@ -80,7 +80,9 @@ def test_schema_migration_retains_original_profiles_calculation_links_and_limits
         assert customer.desired_locality_id == strelna.pk
         assert customer.get_preferential_credit_limit() == old_limit
     finally:
-        MigrationExecutor(connection).migrate(target)
+        MigrationExecutor(connection).migrate([
+            ('customer', '0008_complete_financial_regions'), ('bank', '0018_complete_limit_locations'),
+        ])
 
 
 @pytest.mark.django_db

@@ -71,36 +71,36 @@ class MortgageProgram(BaseModel):
         """Возвращает название ипотечной программы."""
         return self.name
 
-    def get_credit_limit(self, region=None, *, region_location_id=None):
-        """Resolve an active Location override, with an exact old-region fallback."""
+    def get_credit_limit(self, region=None, *, region_location_id=None, legacy_region_id=None):
+        """Resolve the Location override and preserve an exact retained legacy limit."""
         if not self.is_preferential:
             return None
 
-        region_id = getattr(region, 'pk', region)
-        if region_id is None and region_location_id is None:
+        legacy_region_id = getattr(region, 'pk', region) if legacy_region_id is None else legacy_region_id
+        if legacy_region_id is None and region_location_id is None:
             return self.credit_limit
 
         prefetched_credit_limits = getattr(
             self, '_prefetched_objects_cache', {}
         ).get('regional_credit_limits')
         if prefetched_credit_limits is None:
-            matches = models.Q(region_id=region_id) if region_id is not None else models.Q(pk__in=[])
-            if region_location_id is not None:
-                matches |= models.Q(region_location_id=region_location_id)
-            prefetched_credit_limits = self.regional_credit_limits.filter(matches, is_active=True).order_by()
-        canonical = legacy = None
-        for limit in prefetched_credit_limits:
-            if not limit.is_active:
-                continue
-            if region_location_id is not None and limit.region_location_id == region_location_id:
-                canonical = limit.credit_limit
-            if region_id is not None and limit.region_id == region_id and (
+            prefetched_credit_limits = self.regional_credit_limits.filter(is_active=True).order_by()
+        limits = [limit for limit in prefetched_credit_limits if limit.is_active]
+        for limit in limits:
+            if legacy_region_id is not None and limit.region_id == legacy_region_id and (
                 region_location_id is None or limit.region_location_id is None
             ):
-                legacy = limit.credit_limit
-        if legacy is not None:
-            return legacy
-        return self.credit_limit if canonical is None else canonical
+                return limit.credit_limit
+        if region_location_id is None:
+            return self.credit_limit
+        for limit in limits:
+            if limit.region_location_id == region_location_id:
+                return limit.credit_limit
+        from .limit_regions import legacy_limit_locations
+
+        mappings = legacy_limit_locations(limits)
+        return next((limit.credit_limit for limit in limits if not limit.region_location_id
+                     and mappings.get(limit.region_id) == region_location_id), self.credit_limit)
 
 
 class MortgageProgramRegionalCreditLimit(BaseModel):

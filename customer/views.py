@@ -15,6 +15,7 @@ from django.views.generic import (
     UpdateView,
 )
 
+from bank.limit_regions import limit_prefetch
 from bank.models import MortgageProgram
 from mortgage.location_filters import CalculationLocationForm
 from property.location_context import building_geography_prefetch, geography_prefetch
@@ -44,7 +45,7 @@ from users.roles import can_view_all_private_records
 
 from .forms import CustomerForm
 from .models import Customer, CustomerCalculation, CustomerTrenchCalculation
-from .location_service import CUSTOMER_LOCATION_RELATED
+from .location_service import CUSTOMER_LOCATION_RELATED, with_financial_region
 
 
 CUSTOMER_CALCULATION_SORT_FIELDS = {
@@ -428,7 +429,7 @@ class CustomerOwnedQuerysetMixin(LoginRequiredMixin):
             queryset = queryset.filter(user=self.request.user)
 
         return (
-            queryset
+            with_financial_region(queryset)
             .select_related(
                 'residence_city',
                 'desired_city',
@@ -440,9 +441,7 @@ class CustomerOwnedQuerysetMixin(LoginRequiredMixin):
                 'desired_layouts',
                 Prefetch(
                     'preferential_programs',
-                    queryset=MortgageProgram.objects.prefetch_related(
-                        'regional_credit_limits'
-                    ),
+                    queryset=MortgageProgram.objects.prefetch_related(limit_prefetch()),
                 ),
             )
         )

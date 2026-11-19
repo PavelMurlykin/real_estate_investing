@@ -466,6 +466,27 @@ class Customer(BaseModel):
             return None
         return self.desired_city.region
 
+    def get_legacy_financial_region_id(self):
+        """Return the old API identity and support profiles written before backfill."""
+        if self.purchase_uses_canonical_locations or self.desired_financial_region_id:
+            return self.desired_financial_region_id
+        return self.desired_city.region_id if self.desired_city_id else None
+
+    def get_financial_region(self):
+        """Resolve the financial region independently of the current purchase geography."""
+        if self.desired_financial_region_location_id:
+            return self.desired_financial_region_location_id, self.desired_financial_region_location.name
+        if hasattr(self, 'mapped_financial_region'):
+            mapped = self.mapped_financial_region or {}
+            return mapped.get('id'), mapped.get('name')
+        legacy_id = self.get_legacy_financial_region_id()
+        if legacy_id:
+            return Location.objects.filter(
+                location_type__category='region', legacy_mappings__model_name='region',
+                legacy_mappings__legacy_id=legacy_id,
+            ).values_list('pk', 'name').first() or (None, None)
+        return None, None
+
     @property
     def residence_display_name(self):
         """Display current residence without reviving a cleared legacy city."""
@@ -492,9 +513,10 @@ class Customer(BaseModel):
 
     def get_preferential_credit_limit(self):
         """Возвращает максимальный лимит кредита среди выбранных льготных программ."""
-        region = self.get_desired_region()
+        financial_region_id, _ = self.get_financial_region()
+        legacy_region_id = self.get_legacy_financial_region_id()
         credit_limits = [
-            program.get_credit_limit(region, region_location_id=self.desired_financial_region_location_id)
+            program.get_credit_limit(region_location_id=financial_region_id, legacy_region_id=legacy_region_id)
             for program in self.preferential_programs.all()
             if program.is_preferential
         ]

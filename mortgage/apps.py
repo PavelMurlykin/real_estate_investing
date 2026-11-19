@@ -3,7 +3,7 @@ from django.apps import AppConfig
 
 FORM_DATA_CACHE_KEYS = (
     'mortgage:property_form_data:v1',
-    'mortgage:program_form_data:v1',
+    'mortgage:program_form_data:v2',
 )
 
 

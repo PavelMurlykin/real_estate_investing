@@ -6,6 +6,7 @@ from django.db.models import Case, IntegerField, Value, When
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 
+from location.models import Location
 from property.location_context import building_geography_prefetch, geography_prefetch
 from property.location_filters import apply_location_scopes
 from property.models import Property, RealEstateComplexBuilding
@@ -67,11 +68,14 @@ def property_options(request):
 
 @require_GET
 def financial_region(request):
-    """Return the financial region through the explicit compatibility mapping."""
+    """Return a Location for the calculator and preserve the previous JSON contract."""
     form = CalculatorSelectorQueryForm(request.GET)
     if not form.is_valid():
         return JsonResponse({'errors': form.errors}, status=400)
     region_id = form.cleaned_data.get('regionLocationId')
+    canonical = request.GET.get('canonicalLocations') == 'true'
+    if canonical and region_id and not Location.objects.filter(pk=region_id, location_type__category='region').exists():
+        return JsonResponse({'errors': {'regionLocationId': ['Выберите регион.']}}, status=400)
     identifier = financial_region_identifier(region_id)
     if not region_id:
         building_id = form.cleaned_data.get('buildingId')
@@ -80,6 +84,12 @@ def financial_region(request):
         ).prefetch_related(
             geography_prefetch('real_estate_complex__'), building_geography_prefetch(),
         ).filter(pk=building_id).first() if building_id else None
-        if building and not building.geography.region_location_id:
-            identifier = building.geography.region_id
-    return JsonResponse({'financialRegionId': identifier})
+        if building:
+            geography = building.geography
+            region_id = geography.region_location_id
+            if canonical or not region_id:
+                identifier = geography.region_id
+    payload = {'financialRegionId': identifier}
+    if canonical:
+        payload['financialRegionLocationId'] = region_id
+    return JsonResponse(payload)

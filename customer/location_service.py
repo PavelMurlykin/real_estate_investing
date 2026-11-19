@@ -1,6 +1,8 @@
 """Validate customer territories and preserve legacy financial region identities."""
 
 from django.core.exceptions import ValidationError
+from django.db.models import BigIntegerField, Case, F, JSONField, OuterRef, Subquery, When
+from django.db.models.functions import Coalesce, JSONObject
 
 from location.models import LegacyLocationMapping, Location, LocationClosure
 from property.location_context import locality_filter
@@ -13,10 +15,28 @@ CUSTOMER_LOCATION_FIELDS = RESIDENCE_FIELDS + PURCHASE_FIELDS + (
 )
 CUSTOMER_LOCATION_RELATED = (
     'residence_locality', 'desired_region_location', 'desired_district_location',
-    'desired_locality', 'desired_financial_region', 'desired_financial_region_location',
+    'desired_locality', 'desired_financial_region_location',
     'residence_locality__location_type', 'residence_locality__parent', 'residence_locality__region',
     'desired_locality__location_type', 'desired_locality__parent', 'desired_locality__region',
 )
+
+
+def with_financial_region(queryset):
+    """Load a missing Location projection without extra profile queries."""
+    legacy_id = Coalesce('desired_financial_region_id', Case(
+        When(purchase_uses_canonical_locations=False, then=F('desired_city__region_id')),
+        output_field=BigIntegerField(),
+    ), output_field=BigIntegerField())
+    mapped = LegacyLocationMapping.objects.filter(
+        model_name='region', legacy_id=OuterRef('effective_legacy_financial_region'),
+        location__location_type__category='region',
+    ).annotate(territory=JSONObject(id='location_id', name='location__name')).values('territory')
+    return queryset.alias(effective_legacy_financial_region=legacy_id).annotate(
+        mapped_financial_region=Case(
+            When(desired_financial_region_location_id__isnull=True, then=Subquery(mapped[:1])),
+            output_field=JSONField(),
+        ),
+    )
 
 
 def _mapped_territory(model_name, identifier):
@@ -100,13 +120,13 @@ def prepare_customer_locations(customer, changed_fields, previous=None):
             candidates = list(LegacyLocationMapping.objects.filter(
                 model_name='region', location=region,
             ).values_list('legacy_id', flat=True)) if region else []
-            previous_region = previous.get_desired_region() if previous else None
-            if previous_region and previous_region.pk in candidates:
-                customer.desired_financial_region = previous_region
+            previous_region_id = previous.get_legacy_financial_region_id() if previous else None
+            if previous_region_id in candidates:
+                customer.desired_financial_region_id = previous_region_id
             elif len(candidates) == 1:
                 customer.desired_financial_region_id = candidates[0]
             else:
-                customer.desired_financial_region = None
+                customer.desired_financial_region_id = None
         customer.purchase_uses_canonical_locations = True
     elif changed.intersection({'desired_city', 'desired_district'}):
         if customer.desired_city_id and customer.desired_district_id and customer.desired_district.city_id != customer.desired_city_id:
@@ -115,7 +135,7 @@ def prepare_customer_locations(customer, changed_fields, previous=None):
         customer.desired_district_location = _mapped_territory('district', customer.desired_district_id)
         target = customer.desired_locality or customer.desired_district_location
         customer.desired_region_location = _region_of(target) if target else None
-        customer.desired_financial_region = customer.desired_city.region if customer.desired_city_id else None
+        customer.desired_financial_region_id = customer.desired_city.region_id if customer.desired_city_id else None
         customer.desired_financial_region_location = _mapped_territory('region', customer.desired_financial_region_id)
         customer.purchase_uses_canonical_locations = (
             (customer.desired_city_id is None or customer.desired_locality is not None)

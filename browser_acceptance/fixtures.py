@@ -193,9 +193,11 @@ def create_geography_fixture(property_object):
     building, _ = RealEstateComplexBuilding.objects.get_or_create(real_estate_complex=complex_object, number='1')
     backfill_locations(apps)
     load_region(json.loads((Path(__file__).parent / 'data' / 'geography.json').read_text(encoding='utf-8')), '78', '20261113')
+    load_region(json.loads((Path(__file__).parent / 'data' / 'likino.json').read_text(encoding='utf-8')), '50', '20261113')
     return {'geographyComplexId': complex_object.pk, 'geographyBuildingId': building.pk,
             'pushkinLocationId': Location.objects.get(name='Пушкин').pk,
-            'strelnaLocationId': Location.objects.get(name='Стрельна').pk}
+            'strelnaLocationId': Location.objects.get(name='Стрельна').pk,
+            'likinoLocationId': Location.objects.get(name='Ликино').pk}
 
 
 def main():

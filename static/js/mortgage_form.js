@@ -11,6 +11,7 @@
     const propertyOptionsUrl = scriptElement?.dataset.propertyOptionsUrl;
     const financialRegionUrl = scriptElement?.dataset.financialRegionUrl;
     let financialRegionId = '';
+    let financialRegionLocationId = '';
     let regionRevision = 0;
     let apartmentRevision = 0;
     let apartmentTimer;
@@ -121,15 +122,13 @@
         }) || null;
     }
 
-    function getSelectedFinancialRegionId() {
-        return financialRegionId;
-    }
-
     async function refreshFinancialRegion() {
         const revision = ++regionRevision;
         financialRegionId = '';
+        financialRegionLocationId = '';
         updateMortgageProgramLimitOptions();
         const endpoint = new URL(financialRegionUrl, window.location.origin);
+        endpoint.searchParams.set('canonicalLocations', 'true');
         endpoint.searchParams.set('regionLocationId', document.getElementById('id_OBJECT_REGION_LOCATION').value);
         endpoint.searchParams.set('buildingId', getSelectedBuildingId());
         try {
@@ -138,6 +137,7 @@
             const data = await response.json();
             if (revision !== regionRevision) return;
             financialRegionId = String(data.financialRegionId || '');
+            financialRegionLocationId = String(data.financialRegionLocationId || '');
             updateMortgageProgramLimitOptions();
         } catch (error) {
             if (revision === regionRevision) {
@@ -195,11 +195,13 @@
             return 0;
         }
 
-        const regionId = getSelectedFinancialRegionId();
-        if (regionId && Array.isArray(program.regional_credit_limits)) {
+        if ((financialRegionLocationId || financialRegionId) && Array.isArray(program.regional_credit_limits)) {
             const regionalLimit = program.regional_credit_limits.find(
                 function (item) {
-                    return String(item.region_id) === regionId;
+                    if (financialRegionLocationId) {
+                        return String(item.region_location_id) === financialRegionLocationId;
+                    }
+                    return String(item.region_id) === financialRegionId;
                 }
             );
             if (regionalLimit) {
@@ -1745,6 +1747,7 @@
 
     function fillPropertyDetails(data) {
         financialRegionId = String(data.financial_region_id || '');
+        financialRegionLocationId = String(data.region_location_id || '');
         updateMortgageProgramLimitOptions();
         // Canonical selectors are initialized from the server for the selected building.
         setFieldValue('developer-select', data.developer_id, true);

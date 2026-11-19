@@ -72,6 +72,7 @@ from bank.developer_mortgage_program_importer import (
 from bank.forms import DeveloperMortgageProgramImportForm
 from bank.key_rate_sync import KeyRateSyncError, sync_key_rates
 from bank.catalog_import import CatalogImportError, import_catalog, read_catalog_file
+from bank.limit_regions import active_limit_locations, legacy_limit_locations, limit_prefetch
 from bank.models import (
     Bank,
     BankProgram,
@@ -80,7 +81,7 @@ from bank.models import (
     MortgageProgram,
     MortgageProgramRegionalCreditLimit,
 )
-from customer.location_service import CUSTOMER_LOCATION_RELATED
+from customer.location_service import CUSTOMER_LOCATION_RELATED, with_financial_region
 from customer.models import (
     Customer,
     CustomerCalculation,
@@ -744,18 +745,13 @@ class MortgageOptionsAPIView(APIView):
             .order_by('bank__name', 'mortgage_program__name', 'id')
         )
 
-        mapped_regions = {}
+        limit_mappings = {}
         if canonical_locations:
-            legacy_region_ids = {
-                limit.region_id
+            limit_mappings = legacy_limit_locations([
+                limit
                 for program in bank_programs
                 for limit in program.mortgage_program.active_regional_credit_limits
-                if limit.region_id and not limit.region_location_id
-            }
-            mapped_regions = dict(LegacyLocationMapping.objects.filter(
-                model_name='region', legacy_id__in=legacy_region_ids,
-                location__location_type__category='region',
-            ).values_list('legacy_id', 'location_id'))
+            ])
 
         banks_by_identifier = {}
         programs = []
@@ -769,6 +765,8 @@ class MortgageOptionsAPIView(APIView):
                 },
             )
             mortgage_program = bank_program.mortgage_program
+            limits = mortgage_program.active_regional_credit_limits
+            locations = active_limit_locations(limits, limit_mappings) if canonical_locations else {}
             programs.append(
                 {
                     'id': bank_program.pk,
@@ -792,17 +790,14 @@ class MortgageOptionsAPIView(APIView):
                         {
                             'regionId': regional_limit.region_id,
                             **({
-                                'regionLocationId': regional_limit.region_location_id
-                                or mapped_regions.get(regional_limit.region_id),
+                                'regionLocationId': locations[regional_limit.pk],
                                 'retainedRegionKey': retained_region_key(regional_limit.region_id),
                             } if canonical_locations else {}),
                             'creditLimit': str(
                                 regional_limit.credit_limit
                             ),
                         }
-                        for regional_limit in (
-                            mortgage_program.active_regional_credit_limits
-                        )
+                        for regional_limit in limits
                         if canonical_locations or regional_limit.region_id is not None
                     ],
                 }
@@ -3764,7 +3759,7 @@ class CustomerDetailAPIView(RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         """Load the customer profile relations without per-field queries."""
         return (
-            _customer_queryset(self.request.user)
+            with_financial_region(_customer_queryset(self.request.user))
             .select_related(
                 'residence_city',
                 'desired_city__region',
@@ -3775,9 +3770,7 @@ class CustomerDetailAPIView(RetrieveUpdateDestroyAPIView):
                 'desired_layouts',
                 Prefetch(
                     'preferential_programs',
-                    queryset=MortgageProgram.objects.prefetch_related(
-                        'regional_credit_limits'
-                    ),
+                    queryset=MortgageProgram.objects.prefetch_related(limit_prefetch()),
                 ),
             )
         )
