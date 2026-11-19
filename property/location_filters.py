@@ -59,13 +59,13 @@ def filter_property_locations(queryset, location_id, building_prefix='building__
         pk=OuterRef(f'{building_prefix}complex_location_id'),
     ), 'location__ancestor_links__ancestor_id', location_id)
     inherited = _in_scopes(primary, 'location__ancestor_links__ancestor_id', location_id)
-    all_primary = RealEstateComplexLocation.objects.filter(
-        real_estate_complex_id=OuterRef(f'{building_prefix}real_estate_complex_id'), is_primary=True,
+    all_links = RealEstateComplexLocation.objects.filter(
+        real_estate_complex_id=OuterRef(f'{building_prefix}real_estate_complex_id'),
     )
     return queryset.filter(
         Exists(explicit)
         | (Q(**{f'{building_prefix}complex_location_id__isnull': True}) & (
-            Exists(inherited) | (~Exists(all_primary) & Exists(_legacy_match(
+            Exists(inherited) | (~Exists(all_links) & Exists(_legacy_match(
                 f'{building_prefix}real_estate_complex__district_id', location_id,
             )))
         )),
@@ -92,19 +92,10 @@ def apply_catalog_location_filters(queryset, parameters, *, properties=False):
         combined.append(LegacyLocationMapping.objects.filter(
             model_name='city', legacy_id=city,
         ).order_by().values('location_id'))
-    filtered = (
+    return (
         filter_property_locations(queryset, combined)
         if properties else filter_complex_locations(queryset, combined)
     )
-    if city and not scopes:
-        old_city = (
-            'building__real_estate_complex__district__city_id'
-            if properties else 'district__city_id'
-        )
-        return queryset.filter(Q(pk__in=filtered.values('pk')) | Q(**{
-            'geographic_location_id__isnull': True, old_city: city,
-        }))
-    return filtered
 
 
 def geographic_search_ids(search, *, properties=False):

@@ -110,7 +110,7 @@ class HomepageComplexListAPIView(ListAPIView):
                     return RealEstateComplex.objects.none()
         if scopes or self.location_scopes['allLocations']:
             complexes = RealEstateComplex.objects.filter(is_active=True).select_related(
-                'developer__company_group', 'district__city__region',
+                'developer__company_group',
                 'real_estate_class', 'real_estate_type',
             ).annotate(building_count=Count('realestatecomplexbuilding', distinct=True)).order_by('name', 'pk')
             if self.canonical_locations:
@@ -130,7 +130,7 @@ class HomepageComplexListAPIView(ListAPIView):
                 location_links__location__ancestor_links__ancestor__legacy_mappings__legacy_id=self.selected_city.pk),
             is_active=True,
         ).select_related(
-            'developer__company_group', 'district__city__region',
+            'developer__company_group',
             'real_estate_class', 'real_estate_type',
         ).annotate(
             building_count=Count('realestatecomplexbuilding', distinct=True)

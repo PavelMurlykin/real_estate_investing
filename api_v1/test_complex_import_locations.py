@@ -268,6 +268,24 @@ def test_mys_migration_and_legacy_import_preserve_likino(
     assert detail['districtId'] == district.pk
     assert detail['localityId'] == locality.pk
     assert detail['city'] == 'Ликино'
+    building = original.realestatecomplexbuilding_set.get()
+    apartment = Property.objects.create(
+        building=building, apartment_number='868510', area=51, floor=2, property_cost=6000000,
+        layout=ApartmentLayout.objects.create(name='Тест Ликино'),
+        decoration=ApartmentDecoration.objects.create(name='Без отделки'),
+    )
+    apartment_url = f'/api/v1/properties/{apartment.pk}/'
+    assert client.get(apartment_url).json()['localityId'] == locality.pk
+    results = client.get('/api/v1/properties/', {'localityId': locality.pk}).json()['results']
+    assert [item['id'] for item in results] == [apartment.pk]
+    building.complex_location = old_link
+    building.save(update_fields=['complex_location'])
+    overridden = client.get(apartment_url).json()
+    assert overridden['districtLocationId'] == old_link.location_id
+    assert overridden['localityId'] != locality.pk
+    assert overridden['districtId'] == district.pk
+    assert overridden['propertyCost'] == '6000000.00'
+    assert client.get('/api/v1/properties/', {'localityId': locality.pk}).json()['results'] == []
 
     unrelated = District.objects.create(name='Другой район', city=city)
     backfill_locations(apps)

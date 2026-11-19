@@ -24,7 +24,8 @@ from location.compatibility import canonical_legacy_location
 from location.presentation import geographic_label
 from location.models import City, District, LegacyLocationMapping, Location, Metro, MetroLine, MetroSystem, Region
 from property.location_context import (
-    building_geography_prefetch, geography_prefetch, locality_filter, set_primary_location,
+    building_geography_prefetch, locality_filter, prefetch_complex_geography,
+    resolve_legacy_district_edit, set_primary_location,
 )
 from mortgage.validators import (
     MORTGAGE_DATE_RANGE_ERROR,
@@ -2731,7 +2732,7 @@ class GeographicListSerializer(serializers.ListSerializer):
         rows = list(data.all() if hasattr(data, 'all') else data)
         complexes = [row if isinstance(row, RealEstateComplex)
                      else row.building.real_estate_complex for row in rows]
-        prefetch_related_objects(complexes, geography_prefetch())
+        prefetch_complex_geography(complexes)
         buildings = [row.building for row in rows if isinstance(row, Property)]
         prefetch_related_objects(buildings, building_geography_prefetch())
         return super().to_representation(rows)
@@ -2744,8 +2745,7 @@ class GeographicModelSerializer(serializers.ModelSerializer):
         """Reuse page prefetches and bound detail location queries."""
         complex_object = (instance if isinstance(instance, RealEstateComplex)
                           else instance.building.real_estate_complex)
-        if not hasattr(complex_object, 'primary_location_links'):
-            prefetch_related_objects([complex_object], geography_prefetch())
+        prefetch_complex_geography([complex_object])
         if isinstance(instance, Property):
             prefetch_related_objects([instance.building], building_geography_prefetch())
         result = super().to_representation(instance)
@@ -3312,8 +3312,9 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
 
         location = attributes.get('locationId')
         district = attributes.get('district')
-        if location is None and real_estate_complex and 'district' not in attributes:
-            district = real_estate_complex.district
+        district_id = district.pk if district else None
+        if real_estate_complex and 'district' not in attributes:
+            district_id = real_estate_complex.district_id
         territory = location or (real_estate_complex.primary_location if real_estate_complex else None)
         for field in ['regionLocationId', 'districtLocationId']:
             scope = attributes.get(field)
@@ -3323,13 +3324,15 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
             previous = real_estate_complex.primary_location if real_estate_complex else None
             if not location.is_active and (previous is None or previous.pk != location.pk):
                 raise serializers.ValidationError({'locationId': 'Выберите действующий населённый пункт.'})
-        if not real_estate_complex and location is None and district is None:
+        if territory is None and district_id is None:
             raise serializers.ValidationError({'locationId': 'Выберите населённый пункт.'})
-        if real_estate_complex and location is None and district is None and real_estate_complex.primary_location is None:
-            raise serializers.ValidationError({'locationId': 'Выберите населённый пункт.'})
-        if location is None and 'metroAvailability' in attributes and district:
+        if location is None and attributes.get('metroAvailability') and district_id:
+            city_id = district.city_id if district else LegacyLocationMapping.objects.filter(
+                model_name='district', legacy_id=district_id,
+            ).values_list('legacy_city_id', flat=True).first()
             for row in attributes['metroAvailability']:
-                if row['metro'].metro_line.city_id and row['metro'].metro_line.city_id != district.city_id:
+                metro_city_id = row['metro'].metro_line.city_id
+                if metro_city_id and metro_city_id != city_id:
                     raise serializers.ValidationError(
                         {
                             'metroAvailability': (
@@ -3532,6 +3535,9 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
         gallery['removed_main_name'] = removed_main_name
 
         with complex_photo_transaction() as saved_files:
+            district = validated_data.get('district')
+            if location is None and district and instance.district_id != district.pk:
+                location = resolve_legacy_district_edit(instance.pk, district)
             real_estate_complex = super().update(instance, validated_data)
             if location is not None:
                 set_primary_location(real_estate_complex, location)

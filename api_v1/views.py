@@ -630,7 +630,6 @@ class OverviewAPIView(APIView):
         recent_properties = (
             Property.objects.select_related(
                 'building__real_estate_complex__developer__company_group',
-                'building__real_estate_complex__district__city__region',
                 'layout',
                 'decoration',
             )
@@ -874,7 +873,6 @@ def _saved_trench_mortgage_calculation_queryset(user):
         'property__building',
         'property__building__real_estate_complex',
         'property__building__real_estate_complex__developer__company_group',
-        'property__building__real_estate_complex__district__city__region',
         'property__building__real_estate_complex__real_estate_class',
     ).prefetch_related('trenches')
     queryset = queryset.prefetch_related(
@@ -1059,7 +1057,6 @@ def _saved_mortgage_calculation_queryset(user):
         'property__building',
         'property__building__real_estate_complex',
         'property__building__real_estate_complex__developer__company_group',
-        'property__building__real_estate_complex__district__city__region',
         'property__building__real_estate_complex__real_estate_class',
     )
     queryset = queryset.prefetch_related(
@@ -2989,7 +2986,6 @@ def _real_estate_complex_list_queryset():
     """Return complexes with list labels and building counts preloaded."""
     return RealEstateComplex.objects.select_related(
         'developer__company_group',
-        'district__city__region',
         'real_estate_class',
         'real_estate_type',
     ).annotate(
@@ -3004,13 +3000,12 @@ def _real_estate_complex_detail_queryset():
     ).order_by('number', 'pk')
     metro_availability = (
         RealEstateComplexMetroAvailability.objects.select_related(
-            'metro__metro_line__city',
+            'metro__metro_line',
             'transport_accessibility_type',
         ).order_by('walking_time_minutes', 'metro__station', 'pk')
     )
     return RealEstateComplex.objects.select_related(
         'developer__company_group',
-        'district__city__region',
         'real_estate_class',
         'real_estate_type',
     ).prefetch_related(
@@ -3321,7 +3316,6 @@ def _property_detail_queryset():
     """Return the optimized queryset shared by property detail responses."""
     return Property.objects.select_related(
         'building__real_estate_complex__developer__company_group',
-        'building__real_estate_complex__district__city__region',
         'building__real_estate_complex__real_estate_class',
         'building__real_estate_complex__real_estate_type',
         'layout',
@@ -3368,7 +3362,6 @@ class PropertyListAPIView(ListCreateAPIView):
 
         queryset = Property.objects.select_related(
             'building__real_estate_complex__developer__company_group',
-            'building__real_estate_complex__district__city__region',
             'layout',
             'decoration',
         )

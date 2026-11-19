@@ -1,9 +1,10 @@
 from django.conf import settings
+from django.db.models import OuterRef, Subquery
 from django.http import JsonResponse
 from django.urls import path
 from django.views.decorators.http import require_GET
 
-from location.models import City, District
+from location.models import City, District, LegacyLocationMapping
 
 from .models import RealEstateComplex, RealEstateComplexBuilding
 
@@ -125,9 +126,12 @@ def complexes_api(request):
     if error_response:
         return error_response
 
-    complexes = RealEstateComplex.objects.select_related(
-        'developer',
-        'district__city__region',
+    legacy_district = LegacyLocationMapping.objects.filter(
+        model_name='district', legacy_id=OuterRef('district_id'),
+    ).order_by()
+    complexes = RealEstateComplex.objects.annotate(
+        district__city_id=Subquery(legacy_district.values('legacy_city_id')[:1]),
+        district__city__region_id=Subquery(legacy_district.values('legacy_region_id')[:1]),
     )
     if not any((region_id, city_id, district_id, developer_id)):
         complexes = complexes.none()

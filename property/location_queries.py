@@ -1,8 +1,6 @@
 """Resolve effective apartment geography in SQL for sorting and pagination."""
 
-from django.db.models import (
-    BigIntegerField, Case, CharField, Exists, F, OuterRef, Q, Subquery, Value, When,
-)
+from django.db.models import BigIntegerField, Case, Exists, F, OuterRef, Q, Subquery, Value, When
 from django.db.models.functions import Coalesce
 
 from location.models import LegacyLocationMapping, Location, LocationClosure
@@ -11,45 +9,40 @@ from .location_filters import selected_scopes
 from .models import RealEstateComplexLocation
 
 
+def _complex_territory(complex_reference, district_reference):
+    """Use the mapping only when the complex has no territory records at all."""
+    links = RealEstateComplexLocation.objects.filter(real_estate_complex_id=OuterRef(complex_reference))
+    primary = links.filter(is_primary=True).order_by().values('location_id')[:1]
+    previous = LegacyLocationMapping.objects.filter(
+        model_name='district', legacy_id=OuterRef(district_reference),
+    ).order_by().values('location_id')[:1]
+    return Case(When(Exists(links), then=Subquery(primary)), default=Subquery(previous))
+
+
 def annotate_property_geography(queryset, building_prefix='property__building__'):
-    """Prefer building, primary complex, then explicitly mapped legacy territory."""
+    """Prefer an explicit building territory to inherited complex geography."""
     if 'geographic_location_id' in queryset.query.annotations:
         return queryset
-    primary = RealEstateComplexLocation.objects.filter(
-        real_estate_complex_id=OuterRef(f'{building_prefix}real_estate_complex_id'),
-        is_primary=True,
-    ).order_by().values('location_id')[:1]
-    previous = LegacyLocationMapping.objects.filter(
-        model_name='district',
-        legacy_id=OuterRef(f'{building_prefix}real_estate_complex__district_id'),
-    ).order_by().values('location_id')[:1]
     queryset = queryset.annotate(geographic_location_id=Coalesce(
         F(f'{building_prefix}complex_location__location_id'),
-        Subquery(primary), Subquery(previous),
+        _complex_territory(f'{building_prefix}real_estate_complex_id',
+                           f'{building_prefix}real_estate_complex__district_id'),
         output_field=BigIntegerField(),
     ))
-    return _annotate_geography_labels(
-        queryset, f'{building_prefix}real_estate_complex__district',
-    )
+    return _annotate_geography_labels(queryset)
 
 
 def annotate_complex_geography(queryset, complex_prefix=''):
     """Sort and display complexes by the primary territory, then an old mapping."""
     if 'geographic_location_id' in queryset.query.annotations:
         return queryset
-    primary = RealEstateComplexLocation.objects.filter(
-        real_estate_complex_id=OuterRef(f'{complex_prefix}pk'), is_primary=True,
-    ).order_by().values('location_id')[:1]
-    previous = LegacyLocationMapping.objects.filter(
-        model_name='district', legacy_id=OuterRef(f'{complex_prefix}district_id'),
-    ).order_by().values('location_id')[:1]
-    queryset = queryset.annotate(geographic_location_id=Coalesce(
-        Subquery(primary), Subquery(previous), output_field=BigIntegerField(),
+    queryset = queryset.annotate(geographic_location_id=_complex_territory(
+        f'{complex_prefix}pk', f'{complex_prefix}district_id',
     ))
-    return _annotate_geography_labels(queryset, f'{complex_prefix}district')
+    return _annotate_geography_labels(queryset)
 
 
-def _annotate_geography_labels(queryset, old_district):
+def _annotate_geography_labels(queryset):
     """Resolve nearest canonical ancestors independently of legacy financial IDs."""
     ancestry = LocationClosure.objects.filter(
         descendant_id=OuterRef('geographic_location_id'),
@@ -62,11 +55,7 @@ def _annotate_geography_labels(queryset, old_district):
     district = ancestry.filter(ancestor__location_type__category='district')
     region = ancestry.filter(ancestor__location_type__category='region')
     annotations = {}
-    for category, records, previous_name in (
-        ('region', region, f'{old_district}__city__region__name'),
-        ('district', district, f'{old_district}__name'),
-        ('locality', localities, f'{old_district}__city__name'),
-    ):
+    for category, records in (('region', region), ('district', district), ('locality', localities)):
         identifier = Subquery(
             records.values('ancestor_id')[:1], output_field=BigIntegerField(),
         )
@@ -78,13 +67,7 @@ def _annotate_geography_labels(queryset, old_district):
             )
             name = Coalesce(name, Subquery(federal.values('ancestor__name')[:1]))
         annotations[f'geographic_{category}_id'] = identifier
-        annotations[f'geographic_{category}_name'] = Case(
-            When(
-                geographic_location_id__isnull=True,
-                then=Coalesce(F(previous_name), Value('')),
-            ),
-            default=Coalesce(name, Value('')), output_field=CharField(),
-        )
+        annotations[f'geographic_{category}_name'] = Coalesce(name, Value(''))
     return queryset.annotate(**annotations)
 
 
@@ -104,12 +87,7 @@ def filter_property_geography(
         matching = LocationClosure.objects.filter(
             descendant_id=OuterRef('geographic_location_id'), ancestor_id__in=mapped,
         )
-        queryset = queryset.filter(
-            Exists(matching) | Q(**{
-                'geographic_location_id__isnull': True,
-                f'{building_prefix}real_estate_complex__district__city_id': parameters['city'],
-            }),
-        )
+        queryset = queryset.filter(Exists(matching))
     return queryset
 
 

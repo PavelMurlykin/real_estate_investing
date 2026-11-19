@@ -168,7 +168,6 @@ class MortgageForm(forms.Form):
             self.data = self.data.copy()
         self.fields['PROPERTY'].queryset = Property.objects.select_related(
             'building__real_estate_complex__developer',
-            'building__real_estate_complex__district__city',
             'building',
             'layout',
             'decoration',
@@ -187,7 +186,6 @@ class MortgageForm(forms.Form):
         self.fields['OBJECT_COMPLEX'].queryset = (
             RealEstateComplex.objects.select_related(
                 'developer',
-                'district__city',
             ).order_by('name')
         )
         self.fields['OBJECT_BUILDING'].queryset = (

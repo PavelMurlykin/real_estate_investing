@@ -58,7 +58,6 @@ from .utils import (
     annotate_calculation_table_values,
     build_calculation_table_headers,
     format_currency,
-    get_calculation_city_choices,
     get_calculation_filters,
     get_calculation_sort,
 )
@@ -559,7 +558,6 @@ def _get_selected_property_from_form_data(form_data):
         return (
             Property.objects.select_related(
                 'building__real_estate_complex__developer',
-                'building__real_estate_complex__district__city',
                 'building',
                 'layout',
                 'decoration',
@@ -576,7 +574,6 @@ def _get_selected_property_from_form_data(form_data):
     return (
         Property.objects.select_related(
             'building__real_estate_complex__developer',
-            'building__real_estate_complex__district__city',
             'building',
             'layout',
             'decoration',
@@ -652,7 +649,6 @@ def _get_property_from_query(request):
     return get_object_or_404(
         Property.objects.select_related(
             'building__real_estate_complex__developer',
-            'building__real_estate_complex__district__city',
             'building',
             'layout',
             'decoration',
@@ -1303,12 +1299,9 @@ def calculation_list(request):
             'property__layout',
             'property__building',
             'property__building__real_estate_complex',
-            'property__building__real_estate_complex__district',
-            'property__building__real_estate_complex__district__city',
         ),
         request.user,
     )
-    calculation_cities = get_calculation_city_choices(calculations)
     calculations = apply_calculation_filters(
         annotate_calculation_table_values(calculations), calculation_filters
     )
@@ -1343,7 +1336,6 @@ def calculation_list(request):
             'calculation_location_form': CalculationLocationForm(
                 calculation_filters, 'mortgage_calculation',
             ),
-            'calculation_cities': calculation_cities,
             'calculation_sort': calculation_sort,
             'calculation_order': calculation_order,
             'calculation_filter_reset_url': calculation_filter_reset_url,
@@ -1379,8 +1371,6 @@ def calculation_detail(request, pk):
         'property__building',
         'property__building__real_estate_complex',
         'property__building__real_estate_complex__developer__company_group',
-        'property__building__real_estate_complex__district',
-        'property__building__real_estate_complex__district__city',
         'property__building__real_estate_complex__real_estate_class',
     )
     calculation_queryset = annotate_property_geography(calculation_queryset)
@@ -1433,8 +1423,6 @@ def _get_trench_calculation_queryset(user=None):
         'property__building',
         'property__building__real_estate_complex',
         'property__building__real_estate_complex__developer__company_group',
-        'property__building__real_estate_complex__district',
-        'property__building__real_estate_complex__district__city',
         'property__building__real_estate_complex__real_estate_class',
     ).prefetch_related('trenches')
     queryset = annotate_property_geography(queryset)
@@ -1545,7 +1533,6 @@ def trench_calculation_list(request):
     calculation_filters = get_calculation_filters(request)
     calculation_sort, calculation_order = get_calculation_sort(request)
     calculations = _get_trench_calculation_queryset(request.user)
-    calculation_cities = get_calculation_city_choices(calculations)
     calculations = apply_calculation_filters(
         _annotate_trench_calculation_table_values(calculations),
         calculation_filters,
@@ -1583,7 +1570,6 @@ def trench_calculation_list(request):
             'calculation_location_form': CalculationLocationForm(
                 calculation_filters, 'trench_calculation',
             ),
-            'calculation_cities': calculation_cities,
             'calculation_sort': calculation_sort,
             'calculation_order': calculation_order,
             'calculation_filter_reset_url': calculation_filter_reset_url,

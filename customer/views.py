@@ -17,6 +17,7 @@ from django.views.generic import (
 
 from bank.models import MortgageProgram
 from mortgage.location_filters import CalculationLocationForm
+from property.location_context import building_geography_prefetch, geography_prefetch
 from property.location_queries import (
     annotate_property_geography,
     filter_property_geography,
@@ -64,12 +65,12 @@ CUSTOMER_WORD_CALCULATION_SELECT_RELATED = (
     'calculation__property__building',
     'calculation__property__building__real_estate_complex',
     'calculation__property__building__real_estate_complex__developer',
-    'calculation__property__building__real_estate_complex__district',
-    'calculation__property__building__real_estate_complex__district__city',
     'calculation__property__building__real_estate_complex__real_estate_class',
 )
 CUSTOMER_WORD_CALCULATION_PREFETCH_RELATED = (
     'calculation__property__window_views',
+    geography_prefetch('calculation__property__building__real_estate_complex__'),
+    building_geography_prefetch('calculation__property__building__'),
     (
         'calculation__property__building__real_estate_complex'
         '__metro_availability__metro'
@@ -262,20 +263,6 @@ def _sort_customer_calculation_rows(rows, sort, order):
         key=lambda row: _get_customer_calculation_sort_value(row, sort),
         reverse=order == 'desc',
     )
-
-
-def _build_customer_calculation_city_choices(rows):
-    """Return city choices available in normalized customer calculations."""
-    cities = {
-        str(row.city.pk): row.city.name
-        for row in rows
-    }
-    return [
-        {'id': city_id, 'name': city_name}
-        for city_id, city_name in sorted(
-            cities.items(), key=lambda item: item[1].casefold()
-        )
-    ]
 
 
 def _parse_customer_calculation_export_selection(post_data):
@@ -642,14 +629,6 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
                 'calculation__property__layout',
                 'calculation__property__building',
                 'calculation__property__building__real_estate_complex',
-                (
-                    'calculation__property__building'
-                    '__real_estate_complex__district'
-                ),
-                (
-                    'calculation__property__building'
-                    '__real_estate_complex__district__city'
-                ),
             )
         )
         trench_customer_calculations = (
@@ -660,14 +639,6 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
                 'calculation__property__layout',
                 'calculation__property__building',
                 'calculation__property__building__real_estate_complex',
-                (
-                    'calculation__property__building'
-                    '__real_estate_complex__district'
-                ),
-                (
-                    'calculation__property__building'
-                    '__real_estate_complex__district__city'
-                ),
             )
             .prefetch_related('calculation__trenches')
         )
@@ -678,9 +649,6 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
             annotate_property_geography(
                 trench_customer_calculations, 'calculation__property__building__',
             ),
-        )
-        calculation_cities = _build_customer_calculation_city_choices(
-            customer_calculation_rows
         )
         customer_calculations = _apply_customer_calculation_filters(
             customer_calculation_rows,
@@ -693,7 +661,6 @@ class CustomerDetailView(CustomerOwnedQuerysetMixin, DetailView):
         )
 
         context['customer_calculations'] = customer_calculations
-        context['calculation_cities'] = calculation_cities
         context['calculation_filters'] = calculation_filters
         context['calculation_location_form'] = CalculationLocationForm(
             calculation_filters, 'customer_calculation',

@@ -1167,7 +1167,6 @@ class RealEstateComplexListView(ListView):
             )
             .select_related(
                 'developer__company_group',
-                'district__city__region',
                 'real_estate_class',
                 'real_estate_type',
             )
@@ -1544,7 +1543,6 @@ class PropertyListView(ListView):
         """
         queryset = Property.objects.select_related(
             'building__real_estate_complex__developer__company_group',
-            'building__real_estate_complex__district__city__region',
             'building__real_estate_complex',
             'building',
             'layout',
@@ -1716,7 +1714,6 @@ class PropertyDetailView(DetailView):
         """
         return Property.objects.select_related(
             'building__real_estate_complex__developer',
-            'building__real_estate_complex__district__city__region',
             'building__real_estate_complex__real_estate_class',
             'building__real_estate_complex__real_estate_type',
             'building',
@@ -1744,7 +1741,6 @@ class PropertyFormContextMixin:
         return (
             RealEstateComplexBuilding.objects.select_related(
                 'real_estate_complex__developer',
-                'real_estate_complex__district__city__region',
             )
             .filter(pk=building_id)
             .first()

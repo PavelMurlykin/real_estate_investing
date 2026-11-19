@@ -102,7 +102,7 @@ def test_homepage_city_is_paginated_without_losing_later_complexes(
         ) for index in range(104)
     ])
     url = reverse('api_v1:homepage_complex_list')
-    with django_assert_num_queries(4):
+    with django_assert_num_queries(8):
         response = client.get(url, {'pageSize': 50})
     assert response.json()['totalCount'] == 105
     assert len(response.json()['results']) == 50

@@ -1,8 +1,9 @@
 ﻿from django import forms
+from django.db import transaction
 from django.forms import BaseInlineFormSet, inlineformset_factory
 
 from location.models import City, District, Location, Metro, Region
-from .location_context import locality_filter, set_primary_location
+from .location_context import locality_filter, resolve_legacy_district_edit, set_primary_location
 from .location_form_fields import configure_property_location_fields
 from .location_filters import apply_location_scopes
 
@@ -475,8 +476,9 @@ class RealEstateComplexForm(forms.ModelForm):
 
         return cleaned_data
 
+    @transaction.atomic
     def save(self, commit=True):
-        """Save complex fields and remove the photo marked for deletion."""
+        """Save complex fields, geographic history and photo changes."""
         instance = super().save(commit=False)
         photo_name_to_delete = ''
 
@@ -486,9 +488,12 @@ class RealEstateComplexForm(forms.ModelForm):
                 instance.photo = None
 
         if commit:
+            location = self.cleaned_data.get('location')
+            if location is None and instance.pk and instance.district_id and 'district' in self.changed_data:
+                location = resolve_legacy_district_edit(instance.pk, instance.district)
             instance.save()
-            if self.cleaned_data.get('location'):
-                set_primary_location(instance, self.cleaned_data['location'])
+            if location:
+                set_primary_location(instance, location)
             sync_legacy_complex_photo(instance)
             self.delete_saved_photo(photo_name_to_delete, instance)
 

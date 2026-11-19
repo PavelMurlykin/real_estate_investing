@@ -262,31 +262,6 @@ def build_calculation_table_headers(
     return headers
 
 
-def get_calculation_city_choices(queryset, prefix=''):
-    """Возвращает города, доступные в переданном наборе расчетов."""
-    city_id_field = (
-        f'{_prefixed("property", prefix)}__building'
-        '__real_estate_complex__district__city_id'
-    )
-    city_name_field = (
-        f'{_prefixed("property", prefix)}__building'
-        '__real_estate_complex__district__city__name'
-    )
-    city_rows = (
-        queryset.values(city_id_field, city_name_field)
-        .distinct()
-        .order_by(city_name_field)
-    )
-
-    return [
-        {
-            'id': str(row[city_id_field]),
-            'name': row[city_name_field],
-        }
-        for row in city_rows
-    ]
-
-
 def format_currency(value):
     """
     Форматирует число как валюту с разделителями разрядов и двумя

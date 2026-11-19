@@ -17,7 +17,13 @@ def canonical_legacy_location(row):
     model_name = row._meta.model_name
     mapping = LegacyLocationMapping.objects.filter(model_name=model_name, legacy_id=row.pk).first()
     reference = legacy_import_reference(row)
+    if isinstance(row, District):
+        reference.update(legacy_city_id=row.city_id, legacy_region_id=row.city.region_id)
     if mapping:
+        if isinstance(row, City):
+            LegacyLocationMapping.objects.filter(model_name='district', legacy_city_id=row.pk).exclude(
+                legacy_region_id=row.region_id,
+            ).update(legacy_region_id=row.region_id)
         if any(getattr(mapping, field) != value for field, value in reference.items()):
             LegacyLocationMapping.objects.filter(pk=mapping.pk).update(**reference)
             LocationAlias.objects.get_or_create(location_id=mapping.location_id, name=row.name)

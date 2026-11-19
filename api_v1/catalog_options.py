@@ -6,8 +6,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from bank.models import Bank, MortgageProgram
-from location.models import City, District, Metro, MetroLine, MetroSystem, Region
-from property.location_context import building_geography_prefetch, geography_prefetch
+from location.models import City, District, LegacyLocationMapping, Metro, MetroLine, MetroSystem, Region
+from property.location_context import building_geography_prefetch, prefetch_complex_geography
 from property.location_filters import apply_location_scopes
 from property.models import (
     ApartmentDecoration, ApartmentLayout, CompanyGroup, Developer,
@@ -48,13 +48,13 @@ CATALOG_OPTIONS = {
     'developers': (Developer, 'name', ('company_group',),
                    {'companyGroupId': 'company_group_id'}),
     'company-groups': (CompanyGroup, 'name', (), {}),
-    'complexes': (RealEstateComplex, 'name', ('district__city__region', 'developer'), {
-        'cityId': 'district__city_id', 'districtId': 'district_id',
+    'complexes': (RealEstateComplex, 'name', ('developer',), {
+        'districtId': 'district_id',
         'developerId': 'developer_id',
         'companyGroupId': 'developer__company_group_id',
     }),
     'buildings': (RealEstateComplexBuilding, 'number',
-                  ('real_estate_complex__district__city__region',),
+                  ('real_estate_complex',),
                   {'realEstateComplexId': 'real_estate_complex_id'}),
     'layouts': (ApartmentLayout, 'name', (), {}),
     'decorations': (ApartmentDecoration, 'name', (), {}),
@@ -133,6 +133,10 @@ class CatalogOptionsAPIView(APIView):
         queryset = base_queryset
         if model is RealEstateComplex:
             queryset = apply_location_scopes(queryset, parameters)
+            if parameters.get('cityId'):
+                queryset = queryset.filter(district_id__in=LegacyLocationMapping.objects.filter(
+                    model_name='district', legacy_city_id=parameters['cityId'],
+                ).values('legacy_id'))
         elif model is RealEstateComplexBuilding:
             queryset = apply_location_scopes(queryset, parameters, buildings=True, prefix='')
         if dictionary_key in {'metro', 'metro-lines'} and parameters.get('locationId'):
@@ -162,7 +166,7 @@ class CatalogOptionsAPIView(APIView):
         items = list(queryset[offset:offset + page_size])
         if model in {RealEstateComplex, RealEstateComplexBuilding}:
             complexes = [row if model is RealEstateComplex else row.real_estate_complex for row in items]
-            prefetch_related_objects(complexes, geography_prefetch())
+            prefetch_complex_geography(complexes)
         if model is RealEstateComplexBuilding:
             prefetch_related_objects(items, building_geography_prefetch())
         selected_identifiers = set(parameters.get('selectedIds', []))
@@ -176,10 +180,10 @@ class CatalogOptionsAPIView(APIView):
                 pk__in=missing,
             ).order_by(label_field, 'pk')})
         if model in {RealEstateComplex, RealEstateComplexBuilding}:
-            prefetch_related_objects([
+            prefetch_complex_geography([
                 row if model is RealEstateComplex else row.real_estate_complex
                 for row in selected.values()
-            ], geography_prefetch())
+            ])
         if model is RealEstateComplexBuilding:
             prefetch_related_objects(list(selected.values()), building_geography_prefetch())
         return Response({

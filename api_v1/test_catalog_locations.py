@@ -1,6 +1,10 @@
 """Keep catalog display, geography filtering and ordering on canonical identities."""
 
+import re
+from importlib import import_module
+
 import pytest
+from django.apps import apps
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -14,6 +18,7 @@ from bank.models import MortgageProgramRegionalCreditLimit
 from customer.models import Customer, CustomerCalculation, CustomerTrenchCalculation
 from location.models import City, District, LegacyLocationMapping, LocationAlias, Region
 from mortgage.models import MortgageCalculation
+from property.forms import RealEstateComplexForm
 from property.models import Property, RealEstateComplex, RealEstateComplexBuilding, RealEstateComplexLocation
 from trench_mortgage.models import Trench, TrenchMortgageCalculation
 
@@ -156,3 +161,94 @@ def test_native_selectors_are_bounded_and_queries_do_not_grow_per_result(client,
     assert response.content.count(b'data-remote-options=') >= 5
     assert b'data-catalog-clear-on=' in response.content
     assert 'Стрельна' not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_current_geography_reads_do_not_join_the_legacy_catalogs(client, filtered_catalog):
+    """Check bounded canonical reads, including a coarse complex and a legacy URL."""
+    locality, project, building, apartment = filtered_catalog['pushkin']
+    coarse = filtered_catalog['legacy']
+    legacy_city_id = coarse.district.city_id
+    endpoints = (
+        ('/api/v1/complexes/', {'cityId': legacy_city_id, 'ordering': 'city'}),
+        (f'/api/v1/complexes/{coarse.pk}/', {}),
+        ('/api/v1/properties/', {'localityId': locality.pk, 'search': 'Пушкин'}),
+        (f'/api/v1/properties/{apartment.pk}/', {}),
+        ('/api/v1/catalog-options/complexes/', {'cityId': legacy_city_id, 'selected': project.pk}),
+        ('/api/v1/catalog-options/buildings/', {'selected': building.pk}),
+        ('/api/v1/homepage/complexes/', {'canonicalLocations': 'true', 'allLocations': 'true'}),
+        ('/api/v1/overview/', {'canonicalLocations': 'true'}),
+        ('/api/complexes/', {'city_id': legacy_city_id}),
+    )
+    for endpoint, parameters in endpoints:
+        with CaptureQueriesContext(connection) as captured:
+            response = client.get(endpoint, parameters)
+        assert response.status_code == 200, response.content
+        assert not any(re.search(r'\b(?:FROM|JOIN) "(?:district|city|region)"', query['sql'])
+                       for query in captured.captured_queries), endpoint
+
+
+@pytest.mark.django_db
+def test_legacy_district_ancestry_and_missing_primary_keep_old_identifiers(client, filtered_catalog):
+    """Keep original IDs when a coarse primary is displayed with current labels."""
+    project = filtered_catalog['legacy']
+    district = project.district
+    mapping = LegacyLocationMapping.objects.get(model_name='district', legacy_id=district.pk)
+    district_mapping = LegacyLocationMapping.objects.filter(pk=mapping.pk)
+    district_mapping.update(legacy_city_id=None, legacy_region_id=None)
+    migration = import_module('location.migrations.0014_legacy_district_ancestry')
+    before = list(project.location_links.values())
+    with connection.schema_editor() as editor:
+        for _ in range(2):
+            migration.capture_legacy_district_ancestry(apps, editor)
+    assert list(project.location_links.values()) == before
+    mapping.refresh_from_db()
+    assert (mapping.legacy_city_id, mapping.legacy_region_id) == (district.city_id, district.city.region_id)
+    location = mapping.location
+    location.name = 'Уточнённое название района'
+    location.save(update_fields=['name'])
+    detail = f'/api/v1/complexes/{project.pk}/'
+    for has_primary in (True, False):
+        if not has_primary:
+            project.location_links.all().delete()
+        payload = client.get(detail).json()
+        assert payload['district'] == location.name
+        assert payload['districtLocationId'] == location.pk
+        assert (payload['districtId'], payload['cityId'], payload['regionId']) == (
+            district.pk, district.city_id, district.city.region_id,
+        )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('native_form', [False, True])
+def test_legacy_district_edit_moves_only_coarse_binding(client, filtered_catalog, native_form):
+    """Keep the old request key, preserve history and retain a precise locality."""
+    project = filtered_catalog['legacy']
+    building = project.realestatecomplexbuilding_set.get()
+    previous = project.location_links.get(is_primary=True)
+    building.complex_location = previous
+    building.save(update_fields=['complex_location'])
+    new_district = District.objects.create(name='Другой район', city=project.district.city)
+    url = f'/api/v1/complexes/{project.pk}/'
+    if native_form:
+        form = RealEstateComplexForm(data={
+            'name': project.name, 'developer': project.developer_id, 'district': new_district.pk,
+            'real_estate_class': project.real_estate_class_id, 'real_estate_type': project.real_estate_type_id,
+        }, instance=project)
+        assert form.is_valid(), form.errors
+        form.save()
+        response = client.get(url)
+    else:
+        response = client.patch(url, {'districtId': new_district.pk}, content_type='application/json')
+    assert response.status_code == 200, response.content
+    assert response.json()['district'] == new_district.name
+    previous.refresh_from_db()
+    building.refresh_from_db()
+    assert previous.is_historical and building.complex_location_id == previous.pk
+
+    locality, precise, _, _ = filtered_catalog['strelna']
+    response = client.patch(f'/api/v1/complexes/{precise.pk}/', {'districtId': new_district.pk},
+                            content_type='application/json')
+    assert response.status_code == 200, response.content
+    assert response.json()['districtId'] == new_district.pk
+    assert response.json()['localityId'] == locality.pk

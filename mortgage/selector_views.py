@@ -30,7 +30,7 @@ class CalculatorSelectorQueryForm(forms.Form):
 def calculator_properties():
     """Load effective geography in a fixed number of queries per page."""
     return Property.objects.select_related(
-        'building__real_estate_complex__district__city__region',
+        'building__real_estate_complex',
     ).prefetch_related(
         geography_prefetch('building__real_estate_complex__'),
         building_geography_prefetch('building__'),
@@ -76,7 +76,7 @@ def financial_region(request):
     if not region_id:
         building_id = form.cleaned_data.get('buildingId')
         building = RealEstateComplexBuilding.objects.select_related(
-            'real_estate_complex__district__city__region',
+            'real_estate_complex',
         ).prefetch_related(
             geography_prefetch('real_estate_complex__'), building_geography_prefetch(),
         ).filter(pk=building_id).first() if building_id else None

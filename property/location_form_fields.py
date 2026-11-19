@@ -36,7 +36,7 @@ def configure_property_location_fields(form):
         form.data.get('building') if form.is_bound else form.initial.get('building'),
     )
     building = RealEstateComplexBuilding.objects.select_related(
-        'real_estate_complex__district__city__region',
+        'real_estate_complex',
     ).prefetch_related(
         geography_prefetch('real_estate_complex__'), building_geography_prefetch(),
     ).filter(pk=building_id).first() if building_id else None
