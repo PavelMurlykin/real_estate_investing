@@ -10,7 +10,7 @@ from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from location.models import City, District, Region
+from location.models import City, District, LegacyLocationMapping, Region
 from mortgage.models import MortgageCalculation
 from property.models import (
     ApartmentDecoration,
@@ -856,9 +856,10 @@ def test_developer_list_api_is_public_filtered_and_hides_sensitive_fields(
     developer = property_object.building.real_estate_complex.developer
     region = property_object.building.real_estate_complex.district.city.region
     developer.regions.add(region)
+    mapped = LegacyLocationMapping.objects.get(model_name='region', legacy_id=region.pk).location
     Developer.objects.create(name='Южный девелопер', is_active=False)
 
-    with django_assert_num_queries(5):
+    with django_assert_num_queries(3):
         response = client.get(
             reverse('api_v1:developer_list'),
             {
@@ -882,8 +883,8 @@ def test_developer_list_api_is_public_filtered_and_hides_sensitive_fields(
                 'name': 'Группа Север',
             },
             'regions': [{'id': region.pk, 'name': 'Тестовый регион'}],
-            'regionLocations': [],
-            'unmappedRegions': [{'id': region.pk, 'name': 'Тестовый регион'}],
+            'regionLocations': [{'id': mapped.pk, 'name': mapped.name}],
+            'unmappedRegions': [],
             'complexCount': 1,
             'isActive': True,
         }

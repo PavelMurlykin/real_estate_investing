@@ -2756,7 +2756,6 @@ def _developer_queryset():
     """Return developers with all data needed by their API representation."""
     return (
         Developer.objects.select_related('company_group')
-        .prefetch_related('regions', 'region_locations', 'region_links')
         .annotate(
             complex_count=Count('realestatecomplex', distinct=True)
         )
@@ -2846,14 +2845,14 @@ class DeveloperListCreateAPIView(ListCreateAPIView):
 
     def get_queryset(self):
         """Apply validated public filters and deterministic ordering."""
+        from property.developer_locations import filter_developer_regions, orderable_developer_regions
+
         query_serializer = DeveloperListQuerySerializer(
             data=self.request.query_params
         )
         query_serializer.is_valid(raise_exception=True)
         filters = query_serializer.validated_data
-        queryset = _developer_queryset().annotate(
-            first_region_name=Coalesce(Min('region_locations__name'), Min('regions__name'))
-        )
+        queryset = _developer_queryset()
 
         search = filters.get('q', '')
         if search:
@@ -2865,20 +2864,10 @@ class DeveloperListCreateAPIView(ListCreateAPIView):
             queryset = queryset.filter(
                 company_group_id=filters['companyGroupId']
             )
-        if filters.get('regionId'):
-            mapped = LegacyLocationMapping.objects.filter(
-                model_name='region', legacy_id=filters['regionId'],
-            ).values('location_id')
-            queryset = queryset.filter(Q(regions__id=filters['regionId']) | Q(region_locations__pk__in=mapped))
-        if filters.get('regionLocationId'):
-            location_id = filters['regionLocationId']
-            mapped_legacy_ids = LegacyLocationMapping.objects.filter(
-                model_name='region', location_id=location_id,
-            ).values('legacy_id')
-            queryset = queryset.filter(
-                Q(region_locations=location_id)
-                | Q(region_locations__isnull=True, regions__pk__in=mapped_legacy_ids),
-            )
+        region_location = filters.get('regionLocationId')
+        queryset = filter_developer_regions(
+            queryset, legacy_id=filters.get('regionId'), location_id=region_location.pk if region_location else None,
+        )
         if filters['status'] != 'all':
             queryset = queryset.filter(
                 is_active=filters['status'] == 'active'
@@ -2887,6 +2876,8 @@ class DeveloperListCreateAPIView(ListCreateAPIView):
         ordering = filters['ordering']
         ordering_prefix = '-' if ordering.startswith('-') else ''
         ordering_key = ordering.removeprefix('-')
+        if ordering_key == 'regions':
+            queryset = orderable_developer_regions(queryset)
         ordering_field = self.ordering_fields[ordering_key]
         return queryset.order_by(
             f'{ordering_prefix}{ordering_field}',
@@ -2955,23 +2946,25 @@ class DeveloperOptionsAPIView(APIView):
 
     def get(self, request):
         """Return company groups and regions with truncation metadata."""
+        from property.developer_locations import legacy_region_names
+
         maximum_results = settings.PUBLIC_CATALOG_API_MAX_RESULTS
         company_groups, company_groups_truncated = _build_bounded_option_rows(
             CompanyGroup.objects.order_by('name', 'pk'),
             maximum_results,
         )
-        regions, regions_truncated = _build_bounded_option_rows(
-            Region.objects.none() if request.query_params.get('canonicalLocations') == 'true'
-            else Region.objects.order_by('name', 'pk'),
-            maximum_results,
-        )
+        legacy_names = {} if request.query_params.get('canonicalLocations') == 'true' else legacy_region_names()
+        regions = [
+            {'id': identifier, 'name': name}
+            for identifier, name in sorted(legacy_names.items(), key=lambda item: (item[1], item[0]))[:maximum_results]
+        ]
         return Response(
             {
                 'companyGroups': company_groups,
                 'regions': regions,
                 'truncated': {
                     'companyGroups': company_groups_truncated,
-                    'regions': regions_truncated,
+                    'regions': len(legacy_names) > maximum_results,
                 },
             }
         )

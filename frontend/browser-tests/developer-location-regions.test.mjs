@@ -60,7 +60,9 @@ test('developer Location regions retain Pushkin and Strelna projects and repeat 
   const filtered = page.waitForResponse((reply) => new URL(reply.url()).pathname === '/api/v1/developers/'
     && new URL(reply.url()).searchParams.has('regionLocationId'))
   await page.getByRole('option', { name: /Санкт-Петербург/ }).click()
-  assert.equal((await (await filtered).json()).results[0].id, developer.id)
+  const filterResponse = await filtered
+  assert.equal(filterResponse.status(), 200, await filterResponse.text())
+  assert.equal((await filterResponse.json()).results[0].id, developer.id)
   await page.goto(url(`/app/developers/${developer.id}/edit`))
   await page.getByRole('button', { name: /Убрать:.*Санкт-Петербург/ }).waitFor()
   await page.getByLabel('Юридический адрес', { exact: true }).fill('Сохранённый адрес')
@@ -71,10 +73,11 @@ test('developer Location regions retain Pushkin and Strelna projects and repeat 
   assert.equal(update.status(), 200, await update.text())
   assert.ok(!Object.hasOwn(update.request().postDataJSON(), 'regionLocationIds'))
   await page.getByRole('heading', { name: 'Застройщики', exact: true }).waitFor()
+  const likino = await read(`/api/v1/location-catalogs/localities/${fixtureManifest.likinoLocationId}/`)
   for (let repetition = 0; repetition < 2; repetition += 1) {
     await page.getByLabel('Файл ЕРЗ', { exact: true }).setInputFiles({
       name: 'developer-regions.csv', mimeType: 'text/csv',
-      buffer: Buffer.from(`Застройщик;ИНН;Регион\n${name};7812345678;78\n`),
+      buffer: Buffer.from(`Застройщик;ИНН;Регион\n${name};7812345678;78\n${name};7812345678;50\n`),
     })
     const imported = page.waitForResponse((reply) => reply.request().method() === 'POST'
       && new URL(reply.url()).pathname === '/api/v1/developers/import-registry/')
@@ -83,14 +86,19 @@ test('developer Location regions retain Pushkin and Strelna projects and repeat 
     assert.equal(importResponse.status(), 200, await importResponse.text())
     const summary = await importResponse.json()
     assert.equal(summary.createdDevelopers, 0)
-    assert.equal(summary.createdDeveloperRegionLinks, 0)
+    assert.equal(summary.createdDeveloperRegionLinks, repetition === 0 ? 1 : 0)
     assert.deepEqual(summary.errors, [])
   }
   const old = await request.patch(url(`/api/v1/developers/${developer.id}/`), {
     headers, data: { regionIds: [developer.regions[0].id] },
   })
   assert.equal(old.status(), 200, await old.text())
-  assert.deepEqual((await old.json()).regionLocations, developer.regionLocations)
+  const saved = await old.json()
+  assert.deepEqual(new Set(saved.regionLocations.map((region) => region.id)), new Set([developer.regionLocations[0].id, likino.regionId]))
+  for (const filter of [`regionId=${developer.regions[0].id}`, `regionLocationId=${developer.regionLocations[0].id}`, `regionLocationId=${likino.regionId}`]) {
+    const result = await read(`/api/v1/developers/?q=${encodeURIComponent(name)}&${filter}`)
+    assert.deepEqual(result.results.map((row) => row.id), [developer.id])
+  }
   for (const apartment of properties) {
     const preserved = await read(`/api/v1/properties/${apartment.id}/`)
     assert.equal(preserved.buildingId, apartment.buildingId)

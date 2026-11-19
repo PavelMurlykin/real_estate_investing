@@ -146,10 +146,13 @@
                                     {% elif column.key == 'company_group' %}
                                         {{ developer.company_group|default:"-" }}
                                     {% elif column.key == 'regions' %}
-                                        {% for region in developer.regions.all %}
+                                        {% for region in developer.working_region_data.regionLocations %}
+                                            {{ region.name }}{% if not forloop.last or developer.working_region_data.unmappedRegions %}, {% endif %}
+                                        {% endfor %}
+                                        {% for region in developer.working_region_data.unmappedRegions %}
                                             {{ region.name }}{% if not forloop.last %}, {% endif %}
                                         {% empty %}
-                                            -
+                                            {% if not developer.working_region_data.regionLocations %}-{% endif %}
                                         {% endfor %}
                                     {% elif column.key == 'legal_address' %}
                                         {{ developer.legal_address|default:"-"|truncatechars:100 }}

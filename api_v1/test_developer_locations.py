@@ -1,8 +1,10 @@
 """Preserve developer associations while switching region identity domains."""
 
 from importlib import import_module
+from types import SimpleNamespace
 
 import pytest
+from django.apps import apps as django_apps
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
@@ -38,10 +40,12 @@ def test_canonical_create_edit_legacy_api_and_filters(client, locality_catalog):
     link = DeveloperRegion.objects.get(developer=developer)
     original = DeveloperRegion.objects.values().get(pk=link.pk)
     for _ in range(2):
-        response = client.patch(f'/api/v1/developers/{developer.pk}/', {
-            'regionIds': [old.pk],
-        }, content_type='application/json')
+        with CaptureQueriesContext(connection) as queries:
+            response = client.patch(f'/api/v1/developers/{developer.pk}/', {
+                'regionIds': [old.pk],
+            }, content_type='application/json')
         assert response.status_code == 200
+        assert not any(f'{operation} "region"' in query['sql'] for query in queries for operation in ('FROM', 'JOIN'))
         assert DeveloperRegion.objects.values().get(pk=link.pk) == original
     for parameter, identifier in [('regionLocationId', region.pk), ('regionId', old.pk)]:
         rows = client.get('/api/v1/developers/', {parameter: identifier}).json()['results']
@@ -165,9 +169,46 @@ def test_developer_list_queries_are_bounded(client, locality_catalog):
     assert response.status_code == 200
     assert len(response.json()['results']) == 20
     assert len(queries) <= 9
+    assert not any(f'{operation} "region"' in query['sql'] for query in queries for operation in ('FROM', 'JOIN'))
     options = client.get('/api/v1/developers/options/', {'canonicalLocations': 'true'}).json()
     assert options['regions'] == []
     assert client.get('/api/v1/developers/options/').json()['regions']
+
+
+@pytest.mark.django_db
+def test_filters_find_a_mapped_legacy_link_alongside_another_location(client, locality_catalog):
+    """Match a mapped fallback per link and keep old writes from removing Location-only links."""
+    developer = locality_catalog['developer']
+    old = locality_catalog['region']
+    subject = Location.objects.get(name='Стрельна').region
+    other = Location.objects.create(name='Другой субъект', location_type=subject.location_type)
+    legacy_link = DeveloperRegion.objects.create(developer=developer, region=old, is_active=False)
+    canonical_link = DeveloperRegion.objects.create(developer=developer, location=other)
+    for parameters in ({'regionId': old.pk}, {'regionLocationId': subject.pk}, {'regionLocationId': other.pk}):
+        with CaptureQueriesContext(connection) as queries:
+            response = client.get('/api/v1/developers/', {**parameters, 'ordering': 'regions'})
+        assert response.status_code == 200, response.content
+        row, = response.json()['results']
+        assert row['id'] == developer.pk
+        assert {region['id'] for region in row['regionLocations']} == {subject.pk, other.pk}
+        assert row['regions'] == [{'id': old.pk, 'name': old.name}]
+        assert row['unmappedRegions'] == []
+        assert not any(f'{operation} "region"' in query['sql'] for query in queries for operation in ('FROM', 'JOIN'))
+    migration = import_module('property.migrations.0022_complete_developer_regions')
+    editor = SimpleNamespace(connection=connection)
+    for _ in range(2):
+        migration.complete_developer_regions(django_apps, editor)
+    legacy_link.refresh_from_db()
+    assert (legacy_link.location_id, legacy_link.region_id, legacy_link.legacy_region_name, legacy_link.is_active) == (
+        subject.pk, old.pk, old.name, False,
+    )
+    detail = f'/api/v1/developers/{developer.pk}/'
+    response = client.patch(detail, {'regionIds': [old.pk]}, content_type='application/json')
+    assert response.status_code == 200, response.content
+    assert DeveloperRegion.objects.filter(pk=canonical_link.pk, location=other).exists()
+    assert set(DeveloperRegion.objects.filter(developer=developer).values_list('id', flat=True)) == {
+        canonical_link.pk, legacy_link.pk,
+    }
 
 
 @pytest.mark.django_db(transaction=True)

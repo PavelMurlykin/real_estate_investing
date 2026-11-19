@@ -22,6 +22,8 @@ Metro uses separate Systems (“Системы метро”), Lines (“Лин�
 
 In the React Developers section, “Регионы” and the “Регион” filter use Russian subjects from Location, with server search and paginated options. Pushkin and Strelna belong to Saint Petersburg; a city or settlement cannot replace a working region. Lists and sorting show canonical regions. An unmapped legacy association is marked as needing clarification and retained when other details are edited. Old regionId links remain supported; selecting a new region removes the old filter. The ERZ registry importer resolves codes and names to canonical subjects, adds missing associations and retains manual assignments. Repeating an import does not create duplicates. Ambiguous regions are reported without assigning a new association automatically. The old regionIds API remains supported; new requests use regionLocationIds. Sending both lists together is rejected.
 
+Filtering by a legacy region ID uses the `LegacyLocationMapping` table. If an association still stores only its legacy ID and a mapping is available, the developer also appears in the Location filter. Saving through the legacy API retains regions assigned only through Location. The fallback Django list shows current subject names and the names of associations that still need clarification.
+
 ### Importing Russian locations
 
 On Regions, Localities, Administrative districts and Metro, application administrators (`application_administrators`) and superusers see “Обновить данные” (Update data). Regular users, staff with only `is_staff`, and moderators cannot import. Moderators retain manual dictionary editing rights. The server checks permissions, the session and CSRF protection.

@@ -100,6 +100,7 @@ class DeveloperRegion(BaseModel):
         Location, null=True, blank=True, on_delete=models.PROTECT,
         related_name='developer_region_links', verbose_name='Регион Location',
     )
+    legacy_region_name = models.CharField(max_length=100, blank=True)
 
     class Meta(BaseModel.Meta):
         """Метаданные связи застройщика и региона."""

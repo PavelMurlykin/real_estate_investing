@@ -275,6 +275,18 @@ class DeveloperForm(forms.ModelForm):
         self.fields['regions'].queryset = Region.objects.order_by('name')
         self.fields['regions'].required = False
 
+    @transaction.atomic
+    def save(self, commit=True):
+        """Save catalog fields and their working regions as one operation."""
+        return super().save(commit=commit)
+
+    def _save_m2m(self):
+        """Process the fallback form's old region IDs through the shared resolver."""
+        from .developer_locations import set_developer_regions
+
+        names = dict(self.cleaned_data['regions'].values_list('pk', 'name'))
+        set_developer_regions(self.instance, legacy_regions=names, legacy_names=names)
+
 
 class DeveloperRegistryImportForm(forms.Form):
     """Validate a developer registry source uploaded through the web UI."""

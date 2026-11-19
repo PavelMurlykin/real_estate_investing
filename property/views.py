@@ -909,9 +909,9 @@ class DeveloperListView(ListView):
         Возвращает:
             Any: Тип результата зависит от контекста использования.
         """
-        queryset = Developer.objects.select_related(
-            'company_group'
-        ).prefetch_related('regions')
+        from .developer_locations import filter_developer_regions
+
+        queryset = Developer.objects.select_related('company_group')
         filters = self.get_filters()
 
         if filters['name']:
@@ -921,7 +921,7 @@ class DeveloperListView(ListView):
                 company_group_id=filters['company_group']
             )
         if filters['region'].isdigit():
-            queryset = queryset.filter(regions__id=filters['region'])
+            queryset = filter_developer_regions(queryset, legacy_id=filters['region'])
         if filters['legal_address']:
             queryset = queryset.filter(
                 legal_address__icontains=filters['legal_address']
@@ -1033,7 +1033,10 @@ class DeveloperListView(ListView):
         return columns
 
     def get_context_data(self, **kwargs):
+        from .developer_locations import legacy_region_names, prepare_developer_regions
+
         context = super().get_context_data(**kwargs)
+        prepare_developer_regions(list(context['object_list']))
         context['filters'] = self.get_filters()
         context['sort_by'] = self.request.GET.get('sort_by', '')
         context['sort_dir'] = self.request.GET.get('sort_dir', 'asc')
@@ -1042,7 +1045,10 @@ class DeveloperListView(ListView):
         context['company_groups_for_filter'] = CompanyGroup.objects.order_by(
             'name'
         )
-        context['regions_for_filter'] = Region.objects.order_by('name')
+        context['regions_for_filter'] = [
+            {'pk': identifier, 'name': name}
+            for identifier, name in sorted(legacy_region_names().items(), key=lambda item: (item[1], item[0]))
+        ]
         return context
 
 

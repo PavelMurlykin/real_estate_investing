@@ -1,6 +1,8 @@
 # property/admin.py
+from django import forms
 from django.contrib import admin
 
+from .developer_locations import developer_region_prefetch, prepare_developer_regions, region_references
 from .models import (
     ApartmentDecoration,
     ApartmentLayout,
@@ -28,10 +30,40 @@ class CompanyGroupAdmin(admin.ModelAdmin):
     ordering = ('name',)
 
 
+class DeveloperRegionAdminForm(forms.ModelForm):
+    """Resolve old region edits and keep the original label for unresolved links."""
+
+    class Meta:
+        """Expose the fields permitted by the containing admin editor."""
+
+        model = DeveloperRegion
+        fields = '__all__'
+        exclude = ('legacy_region_name',)
+
+    def __init__(self, *args, **kwargs):
+        """Offer only subjects in the canonical region selector."""
+        super().__init__(*args, **kwargs)
+        if 'location' in self.fields:
+            field = self.fields['location']
+            field.queryset = field.queryset.filter(location_type__category='region')
+
+    def save(self, commit=True):
+        """Keep old edits in sync with the canonical association."""
+        link = super().save(commit=False)
+        if 'region' in self.changed_data:
+            link.legacy_region_name = link.region.name if link.region_id else ''
+            if link.region_id and 'location' not in self.changed_data:
+                link.location_id = region_references().filter(legacy_id=link.region_id).values_list('location_id', flat=True).first()
+        if commit:
+            link.save()
+        return link
+
+
 class DeveloperRegionInline(admin.TabularInline):
     """Inline for developer regions."""
 
     model = DeveloperRegion
+    form = DeveloperRegionAdminForm
     extra = 1
     fields = ('region', 'is_active')
     show_change_link = True
@@ -41,6 +73,7 @@ class DeveloperRegionInline(admin.TabularInline):
 class DeveloperRegionAdmin(admin.ModelAdmin):
     """Admin for developer region links."""
 
+    form = DeveloperRegionAdminForm
     list_display = (
         'developer',
         'region',
@@ -77,11 +110,11 @@ class DeveloperAdmin(admin.ModelAdmin):
         'is_active',
         'created_at',
     )
-    list_filter = ('is_active', 'company_group', 'regions', 'created_at')
+    list_filter = ('is_active', 'company_group', 'region_locations', 'created_at')
     search_fields = (
         'name',
         'company_group__name',
-        'regions__name',
+        'region_locations__name', 'region_links__legacy_region_name',
         'legal_address',
         'actual_address',
         'taxpayer_identification_number',
@@ -99,13 +132,15 @@ class DeveloperAdmin(admin.ModelAdmin):
             super()
             .get_queryset(request)
             .select_related('company_group')
-            .prefetch_related('regions')
+            .prefetch_related(developer_region_prefetch())
         )
 
     @admin.display(description='Регионы')
     def get_region_names(self, obj):
         """Return a comma-separated list of developer regions."""
-        region_names = [region.name for region in obj.regions.all()]
+        prepare_developer_regions([obj])
+        data = obj.working_region_data
+        region_names = [region['name'] for region in data['regionLocations'] + data['unmappedRegions']]
         if not region_names:
             return '-'
         return ', '.join(region_names)

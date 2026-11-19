@@ -1721,15 +1721,27 @@ class DeveloperListQuerySerializer(serializers.Serializer):
     )
 
 
+class DeveloperListSerializer(serializers.ListSerializer):
+    """Prepare both region projections once for the current page."""
+
+    def to_representation(self, data):
+        """Keep the compatibility lookups bounded across all page rows."""
+        from property.developer_locations import prepare_developer_regions
+
+        developers = list(data.all() if hasattr(data, 'all') else data)
+        prepare_developer_regions(developers)
+        return super().to_representation(developers)
+
+
 class DeveloperPublicSerializer(serializers.ModelSerializer):
     """Serialize the non-sensitive developer directory fields."""
 
     companyGroup = serializers.SerializerMethodField(
         method_name='get_company_group'
     )
-    regions = serializers.SerializerMethodField(method_name='get_regions')
-    regionLocations = serializers.SerializerMethodField(method_name='get_region_locations')
-    unmappedRegions = serializers.SerializerMethodField(method_name='get_unmapped_regions')
+    regions = serializers.ListField(source='working_region_data.regions', read_only=True)
+    regionLocations = serializers.ListField(source='working_region_data.regionLocations', read_only=True)
+    unmappedRegions = serializers.ListField(source='working_region_data.unmappedRegions', read_only=True)
     complexCount = serializers.IntegerField(
         source='complex_count',
         read_only=True,
@@ -1740,6 +1752,7 @@ class DeveloperPublicSerializer(serializers.ModelSerializer):
         """Define the public developer list contract."""
 
         model = Developer
+        list_serializer_class = DeveloperListSerializer
         fields = (
             'id',
             'name',
@@ -1760,25 +1773,12 @@ class DeveloperPublicSerializer(serializers.ModelSerializer):
             'name': developer.company_group.name,
         }
 
-    def get_regions(self, developer):
-        """Return prefetched developer regions in deterministic order."""
-        return [
-            {'id': region.pk, 'name': region.name}
-            for region in sorted(
-                developer.regions.all(),
-                key=lambda region: (region.name, region.pk),
-            )
-        ]
+    def to_representation(self, instance):
+        """Reuse the page projection or prepare a standalone detail response."""
+        from property.developer_locations import prepare_developer_regions
 
-    def get_region_locations(self, developer):
-        """Return canonical working regions independently of legacy IDs."""
-        from property.developer_locations import canonical_regions
-        return [{'id': row.pk, 'name': row.name} for row in canonical_regions(developer)]
-
-    def get_unmapped_regions(self, developer):
-        """Keep unconverted legacy associations visible for manual review."""
-        from property.developer_locations import unresolved_regions
-        return unresolved_regions(developer)
+        prepare_developer_regions([instance])
+        return super().to_representation(instance)
 
 
 class DeveloperSerializer(DeveloperPublicSerializer):
@@ -1791,12 +1791,8 @@ class DeveloperSerializer(DeveloperPublicSerializer):
         required=False,
         write_only=True,
     )
-    regionIds = serializers.PrimaryKeyRelatedField(
-        source='regions',
-        queryset=Region.objects.order_by('name', 'pk'),
-        many=True,
-        required=False,
-        write_only=True,
+    regionIds = serializers.ListField(
+        child=serializers.IntegerField(min_value=1, max_value=9223372036854775807), required=False, write_only=True,
     )
     regionLocationIds = serializers.PrimaryKeyRelatedField(
         queryset=Location.objects.filter(location_type__category='region'),
@@ -1863,30 +1859,40 @@ class DeveloperSerializer(DeveloperPublicSerializer):
 
     def validate(self, attributes):
         """Reject mixed ID domains rather than guessing which list is authoritative."""
-        if 'regions' in attributes and 'regionLocationIds' in attributes:
+        if 'regionIds' in attributes and 'regionLocationIds' in attributes:
             raise serializers.ValidationError({'regionLocationIds': 'Передайте только один формат регионов.'})
         return super().validate(attributes)
+
+    def validate_regionIds(self, identifiers):
+        """Resolve known legacy IDs before changing any association."""
+        from property.developer_locations import legacy_region_names
+
+        names = legacy_region_names(set(identifiers))
+        for identifier in identifiers:
+            if identifier not in names:
+                raise serializers.ValidationError(f'Регион с ID {identifier} не найден.')
+        return names
 
     def create(self, validated_data):
         """Create the developer and working regions atomically."""
         from property.developer_locations import set_developer_regions
-        regions = validated_data.pop('regions', None)
+        regions = validated_data.pop('regionIds', None)
         locations = validated_data.pop('regionLocationIds', None)
         with transaction.atomic():
             developer = super().create(validated_data)
             if regions is not None or locations is not None:
-                set_developer_regions(developer, locations=locations, legacy_regions=regions)
+                set_developer_regions(developer, locations=locations, legacy_regions=regions, legacy_names=regions)
         return developer
 
     def update(self, instance, validated_data):
         """Keep unspecified associations and synchronize explicit region edits."""
         from property.developer_locations import set_developer_regions
-        regions = validated_data.pop('regions', None)
+        regions = validated_data.pop('regionIds', None)
         locations = validated_data.pop('regionLocationIds', None)
         with transaction.atomic():
             instance = super().update(instance, validated_data)
             if regions is not None or locations is not None:
-                set_developer_regions(instance, locations=locations, legacy_regions=regions)
+                set_developer_regions(instance, locations=locations, legacy_regions=regions, legacy_names=regions)
         return instance
 
     def get_legacy_edit_url(self, developer):
