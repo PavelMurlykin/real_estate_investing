@@ -101,10 +101,18 @@ def test_invalid_categories_and_mixed_domains_do_not_write(client, locality_cata
 @pytest.mark.django_db
 def test_import_repeat_and_dry_run_keep_links(client, locality_catalog, tmp_path):
     """Run the real registry parser twice and keep manual and imported associations."""
-    first = import_developer_registry_uploaded_file(uploaded_regions())
+    with CaptureQueriesContext(connection) as queries:
+        first = import_developer_registry_uploaded_file(uploaded_regions())
+    legacy_queries = [
+        query['sql'] for query in queries
+        if any(f'{verb} "{table}"' in query['sql'] for verb in ('FROM', 'JOIN', 'UPDATE', 'INTO')
+               for table in ('region', 'city', 'district'))
+    ]
+    assert not legacy_queries
     assert first.created_developer_region_links == 1 and not first.errors
     developer = Developer.objects.get(name='Регионы ЕРЗ')
     link = DeveloperRegion.objects.get(developer=developer)
+    assert link.region_id == locality_catalog['region'].pk
     assert link.location_id == Location.objects.get(name='Стрельна').region_id
     before = DeveloperRegion.objects.values().get(pk=link.pk)
     second = import_developer_registry_uploaded_file(uploaded_regions())
@@ -189,4 +197,5 @@ def test_migration_preserves_ids_and_repeats_safely():
         assert current == original
         assert apps.get_model('location', 'LocationIdentifier').objects.filter(provider='ru-region-code', value='78', location_id=location.pk).count() == 1
     finally:
-        MigrationExecutor(connection).migrate(new_target)
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())

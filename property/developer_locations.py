@@ -21,7 +21,7 @@ def set_developer_regions(
     """Synchronize one ID domain while preserving unrepresentable legacy links."""
     Developer.objects.select_for_update().get(pk=developer.pk)
     mappings = region_mapping() if mappings is None else mappings
-    links = list(DeveloperRegion.objects.filter(developer=developer))
+    links = list(DeveloperRegion.objects.filter(developer=developer).order_by('pk'))
     created = []
     changed = []
     if locations is not None:

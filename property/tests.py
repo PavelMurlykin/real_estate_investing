@@ -18,6 +18,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from openpyxl import Workbook
 
+from location.compatibility import canonical_legacy_location
 from location.models import City, District, Metro, MetroLine, Region
 from users.roles import (
     APPLICATION_ADMINISTRATOR_GROUP_NAME,
@@ -359,8 +360,8 @@ def test_normalize_developer_registry_item_uses_known_dom_rf_aliases():
 @pytest.mark.django_db
 def test_import_dom_rf_developers_creates_groups_and_deduplicates_regions():
     """Importer should create company groups and deduplicate region rows."""
-    Region.objects.create(name='Москва', code='77')
-    Region.objects.create(name='Санкт-Петербург', code='78')
+    canonical_legacy_location(Region.objects.create(name='Москва', code='77'))
+    canonical_legacy_location(Region.objects.create(name='Санкт-Петербург', code='78'))
     client = FakeDeveloperRegistryClient(
         [
             DeveloperRegistrySourceItem(
@@ -566,8 +567,8 @@ def test_file_developer_registry_client_reads_xlsx_source_file(tmp_path):
 @pytest.mark.django_db
 def test_import_dom_rf_developers_reads_multisheet_xlsx_regions(tmp_path):
     """Importer should deduplicate developers and load region links from XLSX."""
-    Region.objects.create(name='Москва', code='77')
-    Region.objects.create(name='Санкт-Петербург', code='78')
+    canonical_legacy_location(Region.objects.create(name='Москва', code='77'))
+    canonical_legacy_location(Region.objects.create(name='Санкт-Петербург', code='78'))
     source_file = tmp_path / 'developers.xlsx'
     workbook = Workbook()
     worksheet = workbook.active

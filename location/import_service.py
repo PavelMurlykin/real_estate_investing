@@ -5,10 +5,13 @@ import re
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
+from django.apps import apps
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from .catalog_service import lock_location_catalog
+from .migration_support import backfill_locations
 from .models import City, District, Metro, MetroLine, MetroSystem, Region
 from .open_data import OpenDataError, OpenLocationSource, location_key
 
@@ -273,6 +276,8 @@ def import_locations(dictionary, region=None, city=None):
                         region.pk if dictionary == 'cities' else city.pk if city else None
                     )
                     _, counts = upsert_records(model, records, parent_field, parent_identifier)
+                lock_location_catalog()
+                backfill_locations(apps, geography_only=True)
         except OpenDataError as error:
             raise LocationImportError(str(error)) from error
         except IntegrityError as error:

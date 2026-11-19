@@ -2,6 +2,8 @@
 
 from django.db import transaction
 
+from .catalog_service import lock_location_catalog
+from .migration_support import legacy_import_reference
 from .models import (
     City, District, LegacyLocationMapping, Location, LocationAlias,
     LocationClosure, LocationIdentifier, LocationType,
@@ -10,14 +12,15 @@ from .models import (
 
 @transaction.atomic
 def canonical_legacy_location(row):
-    """Resolve one legacy chain, preserving federal-city dual roles."""
+    """Resolve one legacy chain and retain the input accepted by older imports."""
+    lock_location_catalog()
     model_name = row._meta.model_name
     mapping = LegacyLocationMapping.objects.filter(model_name=model_name, legacy_id=row.pk).first()
+    reference = legacy_import_reference(row)
     if mapping:
-        return mapping.location
-    row = type(row).objects.select_for_update().get(pk=row.pk)
-    mapping = LegacyLocationMapping.objects.filter(model_name=model_name, legacy_id=row.pk).first()
-    if mapping:
+        if any(getattr(mapping, field) != value for field, value in reference.items()):
+            LegacyLocationMapping.objects.filter(pk=mapping.pk).update(**reference)
+            LocationAlias.objects.get_or_create(location_id=mapping.location_id, name=row.name)
         return mapping.location
     parent = None
     if isinstance(row, District):
@@ -32,6 +35,18 @@ def canonical_legacy_location(row):
     identifier = LocationIdentifier.objects.filter(provider='fias', value=source_guid).first() if source_guid else None
     if identifier:
         location = identifier.location
+    if location is None and model_name == 'region':
+        region_code = row.code.lstrip('0').zfill(2) if row.code.isdecimal() else row.code
+        location = Location.objects.filter(
+            location_type__category='region',
+            identifiers__provider='ru-region-code', identifiers__value=region_code,
+        ).first()
+    if location is None:
+        matching_locations = list(Location.objects.filter(
+            name__iexact=row.name, location_type__category=category, parent=parent,
+        ).exclude(legacy_mappings__model_name=model_name)[:2])
+        if len(matching_locations) == 1:
+            location = matching_locations[0]
     if location is None:
         location_type, _ = LocationType.objects.get_or_create(
             code=f'legacy:{category}', defaults={
@@ -51,7 +66,9 @@ def canonical_legacy_location(row):
             paths.extend(LocationClosure(ancestor_id=path.ancestor_id, descendant=location, depth=path.depth + 1)
                          for path in parent.ancestor_links.all())
         LocationClosure.objects.bulk_create(paths)
-    LegacyLocationMapping.objects.create(model_name=model_name, legacy_id=row.pk, location=location)
+    LegacyLocationMapping.objects.create(
+        model_name=model_name, legacy_id=row.pk, location=location, **reference,
+    )
     LocationIdentifier.objects.get_or_create(provider='legacy', value=f'{model_name}/{row.pk}', defaults={'location': location})
     if source_guid:
         LocationIdentifier.objects.get_or_create(provider='fias', value=source_guid, defaults={'location': location})

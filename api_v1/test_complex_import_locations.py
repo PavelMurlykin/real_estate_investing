@@ -24,6 +24,7 @@ from api_v1.test_real_estate_complexes import create_catalog_manager
 from bank.models import MortgageProgram, MortgageProgramRegionalCreditLimit
 from core.json_import import JsonImportError
 from customer.models import Customer, CustomerCalculation, CustomerTrenchCalculation
+from location.compatibility import canonical_legacy_location
 from location.gar_import import load_region
 from location.migration_support import backfill_locations
 from location.models import City, District, Location, LocationAlias, LocationIdentifier, Metro, MetroLine, MetroSystem, Region
@@ -214,6 +215,8 @@ def test_mys_migration_and_legacy_import_preserve_likino(
     district = complex_catalog['district']
     district.name = 'Одинцовский городской округ'
     district.save(update_fields=['name'])
+    for entry in (region, city, district):
+        canonical_legacy_location(entry)
     original = complex_catalog['complex']
     original.name, original.source_key = 'Мыс', 'ru:complex:mys'
     original.save(update_fields=['name', 'source_key'])
@@ -465,6 +468,13 @@ def test_legacy_labels_survive_canonical_source_renames(import_payload, import_g
     row = import_payload['complexes'][0]
     row.update(name='Старые географические названия', region_code='78', region='Санкт-Петербург',
                city='Пушкин', district='Пушкинский район')
-    assert import_complex_catalog(import_payload)['created'] == 1
-    assert import_complex_catalog(import_payload)['created'] == 0
+    with CaptureQueriesContext(connection) as queries:
+        assert import_complex_catalog(import_payload)['created'] == 1
+        assert import_complex_catalog(import_payload)['created'] == 0
+    legacy_queries = [
+        query['sql'] for query in queries
+        if any(f'{verb} "{table}"' in query['sql'] for verb in ('FROM', 'JOIN', 'UPDATE', 'INTO')
+               for table in ('region', 'city', 'district'))
+    ]
+    assert not legacy_queries
     assert RealEstateComplex.objects.get(source_key=row['key']).primary_location.name == 'Пушкин'

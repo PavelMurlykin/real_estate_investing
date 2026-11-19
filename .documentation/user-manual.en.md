@@ -46,6 +46,8 @@ Search updates results while typing; a separate “Найти” button is unnec
 
 Use the national GAR import to refresh canonical regions, localities and administrative districts. Selected-parent imports remain in the old API for compatibility and do not replace loading the new catalog.
 
+The background GAR import updates Location by FIAS and GAR identifiers and federal subject codes. The worker continues independently of the open page. JSON version 1 and developer registry imports use canonical locations together with retained codes and names. Legacy links, request formats and existing associations are preserved.
+
 On Metro, select a system and click “Обновить данные”. The network center must have a confirmed FIAS identifier. Lines and stations are loaded together. Existing entries retain their IDs, precise geography, line memberships, active states and complex links. The lines list shows a color swatch beside each name. To pick a color, use “Цвет линии” in the editor. A station card shows the station's locality.
 
 Free sources for legacy selected-parent dictionaries and metro, without API keys or registration: [HFLabs/city](https://github.com/hflabs/city) (CSV over HTTPS, Russian regions and cities, CC BY-SA 4.0), [Wikidata API](https://www.wikidata.org/wiki/Wikidata:Data_access) (urban districts, lines and operating regional metro stations, CC0), and [Wikipedia API](https://ru.wikipedia.org/w/api.php) (open JSON metro schemes for the two capitals and station catalogs for the other cities, CC BY-SA). Overpass is no longer used. Attribution to [OpenStreetMap, ODbL](https://www.openstreetmap.org/copyright) is retained for older records.

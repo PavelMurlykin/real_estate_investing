@@ -6,12 +6,11 @@ from django.db import transaction
 from django.utils import timezone
 
 from .models import (
-    LegacyLocationMapping, Location, LocationAlias, LocationClosure,
-    LocationIdentifier, LocationType, Region,
+    Location, LocationAlias, LocationClosure, LocationIdentifier, LocationType,
 )
 from .administrative_overrides import SPB_DISTRICTS
 from .catalog_service import lock_location_catalog
-from .district_verification import verify_legacy_districts
+from .district_verification import verify_catalog_districts
 
 
 def normalized_name(value):
@@ -48,13 +47,19 @@ def load_region(records, code, version):
     root = root_identifier.location if root_identifier else None
     bootstrap_root = False
     if root is None:
-        # Legacy region codes are retained for mortgage limits and developer links.
-        region = Region.objects.filter(code=code).first()
-        mapping = (LegacyLocationMapping.objects.filter(
-            model_name='region', legacy_id=region.pk,
-        ).first() if region else None)
-        if mapping:
-            root = mapping.location
+        code_identifier = LocationIdentifier.objects.filter(
+            provider='ru-region-code', value=code, location__location_type__category='region',
+        ).select_related('location').first()
+        if code_identifier:
+            root = code_identifier.location
+        else:
+            matching_regions = list(Location.objects.filter(
+                location_type__category='region', legacy_mappings__model_name='region',
+                legacy_mappings__legacy_code=code,
+            ).distinct()[:2])
+            if len(matching_regions) > 1:
+                raise ValueError('Ambiguous region code mapping.')
+            root = matching_regions[0] if matching_regions else None
     if code == '78' and root is None:
         root_type, _ = LocationType.objects.get_or_create(
             code=f'gar:1:{root_record["type"]}', defaults={
@@ -191,6 +196,11 @@ def load_region(records, code, version):
         'source_version', 'needs_review', 'updated_at',
     ], batch_size=1000)
     LocationIdentifier.objects.bulk_create(identifiers, ignore_conflicts=True, batch_size=1000)
+    code_identifier, _ = LocationIdentifier.objects.get_or_create(
+        provider='ru-region-code', value=code, defaults={'location_id': root.pk},
+    )
+    if code_identifier.location_id != root.pk:
+        raise ValueError('GAR region code and FIAS identify different locations.')
     LocationAlias.objects.bulk_create(aliases, ignore_conflicts=True, batch_size=1000)
     # Removal in a later full source version never deletes a referenced object.
     Location.objects.filter(region_id=root.pk, source_status='verified',
@@ -212,5 +222,5 @@ def load_region(records, code, version):
                 ancestor, depth = parents.get(ancestor), depth + 1
         LocationClosure.objects.filter(descendant_id__in=parents).delete()
         LocationClosure.objects.bulk_create(closure, batch_size=2000)
-    counts['districts']['updated'] += verify_legacy_districts(region_id=root.pk, region_code=code)
+    counts['districts']['updated'] += verify_catalog_districts(region_id=root.pk, region_code=code)
     return counts

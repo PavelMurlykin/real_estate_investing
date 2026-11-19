@@ -112,6 +112,9 @@ class LegacyLocationMapping(models.Model):
     legacy_id = models.PositiveBigIntegerField()
     location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='legacy_mappings')
     method = models.CharField(max_length=30, default='preserved')
+    legacy_name = models.CharField(max_length=255, blank=True)
+    legacy_code = models.CharField(max_length=10, blank=True)
+    legacy_source_identifier = models.CharField(max_length=200, blank=True)
 
     class Meta:
         """Keep legacy identifiers unambiguous within their original model."""

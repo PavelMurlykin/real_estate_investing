@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.urls import reverse
 
-from location.models import City, District, Metro, MetroLine, Region
+from location.models import City, District, LegacyLocationMapping, Location, LocationIdentifier, LocationType, Metro, MetroLine, Region
 from users.roles import MODERATOR_GROUP_NAME
 
 
@@ -61,6 +61,33 @@ def create_location_manager():
     )
     user.groups.add(moderator_group)
     return user
+
+
+@pytest.mark.django_db
+def test_old_region_api_refreshes_import_reference_and_keeps_location(client):
+    """Keep a stable canonical identity when a legacy region is written or removed."""
+    client.force_login(create_location_manager())
+    region_type = LocationType.objects.create(code='test-region', name='Область', category='region')
+    location = Location.objects.create(name='Каноническая область', location_type=region_type)
+    LocationIdentifier.objects.create(location=location, provider='ru-region-code', value='50')
+    endpoint = '/api/v1/location-dictionaries/regions/'
+    response = client.post(endpoint, {'name': 'Прежняя область', 'code': '50'},
+                           content_type='application/json')
+    assert response.status_code == 201, response.content
+    identifier = response.json()['id']
+    mapping = LegacyLocationMapping.objects.get(model_name='region', legacy_id=identifier)
+    assert mapping.location_id == location.pk
+    endpoint += f'{identifier}/'
+    response = client.patch(endpoint, {'name': 'Обновлённая область', 'code': '050'},
+                            content_type='application/json')
+    assert response.status_code == 200, response.content
+    mapping.refresh_from_db()
+    assert (mapping.legacy_name, mapping.legacy_code) == ('Обновлённая область', '050')
+    assert mapping.location_id == location.pk
+    assert client.delete(endpoint).status_code == 204
+    mapping.refresh_from_db()
+    assert not mapping.legacy_name and not mapping.legacy_code
+    assert mapping.location_id == location.pk
 
 
 @pytest.mark.django_db

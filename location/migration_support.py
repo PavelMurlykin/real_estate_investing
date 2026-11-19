@@ -1,7 +1,16 @@
 """Keep additive geographic migration logic compatible with historical models."""
 
 
-def backfill_locations(registry, database='default'):
+def legacy_import_reference(row):
+    """Preserve inputs accepted by the existing file and registry formats."""
+    return {
+        'legacy_name': row.name,
+        'legacy_code': getattr(row, 'code', ''),
+        'legacy_source_identifier': row.source_identifier or '',
+    }
+
+
+def backfill_locations(registry, database='default', *, geography_only=False):
     """Map legacy records and complexes without changing any legacy field."""
     Location = registry.get_model('location', 'Location')
     LocationType = registry.get_model('location', 'LocationType')
@@ -22,23 +31,37 @@ def backfill_locations(registry, database='default'):
                 'category': category, 'name': name, 'abbreviation': abbreviation,
             },
         )
-    mappings = {
-        (row.model_name, row.legacy_id): row.location_id
-        for row in Mapping.objects.using(database).all()
+    existing_mappings = {
+        (row.model_name, row.legacy_id): row for row in Mapping.objects.using(database).all()
     }
+    mappings = {key: row.location_id for key, row in existing_mappings.items()}
+    capture_references = any(field.name == 'legacy_name' for field in Mapping._meta.fields)
+    references_to_update = []
+    aliases_to_preserve = []
     identifiers = {
         (row.provider, row.value): row.location_id
-        for row in Identifier.objects.using(database).filter(provider__in=['fias', 'legacy'])
+        for row in Identifier.objects.using(database).filter(
+            provider__in=['fias', 'legacy', 'ru-region-code'],
+        )
     }
 
     def preserve(model_name, row, category, parent=None, region=None, reuse=None):
         """Retain one identity, with explicit aliases for shared federal-city roles."""
         key = (model_name, row.pk)
+        reference = legacy_import_reference(row) if capture_references else {}
         if key in mappings:
+            mapping = existing_mappings[key]
+            if any(getattr(mapping, field) != value for field, value in reference.items()):
+                for field, value in reference.items():
+                    setattr(mapping, field, value)
+                references_to_update.append(mapping)
+                aliases_to_preserve.append(Alias(location_id=mapping.location_id, name=row.name))
             return mappings[key]
         source = row.source_identifier or ''
         fias = source.removeprefix('fias/') if source.startswith('fias/') else None
         identifier = reuse or identifiers.get(('fias', fias))
+        if identifier is None and capture_references and category == 'region':
+            identifier = identifiers.get(('ru-region-code', row.code))
         if identifier is None:
             location = Location.objects.using(database).create(
                 name=row.name, location_type=types[category],
@@ -51,6 +74,7 @@ def backfill_locations(registry, database='default'):
         Mapping.objects.using(database).create(
             model_name=model_name, legacy_id=row.pk, location_id=identifier,
             method='federal_role' if reuse else 'preserved',
+            **reference,
         )
         mappings[key] = identifier
         Identifier.objects.using(database).get_or_create(
@@ -86,10 +110,21 @@ def backfill_locations(registry, database='default'):
             'district', row, 'district', parent=cities[row.city_id],
             region=regions[city_regions[row.city_id]],
         )
+    if references_to_update:
+        Mapping.objects.using(database).bulk_update(
+            references_to_update, ['legacy_name', 'legacy_code', 'legacy_source_identifier'],
+            batch_size=1000,
+        )
+        Alias.objects.using(database).bulk_create(
+            aliases_to_preserve, batch_size=1000, ignore_conflicts=True,
+        )
     parents = dict(Location.objects.using(database).values_list('pk', 'parent_id'))
-    existing_closure = set(Closure.objects.using(database).values_list('ancestor_id', 'descendant_id'))
+    mapped_locations = set(mappings.values())
+    existing_closure = set(Closure.objects.using(database).filter(
+        descendant_id__in=mapped_locations,
+    ).values_list('ancestor_id', 'descendant_id'))
     paths = []
-    for descendant in set(mappings.values()):
+    for descendant in mapped_locations:
         ancestor, depth, seen = descendant, 0, set()
         while ancestor is not None:
             if ancestor in seen:
@@ -99,6 +134,8 @@ def backfill_locations(registry, database='default'):
                 paths.append(Closure(ancestor_id=ancestor, descendant_id=descendant, depth=depth))
             ancestor, depth = parents.get(ancestor), depth + 1
     Closure.objects.using(database).bulk_create(paths, batch_size=1000, ignore_conflicts=True)
+    if geography_only:
+        return
     Complex = registry.get_model('property', 'RealEstateComplex')
     Link = registry.get_model('property', 'RealEstateComplexLocation')
     linked = set(Link.objects.using(database).filter(is_primary=True).values_list('real_estate_complex_id', flat=True))

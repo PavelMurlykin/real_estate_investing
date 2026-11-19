@@ -50,3 +50,24 @@ def verify_legacy_districts(registry=apps, database='default', *, region_id=None
             needs_review=True, source_status='unverified',
         ).update(source_status='verified', source_version=ADMINISTRATIVE_REVIEW_VERSION, needs_review=False)
     return updated
+
+
+def verify_catalog_districts(*, region_id, region_code):
+    """Verify preserved district identities against the canonical FIAS parent."""
+    from .models import Location
+
+    for subject_code, parent_fias, source_items in VERIFIED_DISTRICTS:
+        if subject_code != region_code:
+            continue
+        parent_ids = Location.objects.filter(
+            identifiers__provider='fias', identifiers__value=parent_fias,
+            region_id=region_id, source_status='verified',
+            location_type__category__in=('region', 'locality'),
+        ).values('pk')
+        return Location.objects.filter(
+            parent_id__in=parent_ids, region_id=region_id, location_type__category='district',
+            legacy_mappings__model_name='district',
+            legacy_mappings__legacy_source_identifier__in=[f'wikidata/{item}' for item in source_items],
+            needs_review=True, source_status='unverified',
+        ).update(source_status='verified', source_version=ADMINISTRATIVE_REVIEW_VERSION, needs_review=False)
+    return 0

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from django.db.models import Q
 
 from core.json_import import JsonImportError
-from location.models import City, Location, LocationClosure, Region
+from location.models import Location, LocationClosure
 from location.open_data import location_key
 
 from .location_context import locality_filter
@@ -74,12 +74,10 @@ class ImportLocationResolver:
 
     def _region(self, row):
         """Prefer explicit old-code mappings and validate the supplied name."""
-        old_regions = list(Region.objects.filter(
-            code=row['region_code'],
-        ).values('pk', 'name'))
         mapped = self.queryset().filter(
-            legacy_mappings__model_name='region',
-            legacy_mappings__legacy_id__in=[region['pk'] for region in old_regions],
+            Q(legacy_mappings__model_name='region', legacy_mappings__legacy_code=row['region_code'])
+            | Q(identifiers__provider='ru-region-code', identifiers__value=row['region_code']),
+            location_type__category='region',
         )
         matches = list(mapped.distinct()[:2])
         key = geographic_key(row['region'], 'region')
@@ -92,9 +90,11 @@ class ImportLocationResolver:
                        if any(geographic_key(name, 'region') == key for name in (
                            region.name, *(alias.name for alias in region.aliases.all()),
                        ))]
-        labels = [region['name'] for region in old_regions]
+        labels = []
         if len(matches) == 1:
             labels.extend([matches[0].name, *(alias.name for alias in matches[0].aliases.all())])
+            labels.extend(matches[0].legacy_mappings.filter(model_name='region')
+                          .exclude(legacy_name='').values_list('legacy_name', flat=True))
         if len(matches) != 1 or not any(geographic_key(name, 'region') == key for name in labels):
             raise JsonImportError('Регион старого файла не найден однозначно. Укажите локацию в версии 2.')
         return matches[0]
@@ -116,9 +116,7 @@ class ImportLocationResolver:
         ).distinct()[:3])
         mapped = list(self.queryset().filter(
             region=region, is_active=True, legacy_mappings__model_name='city',
-            legacy_mappings__legacy_id__in=City.objects.filter(
-                name__iexact=row['city'], region__code=row['region_code'],
-            ).values('pk'),
+            legacy_mappings__legacy_name__iexact=row['city'],
         ).distinct()[:2])
         if len(mapped) == 1:
             localities = mapped

@@ -122,4 +122,5 @@ def test_actual_metro_migration_preserves_ids_links_and_repeat():
         assert Metro.objects.values(*old_fields).get(pk=station.pk) == snapshot
         assert RealEstateComplexMetroAvailability.objects.values().get(pk=link.pk) == link_snapshot
     finally:
-        MigrationExecutor(connection).migrate(target)
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())

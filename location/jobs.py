@@ -9,6 +9,7 @@ from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+from .catalog_service import lock_location_catalog
 from .import_service import (
     LocationImportError, LocationRecord, city_record, import_guard,
     region_record, unique_records, upsert_records,
@@ -141,6 +142,9 @@ def run_import_job(job, heartbeat=lambda: None):
                 job.save(update_fields=[
                     'counts', 'coverage', 'processed_cities', 'updated_at',
                 ])
+        with transaction.atomic():
+            lock_location_catalog()
+            backfill_locations(apps, geography_only=True)
         job.status = 'completed'
         job.phase = 'done'
         job.current_city = ''
@@ -190,8 +194,6 @@ def run_gar_job(job, heartbeat=lambda: None):
             job.counts = {name: empty_counts() for name in ('regions', 'cities', 'districts')}
             job.coverage = {'source': 'ГАР ФНС', 'retiredRegions': [], 'unresolvedCities': []}
             job.save()
-        # Also preserve manual records created after the initial migration.
-        backfill_locations(apps)
         for code in job.catalog[job.processed_regions:]:
             job.phase, job.current_city = 'extracting', f'Регион {code}'
             job.save(update_fields=['phase', 'current_city', 'updated_at'])

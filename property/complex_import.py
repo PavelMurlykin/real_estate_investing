@@ -8,15 +8,15 @@ from unicodedata import normalize
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, connection, transaction
-from django.db.models import CharField, Func, Q, Value
+from django.db.models import CharField, Func, Prefetch, Q, Value
 from django.db.models.functions import Lower, Replace
 from rest_framework import serializers
 
 from core.json_import import JsonImportError
-from location.models import LegacyLocationMapping, Location
+from location.models import LegacyLocationMapping, Location, LocationClosure
 from .complex_import_locations import ImportLocationResolver
 from .complex_import_metro import ImportMetroResolver
-from .location_context import geography_prefetch
+from .location_context import geography_prefetch, location_context
 from .complex_photos import add_complex_photos, validate_complex_photos
 from .models import (
     Developer, RealEstateClass, RealEstateComplex, RealEstateComplexLocation,
@@ -346,29 +346,46 @@ def _matching_complexes(row, territory, locations):
             Q(location=target) | Q(location__ancestor_links__ancestor=target)
             | Q(location__descendant_links__descendant=target),
         ).values('real_estate_complex_id')
-        old_cities = LegacyLocationMapping.objects.filter(
-            model_name='city', location=target,
+        mapped_districts = LegacyLocationMapping.objects.filter(model_name='district').filter(
+            Q(location=target) | Q(location__ancestor_links__ancestor=target)
+            | Q(location__descendant_links__descendant=target),
         ).values('legacy_id')
-        queryset = queryset.filter(Q(pk__in=current_links) | Q(district__city_id__in=old_cities))
-    candidates = list(queryset.select_related('district__city__region').prefetch_related(
-        geography_prefetch(),
-    ).select_for_update(of=('self',))[:101])
+        queryset = queryset.filter(Q(pk__in=current_links) | Q(district_id__in=mapped_districts))
+    candidates = list(queryset.prefetch_related(geography_prefetch()).select_for_update(of=('self',))[:101])
     if len(candidates) > 100:
         raise JsonImportError('Слишком много совпадений названия. Укажите уникальный ключ источника.')
+    fallback_ids = {candidate.district_id for candidate in candidates
+                    if candidate.district_id and candidate.primary_location is None}
+    fallbacks = {}
+    if fallback_ids:
+        ancestors = LocationClosure.objects.select_related('ancestor__location_type').prefetch_related(
+            'ancestor__legacy_mappings',
+        ).order_by('depth')
+        fallbacks = {mapping.legacy_id: mapping.location for mapping in LegacyLocationMapping.objects.filter(
+            model_name='district', legacy_id__in=fallback_ids,
+        ).select_related('location__location_type').prefetch_related(
+            Prefetch('location__ancestor_links', queryset=ancestors),
+        )}
     matches = []
     for candidate in candidates:
+        current = candidate.primary_location or fallbacks.get(candidate.district_id)
+        if current is None:
+            continue
+        geography = location_context(candidate, explicit_location=current)
         if row.get('match_city'):
-            matched = normalized_name(candidate.geography.city) == normalized_name(row['match_city'])
+            names = {geography.city}
+            if current.location_type.category == 'district' and candidate.district_id:
+                for path in current.ancestor_links.all():
+                    if path.ancestor_id == geography.locality_id:
+                        names.update(mapping.legacy_name for mapping in path.ancestor.legacy_mappings.all()
+                                     if mapping.model_name == 'city' and mapping.legacy_name)
+            matched = any(normalized_name(name) == normalized_name(row['match_city']) for name in names)
         elif row.get('match_location') or row.get('location'):
-            current = candidate.primary_location
-            matched = candidate.geography.locality_id == target.pk or bool(
-                current and current.location_type.category == 'district' and locations.contains(current, target)
+            matched = geography.locality_id == target.pk or (
+                current.location_type.category == 'district' and locations.contains(current, target)
             )
         else:
-            current = candidate.primary_location
-            matched = candidate.geography.locality_id == territory.locality.pk or bool(
-                current and locations.contains(territory.primary, current)
-            )
+            matched = geography.locality_id == territory.locality.pk or locations.contains(territory.primary, current)
         if matched:
             matches.append(candidate)
     return matches

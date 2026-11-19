@@ -1,11 +1,21 @@
 from django.contrib import admin
 
+from .compatibility import canonical_legacy_location
 from .models import City, District, Location, Metro, MetroLine, MetroSystem, Region
 from .metro_forms import MetroForm, MetroLineForm, MetroSystemForm
 
 
+class LegacyLocationAdmin(admin.ModelAdmin):
+    """Keep import references available after saving an old dictionary entry."""
+
+    def save_model(self, request, obj, form, change):
+        """Save the legacy row and refresh its canonical lookup metadata."""
+        super().save_model(request, obj, form, change)
+        canonical_legacy_location(obj)
+
+
 @admin.register(Region)
-class RegionAdmin(admin.ModelAdmin):
+class RegionAdmin(LegacyLocationAdmin):
     """Описание класса RegionAdmin.
 
     Инкапсулирует данные и поведение, необходимые для работы компонента
@@ -20,7 +30,7 @@ class RegionAdmin(admin.ModelAdmin):
 
 
 @admin.register(City)
-class CityAdmin(admin.ModelAdmin):
+class CityAdmin(LegacyLocationAdmin):
     """Описание класса CityAdmin.
 
     Инкапсулирует данные и поведение, необходимые для работы компонента
@@ -35,7 +45,7 @@ class CityAdmin(admin.ModelAdmin):
 
 
 @admin.register(District)
-class DistrictAdmin(admin.ModelAdmin):
+class DistrictAdmin(LegacyLocationAdmin):
     """Описание класса DistrictAdmin.
 
     Инкапсулирует данные и поведение, необходимые для работы компонента

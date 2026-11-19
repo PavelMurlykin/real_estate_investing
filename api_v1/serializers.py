@@ -20,6 +20,7 @@ from bank.models import (
 )
 from customer.models import Customer
 from customer.location_service import CUSTOMER_LOCATION_FIELDS, prepare_customer_locations
+from location.compatibility import canonical_legacy_location
 from location.presentation import geographic_label
 from location.models import City, District, LegacyLocationMapping, Location, Metro, MetroLine, MetroSystem, Region
 from property.location_context import (
@@ -612,16 +613,23 @@ class LocationDictionaryWriteSerializer(serializers.Serializer):
                 )
         return attributes
 
+    @transaction.atomic
     def create(self, validated_data):
         """Create an entry through its whitelisted model configuration."""
         configuration = self.context['dictionary_configuration']
-        return configuration['model'].objects.create(**validated_data)
+        entry = configuration['model'].objects.create(**validated_data)
+        if isinstance(entry, (Region, City, District)):
+            canonical_legacy_location(entry)
+        return entry
 
+    @transaction.atomic
     def update(self, instance, validated_data):
         """Update only validated fields and refresh the modification time."""
         for field_name, value in validated_data.items():
             setattr(instance, field_name, value)
         instance.save(update_fields=(*validated_data.keys(), 'updated_at'))
+        if isinstance(instance, (Region, City, District)):
+            canonical_legacy_location(instance)
         return instance
 
 
@@ -3113,7 +3121,7 @@ class RealEstateComplexMetroAvailabilityWriteSerializer(
     id = serializers.IntegerField(required=False, min_value=1)
     metroId = serializers.PrimaryKeyRelatedField(
         source='metro',
-        queryset=Metro.objects.select_related('metro_line__city'),
+        queryset=Metro.objects.select_related('metro_line'),
     )
     transportAccessibilityTypeId = serializers.PrimaryKeyRelatedField(
         source='transport_accessibility_type',
@@ -3302,11 +3310,10 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
                 {'name': 'ЖК с таким названием у застройщика уже существует.'}
             )
 
-        district = attributes.get(
-            'district',
-            real_estate_complex.district if real_estate_complex else None,
-        )
         location = attributes.get('locationId')
+        district = attributes.get('district')
+        if location is None and real_estate_complex and 'district' not in attributes:
+            district = real_estate_complex.district
         territory = location or (real_estate_complex.primary_location if real_estate_complex else None)
         for field in ['regionLocationId', 'districtLocationId']:
             scope = attributes.get(field)
