@@ -343,7 +343,7 @@ class RealEstateComplexMetroAvailabilityAdmin(admin.ModelAdmin):
     list_filter = (
         'is_active',
         'transport_accessibility_type',
-        'metro__metro_line__city',
+        'metro__metro_line__system',
         'metro__metro_line',
         'created_at',
     )
@@ -367,7 +367,7 @@ class RealEstateComplexMetroAvailabilityAdmin(admin.ModelAdmin):
             .get_queryset(request)
             .select_related(
                 'real_estate_complex',
-                'metro__metro_line__city',
+                'metro__metro_line__system',
                 'transport_accessibility_type',
             )
         )

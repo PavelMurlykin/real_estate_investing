@@ -19,6 +19,8 @@ def canonical_legacy_location(row):
     reference = legacy_import_reference(row)
     if isinstance(row, District):
         reference.update(legacy_city_id=row.city_id, legacy_region_id=row.city.region_id)
+    elif isinstance(row, City):
+        reference['legacy_region_id'] = row.region_id
     if mapping:
         if isinstance(row, City):
             LegacyLocationMapping.objects.filter(model_name='district', legacy_city_id=row.pk).exclude(

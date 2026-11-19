@@ -1,4 +1,3 @@
-from location.models import LegacyLocationMapping
 
 from .location_parameters import retained_region_key
 from property.location_filters import (
@@ -94,7 +93,8 @@ from customer.views import (
 )
 from location.import_forms import LocationImportForm
 from location.models import City, District, Location, Metro, MetroLine, MetroSystem, Region
-from location.metro_import import import_metro
+from location.metro_import import import_legacy_metro, import_metro
+from location.metro_geography import annotate_legacy_metro_geography, filter_metro_geography
 from .metro_serializers import MetroDictionaryWriteSerializer
 from location.import_service import LocationImportError, import_locations
 from mortgage.excel import export_saved_mortgage_calculation_excel
@@ -1599,17 +1599,15 @@ LOCATION_DICTIONARY_CONFIGURATIONS = {
         'legacy_key': 'metro',
         'name_field': 'station',
         'parent_model_field': 'metro_line',
-        'select_related': ('metro_line__city__region', 'metro_line__system',
+        'select_related': ('metro_line__system',
                            'location__location_type', 'location__parent', 'location__region'),
         'search_fields': (
             'station',
             'metro_line__line',
-            'metro_line__city__name',
+            'legacy_metro_city_name',
             'metro_line__system__name', 'location__name',
         ),
         'filter_fields': {
-            'regionId': 'metro_line__city__region_id',
-            'cityId': 'metro_line__city_id',
             'metroLineId': 'metro_line_id',
             'systemId': 'metro_line__system_id',
             'locationId': 'location_id',
@@ -1634,7 +1632,7 @@ LOCATION_DICTIONARY_CONFIGURATIONS = {
     'metro-lines': {
         'key': 'metro-lines', 'model': MetroLine, 'legacy_key': 'metro_line',
         'name_field': 'line', 'parent_model_field': 'system',
-        'select_related': ('system', 'city__region'),
+        'select_related': ('system',),
         'search_fields': ('line', 'system__name'),
         'filter_fields': {'systemId': 'system_id'},
         'usage_relations': ('metro', 'stations'), 'default_ordering': ('line', 'pk'),
@@ -1665,6 +1663,8 @@ class LocationDictionaryImportAPIView(APIView):
         try:
             if import_form.cleaned_data.get('system'):
                 result = import_metro(import_form.cleaned_data['system'])
+            elif import_form.cleaned_data.get('legacy_metro_city'):
+                result = import_legacy_metro(import_form.cleaned_data['legacy_metro_city'])
             else:
                 result = import_locations(
                     dictionary_key, import_form.cleaned_data.get('region'),
@@ -1700,14 +1700,12 @@ class LocationDictionaryAPIViewMixin:
         configuration = self.get_dictionary_configuration()
         queryset = configuration['model'].objects.all()
         related_fields = configuration['select_related']
-        if self.uses_canonical_metro():
-            related_fields = tuple(
-                field for field in related_fields if field not in ('metro_line__city__region', 'city__region')
-            )
         if related_fields:
             queryset = queryset.select_related(*related_fields)
         if configuration['key'] == 'metro':
             queryset = queryset.prefetch_related('lines')
+            if not self.uses_canonical_metro():
+                queryset = annotate_legacy_metro_geography(queryset)
 
         usage_expression = None
         for relation_name in configuration['usage_relations']:
@@ -1770,12 +1768,17 @@ class LocationDictionaryListCreateAPIView(
         configuration = self.get_dictionary_configuration()
         queryset = self.get_base_queryset()
         canonical_stations = self.uses_canonical_metro() and configuration['key'] == 'metro'
+        if configuration['key'] in {'metro', 'metro-lines'}:
+            queryset = filter_metro_geography(
+                queryset, filters, canonical=self.uses_canonical_metro(),
+                line_prefix='metro_line__' if configuration['key'] == 'metro' else '',
+            )
 
         search = filters.get('q', '')
         if search:
             search_query = Q()
             for field_name in configuration['search_fields']:
-                if canonical_stations and field_name == 'metro_line__city__name':
+                if canonical_stations and field_name == 'legacy_metro_city_name':
                     field_name = 'metro_line__system__location__name'
                 search_query |= Q(**{f'{field_name}__icontains': search})
             queryset = queryset.filter(search_query)
@@ -1787,16 +1790,7 @@ class LocationDictionaryListCreateAPIView(
             'filter_fields'
         ].items():
             if filters.get(api_field):
-                if canonical_stations and api_field in ('cityId', 'regionId'):
-                    model_name = {'cityId': 'city', 'regionId': 'region'}[api_field]
-                    location_ids = LegacyLocationMapping.objects.filter(
-                        model_name=model_name, legacy_id=filters[api_field],
-                    ).values('location_id')
-                    lookup = 'metro_line__system__location_id__in' if model_name == 'city' else (
-                        'metro_line__system__location__region_id__in'
-                    )
-                    queryset = queryset.filter(**{lookup: location_ids})
-                elif configuration['key'] == 'metro' and api_field == 'metroLineId':
+                if configuration['key'] == 'metro' and api_field == 'metroLineId':
                     queryset = queryset.filter(
                         Q(metro_line_id=filters[api_field]) | Q(lines__pk=filters[api_field]),
                     ).distinct()
@@ -1825,8 +1819,8 @@ class LocationDictionaryListCreateAPIView(
             )
         elif model == Metro:
             ordering_fields.update(
-                region='metro_line__city__region__name',
-                city='metro_line__city__name', metroLine='metro_line__line',
+                region='legacy_metro_region_name',
+                city='legacy_metro_city_name', metroLine='metro_line__line',
                 system='metro_line__system__name', location='location__name',
             )
             if canonical_stations:
@@ -1944,7 +1938,7 @@ class LocationDictionaryOptionsAPIView(APIView):
         metro_lines_truncated = False
         if filters.get('cityId'):
             metro_lines = list(
-                MetroLine.objects.filter(city_id=filters['cityId'])
+                filter_metro_geography(MetroLine.objects.all(), {'cityId': filters['cityId']}, line_prefix='')
                 .order_by('line', 'pk')
                 .values(
                     'id',
@@ -3253,9 +3247,8 @@ class RealEstateComplexOptionsAPIView(APIView):
         metro_stations_truncated = False
         if not filters['canonicalLocations'] and filters.get('cityId'):
             metro_objects = list(
-                Metro.objects.select_related('metro_line').filter(
-                    metro_line__city_id=filters['cityId']
-                ).order_by('metro_line__line', 'station', 'pk')
+                filter_metro_geography(Metro.objects.select_related('metro_line'), {'cityId': filters['cityId']})
+                .order_by('metro_line__line', 'station', 'pk')
                 [:maximum_results + 1]
             )
             metro_stations = [

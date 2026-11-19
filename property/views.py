@@ -25,6 +25,7 @@ from django.views.generic import (
 
 from core.forms import GroupedDecimalField, format_grouped_decimal_value
 from location.models import City, District, Metro, MetroLine, Region
+from location.metro_geography import annotate_legacy_metro_geography
 from users.roles import (
     CatalogManagementRequiredMixin,
     ExternalDataSyncRequiredMixin,
@@ -88,9 +89,9 @@ def build_complex_form_location_payload():
             .values('id', 'name', 'city_id', 'city__region_id')
         ),
         'location_metro_stations': list(
-            Metro.objects.select_related('metro_line__city')
+            annotate_legacy_metro_geography(Metro.objects.all())
             .order_by(
-                'metro_line__city__name',
+                'legacy_metro_city_name',
                 'metro_line__line',
                 'station',
             )

@@ -12,10 +12,11 @@ from users.roles import ExternalDataSyncRequiredMixin, can_sync_external_data
 
 from .import_forms import LocationImportForm
 from .import_service import LocationImportError, import_locations
-from .metro_import import import_metro
+from .metro_import import import_legacy_metro, import_metro
 from .metro_forms import MetroForm, MetroLineForm, MetroSystemForm
 from .jobs import serialize_import_job, start_import_job
 from .models import City, District, LocationImportJob, Metro, MetroLine, MetroSystem, Region
+from .metro_geography import filter_metro_geography
 
 
 class LocationImportView(ExternalDataSyncRequiredMixin, View):
@@ -44,6 +45,8 @@ class LocationImportView(ExternalDataSyncRequiredMixin, View):
             try:
                 if import_form.cleaned_data.get('system'):
                     result = import_metro(import_form.cleaned_data['system'])
+                elif import_form.cleaned_data.get('legacy_metro_city'):
+                    result = import_legacy_metro(import_form.cleaned_data['legacy_metro_city'])
                 else:
                     result = import_locations(
                         import_form.cleaned_data['dictionary'],
@@ -150,7 +153,7 @@ class LocationCatalogView(BaseCatalogView):
         if city_id:
             queryset = queryset.filter(metro_line__system_id=city_id)
         elif self.request.GET.get('filter_city'):
-            queryset = queryset.filter(metro_line__city_id=self.request.GET['filter_city'])
+            queryset = filter_metro_geography(queryset, {'cityId': self.request.GET['filter_city']})
         if metro_line_id:
             queryset = queryset.filter(
                 Q(lines__pk=metro_line_id) | Q(metro_line_id=metro_line_id),

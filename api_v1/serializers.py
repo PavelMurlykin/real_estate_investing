@@ -459,8 +459,8 @@ class LocationDictionaryEntrySerializer(serializers.Serializer):
         elif isinstance(dictionary_entry, District):
             region = dictionary_entry.city.region
         elif isinstance(dictionary_entry, Metro):
-            city = dictionary_entry.metro_line.city
-            region = city.region if city else None
+            identifier = dictionary_entry.legacy_metro_region_id
+            return {'id': identifier, 'name': dictionary_entry.legacy_metro_region_name} if identifier else None
         else:
             return None
         return {'id': region.pk, 'name': region.name} if region else None
@@ -472,7 +472,8 @@ class LocationDictionaryEntrySerializer(serializers.Serializer):
         if isinstance(dictionary_entry, District):
             city = dictionary_entry.city
         elif isinstance(dictionary_entry, Metro):
-            city = dictionary_entry.metro_line.city
+            identifier = dictionary_entry.metro_line.city_id
+            return {'id': identifier, 'name': dictionary_entry.legacy_metro_city_name} if identifier else None
         else:
             return None
         return {'id': city.pk, 'name': city.name} if city else None

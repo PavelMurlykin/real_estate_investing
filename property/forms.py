@@ -616,8 +616,8 @@ class RealEstateComplexMetroAvailabilityForm(forms.ModelForm):
         """Prepare dictionary querysets for metro availability rows."""
         super().__init__(*args, **kwargs)
         self.fields['metro'].queryset = Metro.objects.select_related(
-            'metro_line__city'
-        ).order_by('metro_line__city__name', 'metro_line__line', 'station')
+            'metro_line__system'
+        ).order_by('metro_line__system__name', 'metro_line__line', 'station')
         self.fields['metro'].empty_label = 'Выберите станцию'
         self.fields['metro'].label_from_instance = lambda metro: metro.station
         transport_accessibility_type_field = self.fields[

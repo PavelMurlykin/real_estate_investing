@@ -36,6 +36,7 @@ def backfill_locations(registry, database='default', *, geography_only=False):
     }
     mappings = {key: row.location_id for key, row in existing_mappings.items()}
     capture_references = any(field.name == 'legacy_name' for field in Mapping._meta.fields)
+    capture_region_parent = any(field.name == 'legacy_region_id' for field in Mapping._meta.fields)
     references_to_update = []
     aliases_to_preserve = []
     identifiers = {
@@ -49,6 +50,8 @@ def backfill_locations(registry, database='default', *, geography_only=False):
         """Retain one identity, with explicit aliases for shared federal-city roles."""
         key = (model_name, row.pk)
         reference = legacy_import_reference(row) if capture_references else {}
+        if model_name == 'city' and capture_region_parent:
+            reference['legacy_region_id'] = row.region_id
         if key in mappings:
             mapping = existing_mappings[key]
             if any(getattr(mapping, field) != value for field, value in reference.items()):
@@ -111,8 +114,11 @@ def backfill_locations(registry, database='default', *, geography_only=False):
             region=regions[city_regions[row.city_id]],
         )
     if references_to_update:
+        fields = ['legacy_name', 'legacy_code', 'legacy_source_identifier']
+        if capture_region_parent:
+            fields.append('legacy_region_id')
         Mapping.objects.using(database).bulk_update(
-            references_to_update, ['legacy_name', 'legacy_code', 'legacy_source_identifier'],
+            references_to_update, fields,
             batch_size=1000,
         )
         Alias.objects.using(database).bulk_create(

@@ -193,7 +193,7 @@ def test_regional_metro_filters_planned_and_foreign_stations(sources):
     first = import_locations('metro', region, city)
     repeated = import_locations('metro', region, city)
     assert first['created'] == first['lines']['created'] == 1
-    assert first['skipped'] == 3
+    assert first['skipped'] == 2  # The mapped city reuses FIAS without reloading the city catalog.
     assert repeated['created'] == repeated['updated'] == 0
     station_object = Metro.objects.get()
     station['labels']['ru']['value'] = 'Новое название'

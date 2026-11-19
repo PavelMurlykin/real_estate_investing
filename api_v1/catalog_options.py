@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 
 from bank.models import Bank, MortgageProgram
 from location.models import City, District, LegacyLocationMapping, Metro, MetroLine, MetroSystem, Region
+from location.metro_geography import filter_metro_geography
 from property.location_context import building_geography_prefetch, prefetch_complex_geography
 from property.location_filters import apply_location_scopes
 from property.models import (
@@ -65,10 +66,10 @@ CATALOG_OPTIONS = {
         TransportAccessibilityType, 'name', (), {}
     ),
     'metro': (Metro, 'station', ('metro_line__system',), {
-        'cityId': 'metro_line__city_id', 'metroLineId': 'metro_line_id',
+        'metroLineId': 'metro_line_id',
         'systemId': 'metro_line__system_id',
     }),
-    'metro-lines': (MetroLine, 'line', ('system',), {'cityId': 'city_id', 'systemId': 'system_id'}),
+    'metro-lines': (MetroLine, 'line', ('system',), {'systemId': 'system_id'}),
     'metro-systems': (MetroSystem, 'name', (), {}),
     'banks': (Bank, 'name', (), {}),
     'mortgage-programs': (MortgageProgram, 'name', (), {}),
@@ -139,11 +140,15 @@ class CatalogOptionsAPIView(APIView):
                 ).values('legacy_id'))
         elif model is RealEstateComplexBuilding:
             queryset = apply_location_scopes(queryset, parameters, buildings=True, prefix='')
-        if dictionary_key in {'metro', 'metro-lines'} and parameters.get('locationId'):
-            queryset = queryset.filter(**{
-                'location_id' if dictionary_key == 'metro'
-                else 'system__location_id': parameters['locationId'],
-            })
+        if dictionary_key in {'metro', 'metro-lines'}:
+            queryset = filter_metro_geography(
+                queryset, parameters, line_prefix='metro_line__' if dictionary_key == 'metro' else '',
+            )
+            if parameters.get('locationId'):
+                queryset = queryset.filter(**{
+                    'location_id' if dictionary_key == 'metro'
+                    else 'system__location_id': parameters['locationId'],
+                })
         for name, field in filters.items():
             if parameters.get(name):
                 if dictionary_key == 'metro' and name == 'metroLineId':

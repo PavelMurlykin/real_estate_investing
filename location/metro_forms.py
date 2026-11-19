@@ -87,7 +87,7 @@ class MetroForm(MetroGeographyForm):
         super().__init__(*args, **kwargs)
         for name in ('metro_line', 'lines'):
             if name in self.fields:
-                self.fields[name].queryset = MetroLine.objects.select_related('system', 'city')
+                self.fields[name].queryset = MetroLine.objects.select_related('system')
 
     def clean(self):
         """Validate station lines without restricting nearby real estate."""

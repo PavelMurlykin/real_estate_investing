@@ -95,7 +95,7 @@ def test_incomplete_or_conflicting_source_is_atomic(metro_geography):
 def test_actual_metro_migration_preserves_ids_links_and_repeat():
     """Migrate old rows forward, reverse and reapply without replacing references."""
     previous = [('location', '0009_locationtype_locationimportjob_kind_and_more')]
-    target = [('location', '0011_metro_network_identity')]
+    target = [('location', '0015_metro_legacy_geography')]
     try:
         MigrationExecutor(connection).migrate(previous)
         registry = MigrationExecutor(connection).loader.project_state(previous).apps
@@ -111,6 +111,8 @@ def test_actual_metro_migration_preserves_ids_links_and_repeat():
         assert current.location_is_inferred
         assert current.lines.filter(pk=line.pk).exists()
         assert current.metro_line.system_id is not None
+        assert current.metro_line.legacy_city_name == old_city.name
+        assert current.metro_line.legacy_region_id == old_region.pk
         kind = LocationType.objects.create(code='migration-town', category='locality', name='Город')
         locality = Location.objects.create(name='Стрельна', location_type=kind)
         link = create_complex_link(current, locality)

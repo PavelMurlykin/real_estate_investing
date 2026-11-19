@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from .catalog_service import lock_location_catalog
 from .migration_support import backfill_locations
-from .models import City, District, Metro, MetroLine, MetroSystem, Region
+from .models import City, District, Metro, MetroLine, Region
 from .open_data import OpenDataError, OpenLocationSource, location_key
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ def import_guard():
             )
 
 
-def upsert_records(model, records, parent_field=None, parent_identifier=None):
+def upsert_records(model, records, parent_field=None, parent_identifier=None, *, create_defaults=None):
     """Match stable source IDs, adopt natural keys, then bulk write changes."""
     queryset = model.objects.all()
     if parent_field:
@@ -115,7 +115,7 @@ def upsert_records(model, records, parent_field=None, parent_identifier=None):
         })
         changed_fields.update(attributes)
         if row is None:
-            row = model(**attributes)
+            row = model(**((create_defaults or {}) | attributes))
             created.append(row)
         elif any(getattr(row, key) != value for key, value in attributes.items()):
             for key, value in attributes.items():
@@ -190,19 +190,15 @@ def unique_records(records):
 
 def import_locations(dictionary, region=None, city=None):
     """Fetch open data before atomically preserving and refreshing locations."""
-    if dictionary == 'metro' and city is not None:
-        from .models import LegacyLocationMapping
-        from .metro_import import import_metro
+    if dictionary == 'metro':
+        from .metro_geography import legacy_metro_city
+        from .metro_import import import_legacy_metro
 
-        location_id = LegacyLocationMapping.objects.filter(
-            model_name='city', legacy_id=city.pk,
-        ).values_list('location_id', flat=True).first()
-        system = MetroSystem.objects.select_related('location').filter(
-            location_id=location_id,
-        ).first() if location_id else None
-        if system:
-            return import_metro(system)
-    if dictionary not in ('regions', 'cities', 'districts', 'metro'):
+        reference = legacy_metro_city(region.pk, city.pk) if region and city else None
+        if reference is None:
+            raise LocationImportError('Выберите город этого региона.')
+        return import_legacy_metro(reference)
+    if dictionary not in ('regions', 'cities', 'districts'):
         raise LocationImportError('Неизвестный справочник импорта.')
     with import_guard():
         source = OpenLocationSource()
@@ -214,21 +210,11 @@ def import_locations(dictionary, region=None, city=None):
                 records = list({row['region_code']: region_record(row) for row in rows}.values())
             elif dictionary == 'cities':
                 records = unique_records([city_record(row, region) for row in selected_rows])
-            elif dictionary == 'districts':
+            else:
                 records = unique_records([
                     LocationRecord(identifier, name, {'city_id': city.pk})
                     for identifier, name in source.districts(selected_city)
                 ])
-            else:
-                raw_lines, raw_stations = source.metro(selected_city)
-                lines = unique_records([
-                    LocationRecord(identifier, name, {'city_id': city.pk, 'line_color': color})
-                    for identifier, name, color in raw_lines
-                ])
-                records = [
-                    LocationRecord(identifier, name, {'line_source_identifier': line_identifier})
-                    for identifier, name, line_identifier in raw_stations
-                ]
             with transaction.atomic():
                 if region:
                     parents, _ = upsert_records(Region, [region_record(selected_rows[0])])
@@ -241,41 +227,10 @@ def import_locations(dictionary, region=None, city=None):
                     if next(iter(parents.values())).pk != city.pk:
                         raise LocationImportError('Конфликт существующего города.')
                 line_counts = {'created': 0, 'updated': 0, 'unchanged': 0}
-                if dictionary == 'metro':
-                    system, _ = MetroSystem.objects.get_or_create(
-                        name=f'Метрополитен: {city.name}',
-                    )
-                    lines = [LocationRecord(row.source_identifier, row.name, {
-                        **row.attributes, 'system_id': system.pk,
-                    }) for row in lines]
-                    line_objects, line_counts = upsert_records(
-                        MetroLine, lines, 'city_id', city.pk,
-                    )
-                    counts = {'created': 0, 'updated': 0, 'unchanged': 0}
-                    for identifier, line in line_objects.items():
-                        stations = unique_records([
-                            LocationRecord(
-                                row.source_identifier, row.name, {'metro_line_id': line.pk},
-                            )
-                            for row in records
-                            if row.attributes['line_source_identifier'] == identifier
-                        ])
-                        station_objects, station_counts = upsert_records(
-                            Metro, stations, 'metro_line_id', line.pk,
-                        )
-                        Metro.lines.through.objects.bulk_create([
-                            Metro.lines.through(metro_id=row.pk, metroline_id=line.pk)
-                            for row in station_objects.values()
-                        ], ignore_conflicts=True)
-                        for key in counts:
-                            counts[key] += station_counts[key]
-                else:
-                    model = {'regions': Region, 'cities': City, 'districts': District}[dictionary]
-                    parent_field = {'cities': 'region_id', 'districts': 'city_id'}.get(dictionary)
-                    parent_identifier = (
-                        region.pk if dictionary == 'cities' else city.pk if city else None
-                    )
-                    _, counts = upsert_records(model, records, parent_field, parent_identifier)
+                model = {'regions': Region, 'cities': City, 'districts': District}[dictionary]
+                parent_field = {'cities': 'region_id', 'districts': 'city_id'}.get(dictionary)
+                parent_identifier = region.pk if dictionary == 'cities' else city.pk if city else None
+                _, counts = upsert_records(model, records, parent_field, parent_identifier)
                 lock_location_catalog()
                 backfill_locations(apps, geography_only=True)
         except OpenDataError as error:

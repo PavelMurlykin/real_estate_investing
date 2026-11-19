@@ -82,7 +82,7 @@ class MetroAdmin(admin.ModelAdmin):
     search_fields = (
         'station',
         'metro_line__line',
-        'metro_line__city__name',
+        'metro_line__system__location__name', 'location__name', 'metro_line__legacy_city_name',
     )
     list_editable = ('is_active',)
     ordering = ('metro_line__system__name', 'metro_line__line', 'station')
@@ -112,7 +112,7 @@ class MetroLineAdmin(admin.ModelAdmin):
         deleted, counts, permissions, protected = super().get_deleted_objects(objects, request)
         protected.extend(str(line) for line in MetroLine.objects.filter(
             pk__in=[item.pk for item in objects], stations__isnull=False,
-        ).select_related('system', 'city').distinct())
+        ).select_related('system').distinct())
         return deleted, counts, permissions, protected
 
 
