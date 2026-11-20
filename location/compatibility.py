@@ -14,6 +14,11 @@ from .models import (
 def canonical_legacy_location(row):
     """Resolve one legacy chain and retain the input accepted by older imports."""
     lock_location_catalog()
+    return _mapping_for_legacy_row(row).location
+
+
+def _mapping_for_legacy_row(row):
+    """Keep Django and backfills able to register a pre-existing legacy row."""
     model_name = row._meta.model_name
     mapping = LegacyLocationMapping.objects.filter(model_name=model_name, legacy_id=row.pk).first()
     reference = legacy_import_reference(row) | legacy_catalog_metadata(row)
@@ -22,36 +27,55 @@ def canonical_legacy_location(row):
     elif isinstance(row, City):
         reference['legacy_region_id'] = row.region_id
     if mapping:
-        if isinstance(row, City):
-            LegacyLocationMapping.objects.filter(model_name='district', legacy_city_id=row.pk).exclude(
-                legacy_region_id=row.region_id,
-            ).update(legacy_region_id=row.region_id)
-        if any(getattr(mapping, field) != value for field, value in reference.items()):
-            LegacyLocationMapping.objects.filter(pk=mapping.pk).update(**reference)
-            LocationAlias.objects.get_or_create(location_id=mapping.location_id, name=row.name)
-        return mapping.location
+        refresh_legacy_mapping(mapping, reference)
+        return mapping
     parent = None
     if isinstance(row, District):
-        parent = canonical_legacy_location(row.city)
+        parent = _mapping_for_legacy_row(row.city)
     elif isinstance(row, City):
-        parent = canonical_legacy_location(row.region)
+        parent = _mapping_for_legacy_row(row.region)
+    return register_legacy_mapping(model_name, row.pk, reference, parent=parent)
+
+
+def refresh_legacy_mapping(mapping, reference):
+    """Update historical metadata and labels without moving a canonical territory."""
+    if mapping.model_name == 'city' and 'legacy_region_id' in reference:
+        LegacyLocationMapping.objects.filter(
+            model_name='district', legacy_city_id=mapping.legacy_id,
+        ).exclude(legacy_region_id=reference['legacy_region_id']).update(
+            legacy_region_id=reference['legacy_region_id'],
+        )
+    changes = {field: value for field, value in reference.items() if getattr(mapping, field) != value}
+    if changes:
+        for field, value in changes.items():
+            setattr(mapping, field, value)
+        mapping.save(update_fields=changes)
+        if 'legacy_name' in changes and changes['legacy_name']:
+            LocationAlias.objects.get_or_create(location_id=mapping.location_id, name=changes['legacy_name'])
+
+
+def register_legacy_mapping(model_name, legacy_id, reference, *, parent=None):
+    """Match or create a canonical territory from the compatibility registry inputs."""
+    name = reference['legacy_name']
+    parent_location = parent.location if parent else None
     category = 'locality' if model_name == 'city' else model_name
-    federal = model_name == 'city' and row.name == row.region.name and row.region.code in {'77', '78', '92'}
-    location = parent if federal else None
-    source = row.source_identifier or ''
+    federal = model_name == 'city' and name == parent.legacy_name and parent.legacy_code in {'77', '78', '92'}
+    location = parent_location if federal else None
+    source = reference.get('legacy_source_identifier', '')
     source_guid = source.removeprefix('fias/') if source.startswith('fias/') else None
     identifier = LocationIdentifier.objects.filter(provider='fias', value=source_guid).first() if source_guid else None
     if identifier:
         location = identifier.location
     if location is None and model_name == 'region':
-        region_code = row.code.lstrip('0').zfill(2) if row.code.isdecimal() else row.code
+        code = reference['legacy_code']
+        region_code = code.lstrip('0').zfill(2) if code.isdecimal() else code
         location = Location.objects.filter(
             location_type__category='region',
             identifiers__provider='ru-region-code', identifiers__value=region_code,
         ).first()
     if location is None:
         matching_locations = list(Location.objects.filter(
-            name__iexact=row.name, location_type__category=category, parent=parent,
+            name__iexact=name, location_type__category=category, parent=parent_location,
         ).exclude(legacy_mappings__model_name=model_name)[:2])
         if len(matching_locations) == 1:
             location = matching_locations[0]
@@ -62,26 +86,26 @@ def canonical_legacy_location(row):
             },
         )
         location = Location.objects.create(
-            name=row.name, location_type=location_type, parent=parent,
-            region_id=parent.region_id if parent else None,
-            is_active=row.is_active, needs_review=True,
+            name=name, location_type=location_type, parent=parent_location,
+            region_id=parent_location.region_id if parent_location else None,
+            is_active=reference.get('legacy_is_active', True), needs_review=True,
         )
-        if parent is None:
+        if parent_location is None:
             location.region_id = location.pk
             location.save(update_fields=['region'])
         paths = [LocationClosure(ancestor=location, descendant=location, depth=0)]
-        if parent:
+        if parent_location:
             paths.extend(LocationClosure(ancestor_id=path.ancestor_id, descendant=location, depth=path.depth + 1)
-                         for path in parent.ancestor_links.all())
+                         for path in parent_location.ancestor_links.all())
         LocationClosure.objects.bulk_create(paths)
-    LegacyLocationMapping.objects.create(
-        model_name=model_name, legacy_id=row.pk, location=location, **reference,
+    mapping = LegacyLocationMapping.objects.create(
+        model_name=model_name, legacy_id=legacy_id, location=location, **reference,
     )
-    LocationIdentifier.objects.get_or_create(provider='legacy', value=f'{model_name}/{row.pk}', defaults={'location': location})
+    LocationIdentifier.objects.get_or_create(provider='legacy', value=f'{model_name}/{legacy_id}', defaults={'location': location})
     if source_guid:
         LocationIdentifier.objects.get_or_create(provider='fias', value=source_guid, defaults={'location': location})
-    LocationAlias.objects.get_or_create(location=location, name=row.name)
-    return location
+    LocationAlias.objects.get_or_create(location=location, name=name)
+    return mapping
 
 
 def bind_new_complex(sender, instance, created, raw=False, **kwargs):

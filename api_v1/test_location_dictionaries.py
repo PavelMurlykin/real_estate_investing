@@ -1,7 +1,11 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.db import connection
+from django.db import connection, connections
+from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from rest_framework.fields import DateTimeField
@@ -95,6 +99,86 @@ def test_old_region_api_refreshes_import_reference_and_keeps_location(client):
     assert not mapping.legacy_name and not mapping.legacy_code
     assert mapping.location_id == location.pk
     assert client.get(endpoint).status_code == 404
+
+
+@pytest.mark.django_db
+def test_old_region_creation_skips_reserved_id(client, location_dictionary_catalog):
+    """Never reissue a tombstoned ID, and reserve new IDs from the native sequence."""
+    client.force_login(create_location_manager())
+    location = Location.objects.get(legacy_mappings__model_name='region',
+                                    legacy_mappings__legacy_id=location_dictionary_catalog['regions'].pk)
+    with connection.cursor() as cursor:
+        cursor.execute('SELECT nextval(pg_get_serial_sequence(%s, %s))', ['region', 'id'])
+        previous, = cursor.fetchone()
+    reserved = LegacyLocationMapping.objects.create(model_name='region', legacy_id=previous + 1, location=location)
+
+    endpoint = '/api/v1/location-dictionaries/regions/'
+    response = client.post(endpoint, {'name': 'Проверочная область', 'code': 'T501'}, content_type='application/json')
+    assert response.status_code == 201, response.content
+    identifier = response.json()['id']
+    assert identifier > reserved.legacy_id
+    assert Region.objects.get(pk=identifier).name == 'Проверочная область'
+    assert Region.objects.create(name='Область из админки', code='T502').pk > identifier
+    reserved.refresh_from_db()
+    assert reserved.location_id == location.pk and reserved.legacy_name == ''
+
+
+@pytest.mark.django_db
+def test_mutations_work_from_registry_and_protect_mapped_children(client, location_dictionary_catalog):
+    """Keep old API writes and dependency protection independent of a missing mirror row."""
+    client.force_login(create_location_manager())
+    catalog = location_dictionary_catalog
+    parent = LegacyLocationMapping.objects.get(model_name='region', legacy_id=catalog['regions'].pk)
+    registry_only_region = LegacyLocationMapping.objects.create(
+        model_name='region', legacy_id=450000, legacy_name='Территория', legacy_code='T450', location=parent.location,
+    )
+    child = LegacyLocationMapping.objects.create(
+        model_name='city', legacy_id=450001, legacy_name='Город', legacy_region_id=registry_only_region.legacy_id,
+        location=parent.location,
+    )
+    endpoint = f'/api/v1/location-dictionaries/regions/{registry_only_region.legacy_id}/'
+    with CaptureQueriesContext(connection) as queries:
+        response = client.patch(endpoint, {'name': 'Прежняя территория'}, content_type='application/json')
+    assert response.status_code == 200, response.content
+    assert response.json()['name'] == 'Прежняя территория'
+    assert parent.location.name != response.json()['name']
+    assert not any('FROM "region"' in query['sql'] or 'JOIN "region"' in query['sql'] for query in queries)
+    assert client.delete(endpoint).status_code == 409
+    child.refresh_from_db()
+    assert child.legacy_region_id == registry_only_region.legacy_id
+    assert client.delete(f'/api/v1/location-dictionaries/cities/{child.legacy_id}/').status_code == 204
+    assert client.delete(endpoint).status_code == 204
+    assert client.get(endpoint).status_code == 404
+    registry_only_region.refresh_from_db()
+    assert registry_only_region.location_id == parent.location_id
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_region_creations_validate_against_committed_registry():
+    """Serialize competing case-insensitive names before creating their mirrors."""
+    manager = create_location_manager()
+    barrier = Barrier(2)
+
+    def post_region(name, code):
+        """Send a real request from a separate database connection."""
+        try:
+            client = Client()
+            client.force_login(manager)
+            barrier.wait(timeout=10)
+            response = client.post('/api/v1/location-dictionaries/regions/', {'name': name, 'code': code},
+                                   content_type='application/json')
+            return response.status_code, response.json()
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(post_region, 'Область проверки', 'PAR1')
+        second = executor.submit(post_region, 'область проверки', 'PAR2')
+        answers = dict((first.result(timeout=20), second.result(timeout=20)))
+    assert set(answers) == {201, 400}
+    assert 'name' in answers[400]
+    assert Region.objects.filter(name__iexact='Область проверки').count() == 1
+    assert LegacyLocationMapping.objects.filter(model_name='region', legacy_id=answers[201]['id']).count() == 1
 
 
 @pytest.mark.django_db

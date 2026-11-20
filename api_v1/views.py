@@ -94,7 +94,7 @@ from customer.views import (
 from location.import_forms import LocationImportForm
 from location.catalog_service import lock_location_catalog
 from location.legacy_catalog import (
-    LEGACY_GEOGRAPHY_MODELS, legacy_choices, legacy_dictionary_entries,
+    LEGACY_GEOGRAPHY_MODELS, legacy_choices, legacy_dictionary_entries, retire_legacy_catalog_entry,
 )
 from location.models import Location, Metro, MetroLine, MetroSystem
 from location.metro_import import import_legacy_metro, import_metro
@@ -1884,8 +1884,9 @@ class LocationDictionaryDetailAPIView(
                     lock_location_catalog()
                 instance = self.get_object()
                 if model:
-                    instance = get_object_or_404(model, pk=instance.legacy_id)
-                instance.delete()
+                    retire_legacy_catalog_entry(model, instance)
+                else:
+                    instance.delete()
         except ProtectedError:
             return Response(
                 {

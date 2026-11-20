@@ -24,7 +24,7 @@ const legacyPublicPages = [
     '?page=1',
     'Справочники объектов',
   ],
-  ['/locations/?model=city', '/app/locations/cities/', '', 'Локации'],
+  ['/locations/?model=city', '/app/locations/cities/', '', 'Населённые пункты'],
   [
     '/bank/?model=mortgage_program',
     '/app/mortgage-programs/',

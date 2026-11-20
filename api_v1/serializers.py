@@ -20,8 +20,7 @@ from bank.models import (
 )
 from customer.models import Customer
 from customer.location_service import CUSTOMER_LOCATION_FIELDS, prepare_customer_locations
-from location.compatibility import canonical_legacy_location
-from location.legacy_catalog import LEGACY_GEOGRAPHY_MODELS, legacy_catalog
+from location.legacy_catalog import LEGACY_GEOGRAPHY_MODELS, legacy_catalog, save_legacy_catalog_entry
 from location.presentation import geographic_label
 from location.models import City, District, LegacyLocationMapping, Location, Metro, MetroLine, MetroSystem, Region
 from property.location_context import (
@@ -594,22 +593,15 @@ class LocationDictionaryWriteSerializer(serializers.Serializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        """Allocate an old ID while remaining foreign keys still need a row."""
+        """Create a registry entry and mirror its ID for existing foreign keys."""
         model = LEGACY_GEOGRAPHY_MODELS[self.context['dictionary_configuration']['key']]
-        entry = model.objects.create(**validated_data)
-        canonical_legacy_location(entry)
-        return legacy_catalog(entry._meta.model_name).get(legacy_id=entry.pk)
+        return save_legacy_catalog_entry(model, validated_data)
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        """Synchronize the retained row and update the same Location mapping."""
+        """Update the same Location mapping and its compatibility row."""
         model = LEGACY_GEOGRAPHY_MODELS[self.context['dictionary_configuration']['key']]
-        entry = model.objects.get(pk=instance.legacy_id)
-        for field_name, value in validated_data.items():
-            setattr(entry, field_name, value)
-        entry.save(update_fields=(*validated_data.keys(), 'updated_at'))
-        canonical_legacy_location(entry)
-        return instance
+        return save_legacy_catalog_entry(model, validated_data, mapping=instance)
 
 
 class BankListQuerySerializer(serializers.Serializer):
