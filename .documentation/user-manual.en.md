@@ -22,7 +22,7 @@ Metro uses separate Systems (“Системы метро”), Lines (“Лин�
 
 In the React Developers section, “Регионы” and the “Регион” filter use Russian subjects from Location, with server search and paginated options. Pushkin and Strelna belong to Saint Petersburg; a city or settlement cannot replace a working region. Lists and sorting show canonical regions. An unmapped legacy association is marked as needing clarification and retained when other details are edited. Old regionId links remain supported; selecting a new region removes the old filter. The ERZ registry importer resolves codes and names to canonical subjects, adds missing associations and retains manual assignments. Repeating an import does not create duplicates. Ambiguous regions are reported without assigning a new association automatically. The old regionIds API remains supported; new requests use regionLocationIds. Sending both lists together is rejected.
 
-Filtering by a legacy region ID uses the `LegacyLocationMapping` table. If an association still stores only its legacy ID and a mapping is available, the developer also appears in the Location filter. Saving through the legacy API retains regions assigned only through Location. The fallback Django list shows current subject names and the names of associations that still need clarification.
+Filtering by a legacy region ID uses the `LocationCompatibilityEntry` registry. If an association still stores only its legacy ID and a mapping is available, the developer also appears in the Location filter. Saving through the legacy API retains regions assigned only through Location. The fallback Django list shows current subject names and the names of associations that still need clarification.
 
 ### Importing Russian locations
 
@@ -52,11 +52,11 @@ Unfinished jobs from the former national import are closed with their statistics
 
 The background GAR import updates Location by FIAS and GAR identifiers and federal subject codes. The worker continues independently of the open page. JSON version 1 and developer registry imports use canonical locations together with retained codes and names. Legacy links, request formats and existing associations are preserved.
 
-The legacy dictionary and selector endpoints retain their URLs, IDs, status, parent filters and response formats. They read and edit historical geography through `LegacyLocationMapping` with the existing catalog permissions. The old rows are synchronized while other sections still reference them. The API returns HTTP 409 when an entry is in use. A deleted entry's ID stays reserved and retains its Location mapping. Historical aliases retain their scope, while precise settlements such as Pushkin, Strelna and Likino are available in the Location catalog.
+The legacy dictionary and selector endpoints retain their URLs, IDs, status, parent filters and response formats. They read and edit historical geography through `LocationCompatibilityEntry` with the existing catalog permissions. The API returns HTTP 409 when an entry is in use. A deleted entry's ID stays reserved and retains its Location mapping. Historical aliases retain their scope, while precise settlements such as Pushkin, Strelna and Likino are available in the Location catalog.
 
 On Metro, select a system and click “Обновить данные”. The network center must have a confirmed FIAS identifier. Lines and stations are loaded together. Existing entries retain their IDs, precise geography, line memberships, active states and complex links. The lines list shows a color swatch beside each name. To pick a color, use “Цвет линии” in the editor. A station card shows the station's locality.
 
-The `systemId` filter selects the network. The station locality filter uses the station's own location. Legacy `cityId` and `regionId` filters use the line's retained city ID. With `canonicalLocations=true`, they apply to the network center through `LegacyLocationMapping`. Lines retain legacy city IDs without a foreign key to the old catalog. A legacy import request resolves the region and city through the registry and updates the same network as a request with `systemId`. Select a system explicitly when a city matches multiple networks. Deleting a legacy city whose ID is used by lines returns HTTP 409.
+The `systemId` filter selects the network. The station locality filter uses the station's own location. Legacy `cityId` and `regionId` filters use the line's retained city ID. With `canonicalLocations=true`, they apply to the network center through `LocationCompatibilityEntry`. Lines retain legacy city IDs without a foreign key to the old catalog. A legacy import request resolves the region and city through the registry and updates the same network as a request with `systemId`. Select a system explicitly when a city matches multiple networks. Deleting a legacy city whose ID is used by lines returns HTTP 409.
 
 Free sources for legacy selected-parent dictionaries and metro, without API keys or registration: [HFLabs/city](https://github.com/hflabs/city) (CSV over HTTPS, Russian regions and cities, CC BY-SA 4.0), [Wikidata API](https://www.wikidata.org/wiki/Wikidata:Data_access) (urban districts, lines and operating regional metro stations, CC0), and [Wikipedia API](https://ru.wikipedia.org/w/api.php) (open JSON metro schemes for the two capitals and station catalogs for the other cities, CC BY-SA). Overpass is no longer used. Attribution to [OpenStreetMap, ODbL](https://www.openstreetmap.org/copyright) is retained for older records.
 
@@ -64,7 +64,7 @@ Coverage of legacy selected-parent imports follows these open sources; the compl
 
 Repeating an import adds new entries and refreshes names, relationships and line colors by stable identifiers: KLADR for regions, FIAS for cities, Wikidata for districts and Wikipedia page IDs for stations. Matching manual and legacy OSM entries are linked to the new source while preserving primary keys and dependencies. Existing region codes and manually chosen active status are retained; new regions receive a two-digit KLADR code. Entries missing from the source are not deleted. Ambiguous matches fail without partial writes. Results report created, updated, unchanged and skipped entries; metro results also report lines separately.
 
-Imports are serialized across all application users. An unavailable API, partial response or conflict saves no changes from the current import; resolve conflicts or retry later. The button is disabled while a request runs. Containerized Gunicorn allows up to 60 seconds per request; extraction is limited to 45 seconds and each network operation to 8 seconds. A transient network failure is retried once after a pause. After updating, run `docker compose up -d --build --wait`: the migration changes the source field label without deleting data.
+Imports are serialized across all application users. An unavailable API, partial response or conflict saves no changes from the current import; resolve conflicts or retry later. The button is disabled while a request runs. Containerized Gunicorn allows up to 60 seconds per request; extraction is limited to 45 seconds and each network operation to 8 seconds. A transient network failure is retried once after a pause.
 
 The fallback Django Regions, Localities and Administrative districts pages offer the same national background import with the same permissions. Reload to update its progress. To refresh metro, open its tab and select a system.
 
@@ -112,7 +112,7 @@ The Locations tabs display active entries. Search matches current and former nam
 
 Renaming preserves the former name for search, source identifiers and every association. Moving a territory changes its administrative affiliation together with its descendants; cycles are rejected. Official imports may update the name and hierarchy again while retaining IDs and links. Manual deactivation survives repeated imports. Imported or referenced records cannot be deleted: clear “Активно” to hide them. Unused manual records can be deleted.
 
-Reading is public, editing requires a moderator or administrator, and national imports require an application administrator or superuser. The fallback Django page follows the same rules. Old edit links resolve through explicit mappings. Legacy dictionaries and financial region associations remain intact: creating a new territory does not automatically create regional mortgage limits or developer operating regions.
+Reading is public, editing requires a moderator or administrator, and national imports require an application administrator or superuser. The fallback Django page follows the same rules. Old edit links resolve through explicit mappings. Legacy catalog IDs and financial region associations remain intact: creating a new territory does not automatically create regional mortgage limits or developer operating regions.
 
 ## Navigation
 
@@ -166,9 +166,9 @@ React and the fallback Django calculator use the federal subject of the property
 
 Developer operating regions and regional mortgage limits use the `Location` catalog in React and Django forms. The migration preserves link IDs, amounts and statuses. Historical limits with ambiguous mappings still use the exact legacy region ID. Reimporting the same developer registry file keeps existing regional links without duplicates.
 
-## Current migration limitations
+## Compatibility with legacy links
 
-Implementation and verification results are tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. All actions on React pages use the current interface. Links to Django forms and previous versions have been removed from lists, cards, forms and account pages. Use the corresponding current-interface buttons for editing, cancelling, signing in and password recovery. The map depends on the mapping provider.
+When `REACT_FRONTEND_LEGACY_REDIRECTS_ENABLED` is enabled, supported legacy links to catalogs, complexes, properties, customers and saved calculations open the corresponding React pages. Legacy filters and record links preserve their original IDs. To open an available fallback Django page, add the `legacy=1` parameter to its old address. Legacy APIs and write requests continue to use their existing URLs and access checks.
 
 ## Homepage and complex map
 
@@ -286,7 +286,7 @@ On the edit page, each saved image has an “Удалить фото” button. 
 
 Administrators can expand “Импорт жилых комплексов из JSON” on the catalog page and select a UTF-8 JSON file of up to 16 MB. Use the [prepared selection](../data/complexes-moscow-spb-2026-11.json). Images are embedded, and each record links to its source materials.
 
-The import supports versions 1 and 2. Load GAR geography and the required metro systems first. Complex import creates no legacy region, city or district records. Version 1 retains its existing fields: region, region_code, city and district resolve against canonical geography. Unknown or ambiguous territories reject the entire file. A legacy city/district pair retains that coarse precision; a compatible old file does not replace confirmed Pushkin or Strelna with the general Petersburg territory.
+The import supports versions 1 and 2. Load GAR geography and the required metro systems first. Version 1 retains its existing fields: region, region_code, city and district resolve against canonical geography. Unknown or ambiguous territories reject the entire file. A legacy city/district pair retains that coarse precision; a compatible old file does not replace confirmed Pushkin or Strelna with the general Petersburg territory.
 
 Version 2 replaces the old geographic fields with location containing exactly one of `{"fias_id":"FIAS GUID"}` or `{"id":123}`. The reference must identify a locality or a federal city's locality role. GUIDs are portable; IDs belong to the current database. Pushkin's FIAS GUID is `110d6ad9-0b64-47cf-a2ee-7e935228799c`; Strelna's is `3eece910-1326-4602-aa21-e4ee117275ad`.
 
@@ -321,4 +321,4 @@ The selection's building schedules were checked on 7 November 2026. The [verific
 
 The [8 November follow-up](complex-schedule-followup-2026-11-08.md) clarifies the remaining four records using declarations. Placeholder rows were replaced with specific buildings: Vitebskiy Park — 3, Galaktika — 9.3. To rename a building, provide its new number and previous match_number, for example `{"number":"3","match_number":"1"}`. The import retains the building ID and its properties. Repeated imports resolve the new number; an empty catalog creates the new number directly. If the old and new numbers refer to different buildings, the mapping is ambiguous, or neither number exists in an existing complex, the import is rejected without partial updates. match_number does not create a separate alias dictionary.
 
-Further location migration work targets React. Fallback Django forms are no longer being developed; their removal is planned after migration completion and manual verification of the React forms. The old complex API and JSON import format remain supported.
+For a new file, use version 2 with a Location or FIAS ID. Existing version 1 files can be imported again using their original keys and territory names.
