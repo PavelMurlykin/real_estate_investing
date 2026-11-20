@@ -431,10 +431,6 @@ class CustomerOwnedQuerysetMixin(LoginRequiredMixin):
         return (
             with_financial_region(queryset)
             .select_related(
-                'residence_city',
-                'desired_city',
-                'desired_city__region',
-                'desired_district',
                 *CUSTOMER_LOCATION_RELATED,
             )
             .prefetch_related(

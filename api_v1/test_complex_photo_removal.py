@@ -5,6 +5,7 @@ import json
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
+from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
 from rest_framework.test import APIClient
 from rest_framework.exceptions import ValidationError
 
@@ -134,7 +135,7 @@ def test_foreign_and_selected_removed_images_are_rejected(gallery, gallery_clien
     complex_object, photos = gallery
     other = RealEstateComplex.objects.create(
         name='Другой ЖК', developer=complex_object.developer,
-        district=complex_object.district,
+        district_id=registered_legacy_id(legacy_district_for(complex_object)),
         real_estate_class=complex_object.real_estate_class,
         real_estate_type=complex_object.real_estate_type,
     )
@@ -214,7 +215,7 @@ def test_shared_image_is_not_deleted_from_storage(
     complex_object, photos = gallery
     RealEstateComplex.objects.create(
         name='Общее фото', developer=complex_object.developer,
-        district=complex_object.district,
+        district_id=registered_legacy_id(legacy_district_for(complex_object)),
         real_estate_class=complex_object.real_estate_class,
         real_estate_type=complex_object.real_estate_type,
         photo=photos[1].image.name,

@@ -5,7 +5,7 @@ from django.db.models.signals import post_delete, post_save, pre_delete
 from django.dispatch import receiver
 
 from .catalog_service import lock_location_catalog
-from .legacy_catalog import protected_region_references
+from .legacy_catalog import protected_legacy_references
 from .models import City, District, LegacyLocationMapping, MetroLine, Region
 from .migration_support import legacy_catalog_metadata
 
@@ -18,21 +18,14 @@ def protect_station_line_memberships(sender, instance, using, **kwargs):
 
 
 @receiver(pre_delete, sender=City)
-def protect_legacy_metro_city(sender, instance, using, **kwargs):
-    """Protect references for direct and administrative deletions during cutover."""
-    lock_location_catalog(using)
-    lines = list(MetroLine.objects.using(using).filter(legacy_city_id=instance.pk).select_related('system'))
-    if lines:
-        raise ProtectedError('Город используется линиями метро.', lines)
-
-
+@receiver(pre_delete, sender=District)
 @receiver(pre_delete, sender=Region)
-def protect_retained_business_region(sender, instance, using, **kwargs):
-    """Block retirement while developer links or credit limits use the public ID."""
+def protect_retained_geography(sender, instance, using, **kwargs):
+    """Prevent direct deletion if old API or history still references the ID."""
     lock_location_catalog(using)
-    references = protected_region_references([instance.pk], using=using)
+    references = protected_legacy_references(sender._meta.model_name, [instance.pk], using=using)
     if references:
-        raise ProtectedError('Регион используется связями застройщиков или лимитами.', references)
+        raise ProtectedError('Территория используется в других разделах.', references)
 
 
 @receiver(post_delete, sender=Region)

@@ -13,6 +13,7 @@ from api_v1.test_customers import customer_users  # noqa: F401
 from api_v1.test_customer_calculations import create_customer_calculations
 from bank.models import MortgageProgram, MortgageProgramRegionalCreditLimit
 from customer.models import Customer, CustomerCalculation, CustomerTrenchCalculation
+from location.tests.legacy_fixtures import legacy_city_for, legacy_district_for, registered_legacy_id
 from location.models import City, LegacyLocationMapping, LocationAlias, LocationClosure
 from mortgage.models import MortgageCalculation
 from property.models import RealEstateComplexLocation
@@ -26,13 +27,13 @@ def location_calculations(client, filtered_catalog, customer_users):
     client.force_login(owner)
     customer = Customer.objects.create(
         user=owner, first_name='Локации расчётов',
-        desired_city=filtered_catalog['legacy'].district.city,
+        desired_city_id=registered_legacy_id(legacy_district_for(filtered_catalog['legacy']).city),
     )
     program = MortgageProgram.objects.create(
         name='Лимит географии', is_preferential=True, credit_limit=6000000,
     )
     MortgageProgramRegionalCreditLimit.objects.create(
-        mortgage_program=program, region_id=customer.desired_city.region.pk, legacy_region_name=customer.desired_city.region.name, credit_limit=12000000,
+        mortgage_program=program, region_id=legacy_city_for(customer.desired_city_id).region.pk, legacy_region_name=legacy_city_for(customer.desired_city_id).region.name, credit_limit=12000000,
     )
     customer.preferential_programs.add(program)
     identifiers = {}
@@ -110,7 +111,7 @@ def test_aliases_and_building_override_exclude_secondary_history_and_old_distric
     data = location_calculations
     pushkin, project, building, _ = data['catalog']['pushkin']
     strelna = data['catalog']['strelna'][0]
-    project.district = data['catalog']['legacy'].district
+    project.district_id = legacy_district_for(data['catalog']['legacy']).pk
     project.save()
     historical = RealEstateComplexLocation.objects.create(
         real_estate_complex=project, location=strelna, is_historical=True,
@@ -121,7 +122,7 @@ def test_aliases_and_building_override_exclude_secondary_history_and_old_distric
         key = 'calculationId' if program is None else 'id'
         assert {row[key] for row in rows} == expected_identifiers(data, 'pushkin', program)
         old_city_search = client.get(endpoint, {
-            'q': data['catalog']['legacy'].district.city.name,
+            'q': legacy_district_for(data['catalog']['legacy']).city.name,
         })
         assert old_city_search.json()['totalCount'] == 0
         strelna_response = client.get(endpoint, {'localityId': strelna.pk})
@@ -140,7 +141,7 @@ def test_old_city_url_resolves_through_mapping_without_id_confusion(client, loca
     """An old federal-city link includes the corresponding canonical suburbs."""
     data = location_calculations
     locality = data['catalog']['pushkin'][0]
-    old_region = data['catalog']['legacy'].district.city.region
+    old_region = legacy_district_for(data['catalog']['legacy']).city.region
     city = City.objects.create(pk=900000, name='Санкт-Петербург', region=old_region)
     LegacyLocationMapping.objects.create(
         model_name='city', legacy_id=city.pk, location_id=locality.region_id,

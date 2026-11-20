@@ -19,6 +19,19 @@ def legacy_catalog_metadata(row):
     }
 
 
+def ensure_referenced_geography(registry, database, records, references):
+    """Backfill missing public aliases before a legacy foreign key is detached."""
+    mappings = registry.get_model('location', 'LegacyLocationMapping').objects.using(database)
+    for field, model_name in references:
+        known = mappings.filter(model_name=model_name).exclude(legacy_name='').values('legacy_id')
+        if records.filter(**{f'{field}__isnull': False}).exclude(**{f'{field}__in': known}).exists():
+            from .catalog_service import lock_location_catalog
+
+            lock_location_catalog(database)
+            backfill_locations(registry, database, geography_only=True)
+            return
+
+
 def backfill_locations(registry, database='default', *, geography_only=False):
     """Map legacy records and complexes without changing any legacy field."""
     Location = registry.get_model('location', 'Location')

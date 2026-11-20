@@ -12,6 +12,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from bank.models import MortgageProgram, MortgageProgramRegionalCreditLimit
+from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
 from location.models import City, District, Region
 from mortgage.models import MortgageCalculation
 from mortgage.utils import format_currency
@@ -251,7 +252,7 @@ class CustomerDetailViewTests(TestCase):
         customer = Customer.objects.create(
             user=self.user,
             first_name='Иван',
-            desired_city=city,
+            desired_city_id=registered_legacy_id(city),
             initial_payment_amount=Decimal('1000000'),
             max_monthly_payment=Decimal('100000'),
         )
@@ -374,7 +375,7 @@ class CustomerDeleteViewTests(TestCase):
         complex_obj = RealEstateComplex.objects.create(
             name=complex_name,
             developer=developer,
-            district=district,
+            district_id=registered_legacy_id(district),
             real_estate_class=estate_class,
             real_estate_type=estate_type,
         )
@@ -1015,8 +1016,7 @@ class CustomerDeleteViewTests(TestCase):
             calculation=kazan_calculation,
         )
         moscow_city = (
-            moscow_calculation.property.building.real_estate_complex
-            .district.city
+            legacy_district_for(moscow_calculation.property.building.real_estate_complex).city
         )
 
         response = self.client.get(
@@ -1070,8 +1070,7 @@ class CustomerDeleteViewTests(TestCase):
             {'sort': 'city', 'order': 'asc'},
         )
         cities = [
-            calculation.calculation.property.building.real_estate_complex
-            .district.city.name
+            legacy_district_for(calculation.calculation.property.building.real_estate_complex).city.name
             for calculation in response.context['customer_calculations']
         ]
 
@@ -1102,8 +1101,7 @@ class CustomerDeleteViewTests(TestCase):
             calculation=kazan_calculation,
         )
         moscow_city = (
-            moscow_calculation.property.building.real_estate_complex
-            .district.city
+            legacy_district_for(moscow_calculation.property.building.real_estate_complex).city
         )
 
         response = self.client.get(

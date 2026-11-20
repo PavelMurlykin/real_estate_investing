@@ -11,6 +11,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from openpyxl import Workbook
 
+from location.tests.legacy_fixtures import registered_legacy_id
 from location.models import City, District, Region
 from property.models import (
     CompanyGroup,
@@ -107,7 +108,7 @@ def create_real_estate_complex(company_group, suffix):
     return RealEstateComplex.objects.create(
         name=f'ЖК {suffix}',
         developer=developer,
-        district=district,
+        district_id=registered_legacy_id(district),
         real_estate_class=real_estate_class,
         real_estate_type=real_estate_type,
     )

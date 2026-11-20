@@ -96,6 +96,8 @@ The customer section requires authentication. A customer profile contains contac
 
 Forms use consistent single-line field and primary button dimensions, typography and spacing. Section headings sit above their fields; hints and errors appear beside the relevant field. On narrow screens, fields and actions stack in one column. Tab and Shift+Tab move focus between available controls; the active control has a contrasting outline in both light and dark themes.
 
+The legacy API reads and writes the previous IDs for the residence city, purchase city and district, and residential complex district through the compatibility registry. Exact territories for complexes and buildings still come from `Location`. The former financial region remains independent of the purchase territory. If the financial region was originally empty, this catalog migration leaves the regional limit unset. Saved mortgage and tranche amounts, results and associations are preserved.
+
 ### Territory dictionaries
 
 The Regions (“Регионы”), Localities (“Населённые пункты”) and Administrative districts (“Административные районы”) pages use the unified location dictionary. The former Cities link also opens localities, including Russian cities, towns, villages and rural settlements. Pushkin belongs to Pushkinsky District and Strelna to Petrodvortsovy District of Saint Petersburg. Municipal entities remain separate from administrative districts.

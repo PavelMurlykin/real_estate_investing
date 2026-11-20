@@ -6,7 +6,7 @@ from django.utils.functional import cached_property
 from django.urls import reverse
 
 from core.models import BaseModel
-from location.models import District, Location, Metro
+from location.models import Location, Metro
 
 from .validators import validate_property_image_upload
 
@@ -236,8 +236,8 @@ class RealEstateComplex(BaseModel):
     developer = models.ForeignKey(
         Developer, on_delete=models.PROTECT, verbose_name='Застройщик'
     )
-    district = models.ForeignKey(
-        District, null=True, blank=True, on_delete=models.PROTECT, verbose_name='Район'
+    district_id = models.PositiveBigIntegerField(
+        null=True, blank=True, db_index=True, editable=False, verbose_name='Прежний ID района',
     )
     real_estate_class = models.ForeignKey(
         RealEstateClass, on_delete=models.PROTECT, verbose_name='Класс ЖК'

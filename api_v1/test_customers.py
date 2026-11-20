@@ -14,6 +14,7 @@ from bank.models import (
     MortgageProgramRegionalCreditLimit,
 )
 from customer.models import Customer
+from location.tests.legacy_fixtures import registered_legacy_id
 from location.models import City, District, Region
 from property.models import ApartmentLayout
 
@@ -78,13 +79,13 @@ def customer_profile(customer_users):
         phone='+79995554433',
         email='ivan@example.com',
         age=35,
-        residence_city=residence_city,
+        residence_city_id=registered_legacy_id(residence_city),
         initial_payment_amount=Decimal('2000000.00'),
         max_monthly_payment=Decimal('150000.00'),
         has_owned_property=False,
         purchase_goal=Customer.PURCHASE_GOAL_INVESTMENT,
-        desired_city=desired_city,
-        desired_district=desired_district,
+        desired_city_id=registered_legacy_id(desired_city),
+        desired_district_id=registered_legacy_id(desired_district),
         area_min=Decimal('55.00'),
         area_max=Decimal('80.00'),
         desired_floor='Не первый',
@@ -165,7 +166,6 @@ def test_customer_form_options_are_filtered_and_bounded(
     from location.compatibility import canonical_legacy_location
 
     canonical_legacy_location(District.objects.create(name='Центр', city=other_city))
-    canonical_legacy_location(customer_profile.desired_district)
     client.force_login(owner)
 
     response = client.get(

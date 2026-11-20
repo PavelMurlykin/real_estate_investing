@@ -4,7 +4,8 @@ from django.forms import BaseInlineFormSet, inlineformset_factory
 
 from location.catalog_service import lock_location_catalog
 from location.legacy_catalog import legacy_choices
-from location.models import City, District, Location, Metro, Region
+from location.legacy_form_fields import LegacyLocationChoiceField
+from location.models import Location, Metro
 from .location_context import locality_filter, resolve_legacy_district_edit, set_primary_location
 from .location_form_fields import configure_property_location_fields
 from .location_filters import apply_location_scopes
@@ -37,8 +38,8 @@ class PropertyFilterForm(forms.Form):
     в данном модуле.
     """
 
-    city = forms.ModelChoiceField(
-        queryset=City.objects.all(),
+    city = LegacyLocationChoiceField(
+        'city',
         required=False,
         empty_label='Все города',
         widget=forms.Select(attrs={'class': 'form-control'}),
@@ -362,18 +363,22 @@ class RealEstateComplexForm(forms.ModelForm):
         required=False,
         widget=forms.CheckboxInput(attrs={'class': 'd-none'}),
     )
-    region = forms.ModelChoiceField(
-        queryset=Region.objects.none(),
+    region = LegacyLocationChoiceField(
+        'region',
         required=False,
         empty_label='Все регионы',
         label='Регион',
         widget=forms.Select(attrs={'class': 'form-control'}),
     )
-    city = forms.ModelChoiceField(
-        queryset=City.objects.none(),
+    city = LegacyLocationChoiceField(
+        'city',
         required=False,
         empty_label='Все города',
         label='Город',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+    district = LegacyLocationChoiceField(
+        'district', required=False, empty_label='Выберите район', label='Район',
         widget=forms.Select(attrs={'class': 'form-control'}),
     )
     developer = DeveloperModelChoiceField(
@@ -423,7 +428,6 @@ class RealEstateComplexForm(forms.ModelForm):
             ),
             'photo': forms.FileInput(attrs={'class': 'form-control'}),
             'developer': forms.Select(attrs={'class': 'form-control'}),
-            'district': forms.Select(attrs={'class': 'form-control'}),
             'real_estate_class': forms.Select(attrs={'class': 'form-control'}),
             'real_estate_type': forms.Select(attrs={'class': 'form-control'}),
             'is_active': forms.CheckboxInput(
@@ -437,22 +441,14 @@ class RealEstateComplexForm(forms.ModelForm):
         photo = getattr(self.instance, 'photo', None)
         self.initial_photo_name = photo.name if photo else ''
 
-        self.fields['region'].queryset = Region.objects.order_by('name')
-        self.fields['city'].queryset = City.objects.select_related(
-            'region'
-        ).order_by('name')
-        self.fields['district'].queryset = District.objects.select_related(
-            'city__region'
-        ).order_by('name')
-        self.fields['district'].empty_label = 'Выберите район'
         self.fields['developer'].queryset = (
             get_developers_with_company_groups_queryset()
         )
 
-        district = getattr(self.instance, 'district', None)
+        district = self.fields['district'].queryset.filter(legacy_id=self.instance.district_id).first()
         if district:
-            self.fields['city'].initial = district.city_id
-            self.fields['region'].initial = district.city.region_id
+            self.initial.update(district=district.legacy_id, city=district.legacy_city_id,
+                                region=district.legacy_region_id)
         location = self.instance.primary_location if self.instance.pk else None
         if location and location.location_type.category != 'district':
             self.fields['location'].initial = location.pk
@@ -480,34 +476,31 @@ class RealEstateComplexForm(forms.ModelForm):
             self.add_error('location', 'Выберите населённый пункт.')
 
         if district:
-            district_city = district.city
-            district_region = district_city.region
-
-            if city and district.city_id != city.pk:
+            if city and district.legacy_city_id != city.legacy_id:
                 self.add_error(
                     'district',
                     'Выбранный район не относится к выбранному городу.',
                 )
-            else:
-                cleaned_data['city'] = district_city
-
-            if region and district_region.pk != region.pk:
+            elif not city:
+                cleaned_data['city'] = self.fields['city'].queryset.filter(
+                    legacy_id=district.legacy_city_id,
+                ).first()
+            if region and district.legacy_region_id != region.legacy_id:
                 self.add_error(
                     'district',
                     'Выбранный район не относится к выбранному региону.',
                 )
-            else:
-                cleaned_data['region'] = district_region
-
+            elif not region:
+                cleaned_data['region'] = self.fields['region'].queryset.filter(
+                    legacy_id=district.legacy_region_id,
+                ).first()
         elif city:
-            city_region = city.region
-            if region and city_region.pk != region.pk:
-                self.add_error(
-                    'city',
-                    'Выбранный город не относится к выбранному региону.',
-                )
-            else:
-                cleaned_data['region'] = city_region
+            if region and city.legacy_region_id != region.legacy_id:
+                self.add_error('city', 'Выбранный город не относится к выбранному региону.')
+            elif not region:
+                cleaned_data['region'] = self.fields['region'].queryset.filter(
+                    legacy_id=city.legacy_region_id,
+                ).first()
 
         return cleaned_data
 
@@ -515,6 +508,9 @@ class RealEstateComplexForm(forms.ModelForm):
     def save(self, commit=True):
         """Save complex fields, geographic history and photo changes."""
         instance = super().save(commit=False)
+        district = self.cleaned_data.get('district')
+        if self.add_prefix('district') in self.data:
+            instance.district_id = district.legacy_id if district else None
         photo_name_to_delete = ''
 
         if self.cleaned_data.get('clear_photo'):
@@ -523,9 +519,10 @@ class RealEstateComplexForm(forms.ModelForm):
                 instance.photo = None
 
         if commit:
+            lock_location_catalog()
             location = self.cleaned_data.get('location')
-            if location is None and instance.pk and instance.district_id and 'district' in self.changed_data:
-                location = resolve_legacy_district_edit(instance.pk, instance.district)
+            if location is None and instance.pk and district and 'district' in self.changed_data:
+                location = resolve_legacy_district_edit(instance.pk, district)
             instance.save()
             if location:
                 set_primary_location(instance, location)

@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from bank.models import Bank, BankProgram, MortgageProgram
 from browser_acceptance import fixtures
 from customer.models import Customer
+from location.tests.legacy_fixtures import legacy_district_for
 from location.models import MetroLine
 from property.models import CompanyGroup, Property
 from users.roles import (
@@ -86,7 +87,7 @@ def test_seed_is_idempotent_and_assigns_least_privilege(monkeypatch):
     )
     assert MetroLine.objects.count() == 1
     metro_line = MetroLine.objects.get(pk=manifest['metroLineId'])
-    assert metro_line.legacy_city_id == real_estate_complex.district.city_id
+    assert metro_line.legacy_city_id == legacy_district_for(real_estate_complex).city_id
     assert metro_line.line_color == '#336699'
     assert get_user_model().objects.count() == 4
     assert password not in str(manifest)

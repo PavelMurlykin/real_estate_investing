@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import reverse
 
+from location.tests.legacy_fixtures import registered_legacy_id
 from location.models import City, District, Region
 from mortgage.models import MortgageCalculation
 from property.models import (
@@ -36,7 +37,7 @@ def saved_calculation_property():
     real_estate_complex = RealEstateComplex.objects.create(
         name='Зелёный квартал',
         developer=developer,
-        district=district,
+        district_id=registered_legacy_id(district),
         real_estate_class=real_estate_class,
         real_estate_type=real_estate_type,
     )

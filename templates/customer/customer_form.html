@@ -18,11 +18,11 @@
     <form method="post" novalidate>
         {% csrf_token %}
 
-        {% if object and not object.residence_uses_canonical_location and object.residence_city %}
-        <p class="text-muted">Сохранённое место проживания: {{ object.residence_city }}. Выберите населённый пункт для уточнения; другие изменения сохранят прежнее значение.</p>
+        {% if object and not object.residence_uses_canonical_location and object.residence_city_id %}
+        <p class="text-muted">Сохранённое место проживания: {{ object.legacy_residence_city_name }}. Выберите населённый пункт для уточнения; другие изменения сохранят прежнее значение.</p>
         {% endif %}
-        {% if object and not object.purchase_uses_canonical_locations and object.desired_city %}
-        <p class="text-muted">Сохранённая территория покупки: {{ object.desired_city }}, {{ object.desired_district|default:"—" }}. Прежние данные и региональные лимиты сохраняются до уточнения.</p>
+        {% if object and not object.purchase_uses_canonical_locations and object.desired_city_id %}
+        <p class="text-muted">Сохранённая территория покупки: {{ object.legacy_desired_city_name }}, {{ object.legacy_desired_district_name|default:"—" }}. Прежние данные и региональные лимиты сохраняются до уточнения.</p>
         {% endif %}
 
         {% if form.non_field_errors %}

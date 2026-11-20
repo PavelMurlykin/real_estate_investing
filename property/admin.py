@@ -1,6 +1,7 @@
 # property/admin.py
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.widgets import AutocompleteSelect
 from django.db import transaction
 from django.db.models import Q
 
@@ -8,6 +9,8 @@ from location.catalog_service import lock_location_catalog
 from location.legacy_catalog import unique_legacy_region
 
 from .developer_locations import developer_region_prefetch, prepare_developer_regions
+from .forms import RealEstateComplexForm
+from .location_context import geography_prefetch, resolve_legacy_district_edit, set_primary_location
 from .models import (
     ApartmentDecoration,
     ApartmentLayout,
@@ -19,6 +22,7 @@ from .models import (
     RealEstateClass,
     RealEstateComplex,
     RealEstateComplexBuilding,
+    RealEstateComplexLocation,
     RealEstateComplexMetroAvailability,
     RealEstateType,
     TransportAccessibilityType,
@@ -258,6 +262,17 @@ class RealEstateComplexMetroAvailabilityInline(admin.TabularInline):
     show_change_link = True
 
 
+class RealEstateComplexAdminForm(RealEstateComplexForm):
+    """Use the admin search widget for the same canonical territory field."""
+
+    def __init__(self, *args, **kwargs):
+        """Search locations without loading the full national catalog."""
+        super().__init__(*args, **kwargs)
+        field = self.fields['location']
+        field.widget = AutocompleteSelect(RealEstateComplexLocation._meta.get_field('location'), admin.site,
+                                          choices=field.choices)
+
+
 @admin.register(RealEstateComplex)
 class RealEstateComplexAdmin(admin.ModelAdmin):
     """Описание класса RealEstateComplexAdmin.
@@ -266,10 +281,11 @@ class RealEstateComplexAdmin(admin.ModelAdmin):
     в данном модуле.
     """
 
+    form = RealEstateComplexAdminForm
     list_display = (
         'name',
         'developer',
-        'district',
+        'get_district_name',
         'real_estate_class',
         'real_estate_type',
         'is_active',
@@ -278,7 +294,7 @@ class RealEstateComplexAdmin(admin.ModelAdmin):
     list_filter = (
         'is_active',
         'developer',
-        'district',
+        ('location_links__location__region', admin.RelatedOnlyFieldListFilter),
         'real_estate_class',
         'real_estate_type',
         'created_at',
@@ -287,7 +303,7 @@ class RealEstateComplexAdmin(admin.ModelAdmin):
         'name',
         'description',
         'developer__name',
-        'district__name',
+        'location_links__location__name',
     )
     list_editable = ('is_active',)
     ordering = ('name',)
@@ -295,6 +311,28 @@ class RealEstateComplexAdmin(admin.ModelAdmin):
         RealEstateComplexBuildingInline,
         RealEstateComplexMetroAvailabilityInline,
     )
+
+    @transaction.atomic
+    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        """Protect selected compatibility IDs throughout the change."""
+        if request.method == 'POST':
+            lock_location_catalog()
+        return super().changeform_view(request, object_id, form_url, extra_context)
+
+    def save_model(self, request, obj, form, change):
+        """Save the primary territory and preserve the previous link as history."""
+        location = form.cleaned_data.get('location')
+        district = form.cleaned_data.get('district')
+        if location is None and change and district and 'district' in form.changed_data:
+            location = resolve_legacy_district_edit(obj.pk, district)
+        super().save_model(request, obj, form, change)
+        if location is not None:
+            set_primary_location(obj, location)
+
+    @admin.display(description='Административный район')
+    def get_district_name(self, obj):
+        """Display the effective district from the location hierarchy."""
+        return obj.geography.district
 
     def get_queryset(self, request):
         """Описание метода get_queryset.
@@ -312,10 +350,10 @@ class RealEstateComplexAdmin(admin.ModelAdmin):
             .get_queryset(request)
             .select_related(
                 'developer',
-                'district',
                 'real_estate_class',
                 'real_estate_type',
             )
+            .prefetch_related(geography_prefetch())
         )
 
 

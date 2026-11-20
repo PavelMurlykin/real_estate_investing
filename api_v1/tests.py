@@ -10,6 +10,7 @@ from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
+from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
 from location.models import City, District, LegacyLocationMapping, Region
 from mortgage.models import MortgageCalculation
 from property.models import (
@@ -47,7 +48,7 @@ def property_catalog():
     real_estate_complex = RealEstateComplex.objects.create(
         name='Белые ночи',
         developer=developer,
-        district=district,
+        district_id=registered_legacy_id(district),
         real_estate_class=real_estate_class,
         real_estate_type=real_estate_type,
     )
@@ -106,8 +107,8 @@ def test_property_list_exposes_calculator_context_without_extra_queries(
                if item['id'] == property_object.pk)
     assert row['developerId'] == complex_object.developer_id
     assert row['realEstateComplexId'] == complex_object.pk
-    assert row['regionId'] == complex_object.district.city.region_id
-    assert row['district'] == complex_object.district.name
+    assert row['regionId'] == legacy_district_for(complex_object).city.region_id
+    assert row['district'] == legacy_district_for(complex_object).name
 
 
 @pytest.mark.django_db
@@ -260,14 +261,14 @@ def test_property_list_api_returns_paginated_normalized_rows(
             'id': first_property.pk,
             'developerId': first_property.building.real_estate_complex.developer_id,
             'realEstateComplexId': first_property.building.real_estate_complex_id,
-            'regionId': first_property.building.real_estate_complex.district.city.region_id,
+            'regionId': legacy_district_for(first_property.building.real_estate_complex).city.region_id,
             'regionLocationId': first_property.building.real_estate_complex.primary_location.region_id,
-            'region': first_property.building.real_estate_complex.district.city.region.name,
+            'region': legacy_district_for(first_property.building.real_estate_complex).city.region.name,
             'locationId': first_property.building.real_estate_complex.primary_location.pk,
             'districtLocationId': first_property.building.real_estate_complex.primary_location.pk,
             'localityId': first_property.building.real_estate_complex.primary_location.parent_id,
             'district': 'Петроградский',
-            'cityId': first_property.building.real_estate_complex.district.city_id,
+            'cityId': legacy_district_for(first_property.building.real_estate_complex).city_id,
             'districtId': first_property.building.real_estate_complex.district_id,
             'buildingId': first_property.building_id,
             'layoutId': first_property.layout_id,
@@ -372,8 +373,8 @@ def test_property_detail_api_returns_complete_public_card(
     payload = response.json()
     assert payload['id'] == property_object.pk
     assert payload['apartmentNumber'] == '101'
-    assert payload['regionId'] == real_estate_complex.district.city.region_id
-    assert payload['cityId'] == real_estate_complex.district.city_id
+    assert payload['regionId'] == legacy_district_for(real_estate_complex).city.region_id
+    assert payload['cityId'] == legacy_district_for(real_estate_complex).city_id
     assert payload['districtId'] == real_estate_complex.district_id
     assert payload['developerId'] == real_estate_complex.developer_id
     assert payload['realEstateComplexId'] == real_estate_complex.pk
@@ -445,7 +446,7 @@ def test_property_form_options_are_manager_only_and_hierarchical(
     property_object, _ = property_catalog
     building = property_object.building
     real_estate_complex = building.real_estate_complex
-    district = real_estate_complex.district
+    district = legacy_district_for(real_estate_complex)
     city = district.city
     layout = property_object.layout
     decoration = property_object.decoration
@@ -855,7 +856,7 @@ def test_developer_list_api_is_public_filtered_and_hides_sensitive_fields(
     """Return a bounded public directory without addresses or requisites."""
     property_object, _ = property_catalog
     developer = property_object.building.real_estate_complex.developer
-    region = property_object.building.real_estate_complex.district.city.region
+    region = legacy_district_for(property_object.building.real_estate_complex).city.region
     DeveloperRegion.objects.create(
         developer=developer, region_id=region.pk, legacy_region_name=region.name,
     )
@@ -946,7 +947,7 @@ def test_developer_options_api_returns_bounded_public_dictionaries(
     company_group = (
         property_object.building.real_estate_complex.developer.company_group
     )
-    region = property_object.building.real_estate_complex.district.city.region
+    region = legacy_district_for(property_object.building.real_estate_complex).city.region
 
     with django_assert_num_queries(2):
         response = client.get(reverse('api_v1:developer_options'))
@@ -972,7 +973,7 @@ def test_developer_api_supports_manager_create_update_and_delete(
     company_group = (
         property_object.building.real_estate_complex.developer.company_group
     )
-    region = property_object.building.real_estate_complex.district.city.region
+    region = legacy_district_for(property_object.building.real_estate_complex).city.region
     client.force_login(create_catalog_manager())
 
     create_response = client.post(

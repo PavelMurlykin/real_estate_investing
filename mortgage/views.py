@@ -678,7 +678,6 @@ def _get_sample_calculation(request):
         'property',
         'property__building',
         'property__building__real_estate_complex',
-        'property__building__real_estate_complex__district',
         'property__layout',
         'property__decoration',
     )

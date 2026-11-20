@@ -7,6 +7,7 @@ from django.test import Client
 
 from api_v1.test_location_import import import_user
 from api_v1.test_real_estate_complexes import complex_catalog
+from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
 from location.gar_import import load_region
 from location.migration_support import backfill_locations
 from location.models import LegacyLocationMapping, Location
@@ -116,7 +117,7 @@ def test_model_validation_rejects_cycles_and_foreign_building_links(geography_ca
         location.clean()
     other_complex = RealEstateComplex.objects.create(
         name='Другой квартал', developer=geography_catalog['complex'].developer,
-        district=geography_catalog['complex'].district,
+        district_id=registered_legacy_id(legacy_district_for(geography_catalog['complex'])),
         real_estate_class=geography_catalog['complex'].real_estate_class,
         real_estate_type=geography_catalog['complex'].real_estate_type,
     )

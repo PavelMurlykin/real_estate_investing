@@ -24,8 +24,9 @@ from django.views.generic import (
 )
 
 from core.forms import GroupedDecimalField, format_grouped_decimal_value
-from location.catalog_service import catalog_locations
-from location.models import City, District, Metro, MetroLine, Region
+from location.catalog_service import catalog_locations, lock_location_catalog
+from location.legacy_catalog import legacy_choices
+from location.models import Metro, MetroLine
 from location.metro_geography import annotate_legacy_metro_geography
 from users.roles import (
     CatalogManagementRequiredMixin,
@@ -38,6 +39,7 @@ from .catalog_filters import (
     catalog_location_form, catalog_location_parameters, property_relation_filters,
 )
 from .location_filters import apply_catalog_location_filters, geographic_search_ids
+from .location_context import geography_prefetch
 from .location_queries import annotate_complex_geography, annotate_property_geography
 from .forms import (
     CompanyGroupForm,
@@ -82,12 +84,16 @@ def build_complex_form_location_payload():
     """Build reusable location payload for real estate complex forms."""
     return {
         'location_cities': list(
-            City.objects.order_by('name').values('id', 'name', 'region_id')
+            {'id': identifier, 'name': name, 'region_id': region_id}
+            for identifier, name, region_id in legacy_choices('city').values_list(
+                'legacy_id', 'legacy_name', 'legacy_region_id',
+            )
         ),
         'location_districts': list(
-            District.objects.select_related('city__region')
-            .order_by('name')
-            .values('id', 'name', 'city_id', 'city__region_id')
+            {'id': identifier, 'name': name, 'city_id': city_id, 'city__region_id': region_id}
+            for identifier, name, city_id, region_id in legacy_choices('district').values_list(
+                'legacy_id', 'legacy_name', 'legacy_city_id', 'legacy_region_id',
+            )
         ),
         'location_metro_stations': list(
             annotate_legacy_metro_geography(Metro.objects.all())
@@ -1307,6 +1313,12 @@ class RealEstateComplexFormsetMixin:
     template_name = 'property/real_estate_complex_form.html'
     success_url = reverse_lazy('property:complex_list')
 
+    @transaction.atomic
+    def post(self, request, *args, **kwargs):
+        """Keep legacy form selections valid throughout the write."""
+        lock_location_catalog()
+        return super().post(request, *args, **kwargs)
+
     def is_update_form(self):
         """Return whether the form is editing an existing complex."""
         return bool(getattr(self, 'object', None) and self.object.pk)
@@ -1353,12 +1365,11 @@ class RealEstateComplexFormsetMixin:
         return formset_class(instance=instance, prefix='metro')
 
     def validate_metro_availability_city(self, form, metro_formset):
+        """Enforce the preserved city constraint on the legacy selector."""
         selected_city = form.cleaned_data.get('city')
-        if not selected_city:
-            district = form.cleaned_data.get('district')
-            selected_city = district.city if district else None
-
-        if not selected_city:
+        district = form.cleaned_data.get('district')
+        selected_city_id = selected_city.legacy_id if selected_city else district.legacy_city_id if district else None
+        if not selected_city_id:
             return True
 
         is_valid = True
@@ -1372,7 +1383,7 @@ class RealEstateComplexFormsetMixin:
             if not metro:
                 continue
 
-            if metro.metro_line.legacy_city_id and metro.metro_line.legacy_city_id != selected_city.pk:
+            if metro.metro_line.legacy_city_id and metro.metro_line.legacy_city_id != selected_city_id:
                 metro_form.add_error(
                     'metro',
                     'Станция метро не относится к выбранному городу.',
@@ -1487,7 +1498,6 @@ class RealEstateComplexDetailView(DetailView):
         return (
             RealEstateComplex.objects.select_related(
                 'developer',
-                'district__city__region',
                 'real_estate_class',
                 'real_estate_type',
             )
@@ -1495,6 +1505,7 @@ class RealEstateComplexDetailView(DetailView):
                 'realestatecomplexbuilding_set',
                 'metro_availability__metro',
                 'metro_availability__transport_accessibility_type',
+                geography_prefetch(),
             )
         )
 

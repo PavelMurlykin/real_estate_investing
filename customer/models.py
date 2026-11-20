@@ -7,7 +7,8 @@ from django.utils import timezone
 
 from bank.models import KeyRate, MortgageProgram
 from core.models import BaseModel
-from location.models import City, District, Location, Region
+from location.legacy_catalog import legacy_catalog
+from location.models import Location
 from location.presentation import geographic_label
 from property.models import ApartmentLayout
 
@@ -87,13 +88,9 @@ class Customer(BaseModel):
     birth_year = models.PositiveSmallIntegerField(
         null=True, blank=True, verbose_name='Год рождения'
     )
-    residence_city = models.ForeignKey(
-        City,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='residence_customers',
-        verbose_name='Город проживания',
+    residence_city_id = models.PositiveBigIntegerField(
+        null=True, blank=True, db_index=True, editable=False,
+        verbose_name='Прежний ID города проживания',
     )
     residence_locality = models.ForeignKey(
         Location, on_delete=models.PROTECT, null=True, blank=True,
@@ -113,9 +110,9 @@ class Customer(BaseModel):
         related_name='interested_locality_customers', verbose_name='Населённый пункт покупки',
     )
     purchase_uses_canonical_locations = models.BooleanField(default=False)
-    desired_financial_region = models.ForeignKey(
-        Region, on_delete=models.PROTECT, null=True, blank=True,
-        related_name='interested_financial_customers', verbose_name='Регион ипотечных лимитов',
+    desired_financial_region_id = models.PositiveBigIntegerField(
+        null=True, blank=True, db_index=True, editable=False,
+        verbose_name='Прежний ID региона ипотечных лимитов',
     )
     desired_financial_region_location = models.ForeignKey(
         Location, on_delete=models.PROTECT, null=True, blank=True,
@@ -158,21 +155,13 @@ class Customer(BaseModel):
         blank=True,
         verbose_name='Цель покупки',
     )
-    desired_city = models.ForeignKey(
-        City,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='desired_city_customers',
-        verbose_name='Желаемый город покупки',
+    desired_city_id = models.PositiveBigIntegerField(
+        null=True, blank=True, db_index=True, editable=False,
+        verbose_name='Прежний ID города покупки',
     )
-    desired_district = models.ForeignKey(
-        District,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='desired_district_customers',
-        verbose_name='Желаемый район покупки',
+    desired_district_id = models.PositiveBigIntegerField(
+        null=True, blank=True, db_index=True, editable=False,
+        verbose_name='Прежний ID района покупки',
     )
     desired_layouts = models.ManyToManyField(
         ApartmentLayout,
@@ -330,19 +319,10 @@ class Customer(BaseModel):
                 }
             )
 
-        if (
-            not self.purchase_uses_canonical_locations
-            and self.desired_city
-            and self.desired_district
-            and self.desired_district.city_id != self.desired_city_id
-        ):
-            raise ValidationError(
-                {
-                    'desired_district': (
-                        'Район должен относиться к выбранному городу.'
-                    )
-                }
-            )
+        if not self.purchase_uses_canonical_locations:
+            from .location_service import validate_legacy_purchase
+
+            validate_legacy_purchase(self)
 
     def save(self, *args, **kwargs):
         """Описание метода save.
@@ -458,19 +438,48 @@ class Customer(BaseModel):
             Decimal('0.01'), rounding=ROUND_HALF_UP
         )
 
-    def get_desired_region(self):
-        """Resolve the preserved financial region independently of geographic IDs."""
-        if self.purchase_uses_canonical_locations:
-            return self.desired_financial_region
+    def legacy_purchase_region_id(self):
+        """Read the original parent of the retained purchase city."""
         if not self.desired_city_id:
             return None
-        return self.desired_city.region
+        return legacy_catalog('city').filter(legacy_id=self.desired_city_id).values_list(
+            'legacy_region_id', flat=True,
+        ).first()
 
     def get_legacy_financial_region_id(self):
         """Return the old API identity and support profiles written before backfill."""
+        if 'effective_legacy_financial_region' in self.__dict__:
+            return self.effective_legacy_financial_region
         if self.purchase_uses_canonical_locations or self.desired_financial_region_id:
             return self.desired_financial_region_id
-        return self.desired_city.region_id if self.desired_city_id else None
+        return self.legacy_purchase_region_id()
+
+    def _legacy_name(self, model_name, identifier):
+        """Look up a retained profile label without reaching the mirror tables."""
+        if identifier is None:
+            return None
+        return legacy_catalog(model_name).filter(legacy_id=identifier).values_list('legacy_name', flat=True).first()
+
+    @property
+    def legacy_residence_city_name(self):
+        """Show the old residence name even when a canonical locality is selected."""
+        if 'retained_residence_name' in self.__dict__:
+            return self.retained_residence_name
+        return self._legacy_name('city', self.residence_city_id)
+
+    @property
+    def legacy_desired_city_name(self):
+        """Show the old purchase city in legacy representations."""
+        if 'retained_purchase_city_name' in self.__dict__:
+            return self.retained_purchase_city_name
+        return self._legacy_name('city', self.desired_city_id)
+
+    @property
+    def legacy_desired_district_name(self):
+        """Show the old purchase district in legacy representations."""
+        if 'retained_purchase_district_name' in self.__dict__:
+            return self.retained_purchase_district_name
+        return self._legacy_name('district', self.desired_district_id)
 
     def get_financial_region(self):
         """Resolve the financial region independently of the current purchase geography."""
@@ -490,25 +499,32 @@ class Customer(BaseModel):
     @property
     def residence_display_name(self):
         """Display current residence without reviving a cleared legacy city."""
-        locality = self.residence_locality if self.residence_uses_canonical_location else self.residence_city
-        return (geographic_label(locality) if self.residence_uses_canonical_location else locality.name) if locality else None
+        if not self.residence_uses_canonical_location:
+            return self.legacy_residence_city_name
+        return geographic_label(self.residence_locality) if self.residence_locality_id else None
 
     @property
     def purchase_locality_display_name(self):
         """Use current purchase locality or the unresolved legacy description."""
-        locality = self.desired_locality if self.purchase_uses_canonical_locations else self.desired_city
+        if not self.purchase_uses_canonical_locations:
+            return self.legacy_desired_city_name
+        locality = self.desired_locality
         return locality.name if locality else None
 
     @property
     def purchase_district_display_name(self):
         """Keep a cleared current district distinct from a retained snapshot."""
-        district = self.desired_district_location if self.purchase_uses_canonical_locations else self.desired_district
+        if not self.purchase_uses_canonical_locations:
+            return self.legacy_desired_district_name
+        district = self.desired_district_location
         return district.name if district else None
 
     @property
     def purchase_region_display_name(self):
         """Describe the chosen geographic region without exposing a financial key."""
-        region = self.desired_region_location if self.purchase_uses_canonical_locations else self.get_desired_region()
+        if not self.purchase_uses_canonical_locations:
+            return self._legacy_name('region', self.legacy_purchase_region_id())
+        region = self.desired_region_location
         return region.name if region else None
 
     def get_preferential_credit_limit(self):

@@ -14,6 +14,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import Client
 from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
 from django.test.utils import CaptureQueriesContext
 from rest_framework.exceptions import ValidationError
 
@@ -24,6 +25,7 @@ from api_v1.test_real_estate_complexes import create_catalog_manager
 from bank.models import MortgageProgram, MortgageProgramRegionalCreditLimit
 from core.json_import import JsonImportError
 from customer.models import Customer, CustomerCalculation, CustomerTrenchCalculation
+from location.tests.legacy_fixtures import registered_legacy_id
 from location.compatibility import canonical_legacy_location
 from location.gar_import import load_region
 from location.migration_support import backfill_locations
@@ -145,7 +147,7 @@ def test_move_retains_building_territory_properties_calculations_and_gallery(
         layout=ApartmentLayout.objects.create(name='Студия'))
     user = create_catalog_manager()
     client.force_login(user)
-    customer = Customer.objects.create(user=user, first_name='Импорт', desired_city=import_geography['city'])
+    customer = Customer.objects.create(user=user, first_name='Импорт', desired_city_id=registered_legacy_id(import_geography['city']))
     program = MortgageProgram.objects.create(name='Региональная', is_preferential=True, credit_limit=6000000)
     MortgageProgramRegionalCreditLimit.objects.create(mortgage_program=program,
         region_id=import_geography['region'].pk, legacy_region_name=import_geography['region'].name, credit_limit=12000000)
@@ -251,8 +253,11 @@ def test_mys_migration_and_legacy_import_preserve_likino(
     old_building = original.realestatecomplexbuilding_set.values().get()
     old_metro_id = original.metro_availability.get().pk
     migration = import_module('property.migrations.0021_refine_mys_location')
+    historical_apps = MigrationExecutor(connection).loader.project_state([
+        ('property', '0021_refine_mys_location'), ('location', '0017_detach_metro_line_city'),
+    ]).apps
     for _ in range(2):
-        migration.refine_mys_location(apps, SimpleNamespace(connection=connection))
+        migration.refine_mys_location(historical_apps, SimpleNamespace(connection=connection))
     old_link.refresh_from_db()
     assert old_link.is_historical and not old_link.is_primary
     assert RealEstateComplex.objects.values().get(pk=original.pk) == old_complex

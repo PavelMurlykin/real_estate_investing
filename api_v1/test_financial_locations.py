@@ -15,6 +15,7 @@ from api_v1.test_customers import customer_users  # noqa: F401
 from api_v1.test_location_filters import complex_catalog, filtered_catalog, import_user, locality_catalog  # noqa: F401
 from api_v1.tests import create_catalog_manager
 from bank.models import Bank, BankProgram, MortgageProgramRegionalCreditLimit
+from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
 from location.gar_import import load_region
 from location.models import LegacyLocationMapping, Location, LocationIdentifier, Region
 from property.location_context import set_primary_location
@@ -116,7 +117,7 @@ def test_financial_region_for_pushkin_strelna_and_likino(client, geographic_cust
     )
     project = RealEstateComplex.objects.create(
         name='Мыс', developer=original.developer, real_estate_class=original.real_estate_class,
-        real_estate_type=original.real_estate_type, district=original.district,
+        real_estate_type=original.real_estate_type, district_id=registered_legacy_id(legacy_district_for(original)),
     )
     set_primary_location(project, likino)
     building = RealEstateComplexBuilding.objects.create(real_estate_complex=project, number='1')

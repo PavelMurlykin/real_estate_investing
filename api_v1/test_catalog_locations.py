@@ -16,6 +16,8 @@ from api_v1.test_calculation_locations import location_calculations  # noqa: F40
 from api_v1.test_customers import customer_users  # noqa: F401
 from bank.models import MortgageProgramRegionalCreditLimit
 from customer.models import Customer, CustomerCalculation, CustomerTrenchCalculation
+from location.compatibility import canonical_legacy_location
+from location.tests.legacy_fixtures import legacy_district_for
 from location.models import City, District, LegacyLocationMapping, LocationAlias, Region
 from mortgage.models import MortgageCalculation
 from property.forms import RealEstateComplexForm
@@ -80,7 +82,7 @@ def test_catalog_sorting_and_scope_filters_before_pagination(client, filtered_ca
 def test_old_city_urls_map_to_canonical_territory_without_numeric_id_confusion(client, filtered_catalog):
     """Keep old federal-city filters inclusive of suburbs while respecting overrides."""
     pushkin, project, _, _ = filtered_catalog['pushkin']
-    root_city = City.objects.create(pk=900000, name='Санкт-Петербург', region=filtered_catalog['legacy'].district.city.region)
+    root_city = City.objects.create(pk=900000, name='Санкт-Петербург', region=legacy_district_for(filtered_catalog['legacy']).city.region)
     LegacyLocationMapping.objects.create(model_name='city', legacy_id=root_city.pk, location_id=pushkin.region_id)
     for path, _ in catalog_endpoints():
         key = 'city' if path == '/api/v1/properties/' else 'cityId' if path.startswith('/api/') else 'filter_city'
@@ -89,9 +91,9 @@ def test_old_city_urls_map_to_canonical_territory_without_numeric_id_confusion(c
         assert {'Пушкин', 'Стрельна'} <= names
         assert not catalog_rows(client, path, {key: pushkin.pk})
         assert not catalog_rows(client, path, {key: root_city.pk, 'localityId': 999999999})
-    project.district = filtered_catalog['legacy'].district
+    project.district_id = legacy_district_for(filtered_catalog['legacy']).pk
     project.save()
-    old_city = project.district.city_id
+    old_city = legacy_district_for(project).city_id
     assert project.pk not in {row['id'] for row in catalog_rows(client, '/api/v1/complexes/', {'cityId': old_city})}
 
 
@@ -168,7 +170,7 @@ def test_current_geography_reads_do_not_join_the_legacy_catalogs(client, filtere
     """Check bounded canonical reads, including a coarse complex and a legacy URL."""
     locality, project, building, apartment = filtered_catalog['pushkin']
     coarse = filtered_catalog['legacy']
-    legacy_city_id = coarse.district.city_id
+    legacy_city_id = legacy_district_for(coarse).city_id
     endpoints = (
         ('/api/v1/complexes/', {'cityId': legacy_city_id, 'ordering': 'city'}),
         (f'/api/v1/complexes/{coarse.pk}/', {}),
@@ -192,7 +194,7 @@ def test_current_geography_reads_do_not_join_the_legacy_catalogs(client, filtere
 def test_legacy_district_ancestry_and_missing_primary_keep_old_identifiers(client, filtered_catalog):
     """Keep original IDs when a coarse primary is displayed with current labels."""
     project = filtered_catalog['legacy']
-    district = project.district
+    district = legacy_district_for(project)
     mapping = LegacyLocationMapping.objects.get(model_name='district', legacy_id=district.pk)
     district_mapping = LegacyLocationMapping.objects.filter(pk=mapping.pk)
     district_mapping.update(legacy_city_id=None, legacy_region_id=None)
@@ -228,7 +230,8 @@ def test_legacy_district_edit_moves_only_coarse_binding(client, filtered_catalog
     previous = project.location_links.get(is_primary=True)
     building.complex_location = previous
     building.save(update_fields=['complex_location'])
-    new_district = District.objects.create(name='Другой район', city=project.district.city)
+    new_district = District.objects.create(name='Другой район', city=legacy_district_for(project).city)
+    canonical_legacy_location(new_district)
     url = f'/api/v1/complexes/{project.pk}/'
     if native_form:
         form = RealEstateComplexForm(data={

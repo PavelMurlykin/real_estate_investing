@@ -8,6 +8,7 @@ from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
+from location.tests.legacy_fixtures import registered_legacy_id
 from location.models import City, District, Metro, MetroLine, Region
 from property.models import (
     ApartmentDecoration,
@@ -52,7 +53,7 @@ def complex_catalog():
         name='Белые ночи',
         description='Комплекс у парка',
         developer=developer,
-        district=district,
+        district_id=registered_legacy_id(district),
         real_estate_class=real_estate_class,
         real_estate_type=real_estate_type,
         map_link='https://maps.example.com/complex',

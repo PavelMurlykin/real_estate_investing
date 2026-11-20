@@ -6,6 +6,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from api_v1.test_location_filters import filtered_catalog, locality_catalog, complex_catalog, import_user
+from location.tests.legacy_fixtures import legacy_district_for
 from location.models import City, District, Location, Region
 from property.forms import PropertyForm
 from property.location_context import set_primary_location
@@ -38,7 +39,7 @@ def test_property_form_options_use_canonical_localities_and_building_overrides(c
     context = options['selected'][0]
     assert context['localityId'] == strelna.pk and context['districtLocationId'] == strelna.parent_id
     assert context['regionLocationId'] == strelna.region_id
-    assert context['regionId'] == filtered_catalog['legacy'].district.city.region_id
+    assert context['regionId'] == legacy_district_for(filtered_catalog['legacy']).city.region_id
     assert client.get('/api/v1/properties/options/', {'localityId': 'invalid'}).status_code == 400
 
 

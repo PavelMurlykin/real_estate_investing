@@ -18,6 +18,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from openpyxl import Workbook
 
+from location.tests.legacy_fixtures import registered_legacy_id
 from location.compatibility import canonical_legacy_location
 from location.models import City, District, Metro, MetroLine, Region
 from users.roles import (
@@ -870,6 +871,8 @@ class RealEstateComplexFormLocationTests(TestCase):
         self.district = District.objects.create(
             name='District 1', city=self.city
         )
+        canonical_legacy_location(self.district)
+        canonical_legacy_location(self.other_city)
         self.developer = Developer.objects.create(name='Developer 1')
         self.estate_type = RealEstateType.objects.create(name='Apartment')
         self.estate_class = RealEstateClass.objects.create(
@@ -914,8 +917,8 @@ class RealEstateComplexFormLocationTests(TestCase):
         form = RealEstateComplexForm(data=self._form_data())
 
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(form.cleaned_data['city'], self.city)
-        self.assertEqual(form.cleaned_data['region'], self.region)
+        self.assertEqual(form.cleaned_data['city'].legacy_id, self.city.pk)
+        self.assertEqual(form.cleaned_data['region'].legacy_id, self.region.pk)
 
     def test_mismatched_city_and_district_is_invalid(self):
         form = RealEstateComplexForm(
@@ -982,7 +985,7 @@ class RealEstateComplexFormLocationTests(TestCase):
         RealEstateComplex.objects.create(
             name='Complex 1',
             developer=self.developer,
-            district=self.district,
+            district_id=registered_legacy_id(self.district),
             real_estate_class=self.estate_class,
             real_estate_type=self.estate_type,
         )
@@ -1029,7 +1032,7 @@ class RealEstateComplexFormLocationTests(TestCase):
         complex_obj = RealEstateComplex.objects.create(
             name='Complex 1',
             developer=self.developer,
-            district=self.district,
+            district_id=registered_legacy_id(self.district),
             real_estate_class=self.estate_class,
             real_estate_type=self.estate_type,
         )
@@ -1052,7 +1055,7 @@ class RealEstateComplexFormLocationTests(TestCase):
         complex_obj = RealEstateComplex.objects.create(
             name='Complex 1',
             developer=self.developer,
-            district=self.district,
+            district_id=registered_legacy_id(self.district),
             real_estate_class=self.estate_class,
             real_estate_type=self.estate_type,
         )
@@ -1068,7 +1071,7 @@ class RealEstateComplexFormLocationTests(TestCase):
         complex_obj = RealEstateComplex.objects.create(
             name='Complex 1',
             developer=self.developer,
-            district=self.district,
+            district_id=registered_legacy_id(self.district),
             real_estate_class=self.estate_class,
             real_estate_type=self.estate_type,
         )
@@ -1104,7 +1107,7 @@ class RealEstateComplexFormLocationTests(TestCase):
         complex_obj = RealEstateComplex.objects.create(
             name='Complex 1',
             developer=self.developer,
-            district=self.district,
+            district_id=registered_legacy_id(self.district),
             real_estate_class=self.estate_class,
             real_estate_type=self.estate_type,
         )
@@ -1222,7 +1225,7 @@ class RealEstateComplexFormLocationTests(TestCase):
         complex_obj = RealEstateComplex.objects.create(
             name='Complex 1',
             developer=self.developer,
-            district=self.district,
+            district_id=registered_legacy_id(self.district),
             real_estate_class=self.estate_class,
             real_estate_type=self.estate_type,
             photo='property/complexes/complex.gif',
@@ -1250,7 +1253,7 @@ class RealEstateComplexFormLocationTests(TestCase):
                 complex_obj = RealEstateComplex.objects.create(
                     name='Complex 1',
                     developer=self.developer,
-                    district=self.district,
+                    district_id=registered_legacy_id(self.district),
                     real_estate_class=self.estate_class,
                     real_estate_type=self.estate_type,
                     photo='property/complexes/complex.gif',
@@ -1293,7 +1296,7 @@ class RealEstateComplexFormLocationTests(TestCase):
         complex_obj = RealEstateComplex.objects.create(
             name='Complex 1',
             developer=self.developer,
-            district=self.district,
+            district_id=registered_legacy_id(self.district),
             real_estate_class=self.estate_class,
             real_estate_type=self.estate_type,
         )
@@ -1314,7 +1317,7 @@ class RealEstateComplexFormLocationTests(TestCase):
             investment_potential='Высокий спрос на аренду.',
             photo='property/complexes/complex.gif',
             developer=self.developer,
-            district=self.district,
+            district_id=registered_legacy_id(self.district),
             real_estate_class=self.estate_class,
             real_estate_type=self.estate_type,
         )
@@ -1401,7 +1404,7 @@ class RealEstateComplexFormLocationTests(TestCase):
         complex_obj = RealEstateComplex.objects.create(
             name='Complex 1',
             developer=self.developer,
-            district=self.district,
+            district_id=registered_legacy_id(self.district),
             real_estate_class=self.estate_class,
             real_estate_type=self.estate_type,
         )
@@ -1867,7 +1870,7 @@ class RealEstateComplexDeleteViewTests(TestCase):
         return RealEstateComplex.objects.create(
             name='Complex 1',
             developer=developer,
-            district=district,
+            district_id=registered_legacy_id(district),
             real_estate_class=estate_class,
             real_estate_type=estate_type,
         )
@@ -2037,7 +2040,7 @@ class PropertyFormCascadeTests(TestCase):
         return RealEstateComplex.objects.create(
             name=name,
             developer=developer,
-            district=district,
+            district_id=registered_legacy_id(district),
             real_estate_class=self.estate_class,
             real_estate_type=self.estate_type,
         )

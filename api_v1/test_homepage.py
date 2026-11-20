@@ -2,6 +2,7 @@ import pytest
 from django.urls import reverse
 from django.utils.text import Truncator
 
+from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
 from location.models import City, District
 from property.models import RealEstateComplex
 
@@ -13,11 +14,11 @@ def homepage_catalog(saved_calculation_property):
     """Create two cities including the legacy preferred default."""
     original = saved_calculation_property.building.real_estate_complex
     city = City.objects.create(
-        name='Санкт-Петербург', region=original.district.city.region,
+        name='Санкт-Петербург', region=legacy_district_for(original).city.region,
     )
     district = District.objects.create(name='Приморский', city=city)
     preferred = RealEstateComplex.objects.create(
-        name='ЖК Петербург', district=district, developer=original.developer,
+        name='ЖК Петербург', district_id=registered_legacy_id(district), developer=original.developer,
         real_estate_class=original.real_estate_class,
         real_estate_type=original.real_estate_type,
         description='Описание локации. ' * 30,
@@ -38,7 +39,7 @@ def test_homepage_defaults_match_django_and_preserve_card_fields(
         response = client.get(reverse('api_v1:homepage_complex_list'))
     assert response.status_code == 200
     data = response.json()
-    assert data['selectedCity']['id'] == preferred.district.city_id
+    assert data['selectedCity']['id'] == legacy_district_for(preferred).city_id
     assert data['totalCount'] == 1
     row = data['results'][0]
     assert row['id'] == preferred.pk
@@ -50,7 +51,7 @@ def test_homepage_defaults_match_django_and_preserve_card_fields(
     django_page = client.get(reverse('homepage:index'))
     assert django_page.context['selected_city'].pk == data['selectedCity']['id']
     assert client.get(reverse('api_v1:homepage_complex_list'), {
-        'city': original.district.city_id,
+        'city': legacy_district_for(original).city_id,
     }).json()['results'][0]['id'] == original.pk
 
 
@@ -61,9 +62,10 @@ def test_homepage_excludes_inactive_complexes_and_districts(
     """Use the legacy activity rules and fallback for invalid selected cities."""
     original, preferred = homepage_catalog
     url = reverse('api_v1:homepage_complex_list')
-    original.district.is_active = False
-    original.district.save(update_fields=['is_active'])
-    assert client.get(url, {'city': original.district.city_id}).json()[
+    district = legacy_district_for(original)
+    district.is_active = False
+    district.save(update_fields=['is_active'])
+    assert client.get(url, {'city': legacy_district_for(original).city_id}).json()[
         'totalCount'
     ] == 0
     preferred.is_active = False
@@ -73,12 +75,12 @@ def test_homepage_excludes_inactive_complexes_and_districts(
     preferred.save(update_fields=['is_active'])
     for identifier in ('bad', '99999999999999999999', '999999'):
         data = client.get(url, {'city': identifier}).json()
-        assert data['selectedCity']['id'] == preferred.district.city_id
-    city = original.district.city
+        assert data['selectedCity']['id'] == legacy_district_for(preferred).city_id
+    city = legacy_district_for(original).city
     city.is_active = False
     city.save(update_fields=['is_active'])
     assert client.get(url, {'city': city.pk}).json()['selectedCity']['id'] == (
-        preferred.district.city_id
+        legacy_district_for(preferred).city_id
     )
     choices = client.get(reverse('api_v1:catalog_options', args=['cities']), {
         'activeOnly': True, 'selected': city.pk,
@@ -95,7 +97,7 @@ def test_homepage_city_is_paginated_without_losing_later_complexes(
     _, preferred = homepage_catalog
     RealEstateComplex.objects.bulk_create([
         RealEstateComplex(
-            name=f'ЖК {index:03}', district=preferred.district,
+            name=f'ЖК {index:03}', district_id=preferred.district_id,
             developer=preferred.developer,
             real_estate_class=preferred.real_estate_class,
             real_estate_type=preferred.real_estate_type,

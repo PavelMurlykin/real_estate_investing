@@ -1,16 +1,17 @@
 """Validate customer territories and preserve legacy financial region identities."""
 
 from django.core.exceptions import ValidationError
-from django.db.models import BigIntegerField, Case, F, JSONField, OuterRef, Subquery, When
+from django.db.models import BigIntegerField, Case, JSONField, OuterRef, Subquery, When
 from django.db.models.functions import Coalesce, JSONObject
 
+from location.legacy_catalog import legacy_catalog
 from location.models import LegacyLocationMapping, Location, LocationClosure
 from property.location_context import locality_filter
 
 RESIDENCE_FIELDS = ('residence_locality',)
 PURCHASE_FIELDS = ('desired_region_location', 'desired_district_location', 'desired_locality')
 CUSTOMER_LOCATION_FIELDS = RESIDENCE_FIELDS + PURCHASE_FIELDS + (
-    'residence_uses_canonical_location', 'purchase_uses_canonical_locations', 'desired_financial_region',
+    'residence_uses_canonical_location', 'purchase_uses_canonical_locations', 'desired_financial_region_id',
     'desired_financial_region_location',
 )
 CUSTOMER_LOCATION_RELATED = (
@@ -23,20 +24,35 @@ CUSTOMER_LOCATION_RELATED = (
 
 def with_financial_region(queryset):
     """Load a missing Location projection without extra profile queries."""
+    legacy_city_region = legacy_catalog('city').filter(legacy_id=OuterRef('desired_city_id')).values('legacy_region_id')
     legacy_id = Coalesce('desired_financial_region_id', Case(
-        When(purchase_uses_canonical_locations=False, then=F('desired_city__region_id')),
+        When(purchase_uses_canonical_locations=False, then=Subquery(legacy_city_region[:1])),
         output_field=BigIntegerField(),
     ), output_field=BigIntegerField())
     mapped = LegacyLocationMapping.objects.filter(
         model_name='region', legacy_id=OuterRef('effective_legacy_financial_region'),
         location__location_type__category='region',
     ).annotate(territory=JSONObject(id='location_id', name='location__name')).values('territory')
-    return queryset.alias(effective_legacy_financial_region=legacy_id).annotate(
+    return with_legacy_residence(queryset).annotate(
+        effective_legacy_financial_region=legacy_id,
+        retained_purchase_city_name=_retained_label('city', 'desired_city_id'),
+        retained_purchase_district_name=_retained_label('district', 'desired_district_id'),
+    ).annotate(
         mapped_financial_region=Case(
             When(desired_financial_region_location_id__isnull=True, then=Subquery(mapped[:1])),
             output_field=JSONField(),
         ),
     )
+
+
+def _retained_label(model_name, field):
+    """Project one exact legacy label from its namespace."""
+    return Subquery(legacy_catalog(model_name).filter(legacy_id=OuterRef(field)).values('legacy_name')[:1])
+
+
+def with_legacy_residence(queryset):
+    """Load the retained city label for display and server sorting."""
+    return queryset.annotate(retained_residence_name=_retained_label('city', 'residence_city_id'))
 
 
 def _mapped_territory(model_name, identifier):
@@ -92,20 +108,31 @@ def validate_customer_locations(customer):
         _validate_purchase(customer, customer)
 
 
+def validate_legacy_purchase(customer):
+    """Validate a legacy cascade against the registry's preserved parent IDs."""
+    if customer.desired_city_id is None or customer.desired_district_id is None:
+        return
+    district_city_id = legacy_catalog('district').filter(legacy_id=customer.desired_district_id).values_list(
+        'legacy_city_id', flat=True,
+    ).first()
+    if district_city_id is not None and district_city_id != customer.desired_city_id:
+        raise ValidationError({'desired_district_id': 'Район должен относиться к выбранному городу.'})
+
+
 def prepare_customer_locations(customer, changed_fields, previous=None):
     """Apply only explicitly submitted location changes, retaining legacy snapshots."""
     changed = set(changed_fields)
     if changed.intersection(RESIDENCE_FIELDS):
-        if 'residence_city' in changed:
+        if 'residence_city_id' in changed:
             raise ValidationError({'residence_locality': 'Передайте новый населённый пункт отдельно от старого города.'})
         _validate_territory(customer, 'residence_locality', 'locality', previous)
         customer.residence_uses_canonical_location = True
-    elif 'residence_city' in changed:
+    elif 'residence_city_id' in changed:
         customer.residence_locality = _mapped_territory('city', customer.residence_city_id)
         customer.residence_uses_canonical_location = customer.residence_city_id is None or customer.residence_locality is not None
 
     if changed.intersection(PURCHASE_FIELDS):
-        if changed.intersection({'desired_city', 'desired_district'}):
+        if changed.intersection({'desired_city_id', 'desired_district_id'}):
             raise ValidationError({'desired_locality': 'Передайте новые территории отдельно от старых города и района.'})
         target = customer.desired_locality or customer.desired_district_location
         if target and not customer.desired_region_location:
@@ -128,14 +155,13 @@ def prepare_customer_locations(customer, changed_fields, previous=None):
             else:
                 customer.desired_financial_region_id = None
         customer.purchase_uses_canonical_locations = True
-    elif changed.intersection({'desired_city', 'desired_district'}):
-        if customer.desired_city_id and customer.desired_district_id and customer.desired_district.city_id != customer.desired_city_id:
-            raise ValidationError({'desired_district': 'Район должен относиться к выбранному городу.'})
+    elif changed.intersection({'desired_city_id', 'desired_district_id'}):
+        validate_legacy_purchase(customer)
         customer.desired_locality = _mapped_territory('city', customer.desired_city_id)
         customer.desired_district_location = _mapped_territory('district', customer.desired_district_id)
         target = customer.desired_locality or customer.desired_district_location
         customer.desired_region_location = _region_of(target) if target else None
-        customer.desired_financial_region_id = customer.desired_city.region_id if customer.desired_city_id else None
+        customer.desired_financial_region_id = customer.legacy_purchase_region_id()
         customer.desired_financial_region_location = _mapped_territory('region', customer.desired_financial_region_id)
         customer.purchase_uses_canonical_locations = (
             (customer.desired_city_id is None or customer.desired_locality is not None)

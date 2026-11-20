@@ -11,6 +11,7 @@ from api_v1.test_complex_localities import locality_catalog
 from api_v1.test_location_import import import_user
 from api_v1.test_real_estate_complexes import complex_catalog
 from api_v1.serializers import ManualCalculationPropertySerializer
+from location.tests.legacy_fixtures import legacy_district_for
 from location.compatibility import canonical_legacy_location
 from location.models import City, LegacyLocationMapping, Location, LocationClosure
 from property.location_context import set_primary_location
@@ -113,7 +114,7 @@ def test_homepage_map_labels_and_legacy_city_link(client, filtered_catalog):
         assert row['locationLabel'] == f'{locality.name}, {locality.parent.name}, Санкт-Петербург'
 
     locality, project, _, _ = filtered_catalog['pushkin']
-    old_city = City.objects.create(name='Пушкин', region=filtered_catalog['legacy'].district.city.region)
+    old_city = City.objects.create(name='Пушкин', region=legacy_district_for(filtered_catalog['legacy']).city.region)
     LegacyLocationMapping.objects.create(model_name='city', legacy_id=old_city.pk, location=locality)
     canonical_legacy_location(old_city)
     data = client.get(url, {'canonicalLocations': 'true', 'city': old_city.pk}).json()

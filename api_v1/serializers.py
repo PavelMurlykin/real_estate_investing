@@ -22,7 +22,7 @@ from customer.models import Customer
 from customer.location_service import CUSTOMER_LOCATION_FIELDS, prepare_customer_locations
 from location.legacy_catalog import LEGACY_GEOGRAPHY_MODELS, legacy_catalog, save_legacy_catalog_entry
 from location.presentation import geographic_label
-from location.models import City, District, LegacyLocationMapping, Location, Metro, MetroLine, MetroSystem
+from location.models import LegacyLocationMapping, Location, Metro, MetroLine, MetroSystem
 from property.location_context import (
     building_geography_prefetch, locality_filter, prefetch_complex_geography,
     resolve_legacy_district_edit, set_primary_location,
@@ -2022,6 +2022,30 @@ class CustomerFormOptionsQuerySerializer(serializers.Serializer):
     canonicalLocations = serializers.BooleanField(default=False)
 
 
+class LegacyLocationIdField(serializers.IntegerField):
+    """Accept the retained ID of an entry in the old public geography API."""
+
+    default_error_messages = {
+        'does_not_exist': serializers.PrimaryKeyRelatedField.default_error_messages['does_not_exist'],
+    }
+
+    def __init__(self, model_name, **kwargs):
+        """Configure the registry namespace independently of the Location ID."""
+        super().__init__(min_value=1, max_value=2**63 - 1, **kwargs)
+        self.model_name = model_name
+
+    def to_internal_value(self, value):
+        """Validate the old ID against the currently visible aliases."""
+        identifier = super().to_internal_value(value)
+        if not legacy_catalog(self.model_name).filter(legacy_id=identifier).exists():
+            self.fail('does_not_exist', pk_value=identifier)
+        return identifier
+
+    def run_validation(self, data=serializers.empty):
+        """Keep an empty legacy selector equivalent to an explicit null."""
+        return super().run_validation(None if data == '' else data)
+
+
 class CustomerWriteSerializer(serializers.ModelSerializer):
     """Validate and atomically persist a customer form payload."""
 
@@ -2034,13 +2058,13 @@ class CustomerWriteSerializer(serializers.ModelSerializer):
         'last_name': 'lastName',
         'birth_date': 'birthDate',
         'birth_year': 'birthYear',
-        'residence_city': 'residenceCityId',
+        'residence_city_id': 'residenceCityId',
         'initial_payment_amount': 'initialPaymentAmount',
         'max_monthly_payment': 'maximumMonthlyPayment',
         'has_owned_property': 'hasOwnedProperty',
         'purchase_goal': 'purchaseGoal',
-        'desired_city': 'desiredCityId',
-        'desired_district': 'desiredDistrictId',
+        'desired_city_id': 'desiredCityId',
+        'desired_district_id': 'desiredDistrictId',
         'area_min': 'areaMinimum',
         'area_max': 'areaMaximum',
         'desired_floor': 'desiredFloor',
@@ -2054,13 +2078,13 @@ class CustomerWriteSerializer(serializers.ModelSerializer):
         'age',
         'birth_date',
         'birth_year',
-        'residence_city',
+        'residence_city_id',
         'initial_payment_amount',
         'max_monthly_payment',
         'has_owned_property',
         'purchase_goal',
-        'desired_city',
-        'desired_district',
+        'desired_city_id',
+        'desired_district_id',
         'area_min',
         'area_max',
         'desired_floor',
@@ -2117,9 +2141,8 @@ class CustomerWriteSerializer(serializers.ModelSerializer):
         max_value=32767,
         write_only=True,
     )
-    residenceCityId = serializers.PrimaryKeyRelatedField(
-        source='residence_city',
-        queryset=City.objects.all(),
+    residenceCityId = LegacyLocationIdField(
+        'city', source='residence_city_id',
         required=False,
         allow_null=True,
         write_only=True,
@@ -2178,16 +2201,14 @@ class CustomerWriteSerializer(serializers.ModelSerializer):
         allow_blank=True,
         write_only=True,
     )
-    desiredCityId = serializers.PrimaryKeyRelatedField(
-        source='desired_city',
-        queryset=City.objects.all(),
+    desiredCityId = LegacyLocationIdField(
+        'city', source='desired_city_id',
         required=False,
         allow_null=True,
         write_only=True,
     )
-    desiredDistrictId = serializers.PrimaryKeyRelatedField(
-        source='desired_district',
-        queryset=District.objects.all(),
+    desiredDistrictId = LegacyLocationIdField(
+        'district', source='desired_district_id',
         required=False,
         allow_null=True,
         write_only=True,
@@ -2453,7 +2474,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         read_only=True,
     )
     residenceCity = serializers.CharField(
-        source='residence_city.name',
+        source='legacy_residence_city_name',
         allow_null=True,
         read_only=True,
     )
@@ -2492,7 +2513,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         method_name='get_purchase_goal_label'
     )
     desiredCity = serializers.CharField(
-        source='desired_city.name',
+        source='legacy_desired_city_name',
         allow_null=True,
         read_only=True,
     )
@@ -2502,7 +2523,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         read_only=True,
     )
     desiredDistrict = serializers.CharField(
-        source='desired_district.name',
+        source='legacy_desired_district_name',
         allow_null=True,
         read_only=True,
     )
@@ -3120,9 +3141,8 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
     developerId = serializers.PrimaryKeyRelatedField(
         source='developer', queryset=Developer.objects.all()
     )
-    districtId = serializers.PrimaryKeyRelatedField(
-        source='district',
-        queryset=District.objects.select_related('city__region'),
+    districtId = LegacyLocationIdField(
+        'district', source='district_id',
         required=False, allow_null=True,
     )
     locationId = serializers.PrimaryKeyRelatedField(
@@ -3290,9 +3310,8 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
             )
 
         location = attributes.get('locationId')
-        district = attributes.get('district')
-        district_id = district.pk if district else None
-        if real_estate_complex and 'district' not in attributes:
+        district_id = attributes.get('district_id')
+        if real_estate_complex and 'district_id' not in attributes:
             district_id = real_estate_complex.district_id
         territory = location or (real_estate_complex.primary_location if real_estate_complex else None)
         for field in ['regionLocationId', 'districtLocationId']:
@@ -3306,7 +3325,7 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
         if territory is None and district_id is None:
             raise serializers.ValidationError({'locationId': 'Выберите населённый пункт.'})
         if location is None and attributes.get('metroAvailability') and district_id:
-            city_id = district.city_id if district else LegacyLocationMapping.objects.filter(
+            city_id = LegacyLocationMapping.objects.filter(
                 model_name='district', legacy_id=district_id,
             ).values_list('legacy_city_id', flat=True).first()
             for row in attributes['metroAvailability']:
@@ -3514,8 +3533,9 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
         gallery['removed_main_name'] = removed_main_name
 
         with complex_photo_transaction() as saved_files:
-            district = validated_data.get('district')
-            if location is None and district and instance.district_id != district.pk:
+            district_id = validated_data.get('district_id')
+            if location is None and district_id and instance.district_id != district_id:
+                district = legacy_catalog('district').select_related('location').get(legacy_id=district_id)
                 location = resolve_legacy_district_edit(instance.pk, district)
             real_estate_complex = super().update(instance, validated_data)
             if location is not None:

@@ -127,7 +127,7 @@ class HomepageComplexListAPIView(ListAPIView):
         return RealEstateComplex.objects.filter(
             Q(district_id__in=legacy_choices('district', city_id=self.selected_city.legacy_id, active_only=True)
               .order_by().values('legacy_id'))
-            | Q(district__isnull=True, location_links__is_primary=True,
+            | Q(district_id__isnull=True, location_links__is_primary=True,
                 location_links__location__ancestor_links__ancestor__legacy_mappings__model_name='city',
                 location_links__location__ancestor_links__ancestor__legacy_mappings__legacy_id=self.selected_city.legacy_id),
             is_active=True,

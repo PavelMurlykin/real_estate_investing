@@ -38,7 +38,8 @@ class CustomerAdmin(admin.ModelAdmin):
 
     form = CustomerAdminForm
     readonly_fields = (
-        'residence_city', 'desired_city', 'desired_district', 'desired_financial_region',
+        'legacy_residence_city_name', 'legacy_desired_city_name', 'legacy_desired_district_name',
+        'desired_financial_region_id',
         'residence_uses_canonical_location', 'purchase_uses_canonical_locations',
     )
     list_display = (

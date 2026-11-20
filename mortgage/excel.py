@@ -233,8 +233,8 @@ def _build_property_rows(excel_data):
         mortgage_data = excel_data.mortgage_data
         property_rows.extend(
             [
-                ['Город', mortgage_data['OBJECT_CITY'].name],
-                ['Район', mortgage_data['OBJECT_DISTRICT'].name],
+                ['Город', mortgage_data['OBJECT_CITY'].legacy_name if mortgage_data['OBJECT_CITY'] else ''],
+                ['Район', mortgage_data['OBJECT_DISTRICT'].legacy_name if mortgage_data['OBJECT_DISTRICT'] else ''],
                 ['Застройщик', mortgage_data['OBJECT_DEVELOPER'].name],
                 ['Жилой комплекс', mortgage_data['OBJECT_COMPLEX'].name],
                 ['Корпус', mortgage_data['OBJECT_BUILDING'].number],

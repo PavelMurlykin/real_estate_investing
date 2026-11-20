@@ -1,5 +1,6 @@
 import base64
 import json
+from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
 from decimal import Decimal
 from io import BytesIO
 from pathlib import Path
@@ -307,7 +308,7 @@ def test_photo_selection_rejects_foreign_photo(client, complex_catalog):
     """A photo ID from another complex cannot change the requested card."""
     complex_object = complex_catalog['complex']
     other = RealEstateComplex.objects.create(
-        name='Другой', developer=complex_object.developer, district=complex_object.district,
+        name='Другой', developer=complex_object.developer, district_id=registered_legacy_id(legacy_district_for(complex_object)),
         real_estate_class=complex_object.real_estate_class,
         real_estate_type=complex_object.real_estate_type,
     )

@@ -6,7 +6,6 @@ from django.db import transaction
 from django.db.models import Prefetch, Q, prefetch_related_objects
 
 from location.catalog_service import lock_location_catalog
-from location.compatibility import canonical_legacy_location
 from location.models import LegacyLocationMapping, LocationClosure
 
 
@@ -154,7 +153,7 @@ def resolve_legacy_district_edit(complex_id, district):
 
     lock_location_catalog()
     previous = RealEstateComplex.objects.select_for_update().get(pk=complex_id)
-    if previous.district_id == district.pk:
+    if previous.district_id == district.legacy_id:
         return None
     primary = previous.primary_location
     if primary is None or (
@@ -162,7 +161,7 @@ def resolve_legacy_district_edit(complex_id, district):
             model_name='district', legacy_id=previous.district_id,
         ).exists()
     ):
-        return canonical_legacy_location(district)
+        return district.location
     return None
 
 

@@ -80,7 +80,7 @@ from bank.models import (
     MortgageProgram,
     MortgageProgramRegionalCreditLimit,
 )
-from customer.location_service import CUSTOMER_LOCATION_RELATED, with_financial_region
+from customer.location_service import CUSTOMER_LOCATION_RELATED, with_financial_region, with_legacy_residence
 from customer.models import (
     Customer,
     CustomerCalculation,
@@ -3078,8 +3078,10 @@ class RealEstateComplexListCreateAPIView(ListCreateAPIView):
             f'{ordering_prefix}{ordering_field}', 'name', 'pk'
         )
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         """Create a complex and return its complete public representation."""
+        lock_location_catalog()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         real_estate_complex = serializer.save()
@@ -3114,8 +3116,10 @@ class RealEstateComplexDetailAPIView(RetrieveUpdateDestroyAPIView):
             return RealEstateComplexDetailSerializer
         return RealEstateComplexWriteSerializer
 
+    @transaction.atomic
     def update(self, request, *args, **kwargs):
         """Update a complex and return its refreshed public card."""
+        lock_location_catalog()
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         serializer = self.get_serializer(
@@ -3675,6 +3679,12 @@ class CustomerListAPIView(ListCreateAPIView):
         """Create a customer owned by the authenticated request user."""
         serializer.save()
 
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        """Keep old address identities valid while creating a profile."""
+        lock_location_catalog()
+        return super().create(request, *args, **kwargs)
+
     def get_queryset(self):
         """Apply validated customer filters and deterministic ordering."""
         query_serializer = CustomerListQuerySerializer(
@@ -3682,12 +3692,12 @@ class CustomerListAPIView(ListCreateAPIView):
         )
         query_serializer.is_valid(raise_exception=True)
         filters = query_serializer.validated_data
-        queryset = _customer_queryset(self.request.user).select_related(
-            'residence_city', 'residence_locality',
+        queryset = with_legacy_residence(_customer_queryset(self.request.user)).select_related(
+            'residence_locality',
             'residence_locality__location_type', 'residence_locality__parent', 'residence_locality__region',
         ).annotate(residence_location_sort=Case(
             When(residence_uses_canonical_location=True, then=F('residence_locality__name')),
-            default=F('residence_city__name'), output_field=CharField(),
+            default=F('retained_residence_name'), output_field=CharField(),
         ))
         search = filters.get('q', '')
         if search:
@@ -3716,6 +3726,12 @@ class CustomerDetailAPIView(RetrieveUpdateDestroyAPIView):
     serializer_class = CustomerDetailSerializer
     permission_classes = (IsAuthenticated,)
 
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        """Resolve and save the owner-scoped profile in a single transaction."""
+        lock_location_catalog()
+        return super().update(request, *args, **kwargs)
+
     def get_serializer_class(self):
         """Use the private read or write serializer for the HTTP method."""
         if self.request.method in {'PUT', 'PATCH'}:
@@ -3727,9 +3743,6 @@ class CustomerDetailAPIView(RetrieveUpdateDestroyAPIView):
         return (
             with_financial_region(_customer_queryset(self.request.user))
             .select_related(
-                'residence_city',
-                'desired_city__region',
-                'desired_district',
                 *CUSTOMER_LOCATION_RELATED,
             )
             .prefetch_related(

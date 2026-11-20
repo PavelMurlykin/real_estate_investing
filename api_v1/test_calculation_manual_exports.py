@@ -7,6 +7,7 @@ from django.test import Client
 from django.urls import reverse
 from docx import Document
 
+from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
 from location.models import City
 from mortgage.models import MortgageCalculation
 from property.models import Property
@@ -22,7 +23,7 @@ def manual_parameters(property_object, apartment_number='NEW-42'):
     """Return complete object inputs without relying on a persisted apartment."""
     complex_object = property_object.building.real_estate_complex
     return {
-        'cityId': complex_object.district.city_id,
+        'cityId': legacy_district_for(complex_object).city_id,
         'districtId': complex_object.district_id,
         'developerId': complex_object.developer_id,
         'realEstateComplexId': complex_object.pk,
@@ -109,9 +110,9 @@ def test_manual_save_requires_catalog_permissions_and_is_atomic(
 def test_manual_object_rejects_inconsistent_cascades(client, saved_calculation_property):
     """Validate the same district/city relationships as the Django form."""
     manual = manual_parameters(saved_calculation_property)
-    city = saved_calculation_property.building.real_estate_complex.district.city
+    city = legacy_district_for(saved_calculation_property.building.real_estate_complex).city
     other_city = City.objects.create(name='Другой город', region=city.region)
-    manual['cityId'] = other_city.pk
+    manual['cityId'] = registered_legacy_id(other_city)
     response = client.post(reverse('api_v1:mortgage_calculate'),
         build_mortgage_payload(manualProperty=manual), content_type='application/json')
     assert response.status_code == 400

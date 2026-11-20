@@ -108,13 +108,16 @@ def register_legacy_mapping(model_name, legacy_id, reference, *, parent=None):
     return mapping
 
 
-def bind_new_complex(sender, instance, created, raw=False, **kwargs):
+def bind_new_complex(sender, instance, created, raw=False, using='default', **kwargs):
     """Initialize new complexes with the same district binding as the migration."""
     if not created or raw or not instance.district_id:
         return
     from property.models import RealEstateComplexLocation
 
-    RealEstateComplexLocation.objects.get_or_create(
-        real_estate_complex=instance, is_primary=True,
-        defaults={'location': canonical_legacy_location(instance.district)},
-    )
+    location_id = LegacyLocationMapping.objects.using(using).filter(
+        model_name='district', legacy_id=instance.district_id,
+    ).values_list('location_id', flat=True).first()
+    if location_id is not None:
+        RealEstateComplexLocation.objects.using(using).get_or_create(
+            real_estate_complex=instance, is_primary=True, defaults={'location_id': location_id},
+        )

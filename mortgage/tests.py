@@ -19,6 +19,7 @@ from bank.models import (
     MortgageProgramRegionalCreditLimit,
 )
 from customer.models import Customer, CustomerTrenchCalculation
+from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
 from location.models import City, District, Region
 from mortgage.forms import MortgageForm
 from mortgage.models import MortgageCalculation
@@ -70,7 +71,7 @@ def create_property_for_calculator_prefill():
     real_estate_complex = RealEstateComplex.objects.create(
         name='Prefill Complex',
         developer=developer,
-        district=district,
+        district_id=registered_legacy_id(district),
         real_estate_class=estate_class,
         real_estate_type=estate_type,
     )
@@ -106,7 +107,7 @@ def test_mortgage_calculator_prefills_property_data_from_query_parameter(
     assert response.status_code == 200
     form_initial = response.context['mortgage_form'].initial
     real_estate_complex = property_obj.building.real_estate_complex
-    district = real_estate_complex.district
+    district = legacy_district_for(real_estate_complex)
     assert form_initial['PROPERTY'] == property_obj.pk
     assert form_initial['PROPERTY_COST'] == property_obj.property_cost
     assert form_initial['OBJECT_CITY'] == district.city_id
@@ -220,7 +221,7 @@ class MortgageCalculatorViewTests(TestCase):
             name=complex_name,
             map_link='https://maps.example.com/complex',
             developer=developer,
-            district=district,
+            district_id=registered_legacy_id(district),
             real_estate_class=estate_class,
             real_estate_type=estate_type,
         )
@@ -505,7 +506,7 @@ class MortgageCalculatorViewTests(TestCase):
         )
         MortgageProgramRegionalCreditLimit.objects.create(
             mortgage_program=preferential_program,
-            region_id=self.property.building.real_estate_complex.district.city.region.pk, legacy_region_name=self.property.building.real_estate_complex.district.city.region.name,
+            region_id=legacy_district_for(self.property.building.real_estate_complex).city.region.pk, legacy_region_name=legacy_district_for(self.property.building.real_estate_complex).city.region.name,
             credit_limit=Decimal('12000000'),
         )
         BankProgram.objects.create(
@@ -762,8 +763,7 @@ class MortgageCalculatorViewTests(TestCase):
         )
         self._create_calculation(property_obj=kazan_property)
         moscow_city = (
-            moscow_calculation.property.building.real_estate_complex
-            .district.city
+            legacy_district_for(moscow_calculation.property.building.real_estate_complex).city
         )
 
         response = self.client.get(
@@ -794,7 +794,7 @@ class MortgageCalculatorViewTests(TestCase):
             {'sort': 'city', 'order': 'asc'},
         )
         cities = [
-            calculation.property.building.real_estate_complex.district.city.name
+            legacy_district_for(calculation.property.building.real_estate_complex).city.name
             for calculation in response.context['calculations']
         ]
 
@@ -1091,8 +1091,7 @@ class MortgageCalculatorViewTests(TestCase):
         )
         self._create_trench_calculation(property_obj=kazan_property)
         moscow_city = (
-            moscow_calculation.property.building.real_estate_complex
-            .district.city
+            legacy_district_for(moscow_calculation.property.building.real_estate_complex).city
         )
 
         response = self.client.get(
@@ -1849,10 +1848,10 @@ class MortgageCalculatorViewTests(TestCase):
                 'PROPERTY': '',
                 'PROPERTY_COST': '7000000',
                 'OBJECT_CITY': (
-                    self.property.building.real_estate_complex.district.city.pk
+                    legacy_district_for(self.property.building.real_estate_complex).city.pk
                 ),
                 'OBJECT_DISTRICT': (
-                    self.property.building.real_estate_complex.district.pk
+                    legacy_district_for(self.property.building.real_estate_complex).pk
                 ),
                 'OBJECT_DEVELOPER': (
                     self.property.building.real_estate_complex.developer.pk
@@ -1888,10 +1887,10 @@ class MortgageCalculatorViewTests(TestCase):
                 'PROPERTY': '',
                 'PROPERTY_COST': '7000000',
                 'OBJECT_CITY': (
-                    self.property.building.real_estate_complex.district.city.pk
+                    legacy_district_for(self.property.building.real_estate_complex).city.pk
                 ),
                 'OBJECT_DISTRICT': (
-                    self.property.building.real_estate_complex.district.pk
+                    legacy_district_for(self.property.building.real_estate_complex).pk
                 ),
                 'OBJECT_DEVELOPER': (
                     self.property.building.real_estate_complex.developer.pk
@@ -2193,7 +2192,7 @@ class MortgageCalculatorViewTests(TestCase):
         self.assertEqual(payload['property_cost'], '5000000.00')
         self.assertEqual(
             payload['city_id'],
-            self.property.building.real_estate_complex.district.city.pk,
+            legacy_district_for(self.property.building.real_estate_complex).city.pk,
         )
         self.assertEqual(
             payload['building_id'],

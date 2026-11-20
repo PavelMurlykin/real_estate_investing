@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 from django.db import connection
-from django.db.models import Count, IntegerField, OuterRef, Subquery, Value
+from django.db.models import Count, IntegerField, OuterRef, Q, Subquery, Value
 from django.db.models.deletion import ProtectedError
 from django.db.models.functions import Coalesce
 from django.utils import timezone
@@ -55,14 +55,29 @@ def unique_legacy_region(location_id):
     return aliases[0] if len(aliases) == 1 else (None, '')
 
 
-def protected_region_references(region_ids, *, using='default'):
-    """List business links that still expose the old ID after detaching their keys."""
+def protected_legacy_references(model_name, identifiers, *, using='default'):
+    """Preserve references formerly enforced by the old geography keys."""
     from bank.models import MortgageProgramRegionalCreditLimit
-    from property.models import DeveloperRegion
+    from customer.models import Customer
+    from property.models import DeveloperRegion, RealEstateComplex
 
-    links = DeveloperRegion.objects.using(using).filter(region_id__in=region_ids)
-    limits = MortgageProgramRegionalCreditLimit.objects.using(using).filter(region_id__in=region_ids)
-    return [*links.select_related('developer', 'location'), *limits.select_related('mortgage_program', 'region_location')]
+    from .models import MetroLine
+
+    if model_name == 'region':
+        links = DeveloperRegion.objects.using(using).filter(region_id__in=identifiers)
+        limits = MortgageProgramRegionalCreditLimit.objects.using(using).filter(region_id__in=identifiers)
+        customers = Customer.objects.using(using).filter(desired_financial_region_id__in=identifiers)
+        return [*links.select_related('developer', 'location'),
+                *limits.select_related('mortgage_program', 'region_location'), *customers.only('pk')[:1]]
+    if model_name == 'city':
+        lines = MetroLine.objects.using(using).filter(legacy_city_id__in=identifiers).select_related('system')
+        customers = Customer.objects.using(using).filter(
+            Q(residence_city_id__in=identifiers) | Q(desired_city_id__in=identifiers),
+        )
+        return [*lines, *customers.only('pk')[:1]]
+    complexes = RealEstateComplex.objects.using(using).filter(district_id__in=identifiers)
+    customers = Customer.objects.using(using).filter(desired_district_id__in=identifiers)
+    return [*complexes, *customers.only('pk')[:1]]
 
 
 def _reserve_legacy_id(model):

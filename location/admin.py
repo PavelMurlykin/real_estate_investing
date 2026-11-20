@@ -3,7 +3,7 @@ from django.db import transaction
 
 from .catalog_service import lock_location_catalog
 from .compatibility import canonical_legacy_location
-from .legacy_catalog import protected_region_references
+from .legacy_catalog import protected_legacy_references
 from .models import City, District, Location, Metro, MetroLine, MetroSystem, Region
 from .metro_forms import MetroForm, MetroLineForm, MetroSystemForm
 
@@ -17,6 +17,17 @@ class LegacyLocationAdmin(admin.ModelAdmin):
         lock_location_catalog()
         super().save_model(request, obj, form, change)
         canonical_legacy_location(obj)
+
+    def get_deleted_objects(self, objects, request):
+        """Show retained references on the confirmation page."""
+        deleted, counts, permissions, protected = super().get_deleted_objects(objects, request)
+        references = protected_legacy_references(self.model._meta.model_name, [record.pk for record in objects])
+        for reference in references:
+            if reference._meta.label_lower == 'customer.customer':
+                protected.append('Территория используется в профилях клиентов.')
+            else:
+                protected.append(str(reference))
+        return deleted, counts, permissions, protected
 
 
 @admin.register(Region)
@@ -33,12 +44,6 @@ class RegionAdmin(LegacyLocationAdmin):
     list_editable = ('is_active',)
     ordering = ('name',)
 
-    def get_deleted_objects(self, objects, request):
-        """Keep retained business links visible on the admin confirmation page."""
-        deleted, counts, permissions, protected = super().get_deleted_objects(objects, request)
-        protected.extend(map(str, protected_region_references([region.pk for region in objects])))
-        return deleted, counts, permissions, protected
-
 
 @admin.register(City)
 class CityAdmin(LegacyLocationAdmin):
@@ -53,14 +58,6 @@ class CityAdmin(LegacyLocationAdmin):
     search_fields = ('name', 'region__name')
     list_editable = ('is_active',)
     ordering = ('name',)
-
-    def get_deleted_objects(self, objects, request):
-        """Show retained metro references before confirming deletion."""
-        deleted, counts, permissions, protected = super().get_deleted_objects(objects, request)
-        protected.extend(str(line) for line in MetroLine.objects.filter(
-            legacy_city_id__in=[city.pk for city in objects],
-        ).select_related('system'))
-        return deleted, counts, permissions, protected
 
 
 @admin.register(District)

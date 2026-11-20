@@ -25,6 +25,7 @@ def ensure_isolated_database():
 
 def create_property_fixture():
     """Create an idempotent synthetic property graph for saved calculations."""
+    from location.compatibility import canonical_legacy_location
     from location.models import City, District, Region
     from property.models import (
         ApartmentDecoration,
@@ -42,6 +43,7 @@ def create_property_fixture():
     )
     city, _ = City.objects.get_or_create(name='E2E город', region=region)
     district, _ = District.objects.get_or_create(name='E2E район', city=city)
+    canonical_legacy_location(district)
     developer, _ = Developer.objects.get_or_create(name='E2E застройщик')
     real_estate_type, _ = RealEstateType.objects.get_or_create(name='E2E квартира')
     real_estate_class, _ = RealEstateClass.objects.get_or_create(
@@ -51,7 +53,7 @@ def create_property_fixture():
         name='E2E квартал',
         developer=developer,
         defaults={
-            'district': district,
+            'district_id': district.pk,
             'real_estate_class': real_estate_class,
             'real_estate_type': real_estate_type,
         },
@@ -153,7 +155,7 @@ def seed_acceptance_fixtures():
         )
         metro_line, _ = MetroLine.objects.get_or_create(
             line='E2E линия',
-            legacy_city_id=real_estate_complex.district.city_id,
+            legacy_city_id=real_estate_complex.geography.city_id,
             defaults={'line_color': '#336699'},
         )
         return {
@@ -175,6 +177,7 @@ def create_geography_fixture(property_object):
     """Seed a small official extract only inside the guarded acceptance database."""
     ensure_isolated_database()
     from django.apps import apps
+    from location.compatibility import canonical_legacy_location
     from location.gar_import import load_region
     from location.migration_support import backfill_locations
     from location.models import City, District, Location, Region
@@ -184,10 +187,11 @@ def create_geography_fixture(property_object):
     city, _ = City.objects.get_or_create(name='Санкт-Петербург', region=region)
     district, _ = District.objects.get_or_create(name='Пушкинский район', city=city)
     District.objects.get_or_create(name='Петродворцовый район', city=city)
+    canonical_legacy_location(district)
     source_complex = property_object.building.real_estate_complex
     complex_object, _ = RealEstateComplex.objects.get_or_create(
         name='E2E пригородный квартал', developer=source_complex.developer,
-        defaults={'district': district, 'real_estate_class': source_complex.real_estate_class,
+        defaults={'district_id': district.pk, 'real_estate_class': source_complex.real_estate_class,
                   'real_estate_type': source_complex.real_estate_type},
     )
     building, _ = RealEstateComplexBuilding.objects.get_or_create(real_estate_complex=complex_object, number='1')

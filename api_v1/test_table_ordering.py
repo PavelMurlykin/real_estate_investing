@@ -1,6 +1,7 @@
 import pytest
 from django.urls import reverse
 
+from location.tests.legacy_fixtures import registered_legacy_id
 from bank.models import BankProgram
 from customer.models import Customer
 from property.models import ApartmentLayout, DeveloperRegion
@@ -54,7 +55,7 @@ def test_visible_columns_support_both_server_sort_directions(
     ApartmentLayout.objects.create(name='Проверка сортировки')
     Customer.objects.create(
         user=owner, first_name='Клиент', phone='+79990000001',
-        residence_city=location_dictionary_catalog['cities'],
+        residence_city_id=registered_legacy_id(location_dictionary_catalog['cities']),
     )
     for field in fields:
         for prefix in ('', '-'):

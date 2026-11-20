@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.db.models import Q
 
-from location.models import City
+from location.legacy_catalog import LegacyImportScope, legacy_choices
 from property.models import RealEstateComplex
 from property.location_context import geography_prefetch
 
@@ -14,7 +14,7 @@ CITY_PREPOSITIONAL_CASE = {
 
 def index(request):
     """Render the homepage with complexes for the selected city."""
-    cities = list(City.objects.filter(is_active=True).order_by('name'))
+    cities = [LegacyImportScope.from_mapping(alias) for alias in legacy_choices('city', active_only=True)]
     selected_city = None
 
     city_id = request.GET.get('city')
@@ -39,16 +39,15 @@ def index(request):
     if selected_city:
         complexes = list(
             RealEstateComplex.objects.filter(
-                Q(district__is_active=True, district__city=selected_city,
-                  district__city__is_active=True)
-                | Q(district__isnull=True, location_links__is_primary=True,
+                Q(district_id__in=legacy_choices('district', city_id=selected_city.pk, active_only=True)
+                  .values('legacy_id'))
+                | Q(district_id__isnull=True, location_links__is_primary=True,
                     location_links__location__ancestor_links__ancestor__legacy_mappings__model_name='city',
                     location_links__location__ancestor_links__ancestor__legacy_mappings__legacy_id=selected_city.pk),
                 is_active=True,
             )
             .select_related(
                 'developer',
-                'district__city__region',
                 'real_estate_class',
                 'real_estate_type',
             )

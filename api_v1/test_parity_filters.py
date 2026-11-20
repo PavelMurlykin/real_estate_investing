@@ -1,3 +1,4 @@
+from location.tests.legacy_fixtures import legacy_district_for
 from decimal import Decimal
 
 import pytest
@@ -17,7 +18,7 @@ def test_property_filters_combine_exact_numbers_and_identifiers(
     apartment = property_catalog[0]
     complex_object = apartment.building.real_estate_complex
     filters = {
-        'city': complex_object.district.city_id,
+        'city': legacy_district_for(complex_object).city_id,
         'developer': complex_object.developer_id,
         'realEstateComplex': complex_object.pk,
         'building': apartment.building_id,

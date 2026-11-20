@@ -3,7 +3,7 @@ from datetime import date, datetime
 
 from django import forms
 
-from location.models import City, District
+from location.legacy_form_fields import LegacyLocationChoiceField
 from mortgage.validators import (
     MORTGAGE_DATE_RANGE_ERROR,
     is_mortgage_end_date_supported,
@@ -57,11 +57,11 @@ class MortgageForm(forms.Form):
     )
 
     # Legacy identifiers remain accepted for older clients only.
-    OBJECT_CITY = forms.ModelChoiceField(
-        queryset=City.objects.all(), required=False, widget=forms.HiddenInput(),
+    OBJECT_CITY = LegacyLocationChoiceField(
+        'city', required=False, widget=forms.HiddenInput(),
     )
-    OBJECT_DISTRICT = forms.ModelChoiceField(
-        queryset=District.objects.all(), required=False, widget=forms.HiddenInput(),
+    OBJECT_DISTRICT = LegacyLocationChoiceField(
+        'district', required=False, widget=forms.HiddenInput(),
     )
 
     OBJECT_DEVELOPER = DeveloperModelChoiceField(
@@ -175,10 +175,6 @@ class MortgageForm(forms.Form):
             'building__real_estate_complex__name',
             'building__number',
             'apartment_number',
-        )
-        self.fields['OBJECT_CITY'].queryset = City.objects.order_by('name')
-        self.fields['OBJECT_DISTRICT'].queryset = (
-            District.objects.select_related('city').order_by('name')
         )
         self.fields['OBJECT_DEVELOPER'].queryset = (
             get_developers_with_company_groups_queryset()
@@ -525,7 +521,7 @@ class MortgageForm(forms.Form):
             real_estate_complex = cleaned_data.get('OBJECT_COMPLEX')
             building = cleaned_data.get('OBJECT_BUILDING')
 
-            if district and city and district.city_id != city.pk:
+            if district and city and district.legacy_city_id != city.legacy_id:
                 self.add_error(
                     'OBJECT_DISTRICT',
                     'Выбранный район не относится к выбранному городу.',
@@ -540,7 +536,7 @@ class MortgageForm(forms.Form):
                         'OBJECT_COMPLEX',
                         'Выбранный ЖК не относится к выбранному застройщику.',
                     )
-                if district and real_estate_complex.district_id != district.pk:
+                if district and real_estate_complex.district_id != district.legacy_id:
                     self.add_error(
                         'OBJECT_COMPLEX',
                         'Выбранный ЖК не относится к выбранному району.',

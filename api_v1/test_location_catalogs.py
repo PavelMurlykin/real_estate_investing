@@ -12,6 +12,7 @@ from api_v1.test_location_filters import (  # noqa: F401
 )
 from api_v1.test_calculation_locations import location_calculations  # noqa: F401
 from api_v1.test_customers import customer_users  # noqa: F401
+from location.tests.legacy_fixtures import legacy_district_for
 from location.catalog_service import save_catalog_location
 from location.gar_import import load_region
 from location.models import (
@@ -219,7 +220,7 @@ def test_csrf_legacy_links_native_forms_and_bounded_queries(client, filtered_cat
     protected = Client(enforce_csrf_checks=True)
     protected.force_login(catalog_user('moderator'))
     assert protected.patch(endpoint('localities', location.pk), {'name': 'CSRF'}, content_type='application/json').status_code == 403
-    legacy = City.objects.create(name='Прежний Пушкин', region=filtered_catalog['legacy'].district.city.region, pk=900000)
+    legacy = City.objects.create(name='Прежний Пушкин', region=legacy_district_for(filtered_catalog['legacy']).city.region, pk=900000)
     LegacyLocationMapping.objects.create(model_name='city', legacy_id=legacy.pk, location=location)
     assert client.get(endpoint('localities', legacy.pk), {'legacy': 1}).json()['id'] == location.pk
     assert client.get(endpoint('localities', legacy.pk)).status_code == 404

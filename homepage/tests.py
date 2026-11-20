@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.test import TestCase
 from django.urls import reverse
 
+from location.tests.legacy_fixtures import registered_legacy_id
 from location.models import City, District, Region
 from property.models import (
     Developer,
@@ -54,7 +55,7 @@ class HomepageIndexViewTests(TestCase):
             name='ЖК СПб',
             map_link='https://yandex.ru/maps/org/spb_complex',
             developer=self.developer,
-            district=self.district_spb,
+            district_id=registered_legacy_id(self.district_spb),
             real_estate_class=self.real_estate_class,
             real_estate_type=self.real_estate_type,
         )
@@ -62,7 +63,7 @@ class HomepageIndexViewTests(TestCase):
             name='ЖК Москва',
             map_link='https://yandex.ru/maps/org/msk_complex',
             developer=self.developer,
-            district=self.district_msk,
+            district_id=registered_legacy_id(self.district_msk),
             real_estate_class=self.real_estate_class,
             real_estate_type=self.real_estate_type,
         )
@@ -80,7 +81,7 @@ class HomepageIndexViewTests(TestCase):
         response = self.client.get(reverse('homepage:index'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['selected_city'], self.city_spb)
+        self.assertEqual(response.context['selected_city'].pk, self.city_spb.pk)
         self.assertEqual(response.context['selected_view'], 'list')
         self.assertEqual(response.context['headline_city'], 'Санкт-Петербурге')
         self.assertQuerySetEqual(
@@ -118,7 +119,7 @@ class HomepageIndexViewTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['selected_city'], self.city_msk)
+        self.assertEqual(response.context['selected_city'].pk, self.city_msk.pk)
         self.assertEqual(response.context['headline_city'], 'Москве')
         self.assertQuerySetEqual(
             response.context['complexes'],
