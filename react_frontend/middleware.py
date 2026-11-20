@@ -173,6 +173,7 @@ def translate_legacy_query_parameters(view_name, parameters):
             aliases.update({
                 'filter_company_group': 'companyGroupId',
                 'filter_region': 'regionId',
+                'filter_region_location': 'regionLocationId',
             })
             ordering_fields['company_group'] = 'companyGroup'
         elif view_name == 'property:complex_list':

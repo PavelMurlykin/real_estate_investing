@@ -71,7 +71,7 @@ from bank.developer_mortgage_program_importer import (
 from bank.forms import DeveloperMortgageProgramImportForm
 from bank.key_rate_sync import KeyRateSyncError, sync_key_rates
 from bank.catalog_import import CatalogImportError, import_catalog, read_catalog_file
-from bank.limit_regions import active_limit_locations, legacy_limit_locations, limit_prefetch
+from bank.limit_regions import active_limit_locations, legacy_limit_locations, limit_prefetch, limit_region_labels
 from bank.models import (
     Bank,
     BankProgram,
@@ -2170,9 +2170,9 @@ def _mortgage_program_list_queryset():
 
 def _mortgage_program_detail_queryset():
     """Return canonical programs with bounded nested data prefetched."""
-    regional_limits = MortgageProgramRegionalCreditLimit.objects.select_related(
-        'region', 'region_location',
-    ).order_by('region__name', 'pk')
+    regional_limits = limit_region_labels(MortgageProgramRegionalCreditLimit.objects.all()).order_by(
+        'retained_region_name', 'pk',
+    )
     return _mortgage_program_list_queryset().prefetch_related(
         Prefetch(
             'regional_credit_limits',
@@ -2266,8 +2266,10 @@ class MortgageProgramListCreateAPIView(
             'pk',
         )
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         """Create a complete program and return its normalized card."""
+        lock_location_catalog()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         mortgage_program = serializer.save()
@@ -2294,8 +2296,10 @@ class MortgageProgramDetailAPIView(
         """Return the relation-efficient canonical program queryset."""
         return _mortgage_program_detail_queryset()
 
+    @transaction.atomic
     def update(self, request, *args, **kwargs):
         """Update a complete program and return its normalized card."""
+        lock_location_catalog()
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         serializer = self.get_serializer(
@@ -2881,12 +2885,13 @@ class DeveloperListCreateAPIView(ListCreateAPIView):
             'pk',
         )
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         """Create a developer and return its manager-only representation."""
+        lock_location_catalog()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        with transaction.atomic():
-            developer = serializer.save()
+        developer = serializer.save()
         developer = _developer_queryset().get(pk=developer.pk)
         return Response(
             self.get_serializer(developer).data,
@@ -2902,8 +2907,10 @@ class DeveloperDetailAPIView(RetrieveUpdateDestroyAPIView):
     queryset = _developer_queryset()
     permission_classes = (IsAuthenticated, CanManageCatalogs)
 
+    @transaction.atomic
     def update(self, request, *args, **kwargs):
         """Update a developer and return its complete representation."""
+        lock_location_catalog()
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         serializer = self.get_serializer(
@@ -2912,8 +2919,7 @@ class DeveloperDetailAPIView(RetrieveUpdateDestroyAPIView):
             partial=partial,
         )
         serializer.is_valid(raise_exception=True)
-        with transaction.atomic():
-            developer = serializer.save()
+        developer = serializer.save()
         developer = _developer_queryset().get(pk=developer.pk)
         return Response(self.get_serializer(developer).data)
 

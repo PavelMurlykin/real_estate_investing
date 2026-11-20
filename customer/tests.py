@@ -263,7 +263,7 @@ class CustomerDetailViewTests(TestCase):
         )
         MortgageProgramRegionalCreditLimit.objects.create(
             mortgage_program=preferential_program,
-            region=region,
+            region_id=region.pk, legacy_region_name=region.name,
             credit_limit=Decimal('12000000'),
         )
         customer.preferential_programs.add(preferential_program)

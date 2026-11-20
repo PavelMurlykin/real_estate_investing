@@ -160,6 +160,8 @@ Selecting a property and bank program applies active developer conditions: a spe
 
 React and the fallback Django calculator use the federal subject of the property's effective territory in Location. Pushkin and Strelna use Saint Petersburg, and Likino uses Moscow Oblast. A limit can be set for a subject that only has a Location ID. When legacy records are ambiguous and the subject has no active Location limit, selecting the subject uses the program's general limit. The legacy API still accepts and returns legacy region IDs.
 
+Developer operating regions and regional mortgage limits use the `Location` catalog in React and Django forms. The migration preserves link IDs, amounts and statuses. Historical limits with ambiguous mappings still use the exact legacy region ID. Reimporting the same developer registry file keeps existing regional links without duplicates.
+
 ## Current migration limitations
 
 Implementation and verification results are tracked in `.audit/REACT_PARITY_IMPLEMENTATION_PLAN.md`. All actions on React pages use the current interface. Links to Django forms and previous versions have been removed from lists, cards, forms and account pages. Use the corresponding current-interface buttons for editing, cancelling, signing in and password recovery. The map depends on the mapping provider.

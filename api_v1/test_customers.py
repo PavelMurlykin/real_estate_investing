@@ -64,7 +64,7 @@ def customer_profile(customer_users):
     )
     MortgageProgramRegionalCreditLimit.objects.create(
         mortgage_program=preferential_program,
-        region=region,
+        region_id=region.pk, legacy_region_name=region.name,
         credit_limit=Decimal('12000000.00'),
     )
     KeyRate.objects.create(

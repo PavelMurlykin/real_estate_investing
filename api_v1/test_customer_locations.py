@@ -30,7 +30,7 @@ def geographic_customer(client, filtered_catalog, customer_users):
         initial_payment_amount=2000000, max_monthly_payment=150000, age=35,
     )
     program = MortgageProgram.objects.create(name='Льготная', is_preferential=True, credit_limit=6000000)
-    MortgageProgramRegionalCreditLimit.objects.create(mortgage_program=program, region=district.city.region, credit_limit=12000000)
+    MortgageProgramRegionalCreditLimit.objects.create(mortgage_program=program, region_id=district.city.region.pk, legacy_region_name=district.city.region.name, credit_limit=12000000)
     customer.preferential_programs.add(program)
     client.force_login(owner)
     return customer
@@ -42,15 +42,20 @@ def test_schema_migration_retains_original_profiles_calculation_links_and_limits
     customer = geographic_customer
     market, trench = create_customer_calculations(client, customer, filtered_catalog['strelna'][3])
     executor = MigrationExecutor(connection)
+    latest = executor.loader.graph.leaf_nodes()
     previous = [('customer', '0005_customertrenchcalculation_and_more'),
                 ('bank', '0016_delete_mortgage_program_alias')]
     target = [('customer', '0007_financial_locations'), ('bank', '0017_financial_locations')]
+    migrated_limit_model = executor.loader.project_state(target).apps.get_model(
+        'bank', 'MortgageProgramRegionalCreditLimit',
+    )
     old_model = executor.loader.project_state(previous).apps.get_model('customer', 'Customer')
     original_fields = [field.attname for field in old_model._meta.concrete_fields]
     snapshot = Customer.objects.filter(pk=customer.pk).values(*original_fields).get()
     old_region = customer.get_desired_region().pk
     old_limit = customer.get_preferential_credit_limit()
     original_limit = MortgageProgramRegionalCreditLimit.objects.values().get()
+    original_limit.pop('legacy_region_name')
     try:
         executor.migrate(previous)
         assert old_model.objects.filter(pk=customer.pk).values(*original_fields).get() == snapshot
@@ -59,16 +64,16 @@ def test_schema_migration_retains_original_profiles_calculation_links_and_limits
         assert customer.purchase_uses_canonical_locations and customer.residence_uses_canonical_location
         assert customer.desired_financial_region_id == old_region
         assert customer.desired_financial_region_location_id == filtered_catalog['strelna'][0].region_id
-        migrated_limit = MortgageProgramRegionalCreditLimit.objects.values().get(pk=original_limit['id'])
+        migrated_limit = migrated_limit_model.objects.values().get(pk=original_limit['id'])
         assert migrated_limit.pop('region_location_id') == customer.desired_financial_region_location_id
         assert migrated_limit == {key: value for key, value in original_limit.items() if key != 'region_location_id'}
-        assert customer.get_preferential_credit_limit() == old_limit == Decimal('12000000')
         assert Customer.objects.filter(pk=customer.pk).values(*original_fields).get() == snapshot
         assert CustomerCalculation.objects.filter(customer=customer, calculation_id=market).exists()
         assert CustomerTrenchCalculation.objects.filter(customer=customer, calculation_id=trench).exists()
         MigrationExecutor(connection).migrate(previous)
         assert old_model.objects.filter(pk=customer.pk).values(*original_fields).get() == snapshot
-        MigrationExecutor(connection).migrate(target)
+        MigrationExecutor(connection).migrate(latest)
+        assert customer.get_preferential_credit_limit() == old_limit == Decimal('12000000')
         strelna = filtered_catalog['strelna'][0]
         assert client.patch(f'/api/v1/customers/{customer.pk}/', {
             'desiredRegionLocationId': strelna.region_id, 'desiredLocalityId': strelna.pk,
@@ -80,9 +85,7 @@ def test_schema_migration_retains_original_profiles_calculation_links_and_limits
         assert customer.desired_locality_id == strelna.pk
         assert customer.get_preferential_credit_limit() == old_limit
     finally:
-        MigrationExecutor(connection).migrate([
-            ('customer', '0008_complete_financial_regions'), ('bank', '0018_complete_limit_locations'),
-        ])
+        MigrationExecutor(connection).migrate(latest)
 
 
 @pytest.mark.django_db

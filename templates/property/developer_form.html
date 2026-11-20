@@ -14,6 +14,7 @@
         <div class="card-body">
             <form method="post" novalidate>
                 {% csrf_token %}
+                <input type="hidden" name="region_locations_form" value="1">
 
                 {% if form.non_field_errors %}
                     <div class="alert alert-danger">
@@ -40,11 +41,12 @@
                 </div>
 
                 <div class="mb-3">
-                    <label for="{{ form.regions.id_for_label }}" class="form-label">{{ form.regions.label }}</label>
-                    {{ form.regions }}
-                    {% for error in form.regions.errors %}
+                    <label for="{{ form.region_locations.id_for_label }}" class="form-label">{{ form.region_locations.label }}</label>
+                    {{ form.region_locations }}
+                    {% for error in form.region_locations.errors %}
                         <div class="text-danger">{{ error }}</div>
                     {% endfor %}
+                    {{ form.regions.errors }}
                 </div>
 
                 <div class="mb-3">

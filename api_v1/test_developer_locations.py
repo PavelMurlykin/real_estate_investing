@@ -1,5 +1,6 @@
 """Preserve developer associations while switching region identity domains."""
 
+from decimal import Decimal
 from importlib import import_module
 from types import SimpleNamespace
 
@@ -11,6 +12,7 @@ from django.db.migrations.executor import MigrationExecutor
 from django.test.utils import CaptureQueriesContext
 
 from api_v1.test_complex_localities import complex_catalog, import_user, locality_catalog  # noqa: F401
+from bank.models import MortgageProgramRegionalCreditLimit
 from location.models import LegacyLocationMapping, Location, LocationClosure, LocationType, Region
 from property.models import Developer, DeveloperRegion
 from property.services.developer_registry_upload import import_developer_registry_uploaded_file
@@ -64,7 +66,7 @@ def test_new_subject_without_legacy_region_and_preserved_unmapped_links(client, 
     LocationClosure.objects.create(ancestor=subject, descendant=subject, depth=0)
     developer = locality_catalog['developer']
     unresolved = Region.objects.create(name='Не сопоставлен', code='UNK')
-    old_link = DeveloperRegion.objects.create(developer=developer, region=unresolved)
+    old_link = DeveloperRegion.objects.create(developer=developer, region_id=unresolved.pk, legacy_region_name=unresolved.name)
     for _ in range(2):
         response = client.patch(f'/api/v1/developers/{developer.pk}/', {
             'regionLocationIds': [subject.pk],
@@ -182,7 +184,7 @@ def test_filters_find_a_mapped_legacy_link_alongside_another_location(client, lo
     old = locality_catalog['region']
     subject = Location.objects.get(name='Стрельна').region
     other = Location.objects.create(name='Другой субъект', location_type=subject.location_type)
-    legacy_link = DeveloperRegion.objects.create(developer=developer, region=old, is_active=False)
+    legacy_link = DeveloperRegion.objects.create(developer=developer, region_id=old.pk, is_active=False)
     canonical_link = DeveloperRegion.objects.create(developer=developer, location=other)
     for parameters in ({'regionId': old.pk}, {'regionLocationId': subject.pk}, {'regionLocationId': other.pk}):
         with CaptureQueriesContext(connection) as queries:
@@ -209,6 +211,44 @@ def test_filters_find_a_mapped_legacy_link_alongside_another_location(client, lo
     assert set(DeveloperRegion.objects.filter(developer=developer).values_list('id', flat=True)) == {
         canonical_link.pk, legacy_link.pk,
     }
+
+
+@pytest.mark.django_db
+def test_legacy_region_writes_and_delete_protection_use_only_the_alias(client, locality_catalog):
+    """Keep both legacy write paths working when the alias has no Region row."""
+    subject = Location.objects.get(name='Стрельна').region
+    another_subject = Location.objects.create(name='Новый субъект', location_type=subject.location_type)
+    alias = LegacyLocationMapping.objects.create(
+        model_name='region', legacy_id=900001, legacy_name='Наследуемый регион', location=another_subject,
+    )
+    assert not Region.objects.filter(pk=alias.legacy_id).exists()
+    developer = locality_catalog['developer']
+    with CaptureQueriesContext(connection) as queries:
+        response = client.patch(
+            f'/api/v1/developers/{developer.pk}/', {'regionIds': [alias.legacy_id]},
+            content_type='application/json',
+        )
+        assert response.status_code == 200, response.content
+        assert response.json()['regions'] == [{'id': alias.legacy_id, 'name': alias.legacy_name}]
+        response = client.post('/api/v1/mortgage-programs/', {
+            'name': 'Программа с прежним ID', 'condition': 'Условия',
+            'regionalCreditLimits': [{'regionId': alias.legacy_id, 'creditLimit': '8500000.70'}],
+        }, content_type='application/json')
+        assert response.status_code == 201, response.content
+        region_limit, = response.json()['regionalCreditLimits']
+        assert (region_limit['regionId'], region_limit['regionName'], region_limit['creditLimit']) == (
+            alias.legacy_id, alias.legacy_name, '8500000.70',
+        )
+    assert not any(f'{operation} "region"' in query['sql'] for query in queries for operation in ('FROM', 'JOIN'))
+    link = DeveloperRegion.objects.get(developer=developer, region_id=alias.legacy_id)
+    limit = MortgageProgramRegionalCreditLimit.objects.get(pk=region_limit['id'])
+    assert link.location_id == limit.region_location_id == another_subject.pk
+    route = f'/api/v1/location-dictionaries/regions/{alias.legacy_id}/'
+    assert client.delete(route).status_code == 409
+    link.delete()
+    assert client.delete(route).status_code == 409
+    limit.delete()
+    assert client.delete(route).status_code == 204
 
 
 @pytest.mark.django_db(transaction=True)
@@ -240,3 +280,69 @@ def test_migration_preserves_ids_and_repeats_safely():
     finally:
         executor = MigrationExecutor(connection)
         executor.migrate(executor.loader.graph.leaf_nodes())
+
+
+@pytest.mark.django_db(transaction=True)
+def test_region_foreign_keys_detach_without_changing_links_and_amounts():
+    """Round-trip both schema migrations without replacing or merging historical rows."""
+    before = [
+        ('bank', '0018_complete_limit_locations'),
+        ('location', '0017_detach_metro_line_city'),
+        ('property', '0022_complete_developer_regions'),
+    ]
+    after = [
+        ('bank', '0019_detach_mortgage_limit_region'),
+        ('property', '0023_detach_developer_region'),
+    ]
+    executor = MigrationExecutor(connection)
+    latest = executor.loader.graph.leaf_nodes()
+    executor.migrate(before)
+    try:
+        apps = executor.loader.project_state(before).apps
+        region_model = apps.get_model('location', 'Region')
+        first_region = region_model.objects.create(name='Прежний регион', code='T1')
+        second_region = region_model.objects.create(name='Регион с конфликтом', code='T2')
+        location_type = apps.get_model('location', 'LocationType').objects.create(
+            code='test-stage-three-subject', name='Субъект', category='region',
+        )
+        subject = apps.get_model('location', 'Location').objects.create(
+            name='Субъект ГАР', location_type=location_type,
+        )
+        for region in (first_region, second_region):
+            apps.get_model('location', 'LegacyLocationMapping').objects.create(
+                model_name='region', legacy_id=region.pk, location=subject, legacy_name=region.name,
+            )
+        developer = apps.get_model('property', 'Developer').objects.create(name='Застройщик')
+        program = apps.get_model('bank', 'MortgageProgram').objects.create(
+            name='Проверка отсоединения', credit_limit=Decimal('6000000'),
+        )
+        expected = {}
+        for region, location in ((first_region, subject), (second_region, None)):
+            link = apps.get_model('property', 'DeveloperRegion').objects.create(
+                developer=developer, region=region, location=location,
+                legacy_region_name=region.name, is_active=False,
+            )
+            limit = apps.get_model('bank', 'MortgageProgramRegionalCreditLimit').objects.create(
+                mortgage_program=program, region=region, region_location=location, is_active=location is None,
+                credit_limit=Decimal('9000000.35') if location else Decimal('8500000.80'),
+            )
+            for row in (link, limit):
+                identity = (row._meta.app_label, row._meta.object_name, row.pk)
+                expected[identity] = type(row).objects.values().get(pk=row.pk), region.name
+
+        for targets in (after, before, after):
+            executor = MigrationExecutor(connection)
+            executor.migrate(targets)
+            apps = executor.loader.project_state(targets).apps
+            for (app_label, model_name, identifier), (saved, label) in expected.items():
+                model = apps.get_model(app_label, model_name)
+                current = model.objects.values().get(pk=identifier)
+                if app_label == 'bank' and targets == after:
+                    assert current.pop('legacy_region_name') == label
+                assert current == saved
+                with connection.cursor() as cursor:
+                    constraints = connection.introspection.get_constraints(cursor, model._meta.db_table)
+                has_old_key = any(details['foreign_key'] == ('region', 'id') for details in constraints.values())
+                assert has_old_key == (targets == before)
+    finally:
+        MigrationExecutor(connection).migrate(latest)

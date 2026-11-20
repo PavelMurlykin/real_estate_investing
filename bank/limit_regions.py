@@ -1,8 +1,18 @@
 """Resolve regional limits through Location and explicit compatibility identities."""
 
-from django.db.models import Exists, OuterRef, Prefetch
+from django.db.models import Exists, OuterRef, Prefetch, Subquery, Value
+from django.db.models.functions import Coalesce, NullIf
 
+from location.legacy_catalog import legacy_catalog
 from location.models import LegacyLocationMapping
+
+
+def limit_region_labels(queryset):
+    """Expose legacy names and canonical display names without the old Region join."""
+    aliases = legacy_catalog('region').filter(legacy_id=OuterRef('region_id'))
+    return queryset.annotate(retained_region_name=Coalesce(
+        Subquery(aliases.values('legacy_name')[:1]), NullIf('legacy_region_name', Value('')),
+    )).annotate(display_region_name=Coalesce('region_location__name', 'retained_region_name'))
 
 
 def limit_prefetch(prefix=''):

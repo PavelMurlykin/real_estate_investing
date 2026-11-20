@@ -44,7 +44,7 @@ def mortgage_program_catalog():
     )
     regional_limit = MortgageProgramRegionalCreditLimit.objects.create(
         mortgage_program=family_program,
-        region=moscow,
+        region_id=moscow.pk, legacy_region_name=moscow.name,
         credit_limit=Decimal('15000000.00'),
     )
     return {
@@ -238,6 +238,7 @@ def test_catalog_manager_can_create_complete_mortgage_program(
 ):
     """Create a normalized program with regional limits."""
     client.force_login(create_catalog_manager())
+    canonical_legacy_location(mortgage_program_catalog['saint_petersburg'])
 
     response = client.post(
         reverse('api_v1:mortgage_program_list'),
@@ -276,6 +277,7 @@ def test_catalog_manager_patch_replaces_limits(
 ):
     """Replace submitted regional limits in one transaction."""
     client.force_login(create_catalog_manager())
+    canonical_legacy_location(mortgage_program_catalog['saint_petersburg'])
     response = client.patch(
         reverse(
             'api_v1:mortgage_program_detail',
@@ -305,8 +307,8 @@ def test_catalog_manager_patch_replaces_limits(
         mortgage_program=mortgage_program_catalog['family_program']
     )
     assert regional_limits.count() == 1
-    assert regional_limits.get().region == (
-        mortgage_program_catalog['saint_petersburg']
+    assert regional_limits.get().region_id == (
+        mortgage_program_catalog['saint_petersburg'].pk
     )
 
 
@@ -317,6 +319,7 @@ def test_mortgage_program_api_validates_nested_duplicates_and_values(
 ):
     """Reject duplicate names, repeated relations, and invalid values."""
     client.force_login(create_catalog_manager())
+    canonical_legacy_location(mortgage_program_catalog['moscow'])
     list_url = reverse('api_v1:mortgage_program_list')
 
     duplicate_name_response = client.post(
@@ -384,7 +387,7 @@ def test_mortgage_program_delete_reports_dependencies_and_cascades_nested_rows(
     unused_program = mortgage_program_catalog['market_program']
     unused_limit = MortgageProgramRegionalCreditLimit.objects.create(
         mortgage_program=unused_program,
-        region=mortgage_program_catalog['saint_petersburg'],
+        region_id=mortgage_program_catalog['saint_petersburg'].pk, legacy_region_name=mortgage_program_catalog['saint_petersburg'].name,
         credit_limit=Decimal('8000000.00'),
     )
 

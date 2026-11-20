@@ -3,6 +3,7 @@ from django.db import transaction
 
 from .catalog_service import lock_location_catalog
 from .compatibility import canonical_legacy_location
+from .legacy_catalog import protected_region_references
 from .models import City, District, Location, Metro, MetroLine, MetroSystem, Region
 from .metro_forms import MetroForm, MetroLineForm, MetroSystemForm
 
@@ -31,6 +32,12 @@ class RegionAdmin(LegacyLocationAdmin):
     search_fields = ('name', 'code')
     list_editable = ('is_active',)
     ordering = ('name',)
+
+    def get_deleted_objects(self, objects, request):
+        """Keep retained business links visible on the admin confirmation page."""
+        deleted, counts, permissions, protected = super().get_deleted_objects(objects, request)
+        protected.extend(map(str, protected_region_references([region.pk for region in objects])))
+        return deleted, counts, permissions, protected
 
 
 @admin.register(City)

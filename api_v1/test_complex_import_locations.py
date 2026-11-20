@@ -148,7 +148,7 @@ def test_move_retains_building_territory_properties_calculations_and_gallery(
     customer = Customer.objects.create(user=user, first_name='Импорт', desired_city=import_geography['city'])
     program = MortgageProgram.objects.create(name='Региональная', is_preferential=True, credit_limit=6000000)
     MortgageProgramRegionalCreditLimit.objects.create(mortgage_program=program,
-        region=import_geography['region'], credit_limit=12000000)
+        region_id=import_geography['region'].pk, legacy_region_name=import_geography['region'].name, credit_limit=12000000)
     customer.preferential_programs.add(program)
     market, trench = create_customer_calculations(client, customer, property_object)
     protected = [(model, model.objects.values().get(pk=identifier)) for model, identifier in (

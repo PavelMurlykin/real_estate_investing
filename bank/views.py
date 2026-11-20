@@ -18,6 +18,7 @@ from django.views.generic import (
     UpdateView,
 )
 
+from location.catalog_service import lock_location_catalog
 from property.models import CompanyGroup, RealEstateComplex
 from property.views import BaseCatalogView, CatalogModelConfig
 from users.roles import (
@@ -32,7 +33,9 @@ from .forms import (
     BankProgramFormSet,
     DeveloperMortgageProgramForm,
     DeveloperMortgageProgramImportForm,
+    RegionalCreditLimitForm,
 )
+from .limit_regions import limit_region_labels
 from .developer_mortgage_program_importer import (
     DeveloperMortgageProgramImportError,
     import_developer_mortgage_programs,
@@ -86,10 +89,10 @@ class BankCatalogView(BaseCatalogView):
         CatalogModelConfig(
             key='mortgage_program_regional_credit_limit',
             model=MortgageProgramRegionalCreditLimit,
-            form_fields=('mortgage_program', 'region', 'credit_limit'),
-            table_fields=('mortgage_program', 'region', 'credit_limit'),
-            order_by=('mortgage_program__name', 'region__name'),
-            select_related=('mortgage_program', 'region'),
+            form_fields=('mortgage_program', 'region_location', 'credit_limit'),
+            table_fields=('mortgage_program', 'region_location', 'credit_limit'),
+            order_by=('mortgage_program__name', 'display_region_name', 'pk'),
+            select_related=('mortgage_program', 'region_location'),
         ),
         CatalogModelConfig(
             key='bank_program',
@@ -151,6 +154,10 @@ class BankCatalogView(BaseCatalogView):
             raise PermissionDenied
         if config.key == 'bank' and action == 'save':
             return redirect('bank:bank_create')
+        if config.key == 'mortgage_program_regional_credit_limit' and action == 'save':
+            with transaction.atomic():
+                lock_location_catalog()
+                return super().post(request, *args, **kwargs)
 
         return super().post(request, *args, **kwargs)
 
@@ -186,6 +193,11 @@ class BankCatalogView(BaseCatalogView):
             form = BankForm(data=data, instance=instance)
             self._apply_form_control_classes(form)
             return form
+        if config.key == 'mortgage_program_regional_credit_limit':
+            form = RegionalCreditLimitForm(data=data, instance=instance)
+            form.fields.pop('is_active')
+            self._apply_form_control_classes(form)
+            return form
 
         return super().build_form(config, data=data, instance=instance)
 
@@ -216,7 +228,8 @@ class BankCatalogView(BaseCatalogView):
         if config.key == 'mortgage_program_regional_credit_limit':
             return {
                 'mortgage_program': 'mortgage_program__name',
-                'region': 'region__name',
+                'region': 'display_region_name',
+                'region_location': 'display_region_name',
                 'credit_limit': 'credit_limit',
             }
         return {}
@@ -262,12 +275,19 @@ class BankCatalogView(BaseCatalogView):
             return queryset.order_by(*config.order_by)
 
         if config.key == 'mortgage_program_regional_credit_limit':
+            queryset = limit_region_labels(queryset)
             sort_field = self.get_sort_field_map(config).get(sort_by)
             if sort_field:
                 return queryset.order_by(f'{sort_prefix}{sort_field}')
             return queryset.order_by(*config.order_by)
 
         return queryset.order_by(*config.order_by)
+
+    def get_value_by_path(self, obj, field_path):
+        """Render historical-only limits alongside canonical subjects."""
+        if isinstance(obj, MortgageProgramRegionalCreditLimit) and field_path == 'region_location':
+            return obj.display_region_name
+        return super().get_value_by_path(obj, field_path)
 
     def get_bank_page(self, config):
         """Return the current page of banks."""

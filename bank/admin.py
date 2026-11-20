@@ -1,5 +1,10 @@
 from django.contrib import admin
+from django.db import transaction
 
+from location.catalog_service import lock_location_catalog
+
+from .forms import RegionalCreditLimitForm
+from .limit_regions import limit_region_labels
 from .models import (
     Bank,
     BankProgram,
@@ -57,21 +62,39 @@ class MortgageProgramAdmin(admin.ModelAdmin):
 class MortgageProgramRegionalCreditLimitAdmin(admin.ModelAdmin):
     """Администрирование региональных лимитов ипотечных программ."""
 
+    form = RegionalCreditLimitForm
+    autocomplete_fields = ('region_location',)
     list_display = (
         'mortgage_program',
-        'region',
+        'get_region_name',
         'credit_limit',
         'is_active',
         'created_at',
     )
     list_filter = (
         'mortgage_program',
-        'region',
+        'region_location',
         'is_active',
         'created_at',
     )
-    search_fields = ('mortgage_program__name', 'region__name')
-    ordering = ('mortgage_program__name', 'region__name')
+    search_fields = ('mortgage_program__name', 'region_location__name', 'legacy_region_name')
+    ordering = ('mortgage_program__name', 'region_location__name')
+
+    @transaction.atomic
+    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        """Keep alias resolution consistent throughout the save."""
+        if request.method == 'POST':
+            lock_location_catalog()
+        return super().changeform_view(request, object_id, form_url, extra_context)
+
+    def get_queryset(self, request):
+        """Include the old label without querying Region for each row."""
+        return limit_region_labels(super().get_queryset(request)).select_related('mortgage_program')
+
+    @admin.display(description='Регион', ordering='display_region_name')
+    def get_region_name(self, limit):
+        """Show the effective region in the editor's list."""
+        return limit.display_region_name
 
 
 @admin.register(BankProgram)

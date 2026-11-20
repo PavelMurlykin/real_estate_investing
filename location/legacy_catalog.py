@@ -48,6 +48,23 @@ def legacy_choices(model_name, *, region_id=None, city_id=None, active_only=Fals
     return choices.order_by('legacy_name', 'legacy_id')
 
 
+def unique_legacy_region(location_id):
+    """Return an old region ID and label only when a subject has one visible alias."""
+    aliases = list(legacy_catalog('region').filter(location_id=location_id)
+                   .values_list('legacy_id', 'legacy_name')[:2])
+    return aliases[0] if len(aliases) == 1 else (None, '')
+
+
+def protected_region_references(region_ids, *, using='default'):
+    """List business links that still expose the old ID after detaching their keys."""
+    from bank.models import MortgageProgramRegionalCreditLimit
+    from property.models import DeveloperRegion
+
+    links = DeveloperRegion.objects.using(using).filter(region_id__in=region_ids)
+    limits = MortgageProgramRegionalCreditLimit.objects.using(using).filter(region_id__in=region_ids)
+    return [*links.select_related('developer', 'location'), *limits.select_related('mortgage_program', 'region_location')]
+
+
 def _reserve_legacy_id(model):
     """Reserve from the shared sequence and never issue a retained alias again."""
     retained = LegacyLocationMapping.objects.filter(model_name=model._meta.model_name)

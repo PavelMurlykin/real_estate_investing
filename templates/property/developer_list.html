@@ -75,10 +75,10 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Регион</label>
-                    <select name="filter_region" class="form-control" data-catalog-filter-control>
+                    <select name="filter_region_location" class="form-control" data-catalog-filter-control>
                         <option value="">Все регионы</option>
                         {% for region in regions_for_filter %}
-                        <option value="{{ region.pk }}" {% if filters.region == region.pk|stringformat:'s' %}selected{% endif %}>
+                        <option value="{{ region.pk }}" {% if selected_region_location == region.pk|stringformat:'s' %}selected{% endif %}>
                             {{ region.name }}
                         </option>
                         {% endfor %}

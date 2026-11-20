@@ -146,23 +146,24 @@ def test_developer_choice_fields_use_company_group_labels():
 
 @pytest.mark.django_db
 def test_developer_region_links_developer_and_region_once():
-    """DeveloperRegion should expose the developer-region M2M relation."""
+    """DeveloperRegion should expose the canonical region and unique legacy ID."""
     developer = Developer.objects.create(name='Regional Developer')
     region = Region.objects.create(name='Москва', code='77')
+    subject = canonical_legacy_location(region)
 
     link = DeveloperRegion.objects.create(
         developer=developer,
-        region=region,
+        region_id=region.pk, legacy_region_name=region.name, location=subject,
     )
 
-    assert list(developer.regions.all()) == [region]
-    assert list(region.developers.all()) == [developer]
+    assert list(developer.region_locations.all()) == [subject]
+    assert list(subject.working_developers.all()) == [developer]
     assert str(link) == 'Regional Developer - Москва'
     with pytest.raises(IntegrityError):
         with transaction.atomic():
             DeveloperRegion.objects.create(
                 developer=developer,
-                region=region,
+                region_id=region.pk, legacy_region_name=region.name,
             )
 
 
@@ -185,7 +186,7 @@ def test_developer_form_new_fields_are_optional():
     assert developer.taxpayer_identification_number in (None, '')
     assert developer.tax_registration_reason_code in (None, '')
     assert developer.primary_state_registration_number in (None, '')
-    assert not developer.regions.exists()
+    assert not developer.region_links.exists()
 
 
 @pytest.mark.django_db
@@ -193,10 +194,11 @@ def test_developer_form_saves_regions():
     """Developer form should persist selected operating regions."""
     moscow = Region.objects.create(name='Москва', code='77')
     saint_petersburg = Region.objects.create(name='Санкт-Петербург', code='78')
+    subjects = [canonical_legacy_location(region) for region in (moscow, saint_petersburg)]
     form = DeveloperForm(
         data={
             'name': 'Developer with regions',
-            'regions': [str(moscow.pk), str(saint_petersburg.pk)],
+            'region_locations': [str(subject.pk) for subject in subjects],
             'is_active': 'on',
         }
     )
@@ -204,10 +206,7 @@ def test_developer_form_saves_regions():
     assert form.is_valid(), form.errors.as_json()
     developer = form.save()
 
-    assert set(developer.regions.values_list('code', flat=True)) == {
-        '77',
-        '78',
-    }
+    assert set(developer.region_locations.all()) == set(subjects)
 
 
 @pytest.mark.django_db
@@ -399,9 +398,9 @@ def test_import_dom_rf_developers_creates_groups_and_deduplicates_regions():
     assert developer.legal_address == 'Москва, ул. Первая, 1'
     assert developer.actual_address == 'Санкт-Петербург, ул. Вторая, 2'
     assert developer.taxpayer_identification_number == '7712345678'
-    assert set(developer.regions.values_list('code', flat=True)) == {
-        '77',
-        '78',
+    assert set(developer.region_locations.values_list('name', flat=True)) == {
+        'Москва',
+        'Санкт-Петербург',
     }
 
 
@@ -618,9 +617,9 @@ def test_import_dom_rf_developers_reads_multisheet_xlsx_regions(tmp_path):
     assert not CompanyGroup.objects.filter(name='NULL').exists()
     assert developer.company_group.name == 'ГК Мульти'
     assert developer.legal_address == 'Москва, ул. Первая, 1'
-    assert set(developer.regions.values_list('code', flat=True)) == {
-        '77',
-        '78',
+    assert set(developer.region_locations.values_list('name', flat=True)) == {
+        'Москва',
+        'Санкт-Петербург',
     }
 
     second_summary = import_dom_rf_developers(
@@ -1749,6 +1748,7 @@ class DeveloperListViewTests(TestCase):
     def test_developer_list_filters_and_sorts_with_catalog_static_hooks(self):
         company_group = CompanyGroup.objects.create(name='Alpha Group')
         region = Region.objects.create(name='Region Alpha', code='RA')
+        subject = canonical_legacy_location(region)
         Developer.objects.create(name='Beta Developer', description='Townhouses')
         developer = Developer.objects.create(
             name='Alpha Developer',
@@ -1760,7 +1760,7 @@ class DeveloperListViewTests(TestCase):
             primary_state_registration_number='1234567890123',
             description='Apartments',
         )
-        DeveloperRegion.objects.create(developer=developer, region=region)
+        DeveloperRegion.objects.create(developer=developer, region_id=region.pk, legacy_region_name=region.name)
 
         response = self.client.get(
             reverse('property:developer_list'),
@@ -1786,6 +1786,7 @@ class DeveloperListViewTests(TestCase):
         self.assertNotContains(response, 'Beta Developer')
         self.assertEqual(response.context['sort_by'], 'name')
         self.assertEqual(response.context['sort_dir'], 'desc')
+        self.assertEqual(response.context['selected_region_location'], str(subject.pk))
         self.assertEqual(
             [column['key'] for column in response.context['columns']],
             [
@@ -1800,6 +1801,11 @@ class DeveloperListViewTests(TestCase):
                 'description',
             ],
         )
+
+        canonical_response = self.client.get(reverse('property:developer_list'), {
+            'filter_region_location': subject.pk,
+        })
+        self.assertEqual(list(canonical_response.context['developers']), [developer])
 
     def test_developer_list_does_not_render_active_column(self):
         Developer.objects.create(name='Developer 1', is_active=False)

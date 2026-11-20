@@ -3,7 +3,7 @@ from django.urls import reverse
 
 from bank.models import BankProgram
 from customer.models import Customer
-from property.models import ApartmentLayout
+from property.models import ApartmentLayout, DeveloperRegion
 
 from .test_customers import customer_users
 from .test_developer_mortgage_programs import developer_program_catalog
@@ -46,8 +46,10 @@ def test_visible_columns_support_both_server_sort_directions(
         bank=catalog['bank'], mortgage_program=catalog['mortgage_program'],
         interest_rate='5.90', minimum_initial_payment_percent='20.10',
     )
-    catalog['real_estate_complex'].developer.regions.add(
-        location_dictionary_catalog['regions']
+    region = location_dictionary_catalog['regions']
+    DeveloperRegion.objects.create(
+        developer=catalog['real_estate_complex'].developer,
+        region_id=region.pk, legacy_region_name=region.name,
     )
     ApartmentLayout.objects.create(name='Проверка сортировки')
     Customer.objects.create(

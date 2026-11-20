@@ -1,8 +1,13 @@
 # property/admin.py
 from django import forms
 from django.contrib import admin
+from django.db import transaction
+from django.db.models import Q
 
-from .developer_locations import developer_region_prefetch, prepare_developer_regions, region_references
+from location.catalog_service import lock_location_catalog
+from location.legacy_catalog import unique_legacy_region
+
+from .developer_locations import developer_region_prefetch, prepare_developer_regions
 from .models import (
     ApartmentDecoration,
     ApartmentLayout,
@@ -31,32 +36,64 @@ class CompanyGroupAdmin(admin.ModelAdmin):
 
 
 class DeveloperRegionAdminForm(forms.ModelForm):
-    """Resolve old region edits and keep the original label for unresolved links."""
+    """Select a canonical working region and retain compatible legacy keys."""
 
     class Meta:
         """Expose the fields permitted by the containing admin editor."""
 
         model = DeveloperRegion
-        fields = '__all__'
-        exclude = ('legacy_region_name',)
+        fields = ('developer', 'location', 'is_active')
 
-    def __init__(self, *args, **kwargs):
-        """Offer only subjects in the canonical region selector."""
-        super().__init__(*args, **kwargs)
-        if 'location' in self.fields:
-            field = self.fields['location']
-            field.queryset = field.queryset.filter(location_type__category='region')
+    def clean(self):
+        """Retain old aliases and validate new or changed subject choices."""
+        cleaned = super().clean()
+        location = cleaned.get('location')
+        if location is None:
+            if self.instance.region_id is None:
+                self.add_error('location', 'Выберите регион.')
+            return cleaned
+        if 'location' in self.changed_data:
+            identifier, name = unique_legacy_region(location.pk)
+            developer = cleaned.get('developer')
+            matching_region = Q(location=location)
+            if identifier is not None:
+                matching_region |= Q(region_id=identifier)
+            if developer and DeveloperRegion.objects.filter(
+                matching_region, developer=developer,
+            ).exclude(pk=self.instance.pk).exists():
+                self.add_error('location', 'У застройщика уже есть этот регион.')
+            self.instance.region_id, self.instance.legacy_region_name = identifier, name
+        return cleaned
 
-    def save(self, commit=True):
-        """Keep old edits in sync with the canonical association."""
-        link = super().save(commit=False)
-        if 'region' in self.changed_data:
-            link.legacy_region_name = link.region.name if link.region_id else ''
-            if link.region_id and 'location' not in self.changed_data:
-                link.location_id = region_references().filter(legacy_id=link.region_id).values_list('location_id', flat=True).first()
-        if commit:
-            link.save()
-        return link
+
+class DeveloperRegionInlineFormSet(forms.BaseInlineFormSet):
+    """Reject repeated subject choices before saving the inline rows."""
+
+    def clean(self):
+        """Preserve pre-existing duplicate aliases when their subjects are unchanged."""
+        super().clean()
+        if any(self.errors):
+            return
+        selected = {}
+        for form in self.forms:
+            location = form.cleaned_data.get('location')
+            if location is None or form.cleaned_data.get('DELETE'):
+                continue
+            previous = selected.get(location.pk)
+            if previous and ('location' in previous.changed_data or 'location' in form.changed_data):
+                form.add_error('location', 'У застройщика уже есть этот регион.')
+            selected[location.pk] = form
+
+
+class DeveloperRegionChangeMixin:
+    """Lock the alias registry before validating or saving working regions."""
+
+    @transaction.atomic
+    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        """Keep alias resolution consistent with legacy dictionary changes."""
+        if request.method == 'POST':
+            lock_location_catalog()
+        return super().changeform_view(request, object_id, form_url, extra_context)
 
 
 class DeveloperRegionInline(admin.TabularInline):
@@ -64,36 +101,44 @@ class DeveloperRegionInline(admin.TabularInline):
 
     model = DeveloperRegion
     form = DeveloperRegionAdminForm
+    formset = DeveloperRegionInlineFormSet
     extra = 1
-    fields = ('region', 'is_active')
+    fields = ('location', 'is_active')
+    autocomplete_fields = ('location',)
     show_change_link = True
 
 
 @admin.register(DeveloperRegion)
-class DeveloperRegionAdmin(admin.ModelAdmin):
+class DeveloperRegionAdmin(DeveloperRegionChangeMixin, admin.ModelAdmin):
     """Admin for developer region links."""
 
     form = DeveloperRegionAdminForm
     list_display = (
         'developer',
-        'region',
+        'get_region_name',
         'is_active',
         'created_at',
     )
-    list_filter = ('developer', 'region', 'is_active', 'created_at')
-    search_fields = ('developer__name', 'region__name')
-    ordering = ('developer__name', 'region__name')
+    list_filter = ('developer', 'location', 'is_active', 'created_at')
+    search_fields = ('developer__name', 'location__name', 'legacy_region_name')
+    ordering = ('developer__name', 'location__name')
+    autocomplete_fields = ('location',)
+
+    @admin.display(description='Регион', ordering='location__name')
+    def get_region_name(self, link):
+        """Show the canonical subject or the retained historical label."""
+        return link.location or link.legacy_region_name or link.region_id
 
     def get_queryset(self, request):
         """Return developer region links with related objects loaded."""
         return super().get_queryset(request).select_related(
             'developer',
-            'region',
+            'location',
         )
 
 
 @admin.register(Developer)
-class DeveloperAdmin(admin.ModelAdmin):
+class DeveloperAdmin(DeveloperRegionChangeMixin, admin.ModelAdmin):
     """Описание класса DeveloperAdmin.
 
     Инкапсулирует данные и поведение, необходимые для работы компонента

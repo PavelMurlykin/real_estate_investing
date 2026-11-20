@@ -505,7 +505,7 @@ class MortgageCalculatorViewTests(TestCase):
         )
         MortgageProgramRegionalCreditLimit.objects.create(
             mortgage_program=preferential_program,
-            region=self.property.building.real_estate_complex.district.city.region,
+            region_id=self.property.building.real_estate_complex.district.city.region.pk, legacy_region_name=self.property.building.real_estate_complex.district.city.region.name,
             credit_limit=Decimal('12000000'),
         )
         BankProgram.objects.create(

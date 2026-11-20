@@ -17,6 +17,7 @@ from property.models import (
     ApartmentLayout,
     CompanyGroup,
     Developer,
+    DeveloperRegion,
     Property,
     RealEstateClass,
     RealEstateComplex,
@@ -855,7 +856,9 @@ def test_developer_list_api_is_public_filtered_and_hides_sensitive_fields(
     property_object, _ = property_catalog
     developer = property_object.building.real_estate_complex.developer
     region = property_object.building.real_estate_complex.district.city.region
-    developer.regions.add(region)
+    DeveloperRegion.objects.create(
+        developer=developer, region_id=region.pk, legacy_region_name=region.name,
+    )
     mapped = LegacyLocationMapping.objects.get(model_name='region', legacy_id=region.pk).location
     Developer.objects.create(name='Южный девелопер', is_active=False)
 
@@ -996,7 +999,7 @@ def test_developer_api_supports_manager_create_update_and_delete(
     ]
     developer = Developer.objects.get(pk=developer_identifier)
     assert developer.company_group == company_group
-    assert list(developer.regions.all()) == [region]
+    assert list(developer.region_links.values_list('region_id', flat=True)) == [region.pk]
 
     update_response = client.patch(
         reverse(

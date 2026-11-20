@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from django.db import transaction
 
 from location.models import LegacyLocationMapping, Location, LocationIdentifier
+from location.catalog_service import lock_location_catalog
 from property.developer_locations import set_developer_regions
 from property.models import CompanyGroup, Developer
 
@@ -218,6 +219,7 @@ class DeveloperRegistryImporter:
     def load_records(self, records, summary, dry_run=False):
         """Load normalized records into CompanyGroup and Developer models."""
         with transaction.atomic():
+            lock_location_catalog()
             self.region_lookup = DeveloperRegionLookup()
             for record in records:
                 self.load_record(record, summary)

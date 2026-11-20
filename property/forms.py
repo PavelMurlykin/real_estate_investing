@@ -2,6 +2,8 @@
 from django.db import transaction
 from django.forms import BaseInlineFormSet, inlineformset_factory
 
+from location.catalog_service import lock_location_catalog
+from location.legacy_catalog import legacy_choices
 from location.models import City, District, Location, Metro, Region
 from .location_context import locality_filter, resolve_legacy_district_edit, set_primary_location
 from .location_form_fields import configure_property_location_fields
@@ -216,6 +218,8 @@ class DeveloperForm(forms.ModelForm):
     в данном модуле.
     """
 
+    regions = forms.TypedMultipleChoiceField(coerce=int, required=False, widget=forms.MultipleHiddenInput)
+
     class Meta:
         """Описание служебного класса Meta.
 
@@ -227,7 +231,7 @@ class DeveloperForm(forms.ModelForm):
         fields = [
             'name',
             'company_group',
-            'regions',
+            'region_locations',
             'legal_address',
             'actual_address',
             'taxpayer_identification_number',
@@ -239,7 +243,7 @@ class DeveloperForm(forms.ModelForm):
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'company_group': forms.Select(attrs={'class': 'form-control'}),
-            'regions': forms.SelectMultiple(
+            'region_locations': forms.SelectMultiple(
                 attrs={'class': 'form-control'}
             ),
             'legal_address': forms.Textarea(
@@ -272,20 +276,39 @@ class DeveloperForm(forms.ModelForm):
             'name'
         )
         self.fields['company_group'].empty_label = 'Без группы компаний'
-        self.fields['regions'].queryset = Region.objects.order_by('name')
-        self.fields['regions'].required = False
+        self.fields['regions'].choices = legacy_choices('region').values_list('legacy_id', 'legacy_name')
+        self.fields['region_locations'].queryset = Location.objects.filter(location_type__category='region')
+        if self.instance.pk:
+            from .developer_locations import prepare_developer_regions
+
+            prepare_developer_regions([self.instance])
+            self.initial['region_locations'] = [row['id'] for row in self.instance.working_region_data['regionLocations']]
+
+    def clean(self):
+        """Keep canonical selections and legacy POST fields in separate namespaces."""
+        cleaned = super().clean()
+        if cleaned.get('regions') and self.uses_canonical_regions():
+            self.add_error('region_locations', 'Передайте только один формат регионов.')
+        return cleaned
+
+    def uses_canonical_regions(self):
+        """Identify the new form even when the multi-select is empty."""
+        return 'region_locations_form' in self.data or 'region_locations' in self.data
 
     @transaction.atomic
     def save(self, commit=True):
         """Save catalog fields and their working regions as one operation."""
+        lock_location_catalog()
         return super().save(commit=commit)
 
     def _save_m2m(self):
-        """Process the fallback form's old region IDs through the shared resolver."""
+        """Synchronize regions using the ID domain expected by the form."""
         from .developer_locations import set_developer_regions
 
-        names = dict(self.cleaned_data['regions'].values_list('pk', 'name'))
-        set_developer_regions(self.instance, legacy_regions=names, legacy_names=names)
+        if self.uses_canonical_regions():
+            set_developer_regions(self.instance, locations=self.cleaned_data['region_locations'])
+        else:
+            set_developer_regions(self.instance, legacy_regions=self.cleaned_data['regions'])
 
 
 class DeveloperRegistryImportForm(forms.Form):

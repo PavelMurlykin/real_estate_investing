@@ -24,6 +24,7 @@ from django.views.generic import (
 )
 
 from core.forms import GroupedDecimalField, format_grouped_decimal_value
+from location.catalog_service import catalog_locations
 from location.models import City, District, Metro, MetroLine, Region
 from location.metro_geography import annotate_legacy_metro_geography
 from users.roles import (
@@ -922,7 +923,9 @@ class DeveloperListView(ListView):
             queryset = queryset.filter(
                 company_group_id=filters['company_group']
             )
-        if filters['region'].isdigit():
+        if filters['region_location'].isdigit():
+            queryset = filter_developer_regions(queryset, location_id=filters['region_location'])
+        elif filters['region'].isdigit():
             queryset = filter_developer_regions(queryset, legacy_id=filters['region'])
         if filters['legal_address']:
             queryset = queryset.filter(
@@ -971,6 +974,7 @@ class DeveloperListView(ListView):
                 'filter_company_group', ''
             ),
             'region': self.request.GET.get('filter_region', ''),
+            'region_location': self.request.GET.get('filter_region_location', ''),
             'legal_address': self.request.GET.get(
                 'filter_legal_address', ''
             ).strip(),
@@ -1035,7 +1039,7 @@ class DeveloperListView(ListView):
         return columns
 
     def get_context_data(self, **kwargs):
-        from .developer_locations import legacy_region_names, prepare_developer_regions
+        from .developer_locations import prepare_developer_regions, region_references
 
         context = super().get_context_data(**kwargs)
         prepare_developer_regions(list(context['object_list']))
@@ -1047,10 +1051,13 @@ class DeveloperListView(ListView):
         context['company_groups_for_filter'] = CompanyGroup.objects.order_by(
             'name'
         )
-        context['regions_for_filter'] = [
-            {'pk': identifier, 'name': name}
-            for identifier, name in sorted(legacy_region_names().items(), key=lambda item: (item[1], item[0]))
-        ]
+        context['regions_for_filter'] = catalog_locations('regions').order_by('name', 'pk').values('pk', 'name')
+        filters = context['filters']
+        context['selected_region_location'] = filters['region_location']
+        if not filters['region_location'] and filters['region'].isdigit():
+            context['selected_region_location'] = str(region_references().filter(
+                legacy_id=filters['region'],
+            ).values_list('location_id', flat=True).first() or '')
         return context
 
 

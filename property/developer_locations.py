@@ -1,10 +1,13 @@
 """Canonical working regions with explicit legacy API adapters."""
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import BigIntegerField, Exists, OuterRef, Prefetch, Q, Subquery, Value, prefetch_related_objects
 from django.db.models.functions import Coalesce, NullIf
 
-from location.models import LegacyLocationMapping, Region
+from location.legacy_catalog import legacy_catalog
+from location.catalog_service import lock_location_catalog
+from location.models import LegacyLocationMapping
 from .models import Developer, DeveloperRegion
 
 
@@ -14,16 +17,11 @@ def region_references():
 
 
 def legacy_region_names(identifiers=None):
-    """Read mapped labels and support old catalog records awaiting reconciliation."""
-    references = region_references().exclude(legacy_name='')
-    if identifiers is None:
-        unmapped = Region.objects.exclude(pk__in=references.values('legacy_id')).order_by().values_list('pk', 'name')
-        return dict(references.values_list('legacy_id', 'legacy_name').union(unmapped, all=True))
-    names = dict(references.filter(legacy_id__in=identifiers).values_list('legacy_id', 'legacy_name'))
-    missing = set(identifiers) - names.keys()
-    if missing:
-        names.update(Region.objects.filter(pk__in=missing).values_list('pk', 'name'))
-    return names
+    """Read the old public region identities from their retained namespace."""
+    references = legacy_catalog('region')
+    if identifiers is not None:
+        references = references.filter(legacy_id__in=identifiers)
+    return dict(references.values_list('legacy_id', 'legacy_name'))
 
 
 def developer_region_projections():
@@ -99,6 +97,7 @@ def set_developer_regions(
     developer, *, locations=None, legacy_regions=None, additive=False, mappings=None, legacy_names=None,
 ):
     """Synchronize one ID domain while preserving unrepresentable legacy links."""
+    lock_location_catalog()
     Developer.objects.select_for_update().get(pk=developer.pk)
     links = list(DeveloperRegion.objects.filter(developer=developer).order_by('pk'))
     created = []
@@ -128,9 +127,11 @@ def set_developer_regions(
     else:
         desired = set(legacy_regions or [])
         legacy_names = legacy_region_names(desired) if legacy_names is None else legacy_names
+        if desired - legacy_names.keys():
+            raise ValidationError('Один из регионов больше не доступен.')
         mappings = dict(region_references().filter(legacy_id__in=desired).values_list('legacy_id', 'location_id'))
         if not additive:
-            DeveloperRegion.objects.filter(developer=developer, region__isnull=False).exclude(
+            DeveloperRegion.objects.filter(developer=developer, region_id__isnull=False).exclude(
                 region_id__in=desired,
             ).delete()
         for identifier in sorted(desired):
@@ -154,7 +155,7 @@ def set_developer_regions(
                         legacy_region_name='' if location_id else legacy_names[identifier],
                     ))
     if changed:
-        DeveloperRegion.objects.bulk_update(changed, ['region', 'location', 'legacy_region_name'])
+        DeveloperRegion.objects.bulk_update(changed, ['region_id', 'location', 'legacy_region_name'])
     if created:
         DeveloperRegion.objects.bulk_create(created)
     getattr(developer, '_prefetched_objects_cache', {}).clear()

@@ -5,7 +5,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from core.models import BaseModel
-from location.models import Location, Region
+from location.models import Location
 
 
 class Bank(BaseModel):
@@ -112,17 +112,16 @@ class MortgageProgramRegionalCreditLimit(BaseModel):
         related_name='regional_credit_limits',
         verbose_name='Ипотечная программа',
     )
-    region = models.ForeignKey(
-        Region,
-        on_delete=models.PROTECT,
-        related_name='mortgage_program_credit_limits',
-        verbose_name='Регион',
-        null=True,
+    region_id = models.PositiveBigIntegerField(
+        db_index=True, null=True, blank=True, editable=False,
+        verbose_name='Прежний ID региона',
     )
     region_location = models.ForeignKey(
         Location, on_delete=models.PROTECT, null=True, blank=True,
-        related_name='mortgage_credit_limits', verbose_name='Регион Location',
+        limit_choices_to={'location_type__category': 'region'},
+        related_name='mortgage_credit_limits', verbose_name='Регион',
     )
+    legacy_region_name = models.CharField(max_length=100, blank=True, editable=False)
     credit_limit = models.DecimalField(
         max_digits=15,
         decimal_places=2,
@@ -136,10 +135,10 @@ class MortgageProgramRegionalCreditLimit(BaseModel):
         db_table = 'mortgage_program_regional_credit_limit'
         verbose_name = 'Региональный лимит ипотечной программы'
         verbose_name_plural = 'Региональные лимиты ипотечных программ'
-        ordering = ['mortgage_program__name', 'region__name']
+        ordering = ['mortgage_program__name', 'region_location__name', 'region_id', 'pk']
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(region__isnull=False) | models.Q(region_location__isnull=False),
+                condition=models.Q(region_id__isnull=False) | models.Q(region_location__isnull=False),
                 name='mortgage_limit_has_region',
             ),
             models.UniqueConstraint(
@@ -147,7 +146,7 @@ class MortgageProgramRegionalCreditLimit(BaseModel):
                 name='unique_mortgage_program_location_limit',
             ),
             models.UniqueConstraint(
-                fields=['mortgage_program', 'region'],
+                fields=['mortgage_program', 'region_id'],
                 name='unique_mortgage_program_region_credit_limit',
             )
         ]
@@ -155,7 +154,7 @@ class MortgageProgramRegionalCreditLimit(BaseModel):
     def __str__(self):
         """Возвращает строковое представление регионального лимита."""
         return (
-            f'{self.mortgage_program} - {self.region_location or self.region}: '
+            f'{self.mortgage_program} - {self.region_location or self.legacy_region_name or self.region_id}: '
             f'{self.credit_limit}'
         )
 

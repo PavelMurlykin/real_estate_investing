@@ -8,6 +8,7 @@ from django.contrib.messages import get_messages
 from django.test import TestCase
 from django.urls import reverse
 
+from location.compatibility import canonical_legacy_location
 from location.models import Region
 from users.roles import (
     APPLICATION_ADMINISTRATOR_GROUP_NAME,
@@ -122,7 +123,7 @@ class MortgageProgramCreditLimitTests(TestCase):
         region = Region.objects.create(name='Москва', code='77')
         MortgageProgramRegionalCreditLimit.objects.create(
             mortgage_program=program,
-            region=region,
+            region_id=region.pk, legacy_region_name=region.name,
             credit_limit=Decimal('12000000'),
         )
 
@@ -229,7 +230,7 @@ class MortgageProgramCreditLimitTests(TestCase):
         regional_credit_limit = (
             MortgageProgramRegionalCreditLimit.objects.create(
                 mortgage_program=program,
-                region=region,
+                region_id=region.pk, legacy_region_name=region.name,
                 credit_limit=Decimal('12000000'),
             )
         )
@@ -257,6 +258,7 @@ class MortgageProgramCreditLimitTests(TestCase):
             credit_limit=Decimal('6000000'),
         )
         region = Region.objects.create(name='Moscow', code='77')
+        subject = canonical_legacy_location(region)
 
         response = self.client.post(
             reverse('bank:catalog'),
@@ -264,7 +266,7 @@ class MortgageProgramCreditLimitTests(TestCase):
                 'action': 'save',
                 'model': 'mortgage_program_regional_credit_limit',
                 'mortgage_program': str(program.pk),
-                'region': str(region.pk),
+                'region_location': str(subject.pk),
                 'credit_limit': '12 000 000,00',
             },
         )
@@ -279,13 +281,14 @@ class MortgageProgramCreditLimitTests(TestCase):
         regional_credit_limit = (
             MortgageProgramRegionalCreditLimit.objects.get(
                 mortgage_program=program,
-                region=region,
+                region_id=region.pk,
             )
         )
         self.assertEqual(
             regional_credit_limit.credit_limit,
             Decimal('12000000.00'),
         )
+        self.assertEqual(regional_credit_limit.region_location, subject)
 
 
 class BankProgramCatalogTests(TestCase):

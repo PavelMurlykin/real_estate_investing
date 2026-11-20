@@ -32,7 +32,7 @@ def location_calculations(client, filtered_catalog, customer_users):
         name='Лимит географии', is_preferential=True, credit_limit=6000000,
     )
     MortgageProgramRegionalCreditLimit.objects.create(
-        mortgage_program=program, region=customer.desired_city.region, credit_limit=12000000,
+        mortgage_program=program, region_id=customer.desired_city.region.pk, legacy_region_name=customer.desired_city.region.name, credit_limit=12000000,
     )
     customer.preferential_programs.add(program)
     identifiers = {}

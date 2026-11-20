@@ -73,7 +73,7 @@ def test_native_prefill_selectors_limits_and_bounds(client, filtered_catalog):
     ).update(legacy_id=legacy_region.pk)
     program = MortgageProgram.objects.create(name='Лимит', is_preferential=True, credit_limit=6000000)
     limit = MortgageProgramRegionalCreditLimit.objects.create(
-        mortgage_program=program, region=legacy_region, credit_limit=12000000,
+        mortgage_program=program, region_id=legacy_region.pk, legacy_region_name=legacy_region.name, credit_limit=12000000,
     )
     for index in range(26):
         Property.objects.create(

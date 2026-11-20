@@ -155,7 +155,7 @@ def test_financial_backfill_retains_conflicting_legacy_amounts(client, geographi
     BankProgram.objects.create(bank=Bank.objects.create(name='Банк сверки'), mortgage_program=program)
     alias = Region.objects.create(name='Другая запись того же субъекта', code='alternate')
     LegacyLocationMapping.objects.create(model_name='region', legacy_id=alias.pk, location=region)
-    other = MortgageProgramRegionalCreditLimit.objects.create(mortgage_program=program, region=alias, credit_limit=9000000)
+    other = MortgageProgramRegionalCreditLimit.objects.create(mortgage_program=program, region_id=alias.pk, legacy_region_name=alias.name, credit_limit=9000000)
     assert program.get_credit_limit(region_location_id=region.pk) == Decimal('6000000')
     assert program.get_credit_limit(region_location_id=region.pk, legacy_region_id=alias.pk) == Decimal('9000000')
     context = SimpleNamespace(connection=connection)

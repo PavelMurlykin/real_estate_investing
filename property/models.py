@@ -6,7 +6,7 @@ from django.utils.functional import cached_property
 from django.urls import reverse
 
 from core.models import BaseModel
-from location.models import District, Location, Metro, Region
+from location.models import District, Location, Metro
 
 from .validators import validate_property_image_upload
 
@@ -31,13 +31,6 @@ class Developer(BaseModel):
         null=True,
         related_name='developers',
         verbose_name='Группа компаний',
-    )
-    regions = models.ManyToManyField(
-        Region,
-        through='DeveloperRegion',
-        related_name='developers',
-        blank=True,
-        verbose_name='Регионы',
     )
     region_locations = models.ManyToManyField(
         Location, through='DeveloperRegion', through_fields=('developer', 'location'),
@@ -89,15 +82,13 @@ class DeveloperRegion(BaseModel):
         related_name='region_links',
         verbose_name='Застройщик',
     )
-    region = models.ForeignKey(
-        Region,
-        on_delete=models.PROTECT,
-        related_name='developer_links',
-        verbose_name='Регион',
-        null=True, blank=True,
+    region_id = models.PositiveBigIntegerField(
+        db_index=True, null=True, blank=True, editable=False,
+        verbose_name='Прежний ID региона',
     )
     location = models.ForeignKey(
         Location, null=True, blank=True, on_delete=models.PROTECT,
+        limit_choices_to={'location_type__category': 'region'},
         related_name='developer_region_links', verbose_name='Регион Location',
     )
     legacy_region_name = models.CharField(max_length=100, blank=True)
@@ -108,25 +99,25 @@ class DeveloperRegion(BaseModel):
         db_table = 'developer_region'
         verbose_name = 'Регион застройщика'
         verbose_name_plural = 'Регионы застройщиков'
-        ordering = ['developer__name', 'region__name']
+        ordering = ['developer__name', 'location__name', 'region_id', 'pk']
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(region__isnull=False) | models.Q(location__isnull=False),
+                condition=models.Q(region_id__isnull=False) | models.Q(location__isnull=False),
                 name='developer_region_has_territory',
             ),
             models.UniqueConstraint(
-                fields=['developer', 'location'], condition=models.Q(region__isnull=True),
+                fields=['developer', 'location'], condition=models.Q(region_id__isnull=True),
                 name='unique_canonical_only_developer_region',
             ),
             models.UniqueConstraint(
-                fields=['developer', 'region'],
+                fields=['developer', 'region_id'],
                 name='unique_developer_region',
             ),
         ]
 
     def __str__(self):
         """Возвращает строковое представление связи застройщика и региона."""
-        return f'{self.developer} - {self.region}'
+        return f'{self.developer} - {self.location or self.legacy_region_name or self.region_id}'
 
 
 class CompanyGroup(models.Model):
