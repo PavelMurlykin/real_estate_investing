@@ -8,8 +8,9 @@ from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.tests.legacy_fixtures import registered_legacy_id
-from location.models import City, District, Metro, MetroLine, Region
+from location.models import Metro, MetroLine, MetroSystem
 from property.models import (
     ApartmentDecoration,
     ApartmentLayout,
@@ -29,9 +30,9 @@ from users.roles import MODERATOR_GROUP_NAME
 @pytest.fixture
 def complex_catalog():
     """Create a compact residential-complex catalog for API tests."""
-    region = Region.objects.create(name='Тестовый регион', code='TC')
-    city = City.objects.create(name='Тестоград', region=region)
-    district = District.objects.create(name='Центральный', city=city)
+    region = create_legacy_fixture('region', name='Тестовый регион', code='TC')
+    city = create_legacy_fixture('city', name='Тестоград', region=region)
+    district = create_legacy_fixture('district', name='Центральный', city=city)
     company_group = CompanyGroup.objects.create(name='Группа Север')
     developer = Developer.objects.create(
         name='Северный девелопер', company_group=company_group
@@ -43,12 +44,14 @@ def complex_catalog():
     accessibility_type, _ = (
         TransportAccessibilityType.objects.get_or_create(name='Пешком')
     )
+    system = MetroSystem.objects.create(name=f'Метрополитен: {city.name}', location=city.entry.location)
     metro_line = MetroLine.objects.create(
-        line='Зелёная', line_color='#118844', legacy_city_id=city.pk
+        line='Зелёная', line_color='#118844', legacy_city_id=city.pk, system=system,
     )
     metro = Metro.objects.create(
-        station='Тестовая', metro_line=metro_line
+        station='Тестовая', metro_line=metro_line, location=city.entry.location,
     )
+    metro.lines.add(metro_line)
     real_estate_complex = RealEstateComplex.objects.create(
         name='Белые ночи',
         description='Комплекс у парка',

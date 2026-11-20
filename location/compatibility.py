@@ -4,7 +4,7 @@ from django.db.models import Exists, OuterRef, Q
 from django.db.models.functions import Lower
 
 from .models import (
-    LegacyLocationMapping, Location, LocationAlias,
+    LocationCompatibilityEntry, Location, LocationAlias,
     LocationClosure, LocationIdentifier, LocationType,
 )
 
@@ -12,7 +12,7 @@ from .models import (
 def refresh_legacy_mapping(mapping, reference):
     """Update historical metadata and labels without moving a canonical territory."""
     if mapping.model_name == 'city' and 'legacy_region_id' in reference:
-        LegacyLocationMapping.objects.filter(
+        LocationCompatibilityEntry.objects.filter(
             model_name='district', legacy_city_id=mapping.legacy_id,
         ).exclude(legacy_region_id=reference['legacy_region_id']).update(
             legacy_region_id=reference['legacy_region_id'],
@@ -61,7 +61,7 @@ def register_legacy_mappings(model_name, entries, *, parent=None):
         ).select_related('location')
     }
     names = {reference['legacy_name'].lower() for _, reference in entries}
-    occupied = LegacyLocationMapping.objects.filter(
+    occupied = LocationCompatibilityEntry.objects.filter(
         model_name=model_name, location_id=OuterRef('pk'),
     ).exclude(legacy_name='')
     candidates = {}
@@ -114,8 +114,8 @@ def register_legacy_mappings(model_name, entries, *, parent=None):
                          for ancestor, depth in parent_paths)
         LocationClosure.objects.bulk_create(paths, batch_size=500)
 
-    mappings = LegacyLocationMapping.objects.bulk_create([
-        LegacyLocationMapping(model_name=model_name, legacy_id=legacy_id, location=location, **reference)
+    mappings = LocationCompatibilityEntry.objects.bulk_create([
+        LocationCompatibilityEntry(model_name=model_name, legacy_id=legacy_id, location=location, **reference)
         for legacy_id, reference, location in result
     ], batch_size=500)
     links = []
@@ -136,7 +136,7 @@ def bind_new_complex(sender, instance, created, raw=False, using='default', **kw
         return
     from property.models import RealEstateComplexLocation
 
-    location_id = LegacyLocationMapping.objects.using(using).filter(
+    location_id = LocationCompatibilityEntry.objects.using(using).filter(
         model_name='district', legacy_id=instance.district_id,
     ).values_list('location_id', flat=True).first()
     if location_id is not None:

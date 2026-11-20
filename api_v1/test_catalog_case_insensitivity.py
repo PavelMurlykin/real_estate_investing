@@ -6,9 +6,10 @@ from django.contrib.auth.models import Group
 from django.urls import reverse
 
 from bank.models import Bank, DeveloperMortgageProgram, MortgageProgram
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.legacy_catalog import legacy_catalog
 from location.tests.legacy_fixtures import canonical_legacy_location
-from location.models import City, Region
+
 from property.models import ApartmentLayout, CompanyGroup
 from users.roles import MODERATOR_GROUP_NAME
 
@@ -34,12 +35,12 @@ def case_variant(value, variant):
 def catalog_case_records():
     """Create Cyrillic names, including Ё, in every affected catalog family."""
     name = 'Каталог Ёлка'
-    first_region = Region.objects.create(name='Первый регион', code='CASE1')
-    second_region = Region.objects.create(name='Второй регион', code='CASE2')
+    first_region = create_legacy_fixture('region', name='Первый регион', code='CASE1')
+    second_region = create_legacy_fixture('region', name='Второй регион', code='CASE2')
     bank = Bank.objects.create(name=name)
     program = MortgageProgram.objects.create(name=name, condition='Условия')
     layout = ApartmentLayout.objects.create(name=name)
-    city = City.objects.create(name=name, region=first_region)
+    city = create_legacy_fixture('city', name=name, region=first_region)
     canonical_legacy_location(city)
     canonical_legacy_location(second_region)
     developer_program = DeveloperMortgageProgram.objects.create(
@@ -99,9 +100,12 @@ def test_catalog_rejects_case_duplicates_without_rejecting_own_name(
     record = catalog_case_records[catalog_key]
     instance = record['instance']
     model = type(instance)
-    other_entry = model.objects.create(
-        name='Другое название', **record['model_fields'],
-    )
+    if catalog_key == 'cities':
+        other_entry = create_legacy_fixture('city', name='Другое название', **record['model_fields'])
+        records = legacy_catalog('city')
+    else:
+        other_entry = model.objects.create(name='Другое название', **record['model_fields'])
+        records = model.objects
     requested_name = case_variant(record['name'], variant)
     creation_payload = {'name': requested_name}
     if catalog_key == 'mortgage-programs':
@@ -109,13 +113,13 @@ def test_catalog_rejects_case_duplicates_without_rejecting_own_name(
     if catalog_key == 'cities':
         canonical_legacy_location(other_entry)
         creation_payload['regionId'] = instance.region_id
-    initial_count = model.objects.count()
+    initial_count = records.count()
     response = client.post(
         record['list_url'], creation_payload, content_type='application/json',
     )
     assert response.status_code == 400, response.content
     assert 'name' in response.json()
-    assert model.objects.count() == initial_count
+    assert records.count() == initial_count
 
     other_url = reverse(
         record['detail_name'],
@@ -128,7 +132,7 @@ def test_catalog_rejects_case_duplicates_without_rejecting_own_name(
     assert 'name' in response.json()
     other_entry.refresh_from_db()
     assert other_entry.name == 'Другое название'
-    assert model.objects.count() == initial_count
+    assert records.count() == initial_count
 
     own_url = reverse(
         record['detail_name'],
@@ -141,7 +145,7 @@ def test_catalog_rejects_case_duplicates_without_rejecting_own_name(
     instance.refresh_from_db()
     name = legacy_catalog('city').get(legacy_id=instance.pk).legacy_name if catalog_key == 'cities' else instance.name
     assert name == ' '.join(requested_name.split())
-    assert model.objects.count() == initial_count
+    assert records.count() == initial_count
 
 
 @pytest.mark.django_db

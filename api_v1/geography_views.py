@@ -10,7 +10,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from location.models import LegacyLocationMapping, Location, LocationClosure
+from location.models import LocationCompatibilityEntry, Location, LocationClosure
 from location.presentation import geographic_label
 from property.models import RealEstateComplex, RealEstateComplexLocation
 from .catalog_options import CatalogOptionQuerySerializer
@@ -81,7 +81,7 @@ class GeographyAPIView(APIView):
         if parameters.get('regionId'):
             queryset = queryset.filter(region_id=parameters['regionId'])
         if parameters.get('legacyRegionId'):
-            queryset = queryset.filter(region_id__in=LegacyLocationMapping.objects.filter(
+            queryset = queryset.filter(region_id__in=LocationCompatibilityEntry.objects.filter(
                 model_name='region', legacy_id=parameters['legacyRegionId'],
             ).values_list('location_id', flat=True))
         if parameters.get('ancestorId'):

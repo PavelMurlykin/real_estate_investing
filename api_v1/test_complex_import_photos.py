@@ -1,5 +1,6 @@
 import base64
 import json
+from location.tests.legacy_fixtures import get_or_create_legacy_fixture
 from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
 from decimal import Decimal
 from io import BytesIO
@@ -144,10 +145,7 @@ def test_complex_form_rolls_back_changes_and_files_on_gallery_overflow(
 @pytest.fixture
 def import_payload(complex_catalog):
     """Describe an existing project using portable natural keys."""
-    from django.apps import apps
-    from location.migration_support import backfill_locations
 
-    backfill_locations(apps)
     return {
         'version': 1,
         'complexes': [{
@@ -349,21 +347,21 @@ def test_import_endpoint_requires_administrator_and_accepts_json(
 @pytest.mark.django_db
 def test_prepared_complex_snapshot_is_portable(settings, tmp_path):
     """Import the delivered version 1 file with migrated geographic references."""
-    from django.apps import apps
-    from location.models import City, District, MetroLine, Region
-    from location.migration_support import backfill_locations
+    from location.models import MetroLine, MetroSystem
     from property.models import RealEstateClass
 
     settings.MEDIA_ROOT = tmp_path
     path = Path(__file__).resolve().parents[1] / 'data/complexes-moscow-spb-2026-11.json'
     payload = json.loads(path.read_text(encoding='utf-8'))
     for row in payload['complexes']:
-        region, _ = Region.objects.get_or_create(code=row['region_code'], defaults={'name': row['region']})
-        city, _ = City.objects.get_or_create(name=row['city'], region=region)
-        District.objects.get_or_create(name=row['district'], city=city)
+        region, _ = get_or_create_legacy_fixture('region', code=row['region_code'], defaults={'name': row['region']})
+        city, _ = get_or_create_legacy_fixture('city', name=row['city'], region=region)
+        get_or_create_legacy_fixture('district', name=row['district'], city=city)
+        system, _ = MetroSystem.objects.get_or_create(
+            name=f'Метрополитен: {city.name}', defaults={'location': city.entry.location},
+        )
         MetroLine.objects.get_or_create(line=row['metro'][0]['line'], legacy_city_id=city.pk,
-                                       defaults={'line_color': row['metro'][0]['color']})
-    backfill_locations(apps)
+                                       defaults={'line_color': row['metro'][0]['color'], 'system': system})
     for name in {row['real_estate_class'] for row in payload['complexes']}:
         RealEstateClass.objects.create(name=name, weight='1.00')
     first = import_complex_catalog(payload)

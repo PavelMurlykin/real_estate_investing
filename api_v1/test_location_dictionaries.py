@@ -10,18 +10,19 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from rest_framework.fields import DateTimeField
 
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.tests.legacy_fixtures import canonical_legacy_location
 from location.legacy_catalog import LEGACY_IDENTIFIER_SEQUENCES, legacy_catalog
-from location.models import City, District, LegacyLocationMapping, Location, LocationIdentifier, LocationType, Metro, MetroLine, Region
+from location.models import LocationCompatibilityEntry, Location, LocationIdentifier, LocationType, Metro, MetroLine
 from users.roles import MODERATOR_GROUP_NAME
 
 
 @pytest.fixture
 def location_dictionary_catalog():
     """Create a representative hierarchy for every location dictionary."""
-    region = Region.objects.create(name='Москва', code='77')
-    city = City.objects.create(name='Москва', region=region)
-    district = District.objects.create(name='Центральный', city=city)
+    region = create_legacy_fixture('region', name='Москва', code='77')
+    city = create_legacy_fixture('city', name='Москва', region=region)
+    district = create_legacy_fixture('district', name='Центральный', city=city)
     metro_line = MetroLine.objects.create(
         line='Сокольническая',
         line_color='#D92B2B',
@@ -31,12 +32,12 @@ def location_dictionary_catalog():
         station='Охотный Ряд',
         metro_line=metro_line,
     )
-    second_region = Region.objects.create(
+    second_region = create_legacy_fixture('region',
         name='Санкт-Петербург',
         code='78',
         is_active=False,
     )
-    second_city = City.objects.create(
+    second_city = create_legacy_fixture('city',
         name='Санкт-Петербург',
         region=second_region,
     )
@@ -86,7 +87,7 @@ def test_old_region_api_refreshes_import_reference_and_keeps_location(client):
                            content_type='application/json')
     assert response.status_code == 201, response.content
     identifier = response.json()['id']
-    mapping = LegacyLocationMapping.objects.get(model_name='region', legacy_id=identifier)
+    mapping = LocationCompatibilityEntry.objects.get(model_name='region', legacy_id=identifier)
     assert mapping.location_id == location.pk
     endpoint += f'{identifier}/'
     response = client.patch(endpoint, {'name': 'Обновлённая область', 'code': '050'},
@@ -111,7 +112,7 @@ def test_old_region_creation_skips_reserved_id(client, location_dictionary_catal
     with connection.cursor() as cursor:
         cursor.execute('SELECT nextval(%s::regclass)', [LEGACY_IDENTIFIER_SEQUENCES['region']])
         previous, = cursor.fetchone()
-    reserved = LegacyLocationMapping.objects.create(model_name='region', legacy_id=previous + 1, location=location)
+    reserved = LocationCompatibilityEntry.objects.create(model_name='region', legacy_id=previous + 1, location=location)
 
     endpoint = '/api/v1/location-dictionaries/regions/'
     response = client.post(endpoint, {'name': 'Проверочная область', 'code': 'T501'}, content_type='application/json')
@@ -119,7 +120,6 @@ def test_old_region_creation_skips_reserved_id(client, location_dictionary_catal
     identifier = response.json()['id']
     assert identifier > reserved.legacy_id
     assert legacy_catalog('region').get(legacy_id=identifier).legacy_name == 'Проверочная область'
-    assert not Region.objects.filter(pk=identifier).exists()
     reserved.refresh_from_db()
     assert reserved.location_id == location.pk and reserved.legacy_name == ''
 
@@ -129,11 +129,11 @@ def test_mutations_work_from_registry_and_protect_mapped_children(client, locati
     """Keep old API writes and dependency protection independent of a missing mirror row."""
     client.force_login(create_location_manager())
     catalog = location_dictionary_catalog
-    parent = LegacyLocationMapping.objects.get(model_name='region', legacy_id=catalog['regions'].pk)
-    registry_only_region = LegacyLocationMapping.objects.create(
+    parent = LocationCompatibilityEntry.objects.get(model_name='region', legacy_id=catalog['regions'].pk)
+    registry_only_region = LocationCompatibilityEntry.objects.create(
         model_name='region', legacy_id=450000, legacy_name='Территория', legacy_code='T450', location=parent.location,
     )
-    child = LegacyLocationMapping.objects.create(
+    child = LocationCompatibilityEntry.objects.create(
         model_name='city', legacy_id=450001, legacy_name='Город', legacy_region_id=registry_only_region.legacy_id,
         location=parent.location,
     )
@@ -179,8 +179,7 @@ def test_concurrent_region_creations_validate_against_committed_registry():
     assert set(answers) == {201, 400}
     assert 'name' in answers[400]
     assert legacy_catalog('region').filter(legacy_name__iexact='Область проверки').count() == 1
-    assert not Region.objects.filter(name__iexact='Область проверки').exists()
-    assert LegacyLocationMapping.objects.filter(model_name='region', legacy_id=answers[201]['id']).count() == 1
+    assert LocationCompatibilityEntry.objects.filter(model_name='region', legacy_id=answers[201]['id']).count() == 1
 
 
 @pytest.mark.django_db
@@ -188,7 +187,7 @@ def test_legacy_dictionary_and_selectors_read_mapping_with_original_ids(client, 
     """Preserve exact parents, dates, activity, and selection IDs without legacy table reads."""
     catalog = location_dictionary_catalog
     region, city, district = catalog['regions'], catalog['cities'], catalog['districts']
-    mapping = LegacyLocationMapping.objects.get(model_name='district', legacy_id=district.pk)
+    mapping = LocationCompatibilityEntry.objects.get(model_name='district', legacy_id=district.pk)
     mapping.location.is_active = False
     mapping.location.save(update_fields=['is_active'])
     with CaptureQueriesContext(connection) as queries:
@@ -448,7 +447,6 @@ def test_location_manager_can_create_and_update_nested_entries(
     alias = legacy_catalog('district').get(legacy_id=district.pk)
     assert alias.legacy_city_id == location_dictionary_catalog['second_city'].pk
     assert alias.legacy_is_active is False
-    assert district.city_id == location_dictionary_catalog['cities'].pk and district.is_active
 
 
 @pytest.mark.django_db
@@ -557,7 +555,7 @@ def test_location_delete_reports_dependencies_and_deletes_unused(
     )
 
     assert conflict_response.status_code == 409
-    assert Region.objects.filter(pk=used_region.pk).exists()
+    assert legacy_catalog('region').filter(legacy_id=used_region.pk).exists()
     assert delete_response.status_code == 204
     assert not legacy_catalog('district').filter(legacy_id=unused_district.pk).exists()
-    assert District.objects.filter(pk=unused_district.pk).exists()
+    assert LocationCompatibilityEntry.objects.filter(model_name='district', legacy_id=unused_district.pk).exists()

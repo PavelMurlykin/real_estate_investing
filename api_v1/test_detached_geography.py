@@ -11,7 +11,7 @@ from api_v1.test_customers import customer_users  # noqa: F401
 from api_v1.test_location_filters import complex_catalog, filtered_catalog, import_user, locality_catalog  # noqa: F401
 from api_v1.test_real_estate_complexes import create_catalog_manager
 from customer.models import Customer, CustomerCalculation, CustomerTrenchCalculation
-from location.models import LegacyLocationMapping
+from location.models import LocationCompatibilityEntry
 from mortgage.models import MortgageCalculation
 from property.models import Property, RealEstateComplex, RealEstateComplexBuilding
 from trench_mortgage.models import TrenchMortgageCalculation
@@ -84,11 +84,11 @@ def test_old_address_writes_work_without_mirror_rows(
     customer = geographic_customer
     locality, source, _, _ = filtered_catalog['pushkin']
     region_id = customer.get_legacy_financial_region_id()
-    old_city = LegacyLocationMapping.objects.create(
+    old_city = LocationCompatibilityEntry.objects.create(
         model_name='city', legacy_id=900010, location=locality,
         legacy_name='Прежний город', legacy_region_id=region_id,
     )
-    old_district = LegacyLocationMapping.objects.create(
+    old_district = LocationCompatibilityEntry.objects.create(
         model_name='district', legacy_id=900011, location=locality.parent,
         legacy_name='Прежний район', legacy_city_id=old_city.legacy_id, legacy_region_id=region_id,
     )

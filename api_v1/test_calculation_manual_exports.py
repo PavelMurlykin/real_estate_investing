@@ -7,8 +7,9 @@ from django.test import Client
 from django.urls import reverse
 from docx import Document
 
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
-from location.models import City
+
 from mortgage.models import MortgageCalculation
 from property.models import Property
 from trench_mortgage.models import TrenchMortgageCalculation
@@ -111,7 +112,7 @@ def test_manual_object_rejects_inconsistent_cascades(client, saved_calculation_p
     """Validate the same district/city relationships as the Django form."""
     manual = manual_parameters(saved_calculation_property)
     city = legacy_district_for(saved_calculation_property.building.real_estate_complex).city
-    other_city = City.objects.create(name='Другой город', region=city.region)
+    other_city = create_legacy_fixture('city', name='Другой город', region=city.region)
     manual['cityId'] = registered_legacy_id(other_city)
     response = client.post(reverse('api_v1:mortgage_calculate'),
         build_mortgage_payload(manualProperty=manual), content_type='application/json')

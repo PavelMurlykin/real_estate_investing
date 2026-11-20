@@ -6,7 +6,7 @@ from django.db.models import BigIntegerField, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Coalesce, NullIf
 
 from .legacy_catalog import LegacyImportScope, legacy_catalog
-from .models import LegacyLocationMapping
+from .models import LocationCompatibilityEntry
 
 
 @dataclass(frozen=True)
@@ -37,7 +37,7 @@ def legacy_metro_city(region_id, city_id):
 
 def annotate_legacy_metro_geography(queryset, line_prefix='metro_line__'):
     """Keep old line labels and IDs available without joining Region or City."""
-    references = LegacyLocationMapping.objects.all()
+    references = LocationCompatibilityEntry.objects.all()
     city = references.filter(model_name='city', legacy_id=OuterRef(f'{line_prefix}legacy_city_id'))
     queryset = queryset.annotate(
         legacy_metro_city_name=Coalesce(
@@ -60,7 +60,7 @@ def filter_metro_geography(queryset, parameters, *, canonical=False, line_prefix
     """Apply legacy filters either to their original IDs or to the mapped network."""
     city_id, region_id = parameters.get('cityId'), parameters.get('regionId')
     if canonical:
-        mappings = LegacyLocationMapping.objects.all()
+        mappings = LocationCompatibilityEntry.objects.all()
         center = f'{line_prefix}system__location'
         if city_id:
             mapped = mappings.filter(model_name='city', legacy_id=city_id).values('location_id')

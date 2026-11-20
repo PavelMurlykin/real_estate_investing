@@ -7,7 +7,6 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from django.apps import apps
 from django.db import connection
 
 from api_v1.test_customer_locations import geographic_customer  # noqa: F401
@@ -15,9 +14,12 @@ from api_v1.test_customers import customer_users  # noqa: F401
 from api_v1.test_location_filters import complex_catalog, filtered_catalog, import_user, locality_catalog  # noqa: F401
 from api_v1.tests import create_catalog_manager
 from bank.models import Bank, BankProgram, MortgageProgramRegionalCreditLimit
+from location.tests.legacy_fixtures import create_legacy_fixture
+from location.tests.legacy_fixtures import historical_geography_schema
+from location.legacy_catalog import legacy_catalog
 from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
 from location.gar_import import load_region
-from location.models import LegacyLocationMapping, Location, LocationIdentifier, Region
+from location.models import LocationCompatibilityEntry, Location, LocationIdentifier
 from property.location_context import set_primary_location
 from property.models import Property, RealEstateComplex, RealEstateComplexBuilding
 
@@ -79,7 +81,7 @@ def test_region_without_old_identity_and_legacy_writer(client, geographic_custom
     legacy = program.regional_credit_limits.get()
     region_type = filtered_catalog['strelna'][0].region.location_type
     region = Location.objects.create(name='Новый финансовый субъект', location_type=region_type)
-    count = Region.objects.count()
+    count = legacy_catalog('region').count()
     client.force_login(create_catalog_manager())
     endpoint = f'/api/v1/mortgage-programs/{program.pk}/'
     response = client.patch(endpoint + '?canonicalLocations=true', {'regionalCreditLimits': [
@@ -91,7 +93,7 @@ def test_region_without_old_identity_and_legacy_writer(client, geographic_custom
         {'regionId': legacy.region_id, 'creditLimit': '12000000.00'},
     ]}, content_type='application/json').status_code == 200
     limit = MortgageProgramRegionalCreditLimit.objects.get(region_location=region)
-    assert limit.region_id is None and Region.objects.count() == count
+    assert limit.region_id is None and legacy_catalog('region').count() == count
     assert program.get_credit_limit(region_location_id=region.pk) == Decimal('8000000')
     assert len(client.get(endpoint).json()['regionalCreditLimits']) == 1
     for fields in [{'regionLocationId': filtered_catalog['strelna'][0].pk},
@@ -147,24 +149,24 @@ def test_financial_region_for_pushkin_strelna_and_likino(client, geographic_cust
         assert legacy == {'financialRegionId': expected_legacy}
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_financial_backfill_retains_conflicting_legacy_amounts(client, geographic_customer, filtered_catalog):
     """Preserve exact old financial IDs and never choose an alias for a Location-only caller."""
     program = geographic_customer.preferential_programs.get()
     limit = program.regional_credit_limits.get()
     region = filtered_catalog['strelna'][0].region
     BankProgram.objects.create(bank=Bank.objects.create(name='Банк сверки'), mortgage_program=program)
-    alias = Region.objects.create(name='Другая запись того же субъекта', code='alternate')
-    LegacyLocationMapping.objects.create(model_name='region', legacy_id=alias.pk, location=region)
+    alias = create_legacy_fixture('region', name='Другая запись того же субъекта', code='alternate', location=region)
     other = MortgageProgramRegionalCreditLimit.objects.create(mortgage_program=program, region_id=alias.pk, legacy_region_name=alias.name, credit_limit=9000000)
     assert program.get_credit_limit(region_location_id=region.pk) == Decimal('6000000')
     assert program.get_credit_limit(region_location_id=region.pk, legacy_region_id=alias.pk) == Decimal('9000000')
     context = SimpleNamespace(connection=connection)
     bank_migration = import_module('bank.migrations.0018_complete_limit_locations')
     customer_migration = import_module('customer.migrations.0008_complete_financial_regions')
-    for _ in range(2):
-        bank_migration.complete_limit_locations(apps, context)
-        customer_migration.complete_financial_regions(apps, context)
+    with historical_geography_schema() as historical_apps:
+        for _ in range(2):
+            bank_migration.complete_limit_locations(historical_apps, context)
+            customer_migration.complete_financial_regions(historical_apps, context)
     limit.refresh_from_db()
     other.refresh_from_db()
     geographic_customer.refresh_from_db()
@@ -176,9 +178,10 @@ def test_financial_backfill_retains_conflicting_legacy_amounts(client, geographi
     assert {row['regionId']: (row['regionLocationId'], row['creditLimit']) for row in rows} == {
         limit.region_id: (None, '12000000.00'), alias.pk: (None, '9000000.00'),
     }
-    LegacyLocationMapping.objects.filter(model_name='region', legacy_id=alias.pk).delete()
-    for _ in range(2):
-        bank_migration.complete_limit_locations(apps, context)
+    LocationCompatibilityEntry.objects.filter(model_name='region', legacy_id=alias.pk).delete()
+    with historical_geography_schema() as historical_apps:
+        for _ in range(2):
+            bank_migration.complete_limit_locations(historical_apps, context)
     limit.refresh_from_db()
     other.refresh_from_db()
     assert (limit.region_location_id, limit.credit_limit) == (region.pk, Decimal('12000000'))

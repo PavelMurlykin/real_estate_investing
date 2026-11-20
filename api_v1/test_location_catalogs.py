@@ -12,13 +12,11 @@ from api_v1.test_location_filters import (  # noqa: F401
 )
 from api_v1.test_calculation_locations import location_calculations  # noqa: F401
 from api_v1.test_customers import customer_users  # noqa: F401
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.tests.legacy_fixtures import legacy_district_for
 from location.catalog_service import save_catalog_location
 from location.gar_import import load_region
-from location.models import (
-    City, District, LegacyLocationMapping, Location, LocationAlias,
-    LocationClosure, LocationIdentifier, LocationType, Region,
-)
+from location.models import LocationCompatibilityEntry, Location, LocationAlias, LocationClosure, LocationIdentifier, LocationType
 from location.tests.test_gar import SPB
 from property.models import RealEstateComplexLocation
 from mortgage.models import MortgageCalculation
@@ -82,7 +80,7 @@ def test_canonical_lists_search_scope_sort_page_and_aliases(client, filtered_cat
 @pytest.mark.django_db
 def test_manual_create_all_levels_and_delete_unused_without_legacy_rows(client, filtered_catalog):
     """Build region, district, town, village and rural locality in the new graph only."""
-    old_counts = [model.objects.count() for model in (Region, City, District)]
+    old_count = LocationCompatibilityEntry.objects.count()
     created = []
     parent = None
     for key, category, name in (
@@ -111,7 +109,7 @@ def test_manual_create_all_levels_and_delete_unused_without_legacy_rows(client, 
     assert Location.objects.get(pk=root).region_id == root
     for key, identifier in (('localities', town), ('districts', district), ('regions', root)):
         assert client.delete(endpoint(key, identifier)).status_code == 204
-    assert old_counts == [model.objects.count() for model in (Region, City, District)]
+    assert old_count == LocationCompatibilityEntry.objects.count()
 
 
 @pytest.mark.django_db
@@ -122,7 +120,7 @@ def test_rename_preserves_source_business_financial_rows_and_repeat_import(clien
     location = data['catalog']['strelna'][0]
     models = (MortgageCalculation, TrenchMortgageCalculation, Trench, Customer,
               CustomerCalculation, CustomerTrenchCalculation, MortgageProgramRegionalCreditLimit,
-              RealEstateComplexLocation, Region, City, District, LegacyLocationMapping)
+              RealEstateComplexLocation, LocationCompatibilityEntry)
     before = {model: list(model.objects.order_by('pk').values()) for model in models}
     identities = list(location.identifiers.order_by('pk').values())
     response = client.patch(endpoint('localities', location.pk), {
@@ -220,8 +218,8 @@ def test_csrf_legacy_links_native_forms_and_bounded_queries(client, filtered_cat
     protected = Client(enforce_csrf_checks=True)
     protected.force_login(catalog_user('moderator'))
     assert protected.patch(endpoint('localities', location.pk), {'name': 'CSRF'}, content_type='application/json').status_code == 403
-    legacy = City.objects.create(name='Прежний Пушкин', region=legacy_district_for(filtered_catalog['legacy']).city.region, pk=900000)
-    LegacyLocationMapping.objects.create(model_name='city', legacy_id=legacy.pk, location=location)
+    legacy = create_legacy_fixture('city', name='Прежний Пушкин', location=location,
+                                   region=legacy_district_for(filtered_catalog['legacy']).city.region, pk=900000)
     assert client.get(endpoint('localities', legacy.pk), {'legacy': 1}).json()['id'] == location.pk
     assert client.get(endpoint('localities', legacy.pk)).status_code == 404
     for model, search in [('region', 'Санкт-Петербург'), ('district', 'Пушкинский'), ('locality', 'Пушкин'), ('city', 'Стрельна')]:

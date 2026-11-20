@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from api_v1.test_location_filters import filtered_catalog, locality_catalog, complex_catalog, import_user
 from location.tests.legacy_fixtures import legacy_district_for
-from location.models import City, District, Location, Region
+from location.models import Location, LocationCompatibilityEntry
 from property.forms import PropertyForm
 from property.location_context import set_primary_location
 from property.models import Property, RealEstateComplexBuilding, WindowView
@@ -48,7 +48,7 @@ def test_create_edit_apartment_keeps_geography_on_building_only(client, filtered
     """Create in Pushkin, edit fields, then explicitly choose a Strelna building."""
     strelna, _, strelna_building, _ = filtered_catalog['strelna']
     pushkin, _, building, template = filtered_catalog['pushkin']
-    counts = [model.objects.count() for model in [Region, City, District, Location]]
+    counts = [model.objects.count() for model in (LocationCompatibilityEntry, Location)]
     view = WindowView.objects.create(name='Парк')
     payload = {
         'buildingId': building.pk, 'apartmentNumber': 'NEW-42', 'area': '51.25', 'floor': 4,
@@ -67,7 +67,7 @@ def test_create_edit_apartment_keeps_geography_on_building_only(client, filtered
     assert str(apartment.property_cost) == '8000000.00'
     response = client.patch(f'/api/v1/properties/{identifier}/', {'buildingId': strelna_building.pk}, content_type='application/json')
     assert response.status_code == 200 and response.json()['localityId'] == strelna.pk
-    assert counts == [model.objects.count() for model in [Region, City, District, Location]]
+    assert counts == [model.objects.count() for model in (LocationCompatibilityEntry, Location)]
 
 
 @pytest.mark.django_db

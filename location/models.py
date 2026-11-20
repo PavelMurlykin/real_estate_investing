@@ -105,8 +105,8 @@ class LocationClosure(models.Model):
         )]
 
 
-class LegacyLocationMapping(models.Model):
-    """Preserve old primary keys while mapping several roles to one territory."""
+class LocationCompatibilityEntry(models.Model):
+    """Store durable public compatibility identities and their geography."""
 
     model_name = models.CharField(max_length=30)
     legacy_id = models.PositiveBigIntegerField()
@@ -124,20 +124,10 @@ class LegacyLocationMapping(models.Model):
     class Meta:
         """Keep legacy identifiers unambiguous within their original model."""
 
+        db_table = 'location_legacylocationmapping'
         constraints = [models.UniqueConstraint(
             fields=['model_name', 'legacy_id'], name='unique_legacy_location_mapping',
         )]
-
-
-class Municipality(BaseModel):
-    """Keep municipal divisions separate from geographic administrative districts."""
-
-    name = models.CharField(max_length=255)
-    municipality_type = models.CharField(max_length=100)
-    identifier = models.CharField(max_length=200, unique=True)
-    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT)
-    region = models.ForeignKey(Location, on_delete=models.PROTECT)
-    locations = models.ManyToManyField(Location, related_name='municipalities', blank=True)
 
 
 class MetroSystem(BaseModel):
@@ -205,93 +195,6 @@ class ImportedLocation(BaseModel):
         """Keep source metadata abstract for location dictionaries."""
 
         abstract = True
-
-
-class Region(ImportedLocation):
-    """
-    Справочник регионов.
-    """
-
-    name = models.CharField(max_length=100, unique=True, verbose_name='Регион')
-    code = models.CharField(
-        max_length=10, unique=True, verbose_name='Код региона'
-    )
-
-    class Meta(BaseModel.Meta):
-        """
-        Метаданные таблицы.
-        """
-
-        db_table = 'region'
-        verbose_name = 'Регион'
-        verbose_name_plural = 'Регионы'
-        ordering = ['name']
-
-    def __str__(self):
-        """Возвращает название региона."""
-        return self.name
-
-
-class City(ImportedLocation):
-    """
-    Справочник городов.
-    """
-
-    name = models.CharField(max_length=100, verbose_name='Город')
-    region = models.ForeignKey(
-        Region, on_delete=models.PROTECT, verbose_name='Регион'
-    )
-
-    class Meta(BaseModel.Meta):
-        """
-        Метаданные таблицы.
-        """
-
-        db_table = 'city'
-        verbose_name = 'Город'
-        verbose_name_plural = 'Города'
-        ordering = ['name']
-        constraints = [
-            models.UniqueConstraint(
-                fields=['name', 'region'],
-                name='unique_city_name_region',
-            ),
-        ]
-
-    def __str__(self):
-        """Возвращает название города."""
-        return self.name
-
-
-class District(ImportedLocation):
-    """
-    Справочник районов городов.
-    """
-
-    name = models.CharField(max_length=100, verbose_name='Район')
-    city = models.ForeignKey(
-        City, on_delete=models.PROTECT, verbose_name='Город'
-    )
-
-    class Meta(BaseModel.Meta):
-        """
-        Метаданные таблицы.
-        """
-
-        db_table = 'district'
-        verbose_name = 'Район'
-        verbose_name_plural = 'Районы'
-        ordering = ['name']
-        constraints = [
-            models.UniqueConstraint(
-                fields=['name', 'city'],
-                name='unique_district_name_city',
-            ),
-        ]
-
-    def __str__(self):
-        """Возвращает название района."""
-        return self.name
 
 
 class MetroLine(ImportedLocation):

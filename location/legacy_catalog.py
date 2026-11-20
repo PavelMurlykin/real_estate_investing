@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from .compatibility import refresh_legacy_mapping, register_legacy_mapping
 from .catalog_service import lock_location_catalog
-from .models import LegacyLocationMapping
+from .models import LocationCompatibilityEntry
 
 
 LEGACY_GEOGRAPHY_KEYS = {'regions': 'region', 'cities': 'city', 'districts': 'district'}
@@ -37,7 +37,7 @@ class LegacyImportScope:
 
 def legacy_catalog(model_name):
     """Exclude deleted aliases that still resolve old links to Location."""
-    return LegacyLocationMapping.objects.filter(model_name=model_name).exclude(legacy_name='')
+    return LocationCompatibilityEntry.objects.filter(model_name=model_name).exclude(legacy_name='')
 
 
 def legacy_choices(model_name, *, region_id=None, city_id=None, active_only=False):
@@ -72,7 +72,7 @@ def reserve_legacy_ids(model_name, count):
     if count == 0:
         return []
     sequence = LEGACY_IDENTIFIER_SEQUENCES[model_name]
-    highest_alias = LegacyLocationMapping.objects.filter(model_name=model_name).aggregate(
+    highest_alias = LocationCompatibilityEntry.objects.filter(model_name=model_name).aggregate(
         highest=Max('legacy_id'),
     )['highest'] or 0
     with connection.cursor() as cursor:
@@ -118,7 +118,7 @@ def retire_legacy_catalog_entry(mapping):
         and Customer.objects.filter(desired_financial_region_id=mapping.legacy_id).exists()
     ):
         raise ProtectedError('Историческая локация используется.', [mapping])
-    LegacyLocationMapping.objects.filter(pk=mapping.pk).update(
+    LocationCompatibilityEntry.objects.filter(pk=mapping.pk).update(
         legacy_name='', legacy_code='', legacy_source_identifier='', legacy_updated_at=timezone.now(),
     )
     invalidate_legacy_options()

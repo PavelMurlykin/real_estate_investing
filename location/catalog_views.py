@@ -18,7 +18,7 @@ from .catalog_service import (
     filter_catalog_locations, save_catalog_location,
 )
 from .jobs import serialize_import_job
-from .models import LegacyLocationMapping, Location, LocationImportJob, LocationType
+from .models import LocationCompatibilityEntry, Location, LocationImportJob, LocationType
 
 
 class CanonicalLocationCatalogView(View):
@@ -45,7 +45,7 @@ class CanonicalLocationCatalogView(View):
         old_identifier = selected_identifier(self.request.GET.get('edit'))
         if old_identifier:
             mapping = get_object_or_404(
-                LegacyLocationMapping, legacy_id=old_identifier, model_name={
+                LocationCompatibilityEntry, legacy_id=old_identifier, model_name={
                 'regions': 'region', 'localities': 'city', 'districts': 'district',
             }[key])
             return get_object_or_404(catalog_locations(key), pk=mapping.location_id)

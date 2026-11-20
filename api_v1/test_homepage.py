@@ -2,8 +2,10 @@ import pytest
 from django.urls import reverse
 from django.utils.text import Truncator
 
-from location.tests.legacy_fixtures import canonical_legacy_location, legacy_district_for, registered_legacy_id
-from location.models import City, District
+from location.tests.legacy_fixtures import update_legacy_fixture
+from location.tests.legacy_fixtures import create_legacy_fixture
+from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
+
 from property.models import RealEstateComplex
 
 from .test_saved_mortgage import saved_calculation_property
@@ -13,10 +15,10 @@ from .test_saved_mortgage import saved_calculation_property
 def homepage_catalog(saved_calculation_property):
     """Create two cities including the legacy preferred default."""
     original = saved_calculation_property.building.real_estate_complex
-    city = City.objects.create(
+    city = create_legacy_fixture('city',
         name='Санкт-Петербург', region=legacy_district_for(original).city.region,
     )
-    district = District.objects.create(name='Приморский', city=city)
+    district = create_legacy_fixture('district', name='Приморский', city=city)
     preferred = RealEstateComplex.objects.create(
         name='ЖК Петербург', district_id=registered_legacy_id(district), developer=original.developer,
         real_estate_class=original.real_estate_class,
@@ -63,9 +65,7 @@ def test_homepage_excludes_inactive_complexes_and_districts(
     original, preferred = homepage_catalog
     url = reverse('api_v1:homepage_complex_list')
     district = legacy_district_for(original)
-    district.is_active = False
-    district.save(update_fields=['is_active'])
-    canonical_legacy_location(district)
+    update_legacy_fixture(district, is_active=False)
     assert client.get(url, {'city': legacy_district_for(original).city_id}).json()[
         'totalCount'
     ] == 0
@@ -78,9 +78,7 @@ def test_homepage_excludes_inactive_complexes_and_districts(
         data = client.get(url, {'city': identifier}).json()
         assert data['selectedCity']['id'] == legacy_district_for(preferred).city_id
     city = legacy_district_for(original).city
-    city.is_active = False
-    city.save(update_fields=['is_active'])
-    canonical_legacy_location(city)
+    update_legacy_fixture(city, is_active=False)
     assert client.get(url, {'city': city.pk}).json()['selectedCity']['id'] == (
         legacy_district_for(preferred).city_id
     )

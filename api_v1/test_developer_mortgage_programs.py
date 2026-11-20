@@ -6,8 +6,9 @@ from django.contrib.auth.models import Group
 from django.urls import reverse
 
 from bank.models import Bank, DeveloperMortgageProgram, MortgageProgram
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.tests.legacy_fixtures import registered_legacy_id
-from location.models import City, District, Region
+
 from property.models import (
     CompanyGroup,
     Developer,
@@ -20,9 +21,9 @@ from users.roles import MODERATOR_GROUP_NAME
 
 def create_complex(company_group, suffix):
     """Create one complete residential complex for an API fixture."""
-    region = Region.objects.create(name=f'Регион {suffix}', code=f'R{suffix}')
-    city = City.objects.create(name=f'Город {suffix}', region=region)
-    district = District.objects.create(name=f'Район {suffix}', city=city)
+    region = create_legacy_fixture('region', name=f'Регион {suffix}', code=f'R{suffix}')
+    city = create_legacy_fixture('city', name=f'Город {suffix}', region=region)
+    district = create_legacy_fixture('district', name=f'Район {suffix}', city=city)
     developer = Developer.objects.create(
         name=f'Застройщик {suffix}',
         company_group=company_group,

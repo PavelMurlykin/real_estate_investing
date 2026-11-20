@@ -31,7 +31,7 @@ def catalog_locations(key):
 
 def filter_catalog_locations(queryset, parameters):
     """Apply the same canonical search, scope and ordering in React and Django."""
-    from .models import LegacyLocationMapping
+    from .models import LocationCompatibilityEntry
 
     if parameters.get('q'):
         search = parameters['q']
@@ -41,7 +41,7 @@ def filter_catalog_locations(queryset, parameters):
     if parameters.get('regionId'):
         queryset = queryset.filter(region_id=parameters['regionId'])
     if parameters.get('legacyRegionId'):
-        queryset = queryset.filter(region_id__in=LegacyLocationMapping.objects.filter(
+        queryset = queryset.filter(region_id__in=LocationCompatibilityEntry.objects.filter(
             model_name='region', legacy_id=parameters['legacyRegionId'],
         ).values('location_id'))
     if parameters.get('ancestorId'):

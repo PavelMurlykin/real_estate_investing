@@ -5,7 +5,7 @@ import json
 from django import forms
 
 from location.filter_forms import LocationFilterForm
-from location.models import LegacyLocationMapping
+from location.models import LocationCompatibilityEntry
 from .location_form_fields import selected_identifier
 from .models import RealEstateComplex, RealEstateComplexBuilding
 
@@ -25,7 +25,7 @@ def catalog_location_form(parameters, identifier='catalog_location'):
     """Show the explicit mapped locality for an old city URL when available."""
     initial = dict(parameters)
     if parameters.get('city') and not initial.get('localityId'):
-        initial['localityId'] = LegacyLocationMapping.objects.filter(
+        initial['localityId'] = LocationCompatibilityEntry.objects.filter(
             model_name='city', legacy_id=parameters['city'],
         ).values_list('location_id', flat=True).first() or ''
     return LocationFilterForm(initial, identifier)

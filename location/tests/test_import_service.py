@@ -9,6 +9,8 @@ import pytest
 from django.db import connection, transaction
 from django.test.utils import CaptureQueriesContext
 
+from location.tests.legacy_fixtures import update_legacy_fixture
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.catalog_service import lock_location_catalog
 from location.tests.legacy_fixtures import canonical_legacy_location
 from location.import_service import (
@@ -19,7 +21,7 @@ from location.import_service import (
     upsert_geography_records,
 )
 from location.legacy_catalog import LegacyImportScope, legacy_catalog, save_legacy_catalog_entry
-from location.models import City, District, Metro, MetroLine, Region
+from location.models import Metro, MetroLine
 from location.open_data import (
     CITY_CATALOG_URL,
     OpenDataError,
@@ -42,8 +44,8 @@ def sources():
 @pytest.fixture
 def hierarchy():
     """Create existing OSM records whose primary keys must survive replacement."""
-    region = Region.objects.create(name='Москва', code='77', source_identifier='relation/102269')
-    city = City.objects.create(name='Москва', region=region, source_identifier='relation/102269')
+    region = create_legacy_fixture('region', name='Москва', code='77', source_identifier='relation/102269')
+    city = create_legacy_fixture('city', name='Москва', region=region, source_identifier='relation/102269')
     canonical_legacy_location(city)
     return region, city
 
@@ -52,9 +54,7 @@ def hierarchy():
 def test_regions_preserve_legacy_keys_codes_status_and_links(sources, hierarchy):
     """Replace source identities without duplicating or deleting existing data."""
     region, city = hierarchy
-    region.is_active = False
-    region.save()
-    canonical_legacy_location(region)
+    update_legacy_fixture(region, is_active=False)
     first = import_locations('regions')
     second = import_locations('regions')
     region.refresh_from_db()
@@ -67,7 +67,6 @@ def test_regions_preserve_legacy_keys_codes_status_and_links(sources, hierarchy)
     alias = legacy_catalog('region').get(legacy_id=region.pk)
     assert alias.legacy_source_identifier == 'kladr-region/77'
     assert alias.legacy_code == '77' and not alias.legacy_is_active
-    assert region.source_identifier == 'relation/102269'
     assert region.code == '77'
     assert region.is_active is False
     assert city.region_id == region.pk
@@ -89,7 +88,7 @@ def test_city_import_adopts_manual_and_osm_parents(sources, hierarchy):
 def test_districts_filter_historical_units_and_keep_existing_links(sources, hierarchy):
     """Import actual urban districts and exclude obsolete and municipal units."""
     region, city = hierarchy
-    existing = District.objects.create(name='Тверской', city=city, is_active=False)
+    existing = create_legacy_fixture('district', name='Тверской', city=city, is_active=False)
     canonical_legacy_location(existing)
     first = import_locations('districts', region, city)
     repeated = import_locations('districts', region, city)
@@ -226,7 +225,7 @@ def test_incomplete_regional_station_catalog_is_rejected():
 @pytest.mark.django_db
 def test_foreign_or_wrong_region_is_rejected_before_wikimedia(sources):
     """Never use names alone to put foreign cities into Russian dictionaries."""
-    region = Region.objects.create(name='Берлин', code='DE')
+    region = create_legacy_fixture('region', name='Берлин', code='DE')
     with pytest.raises(LocationImportError, match='России'):
         import_locations('cities', region)
     assert not legacy_catalog('city').exists()

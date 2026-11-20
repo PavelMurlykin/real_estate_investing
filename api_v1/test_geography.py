@@ -1,16 +1,16 @@
 """Verify canonical search and safe refinement of existing complex territories."""
 
 import pytest
-from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.test import Client
 
 from api_v1.test_location_import import import_user
 from api_v1.test_real_estate_complexes import complex_catalog
-from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
+from location.tests.legacy_fixtures import update_legacy_fixture
+from location.tests.legacy_fixtures import historical_geography_schema, legacy_district_for, registered_legacy_id
 from location.gar_import import load_region
 from location.migration_support import backfill_locations
-from location.models import LegacyLocationMapping, Location
+from location.models import LocationCompatibilityEntry, Location
 from location.tests.test_gar import SPB
 from property.models import RealEstateComplex, RealEstateComplexLocation
 
@@ -19,9 +19,7 @@ from property.models import RealEstateComplex, RealEstateComplexLocation
 def geography_catalog(complex_catalog):
     """Upgrade a legacy complex while keeping its children and metro links."""
     region = complex_catalog['region']
-    region.name, region.code = 'Санкт-Петербург', '78'
-    region.save(update_fields=['name', 'code'])
-    backfill_locations(apps)
+    update_legacy_fixture(region, name='Санкт-Петербург', code='78')
     load_region(SPB, '78', '20261113')
     return complex_catalog
 
@@ -95,15 +93,17 @@ def test_binding_requires_csrf(import_user, geography_catalog):
     assert client.put(f'/api/v1/complexes/{geography_catalog["complex"].pk}/locations/', {}, content_type='application/json').status_code == 403
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_conservative_backfill_is_repeatable(geography_catalog):
     """Repeated backfills leave manually refined complex bindings unchanged."""
     complex_object = geography_catalog['complex']
     link = complex_object.location_links.get(is_primary=True)
-    mapping = LegacyLocationMapping.objects.get(model_name='district', legacy_id=complex_object.district_id)
+    mapping = LocationCompatibilityEntry.objects.get(model_name='district', legacy_id=complex_object.district_id)
     assert link.location_id == mapping.location_id
     before = list(RealEstateComplexLocation.objects.values_list('pk', 'location_id', 'is_primary'))
-    backfill_locations(apps)
+    with historical_geography_schema() as historical_apps:
+        backfill_locations(historical_apps)
+        backfill_locations(historical_apps)
     assert list(RealEstateComplexLocation.objects.values_list('pk', 'location_id', 'is_primary')) == before
 
 

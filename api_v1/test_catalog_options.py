@@ -1,9 +1,8 @@
 import pytest
-from django.apps import apps
 from django.urls import reverse
 
-from location.migration_support import backfill_locations
-from location.models import City, Region
+from location.tests.legacy_fixtures import create_legacy_fixture
+
 from property.models import CompanyGroup, Developer
 from bank.models import MortgageProgram
 
@@ -13,11 +12,9 @@ def test_catalog_options_search_before_pagination_and_keep_selected(
     client, django_assert_num_queries,
 ):
     """Make entries beyond the first page reachable and preserve current values."""
-    region = Region.objects.create(name='Регион', code='T')
-    cities = City.objects.bulk_create([
-        City(name=f'Город {index:03}', region=region) for index in range(105)
-    ])
-    backfill_locations(apps, geography_only=True)
+    region = create_legacy_fixture('region', name='Регион', code='T')
+    cities = [create_legacy_fixture('city', name=f'Город {index:03}', region=region)
+              for index in range(105)]
     url = reverse('api_v1:catalog_options', args=['cities'])
     with django_assert_num_queries(3):
         response = client.get(url, {'selected': cities[-1].pk, 'pageSize': 50})
@@ -41,10 +38,9 @@ def test_catalog_options_enforce_parent_filters_and_public_projection(client):
     payload = client.get(reverse('api_v1:catalog_options', args=['developers']),
         {'q': 'Группа'}).json()
     assert payload['results'] == [{'id': developer.pk, 'label': 'Застройщик (Группа)'}]
-    region = Region.objects.create(name='Регион', code='T')
-    other = Region.objects.create(name='Другой', code='O')
-    City.objects.create(name='Город', region=region)
-    backfill_locations(apps, geography_only=True)
+    region = create_legacy_fixture('region', name='Регион', code='T')
+    other = create_legacy_fixture('region', name='Другой', code='O')
+    create_legacy_fixture('city', name='Город', region=region)
     url = reverse('api_v1:catalog_options', args=['cities'])
     assert client.get(url, {'regionId': other.pk}).json()['results'] == []
     assert client.get(url, {'pageSize': 101}).status_code == 400

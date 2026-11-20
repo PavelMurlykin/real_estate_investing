@@ -16,7 +16,7 @@ from location.catalog_service import (
     CATALOG_CATEGORIES, catalog_locations, delete_catalog_location,
     filter_catalog_locations, save_catalog_location,
 )
-from location.models import LegacyLocationMapping, Location, LocationType
+from location.models import LocationCompatibilityEntry, Location, LocationType
 from .geography_views import serialize_location
 from .pagination import ApplicationPageNumberPagination
 from .views import CanManageCatalogs
@@ -95,7 +95,7 @@ class LocationCatalogAPIView(APIView):
         queryset = catalog_locations(dictionary_key)
         if pk is not None:
             if request.query_params.get('legacy') == '1':
-                mapping = get_object_or_404(LegacyLocationMapping, model_name={
+                mapping = get_object_or_404(LocationCompatibilityEntry, model_name={
                     'regions': 'region', 'localities': 'city', 'districts': 'district',
                 }[dictionary_key], legacy_id=pk)
                 pk = mapping.location_id
@@ -104,7 +104,7 @@ class LocationCatalogAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         parameters = serializer.validated_data
         if parameters.get('legacyCityId'):
-            city_locations = LegacyLocationMapping.objects.filter(
+            city_locations = LocationCompatibilityEntry.objects.filter(
                 model_name='city', legacy_id=parameters['legacyCityId'],
             ).values('location_id')
             queryset = queryset.filter(ancestor_links__ancestor_id__in=city_locations)

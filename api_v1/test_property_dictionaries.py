@@ -5,8 +5,9 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.urls import reverse
 
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.tests.legacy_fixtures import registered_legacy_id
-from location.models import City, District, Region
+
 from property.models import (
     ApartmentDecoration,
     ApartmentLayout,
@@ -23,9 +24,9 @@ from users.roles import MODERATOR_GROUP_NAME
 @pytest.fixture
 def property_dictionary_catalog():
     """Create all supported dictionary models and one protected relation."""
-    region = Region.objects.create(name='Тестовый регион', code='TD')
-    city = City.objects.create(name='Тестоград', region=region)
-    district = District.objects.create(name='Центральный', city=city)
+    region = create_legacy_fixture('region', name='Тестовый регион', code='TD')
+    city = create_legacy_fixture('city', name='Тестоград', region=region)
+    district = create_legacy_fixture('district', name='Центральный', city=city)
     developer = Developer.objects.create(name='Тестовый застройщик')
     real_estate_type = RealEstateType.objects.create(
         name='Квартира', description='Жилая недвижимость'

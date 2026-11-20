@@ -5,8 +5,9 @@ from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import reverse
 
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.tests.legacy_fixtures import registered_legacy_id
-from location.models import City, District, Region
+
 from mortgage.models import MortgageCalculation
 from property.models import (
     ApartmentDecoration,
@@ -25,9 +26,9 @@ from .test_mortgage import build_mortgage_payload
 @pytest.fixture
 def saved_calculation_property():
     """Create a property with the relations used by history serializers."""
-    region = Region.objects.create(name='Регион истории', code='HISTORY')
-    city = City.objects.create(name='Казань', region=region)
-    district = District.objects.create(name='Центральный', city=city)
+    region = create_legacy_fixture('region', name='Регион истории', code='HISTORY')
+    city = create_legacy_fixture('city', name='Казань', region=region)
+    district = create_legacy_fixture('district', name='Центральный', city=city)
     developer = Developer.objects.create(name='Надёжный застройщик')
     real_estate_type = RealEstateType.objects.create(name='Квартира')
     real_estate_class = RealEstateClass.objects.create(

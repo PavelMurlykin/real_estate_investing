@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 from django.db import transaction
 
-from location.models import LegacyLocationMapping, Location, LocationIdentifier
+from location.models import LocationCompatibilityEntry, Location, LocationIdentifier
 from location.catalog_service import lock_location_catalog
 from property.developer_locations import set_developer_regions
 from property.models import CompanyGroup, Developer
@@ -496,7 +496,7 @@ class DeveloperRegionLookup:
             provider='ru-region-code', location_id__in=self.locations,
         ).values_list('value', 'location_id'):
             self.codes.setdefault(value, set()).add(identifier)
-        references = LegacyLocationMapping.objects.filter(
+        references = LocationCompatibilityEntry.objects.filter(
             model_name='region', location_id__in=self.locations,
         ).exclude(legacy_name='')
         for legacy_id, identifier, name, legacy_code in references.values_list(

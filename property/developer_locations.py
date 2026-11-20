@@ -7,13 +7,13 @@ from django.db.models.functions import Coalesce, NullIf
 
 from location.legacy_catalog import legacy_catalog
 from location.catalog_service import lock_location_catalog
-from location.models import LegacyLocationMapping
+from location.models import LocationCompatibilityEntry
 from .models import Developer, DeveloperRegion
 
 
 def region_references():
     """Translate old IDs only when the mapped Location is a federal subject."""
-    return LegacyLocationMapping.objects.filter(model_name='region', location__location_type__category='region')
+    return LocationCompatibilityEntry.objects.filter(model_name='region', location__location_type__category='region')
 
 
 def legacy_region_names(identifiers=None):

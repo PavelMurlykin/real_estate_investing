@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 from django import forms
 
-from location.models import LegacyLocationMapping
+from location.models import LocationCompatibilityEntry
 from property.location_form_fields import configure_property_location_fields
 from property.location_filters import apply_location_scopes
 from property.models import RealEstateComplexBuilding
@@ -89,7 +89,7 @@ def validate_calculator_locations(form, cleaned_data):
 
 def financial_region_identifier(region_location_id):
     """Resolve a canonical region to its unique legacy financial identifier."""
-    identifiers = list(LegacyLocationMapping.objects.filter(
+    identifiers = list(LocationCompatibilityEntry.objects.filter(
         model_name='region', location_id=region_location_id,
     ).values_list('legacy_id', flat=True).distinct()[:2])
     return identifiers[0] if len(identifiers) == 1 else None

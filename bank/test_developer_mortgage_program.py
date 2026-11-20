@@ -11,8 +11,9 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from openpyxl import Workbook
 
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.tests.legacy_fixtures import registered_legacy_id
-from location.models import City, District, Region
+
 from property.models import (
     CompanyGroup,
     Developer,
@@ -85,12 +86,12 @@ def regular_user(db):
 
 def create_real_estate_complex(company_group, suffix):
     """Создает ЖК с обязательными связанными справочниками."""
-    region = Region.objects.create(
+    region = create_legacy_fixture('region',
         name=f'Регион {suffix}',
         code=f'R{suffix}',
     )
-    city = City.objects.create(name=f'Город {suffix}', region=region)
-    district = District.objects.create(
+    city = create_legacy_fixture('city', name=f'Город {suffix}', region=region)
+    district = create_legacy_fixture('district',
         name=f'Район {suffix}',
         city=city,
     )

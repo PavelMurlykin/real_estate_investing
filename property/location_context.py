@@ -6,7 +6,7 @@ from django.db import transaction
 from django.db.models import Prefetch, Q, prefetch_related_objects
 
 from location.catalog_service import lock_location_catalog
-from location.models import LegacyLocationMapping, LocationClosure
+from location.models import LocationCompatibilityEntry, LocationClosure
 
 
 def locality_filter():
@@ -83,7 +83,7 @@ def prefetch_complex_geography(complexes):
     ).values_list('real_estate_complex_id', flat=True))
     mappings = {
         mapping.legacy_id: mapping.location
-        for mapping in LegacyLocationMapping.objects.filter(
+        for mapping in LocationCompatibilityEntry.objects.filter(
             model_name='district', legacy_id__in={
                 complex_object.district_id for complex_object in missing if complex_object.pk not in linked
             },

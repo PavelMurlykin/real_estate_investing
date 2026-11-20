@@ -2,7 +2,7 @@
 
 from django.db.models import Exists, OuterRef, Q, QuerySet
 
-from location.models import LegacyLocationMapping, Location
+from location.models import LocationCompatibilityEntry, Location
 
 
 SCOPE_PARAMETERS = ('regionLocationId', 'districtLocationId', 'localityId', 'locationId')
@@ -24,7 +24,7 @@ def _in_scopes(queryset, lookup, location_id):
 
 def _legacy_match(district_reference, location_id):
     """Resolve only known legacy correspondences; never match by display name."""
-    return _in_scopes(LegacyLocationMapping.objects.filter(
+    return _in_scopes(LocationCompatibilityEntry.objects.filter(
         model_name='district', legacy_id=OuterRef(district_reference),
     ), 'location__ancestor_links__ancestor_id', location_id)
 
@@ -89,7 +89,7 @@ def apply_catalog_location_filters(queryset, parameters, *, properties=False):
         return queryset
     combined = list(scopes)
     if city:
-        combined.append(LegacyLocationMapping.objects.filter(
+        combined.append(LocationCompatibilityEntry.objects.filter(
             model_name='city', legacy_id=city,
         ).order_by().values('location_id'))
     return (

@@ -5,7 +5,7 @@ from django.db.models import BigIntegerField, Case, JSONField, OuterRef, Subquer
 from django.db.models.functions import Coalesce, JSONObject
 
 from location.legacy_catalog import legacy_catalog
-from location.models import LegacyLocationMapping, Location, LocationClosure
+from location.models import LocationCompatibilityEntry, Location, LocationClosure
 from property.location_context import locality_filter
 
 RESIDENCE_FIELDS = ('residence_locality',)
@@ -29,7 +29,7 @@ def with_financial_region(queryset):
         When(purchase_uses_canonical_locations=False, then=Subquery(legacy_city_region[:1])),
         output_field=BigIntegerField(),
     ), output_field=BigIntegerField())
-    mapped = LegacyLocationMapping.objects.filter(
+    mapped = LocationCompatibilityEntry.objects.filter(
         model_name='region', legacy_id=OuterRef('effective_legacy_financial_region'),
         location__location_type__category='region',
     ).annotate(territory=JSONObject(id='location_id', name='location__name')).values('territory')
@@ -144,7 +144,7 @@ def prepare_customer_locations(customer, changed_fields, previous=None):
         if not unchanged:
             region = customer.desired_region_location
             customer.desired_financial_region_location = region
-            candidates = list(LegacyLocationMapping.objects.filter(
+            candidates = list(LocationCompatibilityEntry.objects.filter(
                 model_name='region', location=region,
             ).values_list('legacy_id', flat=True)) if region else []
             previous_region_id = previous.get_legacy_financial_region_id() if previous else None

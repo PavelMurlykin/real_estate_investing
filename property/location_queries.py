@@ -3,7 +3,7 @@
 from django.db.models import BigIntegerField, Case, Exists, F, OuterRef, Q, Subquery, Value, When
 from django.db.models.functions import Coalesce
 
-from location.models import LegacyLocationMapping, Location, LocationClosure
+from location.models import LocationCompatibilityEntry, Location, LocationClosure
 
 from .location_filters import selected_scopes
 from .models import RealEstateComplexLocation
@@ -13,7 +13,7 @@ def _complex_territory(complex_reference, district_reference):
     """Use the mapping only when the complex has no territory records at all."""
     links = RealEstateComplexLocation.objects.filter(real_estate_complex_id=OuterRef(complex_reference))
     primary = links.filter(is_primary=True).order_by().values('location_id')[:1]
-    previous = LegacyLocationMapping.objects.filter(
+    previous = LocationCompatibilityEntry.objects.filter(
         model_name='district', legacy_id=OuterRef(district_reference),
     ).order_by().values('location_id')[:1]
     return Case(When(Exists(links), then=Subquery(primary)), default=Subquery(previous))
@@ -81,7 +81,7 @@ def filter_property_geography(
             descendant_id=OuterRef('geographic_location_id'), ancestor_id=identifier,
         )))
     if parameters.get('city'):
-        mapped = LegacyLocationMapping.objects.filter(
+        mapped = LocationCompatibilityEntry.objects.filter(
             model_name='city', legacy_id=parameters['city'],
         ).order_by().values('location_id')
         matching = LocationClosure.objects.filter(

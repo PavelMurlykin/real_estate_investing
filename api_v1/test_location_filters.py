@@ -3,17 +3,16 @@
 from importlib import import_module
 
 import pytest
-from django.apps import apps
 from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
 from django.test import Client
 
 from api_v1.test_complex_localities import locality_catalog
 from api_v1.test_location_import import import_user
 from api_v1.test_real_estate_complexes import complex_catalog
 from api_v1.serializers import ManualCalculationPropertySerializer
-from location.tests.legacy_fixtures import legacy_district_for
-from location.tests.legacy_fixtures import canonical_legacy_location
-from location.models import City, LegacyLocationMapping, Location, LocationClosure
+from location.models import Location, LocationClosure
+from location.tests.legacy_fixtures import create_legacy_fixture, legacy_district_for
 from property.location_context import set_primary_location
 from property.models import (
     ApartmentDecoration, ApartmentLayout, Property, RealEstateComplex,
@@ -114,9 +113,8 @@ def test_homepage_map_labels_and_legacy_city_link(client, filtered_catalog):
         assert row['locationLabel'] == f'{locality.name}, {locality.parent.name}, Санкт-Петербург'
 
     locality, project, _, _ = filtered_catalog['pushkin']
-    old_city = City.objects.create(name='Пушкин', region=legacy_district_for(filtered_catalog['legacy']).city.region)
-    LegacyLocationMapping.objects.create(model_name='city', legacy_id=old_city.pk, location=locality)
-    canonical_legacy_location(old_city)
+    old_city = create_legacy_fixture('city', name='Пушкин', location=locality,
+                                     region=legacy_district_for(filtered_catalog['legacy']).city.region)
     data = client.get(url, {'canonicalLocations': 'true', 'city': old_city.pk}).json()
     assert data['territoryLabel'] == 'Пушкин'
     assert [row['id'] for row in data['results']] == [project.pk]
@@ -252,6 +250,9 @@ def test_migration_marks_only_legacy_snapshots_and_preserves_building_links(filt
     building.complex_location = old
     building.save(update_fields=['complex_location'])
     migration = import_module('property.migrations.0019_realestatecomplexlocation_is_historical_and_more')
+    apps = MigrationExecutor(connection).loader.project_state([
+        ('property', '0019_realestatecomplexlocation_is_historical_and_more'),
+    ]).apps
     with connection.schema_editor() as editor:
         migration.preserve_legacy_snapshots(apps, editor)
         migration.preserve_legacy_snapshots(apps, editor)

@@ -3,7 +3,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.db.models import DecimalField, ExpressionWrapper, F, Q, Value
 
-from location.models import LegacyLocationMapping
+from location.models import LocationCompatibilityEntry
 from property.location_form_fields import selected_identifier
 from property.location_queries import (
     annotate_property_geography,
@@ -90,7 +90,7 @@ def get_calculation_filters(request):
         identifier = selected_identifier(request.GET.get(name))
         filters[name] = str(identifier) if identifier else ''
     if selected_identifier(filters['city']) and not filters['localityId']:
-        identifiers = list(LegacyLocationMapping.objects.filter(
+        identifiers = list(LocationCompatibilityEntry.objects.filter(
             model_name='city', legacy_id=filters['city'],
         ).values_list('location_id', flat=True)[:2])
         if len(identifiers) == 1:

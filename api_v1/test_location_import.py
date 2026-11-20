@@ -11,9 +11,10 @@ from django.urls import reverse
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.import_service import LocationImportError
 from location.legacy_catalog import legacy_catalog
-from location.models import City, District, Metro, MetroLine, Region
+from location.models import Metro, MetroLine
 from location.tests.source_fixtures import load_sources, source_reply
 from users.roles import (
     APPLICATION_ADMINISTRATOR_GROUP_NAME,
@@ -111,11 +112,11 @@ def test_import_rejects_missing_parents_and_external_urls(
 @pytest.mark.django_db
 def test_import_validates_city_belongs_to_selected_region(client, import_user):
     """An imported city from a different region is never accepted."""
-    first = Region.objects.create(name='Москва', code='77', source_identifier='relation/1')
-    second = Region.objects.create(
+    first = create_legacy_fixture('region', name='Москва', code='77', source_identifier='relation/1')
+    second = create_legacy_fixture('region',
         name='Тверская область', code='69', source_identifier='relation/2',
     )
-    city = City.objects.create(name='Тверь', region=second, source_identifier='node/3')
+    city = create_legacy_fixture('city', name='Тверь', region=second, source_identifier='node/3')
     client.force_login(import_user('administrator'))
     with patch('api_v1.views.import_locations') as importer:
         response = client.post(reverse(

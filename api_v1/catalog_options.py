@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 
 from bank.models import Bank, MortgageProgram
 from location.legacy_catalog import legacy_catalog
-from location.models import LegacyLocationMapping, Metro, MetroLine, MetroSystem
+from location.models import LocationCompatibilityEntry, Metro, MetroLine, MetroSystem
 from location.metro_geography import filter_metro_geography
 from property.location_context import building_geography_prefetch, prefetch_complex_geography
 from property.location_filters import apply_location_scopes
@@ -44,9 +44,9 @@ class CatalogOptionQuerySerializer(LocationScopeQuerySerializer):
 
 
 CATALOG_OPTIONS = {
-    'regions': (LegacyLocationMapping, 'legacy_name', (), {}),
-    'cities': (LegacyLocationMapping, 'legacy_name', (), {'regionId': 'legacy_region_id'}),
-    'districts': (LegacyLocationMapping, 'legacy_name', (), {'cityId': 'legacy_city_id'}),
+    'regions': (LocationCompatibilityEntry, 'legacy_name', (), {}),
+    'cities': (LocationCompatibilityEntry, 'legacy_name', (), {'regionId': 'legacy_region_id'}),
+    'districts': (LocationCompatibilityEntry, 'legacy_name', (), {'cityId': 'legacy_city_id'}),
     'developers': (Developer, 'name', ('company_group',),
                    {'companyGroupId': 'company_group_id'}),
     'company-groups': (CompanyGroup, 'name', (), {}),
@@ -80,7 +80,7 @@ CATALOG_OPTIONS = {
 
 def catalog_option_id(item):
     """Keep selects and their results in the same public ID namespace."""
-    return item.legacy_id if isinstance(item, LegacyLocationMapping) else item.pk
+    return item.legacy_id if isinstance(item, LocationCompatibilityEntry) else item.pk
 
 
 def serialize_catalog_option(item, label_field):
@@ -93,7 +93,7 @@ def serialize_catalog_option(item, label_field):
         if item.metro_line.system_id:
             label += f' · {item.metro_line.system.name}'
     option = {'id': catalog_option_id(item), 'label': str(label)}
-    if isinstance(item, LegacyLocationMapping):
+    if isinstance(item, LocationCompatibilityEntry):
         if item.model_name == 'district':
             option['cityId'] = item.legacy_city_id
         if item.model_name in ('city', 'district'):
@@ -131,7 +131,7 @@ class CatalogOptionsAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         parameters = serializer.validated_data
         model, label_field, related, filters = configuration
-        is_legacy_geography = model is LegacyLocationMapping
+        is_legacy_geography = model is LocationCompatibilityEntry
         identifier_field = 'legacy_id' if is_legacy_geography else 'pk'
         if is_legacy_geography:
             base_queryset = legacy_catalog({'regions': 'region', 'cities': 'city', 'districts': 'district'}[dictionary_key])
@@ -148,7 +148,7 @@ class CatalogOptionsAPIView(APIView):
         if model is RealEstateComplex:
             queryset = apply_location_scopes(queryset, parameters)
             if parameters.get('cityId'):
-                queryset = queryset.filter(district_id__in=LegacyLocationMapping.objects.filter(
+                queryset = queryset.filter(district_id__in=LocationCompatibilityEntry.objects.filter(
                     model_name='district', legacy_city_id=parameters['cityId'],
                 ).values('legacy_id'))
         elif model is RealEstateComplexBuilding:

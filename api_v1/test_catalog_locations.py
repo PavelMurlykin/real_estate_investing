@@ -4,7 +4,6 @@ import re
 from importlib import import_module
 
 import pytest
-from django.apps import apps
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -16,9 +15,11 @@ from api_v1.test_calculation_locations import location_calculations  # noqa: F40
 from api_v1.test_customers import customer_users  # noqa: F401
 from bank.models import MortgageProgramRegionalCreditLimit
 from customer.models import Customer, CustomerCalculation, CustomerTrenchCalculation
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.tests.legacy_fixtures import canonical_legacy_location
+from location.tests.legacy_fixtures import historical_geography_schema
 from location.tests.legacy_fixtures import legacy_district_for
-from location.models import City, District, LegacyLocationMapping, LocationAlias, Region
+from location.models import LocationCompatibilityEntry, LocationAlias
 from mortgage.models import MortgageCalculation
 from property.forms import RealEstateComplexForm
 from property.models import Property, RealEstateComplex, RealEstateComplexBuilding, RealEstateComplexLocation
@@ -82,8 +83,8 @@ def test_catalog_sorting_and_scope_filters_before_pagination(client, filtered_ca
 def test_old_city_urls_map_to_canonical_territory_without_numeric_id_confusion(client, filtered_catalog):
     """Keep old federal-city filters inclusive of suburbs while respecting overrides."""
     pushkin, project, _, _ = filtered_catalog['pushkin']
-    root_city = City.objects.create(pk=900000, name='Санкт-Петербург', region=legacy_district_for(filtered_catalog['legacy']).city.region)
-    LegacyLocationMapping.objects.create(model_name='city', legacy_id=root_city.pk, location_id=pushkin.region_id)
+    root_city = create_legacy_fixture('city', pk=900000, name='Санкт-Петербург', location=pushkin.region,
+                                      region=legacy_district_for(filtered_catalog['legacy']).city.region)
     for path, _ in catalog_endpoints():
         key = 'city' if path == '/api/v1/properties/' else 'cityId' if path.startswith('/api/') else 'filter_city'
         rows = catalog_rows(client, path, {key: root_city.pk})
@@ -126,7 +127,7 @@ def test_complex_coverage_and_apartment_building_override_are_distinct(client, f
 @pytest.mark.django_db
 def test_catalog_reads_keep_finances_customers_and_all_original_fields(client, location_calculations):
     """Compare original rows and associations after native/API searches and sorts."""
-    models = (Region, City, District, RealEstateComplex, RealEstateComplexLocation,
+    models = (LocationCompatibilityEntry, RealEstateComplex, RealEstateComplexLocation,
               RealEstateComplexBuilding, Property, Customer, CustomerCalculation,
               CustomerTrenchCalculation, MortgageCalculation, TrenchMortgageCalculation,
               Trench, MortgageProgramRegionalCreditLimit)
@@ -190,19 +191,20 @@ def test_current_geography_reads_do_not_join_the_legacy_catalogs(client, filtere
                        for query in captured.captured_queries), endpoint
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_legacy_district_ancestry_and_missing_primary_keep_old_identifiers(client, filtered_catalog):
     """Keep original IDs when a coarse primary is displayed with current labels."""
     project = filtered_catalog['legacy']
     district = legacy_district_for(project)
-    mapping = LegacyLocationMapping.objects.get(model_name='district', legacy_id=district.pk)
-    district_mapping = LegacyLocationMapping.objects.filter(pk=mapping.pk)
-    district_mapping.update(legacy_city_id=None, legacy_region_id=None)
+    mapping = LocationCompatibilityEntry.objects.get(model_name='district', legacy_id=district.pk)
+    district_mapping = LocationCompatibilityEntry.objects.filter(pk=mapping.pk)
     migration = import_module('location.migrations.0014_legacy_district_ancestry')
     before = list(project.location_links.values())
-    with connection.schema_editor() as editor:
-        for _ in range(2):
-            migration.capture_legacy_district_ancestry(apps, editor)
+    with historical_geography_schema() as historic:
+        district_mapping.update(legacy_city_id=None, legacy_region_id=None)
+        with connection.schema_editor() as editor:
+            for _ in range(2):
+                migration.capture_legacy_district_ancestry(historic, editor)
     assert list(project.location_links.values()) == before
     mapping.refresh_from_db()
     assert (mapping.legacy_city_id, mapping.legacy_region_id) == (district.city_id, district.city.region_id)
@@ -230,7 +232,7 @@ def test_legacy_district_edit_moves_only_coarse_binding(client, filtered_catalog
     previous = project.location_links.get(is_primary=True)
     building.complex_location = previous
     building.save(update_fields=['complex_location'])
-    new_district = District.objects.create(name='Другой район', city=legacy_district_for(project).city)
+    new_district = create_legacy_fixture('district', name='Другой район', city=legacy_district_for(project).city)
     canonical_legacy_location(new_district)
     url = f'/api/v1/complexes/{project.pk}/'
     if native_form:

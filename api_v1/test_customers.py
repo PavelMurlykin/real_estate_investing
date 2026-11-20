@@ -14,8 +14,9 @@ from bank.models import (
     MortgageProgramRegionalCreditLimit,
 )
 from customer.models import Customer
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.tests.legacy_fixtures import registered_legacy_id
-from location.models import City, District, Region
+
 from property.models import ApartmentLayout
 
 
@@ -43,16 +44,16 @@ def customer_users():
 def customer_profile(customer_users):
     """Create a complete customer profile with preference relations."""
     owner, _other_owner = customer_users
-    region = Region.objects.create(name='Москва', code='CUST77')
-    residence_city = City.objects.create(
+    region = create_legacy_fixture('region', name='Москва', code='CUST77')
+    residence_city = create_legacy_fixture('city',
         name='Химки',
         region=region,
     )
-    desired_city = City.objects.create(
+    desired_city = create_legacy_fixture('city',
         name='Москва',
         region=region,
     )
-    desired_district = District.objects.create(
+    desired_district = create_legacy_fixture('district',
         name='Хамовники',
         city=desired_city,
     )
@@ -161,11 +162,11 @@ def test_customer_form_options_are_filtered_and_bounded(
     """Return active form choices and only the selected city's districts."""
     owner, _other_owner = customer_users
     ApartmentLayout.objects.create(name='Студия')
-    other_region = Region.objects.create(name='Татарстан', code='CUST16')
-    other_city = City.objects.create(name='Казань', region=other_region)
+    other_region = create_legacy_fixture('region', name='Татарстан', code='CUST16')
+    other_city = create_legacy_fixture('city', name='Казань', region=other_region)
     from location.tests.legacy_fixtures import canonical_legacy_location
 
-    canonical_legacy_location(District.objects.create(name='Центр', city=other_city))
+    canonical_legacy_location(create_legacy_fixture('district', name='Центр', city=other_city))
     client.force_login(owner)
 
     response = client.get(
@@ -198,8 +199,8 @@ def test_customer_form_options_are_filtered_and_bounded(
         **payload, 'cities': [], 'districts': [],
         'truncated': {**payload['truncated'], 'cities': False, 'districts': False},
     }
-    for model in (City, District):
-        assert not any(f'FROM "{model._meta.db_table}"' in query['sql'] for query in queries)
+    for table in ('city', 'district'):
+        assert not any(f'FROM "{table}"' in query['sql'] for query in queries)
 
 
 @pytest.mark.django_db

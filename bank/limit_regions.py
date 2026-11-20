@@ -4,7 +4,7 @@ from django.db.models import Exists, OuterRef, Prefetch, Subquery, Value
 from django.db.models.functions import Coalesce, NullIf
 
 from location.legacy_catalog import legacy_catalog
-from location.models import LegacyLocationMapping
+from location.models import LocationCompatibilityEntry
 
 
 def limit_region_labels(queryset):
@@ -27,7 +27,7 @@ def legacy_limit_locations(limits):
     legacy_ids = {limit.region_id for limit in limits if limit.region_id and not limit.region_location_id}
     if not legacy_ids:
         return {}
-    mappings = LegacyLocationMapping.objects.filter(model_name='region')
+    mappings = LocationCompatibilityEntry.objects.filter(model_name='region')
     aliases = mappings.filter(location_id=OuterRef('location_id')).exclude(pk=OuterRef('pk'))
     return dict(mappings.filter(
         ~Exists(aliases), legacy_id__in=legacy_ids, location__location_type__category='region',

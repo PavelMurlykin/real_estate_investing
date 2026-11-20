@@ -4,18 +4,14 @@ from functools import partial
 from unittest.mock import patch
 
 import pytest
-from django.apps import apps
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 
+from location.legacy_catalog import legacy_catalog
 from location.import_service import LocationImportError
 from location.metro_import import import_metro
 from location.metro_migration import backfill_metro
-from location.migration_support import backfill_locations
-from location.models import (
-    City, Location, LocationIdentifier, LocationType,
-    Metro, MetroLine, MetroSystem, Region,
-)
+from location.models import Location, LocationIdentifier, LocationType, Metro, MetroLine, MetroSystem
 from location.tests.source_fixtures import load_sources, source_reply
 from property.models import (
     Developer, RealEstateClass, RealEstateComplex, RealEstateComplexLocation,
@@ -71,9 +67,8 @@ def test_canonical_import_adopts_preserves_and_repeats(metro_geography):
     assert station.location_id == suburb.pk and not station.location_is_inferred
     assert not station.is_active and station.metro_line_id == line.pk
     assert station.lines.filter(pk=line.pk).exists()
-    assert City.objects.count() == Region.objects.count() == 0
+    assert legacy_catalog('city').count() == legacy_catalog('region').count() == 0
     assert RealEstateComplexMetroAvailability.objects.values().get(pk=link.pk) == link_values
-    backfill_locations(apps)
     station.refresh_from_db()
     assert station.location_id == suburb.pk
 

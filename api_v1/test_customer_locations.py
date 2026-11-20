@@ -15,8 +15,10 @@ from bank.models import MortgageProgram, MortgageProgramRegionalCreditLimit
 from customer.forms import CustomerForm
 from customer.location_migration import backfill_customer_locations
 from customer.models import Customer, CustomerCalculation, CustomerTrenchCalculation
-from location.tests.legacy_fixtures import legacy_city_for, legacy_district_for, registered_legacy_id
-from location.models import City, LegacyLocationMapping, Location, LocationClosure, Region
+from location.tests.legacy_fixtures import create_legacy_fixture
+from location.legacy_catalog import legacy_catalog
+from location.tests.legacy_fixtures import historical_geography_schema, legacy_city_for, legacy_district_for, registered_legacy_id
+from location.models import Location, LocationClosure
 
 
 def customer_backfill_apps():
@@ -86,9 +88,10 @@ def test_schema_migration_retains_original_profiles_calculation_links_and_limits
             'desiredRegionLocationId': strelna.region_id, 'desiredLocalityId': strelna.pk,
             'desiredDistrictLocationId': strelna.parent_id,
         }, content_type='application/json').status_code == 200
-        historical_apps = customer_backfill_apps()
-        backfill_customer_locations(historical_apps)
-        backfill_customer_locations(historical_apps)
+        with historical_geography_schema():
+            historical_apps = customer_backfill_apps()
+            backfill_customer_locations(historical_apps)
+            backfill_customer_locations(historical_apps)
         customer.refresh_from_db()
         assert customer.desired_locality_id == strelna.pk
         assert customer.get_preferential_credit_limit() == old_limit
@@ -126,20 +129,20 @@ def test_new_localities_and_clearing_preserve_snapshots_and_financial_identity(c
     assert customer.get_legacy_financial_region_id() is None and customer.get_preferential_credit_limit() == Decimal('6000000')
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_unmapped_legacy_values_survive_other_profile_changes(client, geographic_customer, filtered_catalog):
     """Keep the original label and finance when the old ID lacks a locality role."""
     customer = geographic_customer
-    unknown = City.objects.create(name='Несопоставленный город', region=legacy_city_for(customer.desired_city_id).region)
-    LegacyLocationMapping.objects.create(
-        model_name='city', legacy_id=unknown.pk, legacy_name=unknown.name, legacy_region_id=unknown.region_id,
+    unknown = create_legacy_fixture(
+        'city', name='Несопоставленный город', region=legacy_city_for(customer.desired_city_id).region,
         location=filtered_catalog['pushkin'][0].parent,
     )
     customer.residence_city_id = unknown.pk
     customer.desired_city_id = unknown.pk
     customer.desired_district_id = None
     customer.save()
-    backfill_customer_locations(customer_backfill_apps())
+    with historical_geography_schema():
+        backfill_customer_locations(customer_backfill_apps())
     customer.refresh_from_db()
     assert not customer.purchase_uses_canonical_locations and not customer.residence_uses_canonical_location
     assert client.patch(f'/api/v1/customers/{customer.pk}/', {'comment': 'Изменение заметки'}, content_type='application/json').status_code == 200
@@ -200,7 +203,7 @@ def test_native_form_bounded_choices_and_geo_only_region_budget(client, geograph
 def test_region_without_financial_mapping_uses_global_limit(client, geographic_customer, filtered_catalog):
     """Do not fabricate financial regions when a new geographic region has no mapping."""
     customer = geographic_customer
-    count = Region.objects.count()
+    count = legacy_catalog('region').count()
     root = Location.objects.create(name='Новый субъект', location_type=filtered_catalog['strelna'][0].region.location_type)
     root.region = root
     root.save(update_fields=['region'])
@@ -211,7 +214,7 @@ def test_region_without_financial_mapping_uses_global_limit(client, geographic_c
     customer.refresh_from_db()
     assert customer.get_legacy_financial_region_id() is None
     assert customer.get_preferential_credit_limit() == Decimal('6000000')
-    assert Region.objects.count() == count
+    assert legacy_catalog('region').count() == count
 
 
 @pytest.mark.django_db
@@ -238,14 +241,15 @@ def test_homonymous_settlements_keep_distinct_ids_and_labels(client, geographic_
     assert 'Пушкинский' in data['desiredLocalityLabel']
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_legacy_district_without_city_keeps_original_global_limit(client, geographic_customer):
     """Do not change an original global limit merely by backfilling a district's region."""
     customer = geographic_customer
     customer.desired_city_id = None
     customer.save(update_fields=['desired_city_id'])
     assert customer.get_preferential_credit_limit() == Decimal('6000000')
-    backfill_customer_locations(customer_backfill_apps())
+    with historical_geography_schema():
+        backfill_customer_locations(customer_backfill_apps())
     customer.refresh_from_db()
     assert customer.purchase_uses_canonical_locations
     assert customer.desired_region_location_id and customer.desired_financial_region_id is None

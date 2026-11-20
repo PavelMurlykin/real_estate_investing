@@ -1,12 +1,12 @@
 """Check locality-first complex mutations without fabricated legacy districts."""
 
 import pytest
-from django.apps import apps
 
 from api_v1.test_location_import import import_user
 from api_v1.test_real_estate_complexes import complex_catalog
+from location.tests.legacy_fixtures import update_legacy_fixture
+from location.legacy_catalog import legacy_catalog
 from location.gar_import import load_region
-from location.migration_support import backfill_locations
 from location.models import Location
 from location.tests.test_gar import SPB
 from property.forms import RealEstateComplexForm
@@ -18,9 +18,7 @@ from api_v1.serializers import ManualCalculationPropertySerializer
 def locality_catalog(complex_catalog, client, import_user):
     """Add real GAR identities to a legacy graph and authenticate a moderator."""
     region = complex_catalog['region']
-    region.name, region.code = 'Санкт-Петербург', '78'
-    region.save(update_fields=['name', 'code'])
-    backfill_locations(apps)
+    update_legacy_fixture(region, name='Санкт-Петербург', code='78')
     load_region(SPB, '78', '20261113')
     client.force_login(import_user('moderator'))
     return complex_catalog
@@ -145,7 +143,6 @@ def test_fallback_form_accepts_locality_and_bounds_options(locality_catalog):
 def test_same_named_villages_are_selectable_without_fabricated_cities(locality_catalog, client, django_assert_num_queries):
     """Distinct GAR identities survive creation, display and bounded list loading."""
     from django.test import Client
-    from location.models import City
 
     rows = [dict(row) for row in SPB]
     for identifier, parent, level, name in [
@@ -157,7 +154,7 @@ def test_same_named_villages_are_selectable_without_fabricated_cities(locality_c
                          type='р-н' if level == '2' else 'д.',
                          typeName='Район' if level == '2' else 'Деревня'))
     load_region(rows, '78', '20261113')
-    cities_before = City.objects.count()
+    cities_before = legacy_catalog('city').count()
     villages = list(Location.objects.filter(name='Дубровка'))
     assert len(villages) == 2
     for village in villages:
@@ -168,6 +165,6 @@ def test_same_named_villages_are_selectable_without_fabricated_cities(locality_c
         assert response.json()['location']['id'] == village.pk
         assert response.json()['city'] == 'Дубровка'
         assert response.json()['districtId'] is None
-    assert City.objects.count() == cities_before
+    assert legacy_catalog('city').count() == cities_before
     with django_assert_num_queries(5):
         assert Client().get('/api/v1/complexes/').status_code == 200

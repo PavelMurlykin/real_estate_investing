@@ -5,7 +5,6 @@ from importlib import import_module
 from types import SimpleNamespace
 
 import pytest
-from django.apps import apps as django_apps
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
@@ -13,7 +12,10 @@ from django.test.utils import CaptureQueriesContext
 
 from api_v1.test_complex_localities import complex_catalog, import_user, locality_catalog  # noqa: F401
 from bank.models import MortgageProgramRegionalCreditLimit
-from location.models import LegacyLocationMapping, Location, LocationClosure, LocationType, Region
+from location.tests.legacy_fixtures import create_legacy_fixture
+from location.tests.legacy_fixtures import historical_geography_schema
+from location.legacy_catalog import legacy_catalog, reserve_legacy_ids
+from location.models import LocationCompatibilityEntry, Location, LocationClosure, LocationType
 from property.models import Developer, DeveloperRegion
 from property.services.developer_registry_upload import import_developer_registry_uploaded_file
 from property.services.developer_registry_importer import import_dom_rf_developers
@@ -65,14 +67,16 @@ def test_new_subject_without_legacy_region_and_preserved_unmapped_links(client, 
     subject.save(update_fields=['region'])
     LocationClosure.objects.create(ancestor=subject, descendant=subject, depth=0)
     developer = locality_catalog['developer']
-    unresolved = Region.objects.create(name='Не сопоставлен', code='UNK')
-    old_link = DeveloperRegion.objects.create(developer=developer, region_id=unresolved.pk, legacy_region_name=unresolved.name)
+    unresolved_id, = reserve_legacy_ids('region', 1)
+    old_link = DeveloperRegion.objects.create(
+        developer=developer, region_id=unresolved_id, legacy_region_name='Не сопоставлен',
+    )
     for _ in range(2):
         response = client.patch(f'/api/v1/developers/{developer.pk}/', {
             'regionLocationIds': [subject.pk],
         }, content_type='application/json')
         assert response.status_code == 200, response.content
-        assert response.json()['unmappedRegions'] == [{'id': unresolved.pk, 'name': unresolved.name}]
+        assert response.json()['unmappedRegions'] == [{'id': unresolved_id, 'name': old_link.legacy_region_name}]
     assert DeveloperRegion.objects.filter(developer=developer, location=subject).count() == 1
     canonical_link = DeveloperRegion.objects.get(developer=developer, location=subject)
     assert canonical_link.region_id is None
@@ -151,12 +155,12 @@ def test_import_can_use_a_canonical_subject_without_creating_a_legacy_region(cli
     subject = Location.objects.create(
         name='Новый регион реестра', location_type=LocationType.objects.filter(category='region').first(),
     )
-    before = Region.objects.count()
+    before = legacy_catalog('region').count()
     summary = import_developer_registry_uploaded_file(uploaded_regions(region=subject.name))
     assert summary.created_developer_region_links == 1 and not summary.errors
     link = DeveloperRegion.objects.get(developer__name='Регионы ЕРЗ')
     assert link.location_id == subject.pk and link.region_id is None
-    assert Region.objects.count() == before
+    assert legacy_catalog('region').count() == before
 
 
 @pytest.mark.django_db
@@ -177,7 +181,7 @@ def test_developer_list_queries_are_bounded(client, locality_catalog):
     assert client.get('/api/v1/developers/options/').json()['regions']
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_filters_find_a_mapped_legacy_link_alongside_another_location(client, locality_catalog):
     """Match a mapped fallback per link and keep old writes from removing Location-only links."""
     developer = locality_catalog['developer']
@@ -198,8 +202,9 @@ def test_filters_find_a_mapped_legacy_link_alongside_another_location(client, lo
         assert not any(f'{operation} "region"' in query['sql'] for query in queries for operation in ('FROM', 'JOIN'))
     migration = import_module('property.migrations.0022_complete_developer_regions')
     editor = SimpleNamespace(connection=connection)
-    for _ in range(2):
-        migration.complete_developer_regions(django_apps, editor)
+    with historical_geography_schema() as historical_apps:
+        for _ in range(2):
+            migration.complete_developer_regions(historical_apps, editor)
     legacy_link.refresh_from_db()
     assert (legacy_link.location_id, legacy_link.region_id, legacy_link.legacy_region_name, legacy_link.is_active) == (
         subject.pk, old.pk, old.name, False,
@@ -218,10 +223,10 @@ def test_legacy_region_writes_and_delete_protection_use_only_the_alias(client, l
     """Keep both legacy write paths working when the alias has no Region row."""
     subject = Location.objects.get(name='Стрельна').region
     another_subject = Location.objects.create(name='Новый субъект', location_type=subject.location_type)
-    alias = LegacyLocationMapping.objects.create(
+    alias = LocationCompatibilityEntry.objects.create(
         model_name='region', legacy_id=900001, legacy_name='Наследуемый регион', location=another_subject,
     )
-    assert not Region.objects.filter(pk=alias.legacy_id).exists()
+    assert 'region' not in connection.introspection.table_names()
     developer = locality_catalog['developer']
     with CaptureQueriesContext(connection) as queries:
         response = client.patch(

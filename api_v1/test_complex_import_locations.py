@@ -8,12 +8,11 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-from django.apps import apps
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import Client
-from django.db import connection
+from django.db import connection, transaction
 from django.db.migrations.executor import MigrationExecutor
 from django.test.utils import CaptureQueriesContext
 from rest_framework.exceptions import ValidationError
@@ -25,11 +24,16 @@ from api_v1.test_real_estate_complexes import create_catalog_manager
 from bank.models import MortgageProgram, MortgageProgramRegionalCreditLimit
 from core.json_import import JsonImportError
 from customer.models import Customer, CustomerCalculation, CustomerTrenchCalculation
+from location.tests.legacy_fixtures import update_legacy_fixture
+from location.tests.legacy_fixtures import historical_geography_schema
+from location.tests.legacy_fixtures import create_legacy_fixture
+from location.legacy_catalog import legacy_catalog
 from location.tests.legacy_fixtures import registered_legacy_id
 from location.tests.legacy_fixtures import canonical_legacy_location
 from location.gar_import import load_region
-from location.migration_support import backfill_locations
-from location.models import City, District, Location, LocationAlias, LocationIdentifier, Metro, MetroLine, MetroSystem, Region
+from location.models import (
+    Location, LocationAlias, LocationCompatibilityEntry, LocationIdentifier, Metro, MetroLine, MetroSystem,
+)
 from mortgage.models import MortgageCalculation
 from property.complex_import import import_complex_catalog
 from property.complex_photos import add_complex_photos
@@ -71,7 +75,7 @@ def canonical_payload(payload, locality='Пушкин'):
 def catalog_counts():
     """Detect accidental duplicate legacy or canonical dictionaries."""
     return {model._meta.label: model.objects.count()
-            for model in (Region, City, District, Location, LocationIdentifier, MetroSystem, MetroLine, Metro)}
+            for model in (LocationCompatibilityEntry, Location, LocationIdentifier, MetroSystem, MetroLine, Metro)}
 
 
 def json_import_account(role):
@@ -119,7 +123,7 @@ def test_import_and_repeat_in_suburbs(import_payload, import_geography, settings
                         complex_object.metro_availability.get().pk, complex_object.photos.get().pk)
     assert complex_object.metro_availability.get().metro_id == station.pk
     assert before == catalog_counts()
-    assert not City.objects.filter(name=locality).exists()
+    assert not legacy_catalog('city').filter(legacy_name=locality).exists()
 
 
 @pytest.mark.django_db
@@ -202,21 +206,18 @@ def test_old_file_keeps_confirmed_suburb(import_payload, import_geography, setti
     assert existing.district_id == import_geography['district'].pk
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_mys_migration_and_legacy_import_preserve_likino(
     import_payload, complex_catalog, settings, tmp_path, client,
 ):
     """Refine the retained district link by GAR and preserve it on legacy reimport."""
     settings.MEDIA_ROOT = tmp_path
     region = complex_catalog['region']
-    region.name, region.code = 'Московская область', '50'
-    region.save(update_fields=['name', 'code'])
+    update_legacy_fixture(region, name='Московская область', code='50')
     city = complex_catalog['city']
-    city.name = 'Одинцово'
-    city.save(update_fields=['name'])
+    update_legacy_fixture(city, name='Одинцово')
     district = complex_catalog['district']
-    district.name = 'Одинцовский городской округ'
-    district.save(update_fields=['name'])
+    update_legacy_fixture(district, name='Одинцовский городской округ')
     for entry in (region, city, district):
         canonical_legacy_location(entry)
     original = complex_catalog['complex']
@@ -253,11 +254,13 @@ def test_mys_migration_and_legacy_import_preserve_likino(
     old_building = original.realestatecomplexbuilding_set.values().get()
     old_metro_id = original.metro_availability.get().pk
     migration = import_module('property.migrations.0021_refine_mys_location')
-    historical_apps = MigrationExecutor(connection).loader.project_state([
-        ('property', '0021_refine_mys_location'), ('location', '0017_detach_metro_line_city'),
-    ]).apps
-    for _ in range(2):
-        migration.refine_mys_location(historical_apps, SimpleNamespace(connection=connection))
+    with historical_geography_schema():
+        historical_apps = MigrationExecutor(connection).loader.project_state([
+            ('property', '0021_refine_mys_location'), ('location', '0017_detach_metro_line_city'),
+        ]).apps
+        with transaction.atomic():
+            for _ in range(2):
+                migration.refine_mys_location(historical_apps, SimpleNamespace(connection=connection))
     old_link.refresh_from_db()
     assert old_link.is_historical and not old_link.is_primary
     assert RealEstateComplex.objects.values().get(pk=original.pk) == old_complex
@@ -292,8 +295,7 @@ def test_mys_migration_and_legacy_import_preserve_likino(
     assert overridden['propertyCost'] == '6000000.00'
     assert client.get('/api/v1/properties/', {'localityId': locality.pk}).json()['results'] == []
 
-    unrelated = District.objects.create(name='Другой район', city=city)
-    backfill_locations(apps)
+    unrelated = create_legacy_fixture('district', name='Другой район', city=city)
     row['district'] = unrelated.name
     with pytest.raises(JsonImportError, match='противоречит'):
         import_complex_catalog(import_payload)
@@ -310,14 +312,14 @@ def test_natural_metro_uses_network_and_adds_no_old_city(import_payload, import_
         'station': 'Новая импортная', 'line': 'Новая линия', 'color': '#123456',
         'system_location': {'id': center.pk}, 'mode': 'На транспорте', 'minutes': 30,
     }]
-    old_counts = (City.objects.count(), District.objects.count(), Region.objects.count())
+    old_counts = (legacy_catalog('city').count(), legacy_catalog('district').count(), legacy_catalog('region').count())
     import_complex_catalog(payload)
     import_complex_catalog(payload)
     station = Metro.objects.get(station='Новая импортная')
     assert station.metro_line.system_id == import_geography['metro'].metro_line.system_id
     assert station.metro_line.legacy_city_id is None and station.location_id is None
     assert station.lines.filter(pk=station.metro_line_id).exists()
-    assert old_counts == (City.objects.count(), District.objects.count(), Region.objects.count())
+    assert old_counts == (legacy_catalog('city').count(), legacy_catalog('district').count(), legacy_catalog('region').count())
 
 
 @pytest.mark.django_db

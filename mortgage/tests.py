@@ -19,8 +19,10 @@ from bank.models import (
     MortgageProgramRegionalCreditLimit,
 )
 from customer.models import Customer, CustomerTrenchCalculation
+from location.tests.legacy_fixtures import create_legacy_fixture
+from location.legacy_catalog import legacy_catalog
 from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
-from location.models import City, District, Region
+
 from mortgage.forms import MortgageForm
 from mortgage.models import MortgageCalculation
 from property.models import (
@@ -59,9 +61,9 @@ def create_user_with_role(email, phone_number, group_name=None):
 
 def create_property_for_calculator_prefill():
     """Create a property with related catalog records for prefill tests."""
-    region = Region.objects.create(name='Prefill Region', code='PREF')
-    city = City.objects.create(name='Prefill City', region=region)
-    district = District.objects.create(name='Prefill District', city=city)
+    region = create_legacy_fixture('region', name='Prefill Region', code='PREF')
+    city = create_legacy_fixture('city', name='Prefill City', region=region)
+    district = create_legacy_fixture('district', name='Prefill District', city=city)
     developer = Developer.objects.create(name='Prefill Developer')
     estate_type = RealEstateType.objects.create(name='Prefill Apartment')
     estate_class = RealEstateClass.objects.create(
@@ -204,12 +206,12 @@ class MortgageCalculatorViewTests(TestCase):
         Возвращает:
             Any: Тип результата определяется вызывающим кодом.
         """
-        suffix = Region.objects.count() + 1
-        region = Region.objects.create(
+        suffix = legacy_catalog('region').count() + 1
+        region = create_legacy_fixture('region',
             name=f'Регион {suffix}', code=f'R{suffix}'
         )
-        city = City.objects.create(name=city_name, region=region)
-        district = District.objects.create(
+        city = create_legacy_fixture('city', name=city_name, region=region)
+        district = create_legacy_fixture('district',
             name=f'Район {suffix}', city=city
         )
         developer = Developer.objects.create(name=f'Застройщик {suffix}')

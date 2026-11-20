@@ -12,8 +12,10 @@ from django.test import TestCase
 from django.urls import reverse
 
 from bank.models import MortgageProgram, MortgageProgramRegionalCreditLimit
+from location.tests.legacy_fixtures import create_legacy_fixture
+from location.legacy_catalog import legacy_catalog
 from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
-from location.models import City, District, Region
+
 from mortgage.models import MortgageCalculation
 from mortgage.utils import format_currency
 from property.models import (
@@ -247,8 +249,8 @@ class CustomerDetailViewTests(TestCase):
 
     def test_detail_page_limits_family_mortgage_credit_by_region(self):
         """Проверяет региональный лимит кредита семейной ипотеки."""
-        region = Region.objects.create(name='Москва', code='77')
-        city = City.objects.create(name='Москва', region=region)
+        region = create_legacy_fixture('region', name='Москва', code='77')
+        city = create_legacy_fixture('city', name='Москва', region=region)
         customer = Customer.objects.create(
             user=self.user,
             first_name='Иван',
@@ -359,12 +361,12 @@ class CustomerDeleteViewTests(TestCase):
         complex_name='ЖК Тест',
     ) -> Property:
         """Создает объект недвижимости для ипотечного расчета."""
-        suffix = Region.objects.count() + 1
-        region = Region.objects.create(
+        suffix = legacy_catalog('region').count() + 1
+        region = create_legacy_fixture('region',
             name=f'Регион {suffix}', code=f'R{suffix}'
         )
-        city = City.objects.create(name=city_name, region=region)
-        district = District.objects.create(
+        city = create_legacy_fixture('city', name=city_name, region=region)
+        district = create_legacy_fixture('district',
             name=f'Район {suffix}', city=city
         )
         developer = Developer.objects.create(name=f'Застройщик {suffix}')

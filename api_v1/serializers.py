@@ -22,7 +22,7 @@ from customer.models import Customer
 from customer.location_service import CUSTOMER_LOCATION_FIELDS, prepare_customer_locations
 from location.legacy_catalog import legacy_catalog, save_legacy_catalog_entry
 from location.presentation import geographic_label
-from location.models import LegacyLocationMapping, Location, Metro, MetroLine, MetroSystem
+from location.models import LocationCompatibilityEntry, Location, Metro, MetroLine, MetroSystem
 from property.location_context import (
     building_geography_prefetch, locality_filter, prefetch_complex_geography,
     resolve_legacy_district_edit, set_primary_location,
@@ -406,7 +406,7 @@ class LocationDictionaryEntrySerializer(serializers.Serializer):
 
     def get_location(self, entry):
         """Expose explicit geography with a bounded, preloaded label."""
-        if isinstance(entry, LegacyLocationMapping):
+        if isinstance(entry, LocationCompatibilityEntry):
             return None
         location = getattr(entry, 'location', None)
         return {'id': location.pk, 'name': geographic_label(location)} if location else None
@@ -443,11 +443,11 @@ class LocationDictionaryEntrySerializer(serializers.Serializer):
 
     def get_id(self, entry):
         """Keep IDs scoped to their original public dictionary."""
-        return entry.legacy_id if isinstance(entry, LegacyLocationMapping) else entry.pk
+        return entry.legacy_id if isinstance(entry, LocationCompatibilityEntry) else entry.pk
 
     def get_is_active(self, entry):
         """Expose the status the old catalog assigned to the entry."""
-        return entry.legacy_is_active if isinstance(entry, LegacyLocationMapping) else entry.is_active
+        return entry.legacy_is_active if isinstance(entry, LocationCompatibilityEntry) else entry.is_active
 
     def get_name(self, dictionary_entry):
         """Return the configured display field under a stable API name."""
@@ -464,7 +464,7 @@ class LocationDictionaryEntrySerializer(serializers.Serializer):
         """Return the owning region for nested location entries."""
         if self.context.get('canonical_metro'):
             return None
-        if isinstance(dictionary_entry, LegacyLocationMapping) and dictionary_entry.legacy_region_id:
+        if isinstance(dictionary_entry, LocationCompatibilityEntry) and dictionary_entry.legacy_region_id:
             return {'id': dictionary_entry.legacy_region_id, 'name': dictionary_entry.region_name}
         if isinstance(dictionary_entry, Metro):
             identifier = dictionary_entry.legacy_metro_region_id
@@ -475,7 +475,7 @@ class LocationDictionaryEntrySerializer(serializers.Serializer):
         """Return the owning city for districts and metro stations."""
         if self.context.get('canonical_metro'):
             return None
-        if isinstance(dictionary_entry, LegacyLocationMapping) and dictionary_entry.legacy_city_id:
+        if isinstance(dictionary_entry, LocationCompatibilityEntry) and dictionary_entry.legacy_city_id:
             return {'id': dictionary_entry.legacy_city_id, 'name': dictionary_entry.city_name}
         if isinstance(dictionary_entry, Metro):
             identifier = dictionary_entry.metro_line.legacy_city_id
@@ -2425,7 +2425,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         if legacy_ids:
             mappings = {
                 (mapping.model_name, mapping.legacy_id): mapping.location
-                for mapping in LegacyLocationMapping.objects.filter(
+                for mapping in LocationCompatibilityEntry.objects.filter(
                     model_name__in=('city', 'district'), legacy_id__in=legacy_ids,
                 ).select_related('location__location_type', 'location__parent', 'location__region')
             }
@@ -3324,7 +3324,7 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
         if territory is None and district_id is None:
             raise serializers.ValidationError({'locationId': 'Выберите населённый пункт.'})
         if location is None and attributes.get('metroAvailability') and district_id:
-            city_id = LegacyLocationMapping.objects.filter(
+            city_id = LocationCompatibilityEntry.objects.filter(
                 model_name='district', legacy_id=district_id,
             ).values_list('legacy_city_id', flat=True).first()
             for row in attributes['metroAvailability']:

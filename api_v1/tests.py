@@ -10,8 +10,9 @@ from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
-from location.models import City, District, LegacyLocationMapping, Region
+from location.models import LocationCompatibilityEntry
 from mortgage.models import MortgageCalculation
 from property.models import (
     ApartmentDecoration,
@@ -32,9 +33,9 @@ from users.roles import MODERATOR_GROUP_NAME
 @pytest.fixture
 def property_catalog():
     """Create a compact property catalog for API tests."""
-    region = Region.objects.create(name='Тестовый регион', code='TEST')
-    city = City.objects.create(name='Санкт-Петербург', region=region)
-    district = District.objects.create(name='Петроградский', city=city)
+    region = create_legacy_fixture('region', name='Тестовый регион', code='TEST')
+    city = create_legacy_fixture('city', name='Санкт-Петербург', region=region)
+    district = create_legacy_fixture('district', name='Петроградский', city=city)
     company_group = CompanyGroup.objects.create(name='Группа Север')
     developer = Developer.objects.create(
         name='Северный девелопер',
@@ -514,8 +515,8 @@ def test_property_form_options_are_manager_only_and_hierarchical(
         **payload, 'regions': [], 'cities': [], 'districts': [],
         'truncated': {**payload['truncated'], 'regions': False, 'cities': False, 'districts': False},
     }
-    for model in (Region, City, District):
-        assert not any(f'FROM "{model._meta.db_table}"' in query['sql'] for query in queries)
+    for table in ('region', 'city', 'district'):
+        assert not any(f'FROM "{table}"' in query['sql'] for query in queries)
     assert not any(payload['truncated'].values())
 
 
@@ -860,7 +861,7 @@ def test_developer_list_api_is_public_filtered_and_hides_sensitive_fields(
     DeveloperRegion.objects.create(
         developer=developer, region_id=region.pk, legacy_region_name=region.name,
     )
-    mapped = LegacyLocationMapping.objects.get(model_name='region', legacy_id=region.pk).location
+    mapped = LocationCompatibilityEntry.objects.get(model_name='region', legacy_id=region.pk).location
     Developer.objects.create(name='Южный девелопер', is_active=False)
 
     with django_assert_num_queries(3):

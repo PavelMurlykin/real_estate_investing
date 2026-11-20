@@ -8,8 +8,9 @@ from django.contrib.messages import get_messages
 from django.test import TestCase
 from django.urls import reverse
 
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.tests.legacy_fixtures import canonical_legacy_location
-from location.models import Region
+
 from users.roles import (
     APPLICATION_ADMINISTRATOR_GROUP_NAME,
     MODERATOR_GROUP_NAME,
@@ -120,7 +121,7 @@ class MortgageProgramCreditLimitTests(TestCase):
             is_preferential=True,
             credit_limit=Decimal('6000000'),
         )
-        region = Region.objects.create(name='Москва', code='77')
+        region = create_legacy_fixture('region', name='Москва', code='77')
         MortgageProgramRegionalCreditLimit.objects.create(
             mortgage_program=program,
             region_id=region.pk, legacy_region_name=region.name,
@@ -140,7 +141,7 @@ class MortgageProgramCreditLimitTests(TestCase):
             is_preferential=True,
             credit_limit=Decimal('6000000'),
         )
-        region = Region.objects.create(name='Татарстан', code='16')
+        region = create_legacy_fixture('region', name='Татарстан', code='16')
 
         self.assertEqual(
             program.get_credit_limit(region),
@@ -226,7 +227,7 @@ class MortgageProgramCreditLimitTests(TestCase):
             is_preferential=True,
             credit_limit=Decimal('6000000'),
         )
-        region = Region.objects.create(name='Moscow', code='77')
+        region = create_legacy_fixture('region', name='Moscow', code='77')
         regional_credit_limit = (
             MortgageProgramRegionalCreditLimit.objects.create(
                 mortgage_program=program,
@@ -257,7 +258,7 @@ class MortgageProgramCreditLimitTests(TestCase):
             is_preferential=True,
             credit_limit=Decimal('6000000'),
         )
-        region = Region.objects.create(name='Moscow', code='77')
+        region = create_legacy_fixture('region', name='Moscow', code='77')
         subject = canonical_legacy_location(region)
 
         response = self.client.post(

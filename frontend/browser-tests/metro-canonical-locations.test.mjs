@@ -43,8 +43,7 @@ test('edits metro systems, lines and suburban station geography while preserving
   }
   await page.waitForURL(url('/app/locations/metro-lines'))
   const lineRow = page.getByRole('row', { name: /E2E первая/ })
-  assert.equal(await lineRow.locator('.location-line-swatch').evaluate((swatch) =>
-    getComputedStyle(swatch).backgroundColor), 'rgb(21, 130, 196)')
+  await lineRow.locator('.location-line-swatch[style*="rgb(21, 130, 196)"]').waitFor({ state: 'visible' })
   assert.doesNotMatch(await lineRow.innerText(), /#[\da-f]{6}/i)
   if (process.env.BROWSER_TEST_SCREENSHOTS) {
     await page.screenshot({ path: `${process.env.BROWSER_TEST_SCREENSHOTS}/location-metro-lines-desktop.png`, fullPage: true })

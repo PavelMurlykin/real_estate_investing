@@ -18,9 +18,10 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from openpyxl import Workbook
 
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.tests.legacy_fixtures import registered_legacy_id
 from location.tests.legacy_fixtures import canonical_legacy_location
-from location.models import City, District, Metro, MetroLine, Region
+from location.models import Metro, MetroLine
 from users.roles import (
     APPLICATION_ADMINISTRATOR_GROUP_NAME,
     MODERATOR_GROUP_NAME,
@@ -149,7 +150,7 @@ def test_developer_choice_fields_use_company_group_labels():
 def test_developer_region_links_developer_and_region_once():
     """DeveloperRegion should expose the canonical region and unique legacy ID."""
     developer = Developer.objects.create(name='Regional Developer')
-    region = Region.objects.create(name='Москва', code='77')
+    region = create_legacy_fixture('region', name='Москва', code='77')
     subject = canonical_legacy_location(region)
 
     link = DeveloperRegion.objects.create(
@@ -193,8 +194,8 @@ def test_developer_form_new_fields_are_optional():
 @pytest.mark.django_db
 def test_developer_form_saves_regions():
     """Developer form should persist selected operating regions."""
-    moscow = Region.objects.create(name='Москва', code='77')
-    saint_petersburg = Region.objects.create(name='Санкт-Петербург', code='78')
+    moscow = create_legacy_fixture('region', name='Москва', code='77')
+    saint_petersburg = create_legacy_fixture('region', name='Санкт-Петербург', code='78')
     subjects = [canonical_legacy_location(region) for region in (moscow, saint_petersburg)]
     form = DeveloperForm(
         data={
@@ -360,8 +361,8 @@ def test_normalize_developer_registry_item_uses_known_dom_rf_aliases():
 @pytest.mark.django_db
 def test_import_dom_rf_developers_creates_groups_and_deduplicates_regions():
     """Importer should create company groups and deduplicate region rows."""
-    canonical_legacy_location(Region.objects.create(name='Москва', code='77'))
-    canonical_legacy_location(Region.objects.create(name='Санкт-Петербург', code='78'))
+    canonical_legacy_location(create_legacy_fixture('region', name='Москва', code='77'))
+    canonical_legacy_location(create_legacy_fixture('region', name='Санкт-Петербург', code='78'))
     client = FakeDeveloperRegistryClient(
         [
             DeveloperRegistrySourceItem(
@@ -567,8 +568,8 @@ def test_file_developer_registry_client_reads_xlsx_source_file(tmp_path):
 @pytest.mark.django_db
 def test_import_dom_rf_developers_reads_multisheet_xlsx_regions(tmp_path):
     """Importer should deduplicate developers and load region links from XLSX."""
-    canonical_legacy_location(Region.objects.create(name='Москва', code='77'))
-    canonical_legacy_location(Region.objects.create(name='Санкт-Петербург', code='78'))
+    canonical_legacy_location(create_legacy_fixture('region', name='Москва', code='77'))
+    canonical_legacy_location(create_legacy_fixture('region', name='Санкт-Петербург', code='78'))
     source_file = tmp_path / 'developers.xlsx'
     workbook = Workbook()
     worksheet = workbook.active
@@ -862,13 +863,13 @@ class RealEstateComplexFormLocationTests(TestCase):
                 '+79992000000',
             )
         )
-        self.region = Region.objects.create(name='Region 1', code='R1')
-        self.other_region = Region.objects.create(name='Region 2', code='R2')
-        self.city = City.objects.create(name='City 1', region=self.region)
-        self.other_city = City.objects.create(
+        self.region = create_legacy_fixture('region', name='Region 1', code='R1')
+        self.other_region = create_legacy_fixture('region', name='Region 2', code='R2')
+        self.city = create_legacy_fixture('city', name='City 1', region=self.region)
+        self.other_city = create_legacy_fixture('city',
             name='City 2', region=self.other_region
         )
-        self.district = District.objects.create(
+        self.district = create_legacy_fixture('district',
             name='District 1', city=self.city
         )
         canonical_legacy_location(self.district)
@@ -1501,8 +1502,8 @@ class LocationCatalogMetroTests(TestCase):
                 '+79992000001',
             )
         )
-        self.region = Region.objects.create(name='Region 1', code='R1')
-        self.city = City.objects.create(name='City 1', region=self.region)
+        self.region = create_legacy_fixture('region', name='Region 1', code='R1')
+        self.city = create_legacy_fixture('city', name='City 1', region=self.region)
         self.metro_line = MetroLine.objects.create(
             line='Line 1',
             line_color='#FF0000',
@@ -1598,14 +1599,11 @@ class LocationCatalogMetroTests(TestCase):
 
     def test_location_catalog_paginates_district_rows(self):
         for index in range(21):
-            District.objects.create(
+            create_legacy_fixture('district',
                 name=f'District {index:02d}',
                 city=self.city,
             )
 
-        from django.apps import apps
-        from location.migration_support import backfill_locations
-        backfill_locations(apps)
 
         response = self.client.get(
             reverse('location:location_catalog'), {'model': 'district'}
@@ -1698,7 +1696,7 @@ class LocationCatalogMetroTests(TestCase):
         self.assertContains(response, 'City 1')
 
     def test_location_catalog_filters_metro_by_city_and_line(self):
-        other_city = City.objects.create(name='City 2', region=self.region)
+        other_city = create_legacy_fixture('city', name='City 2', region=self.region)
         other_line = MetroLine.objects.create(
             line='Line 2',
             line_color='#00FF00',
@@ -1750,7 +1748,7 @@ class LocationCatalogMetroTests(TestCase):
 class DeveloperListViewTests(TestCase):
     def test_developer_list_filters_and_sorts_with_catalog_static_hooks(self):
         company_group = CompanyGroup.objects.create(name='Alpha Group')
-        region = Region.objects.create(name='Region Alpha', code='RA')
+        region = create_legacy_fixture('region', name='Region Alpha', code='RA')
         subject = canonical_legacy_location(region)
         Developer.objects.create(name='Beta Developer', description='Townhouses')
         developer = Developer.objects.create(
@@ -1859,9 +1857,9 @@ class RealEstateComplexDeleteViewTests(TestCase):
         Возвращает:
             Any: Тип результата определяется вызывающим кодом.
         """
-        region = Region.objects.create(name='Region 1', code='R1')
-        city = City.objects.create(name='City 1', region=region)
-        district = District.objects.create(name='District 1', city=city)
+        region = create_legacy_fixture('region', name='Region 1', code='R1')
+        city = create_legacy_fixture('city', name='City 1', region=region)
+        district = create_legacy_fixture('district', name='District 1', city=city)
         developer = Developer.objects.create(name='Developer 1')
         estate_type = RealEstateType.objects.create(name='Apartment')
         estate_class = RealEstateClass.objects.create(
@@ -1988,18 +1986,18 @@ class PropertyFormCascadeTests(TestCase):
                 '+79992000003',
             )
         )
-        self.region = Region.objects.create(name='Region 1', code='R1')
-        self.other_region = Region.objects.create(name='Region 2', code='R2')
-        self.city = City.objects.create(name='City 1', region=self.region)
-        self.other_city = City.objects.create(
+        self.region = create_legacy_fixture('region', name='Region 1', code='R1')
+        self.other_region = create_legacy_fixture('region', name='Region 2', code='R2')
+        self.city = create_legacy_fixture('city', name='City 1', region=self.region)
+        self.other_city = create_legacy_fixture('city',
             name='City 2',
             region=self.other_region,
         )
-        self.district = District.objects.create(
+        self.district = create_legacy_fixture('district',
             name='District 1',
             city=self.city,
         )
-        self.other_district = District.objects.create(
+        self.other_district = create_legacy_fixture('district',
             name='District 2',
             city=self.other_city,
         )
@@ -2159,7 +2157,7 @@ class PropertyFormCascadeTests(TestCase):
     @override_settings(PUBLIC_CATALOG_API_MAX_RESULTS=1)
     def test_cities_api_limits_rows_and_fields(self):
         """The cities API should expose a bounded allowlisted payload."""
-        City.objects.create(name='City 0', region=self.region)
+        create_legacy_fixture('city', name='City 0', region=self.region)
 
         response = self.client.get(
             '/api/cities/',

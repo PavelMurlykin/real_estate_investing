@@ -5,7 +5,7 @@ from django.urls import path
 from django.views.decorators.http import require_GET
 
 from location.legacy_catalog import legacy_choices
-from location.models import LegacyLocationMapping
+from location.models import LocationCompatibilityEntry
 
 from .models import RealEstateComplex, RealEstateComplexBuilding
 
@@ -121,7 +121,7 @@ def complexes_api(request):
     if error_response:
         return error_response
 
-    legacy_district = LegacyLocationMapping.objects.filter(
+    legacy_district = LocationCompatibilityEntry.objects.filter(
         model_name='district', legacy_id=OuterRef('district_id'),
     ).order_by()
     complexes = RealEstateComplex.objects.annotate(

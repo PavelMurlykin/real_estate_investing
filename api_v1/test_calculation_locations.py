@@ -13,8 +13,10 @@ from api_v1.test_customers import customer_users  # noqa: F401
 from api_v1.test_customer_calculations import create_customer_calculations
 from bank.models import MortgageProgram, MortgageProgramRegionalCreditLimit
 from customer.models import Customer, CustomerCalculation, CustomerTrenchCalculation
-from location.tests.legacy_fixtures import legacy_city_for, legacy_district_for, registered_legacy_id
-from location.models import City, LegacyLocationMapping, LocationAlias, LocationClosure
+from location.models import LocationAlias
+from location.tests.legacy_fixtures import (
+    create_legacy_fixture, legacy_city_for, legacy_district_for, registered_legacy_id,
+)
 from mortgage.models import MortgageCalculation
 from property.models import RealEstateComplexLocation
 from trench_mortgage.models import Trench, TrenchMortgageCalculation
@@ -142,10 +144,7 @@ def test_old_city_url_resolves_through_mapping_without_id_confusion(client, loca
     data = location_calculations
     locality = data['catalog']['pushkin'][0]
     old_region = legacy_district_for(data['catalog']['legacy']).city.region
-    city = City.objects.create(pk=900000, name='Санкт-Петербург', region=old_region)
-    LegacyLocationMapping.objects.create(
-        model_name='city', legacy_id=city.pk, location_id=locality.region_id,
-    )
+    city = create_legacy_fixture('city', pk=900000, name='Санкт-Петербург', region=old_region, location=locality.region)
     for endpoint, _ in endpoints(data):
         response = client.get(endpoint, {'city': city.pk})
         assert response.status_code == 200

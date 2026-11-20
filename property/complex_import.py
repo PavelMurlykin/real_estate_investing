@@ -13,7 +13,7 @@ from django.db.models.functions import Lower, Replace
 from rest_framework import serializers
 
 from core.json_import import JsonImportError
-from location.models import LegacyLocationMapping, Location, LocationClosure
+from location.models import LocationCompatibilityEntry, Location, LocationClosure
 from .complex_import_locations import ImportLocationResolver
 from .complex_import_metro import ImportMetroResolver
 from .location_context import geography_prefetch, location_context
@@ -346,7 +346,7 @@ def _matching_complexes(row, territory, locations):
             Q(location=target) | Q(location__ancestor_links__ancestor=target)
             | Q(location__descendant_links__descendant=target),
         ).values('real_estate_complex_id')
-        mapped_districts = LegacyLocationMapping.objects.filter(model_name='district').filter(
+        mapped_districts = LocationCompatibilityEntry.objects.filter(model_name='district').filter(
             Q(location=target) | Q(location__ancestor_links__ancestor=target)
             | Q(location__descendant_links__descendant=target),
         ).values('legacy_id')
@@ -361,7 +361,7 @@ def _matching_complexes(row, territory, locations):
         ancestors = LocationClosure.objects.select_related('ancestor__location_type').prefetch_related(
             'ancestor__legacy_mappings',
         ).order_by('depth')
-        fallbacks = {mapping.legacy_id: mapping.location for mapping in LegacyLocationMapping.objects.filter(
+        fallbacks = {mapping.legacy_id: mapping.location for mapping in LocationCompatibilityEntry.objects.filter(
             model_name='district', legacy_id__in=fallback_ids,
         ).select_related('location__location_type').prefetch_related(
             Prefetch('location__ancestor_links', queryset=ancestors),

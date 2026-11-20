@@ -10,7 +10,8 @@ from api_v1.test_location_filters import (  # noqa: F401
 )
 from bank.models import MortgageProgram, MortgageProgramRegionalCreditLimit
 from customer.models import Customer, CustomerCalculation, CustomerTrenchCalculation
-from location.models import LegacyLocationMapping, Region
+from location.tests.legacy_fixtures import create_legacy_fixture
+from location.models import LocationCompatibilityEntry
 from mortgage.forms import MortgageForm
 from mortgage.models import MortgageCalculation
 from property.location_context import set_primary_location
@@ -67,10 +68,12 @@ def test_native_calculate_repeat_preserves_links(client, filtered_catalog, town,
 def test_native_prefill_selectors_limits_and_bounds(client, filtered_catalog):
     """Display real suburbs, bound HTML choices and resolve a distinct financial ID."""
     locality, _, building, apartment = filtered_catalog['strelna']
-    legacy_region = Region.objects.create(pk=900001, name='Финансовый регион', code='LIM')
-    LegacyLocationMapping.objects.filter(
+    LocationCompatibilityEntry.objects.filter(
         location_id=locality.region_id, model_name='region',
-    ).update(legacy_id=legacy_region.pk)
+    ).delete()
+    legacy_region = create_legacy_fixture(
+        'region', pk=900001, name='Финансовый регион', code='LIM', location=locality.region,
+    )
     program = MortgageProgram.objects.create(name='Лимит', is_preferential=True, credit_limit=6000000)
     limit = MortgageProgramRegionalCreditLimit.objects.create(
         mortgage_program=program, region_id=legacy_region.pk, legacy_region_name=legacy_region.name, credit_limit=12000000,
@@ -128,7 +131,7 @@ def test_native_rejects_conflicting_scope_and_accepts_building_override(client, 
 def test_financial_region_never_uses_numeric_coincidence(client, filtered_catalog):
     """Missing canonical mappings must not select a legacy region with the same PK."""
     locality = filtered_catalog['pushkin'][0]
-    LegacyLocationMapping.objects.filter(location_id=locality.region_id, model_name='region').delete()
+    LocationCompatibilityEntry.objects.filter(location_id=locality.region_id, model_name='region').delete()
     assert client.get('/mortgage/financial-region/', {
         'regionLocationId': locality.region_id,
     }).json()['financialRegionId'] is None

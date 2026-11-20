@@ -3,8 +3,9 @@ from decimal import Decimal
 from django.test import TestCase
 from django.urls import reverse
 
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.tests.legacy_fixtures import registered_legacy_id
-from location.models import City, District, Region
+
 from property.models import (
     Developer,
     RealEstateClass,
@@ -28,20 +29,20 @@ class HomepageIndexViewTests(TestCase):
         Возвращает:
             Any: Тип результата определяется вызывающим кодом.
         """
-        self.region_spb = Region.objects.create(name='Северо-Запад', code='NW')
-        self.region_msk = Region.objects.create(name='Центральный', code='CTR')
+        self.region_spb = create_legacy_fixture('region', name='Северо-Запад', code='NW')
+        self.region_msk = create_legacy_fixture('region', name='Центральный', code='CTR')
 
-        self.city_spb = City.objects.create(
+        self.city_spb = create_legacy_fixture('city',
             name='Санкт-Петербург', region=self.region_spb
         )
-        self.city_msk = City.objects.create(
+        self.city_msk = create_legacy_fixture('city',
             name='Москва', region=self.region_msk
         )
 
-        self.district_spb = District.objects.create(
+        self.district_spb = create_legacy_fixture('district',
             name='Приморский', city=self.city_spb
         )
-        self.district_msk = District.objects.create(
+        self.district_msk = create_legacy_fixture('district',
             name='Тверской', city=self.city_msk
         )
 

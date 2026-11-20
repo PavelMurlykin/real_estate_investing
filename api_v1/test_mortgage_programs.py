@@ -11,16 +11,17 @@ from bank.models import (
     MortgageProgram,
     MortgageProgramRegionalCreditLimit,
 )
+from location.tests.legacy_fixtures import create_legacy_fixture
 from location.tests.legacy_fixtures import canonical_legacy_location
-from location.models import Region
+
 from users.roles import MODERATOR_GROUP_NAME
 
 
 @pytest.fixture
 def mortgage_program_catalog():
     """Create canonical programs and their representative relations."""
-    moscow = Region.objects.create(name='Москва', code='MOW')
-    saint_petersburg = Region.objects.create(
+    moscow = create_legacy_fixture('region', name='Москва', code='MOW')
+    saint_petersburg = create_legacy_fixture('region',
         name='Санкт-Петербург',
         code='SPE',
     )

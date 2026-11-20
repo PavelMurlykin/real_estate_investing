@@ -7,18 +7,15 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from django.apps import apps
 from django.db import connection
 
+from location.tests.legacy_fixtures import create_legacy_fixture, historical_geography_schema
+from location.legacy_catalog import legacy_catalog
 from location.gar_source import GarSource, GarSourceError
 from location.gar_source import validate_source_url
 from location.gar_import import load_region
 from location.jobs import run_import_job, start_import_job
-from location.migration_support import backfill_locations
-from location.models import (
-    City, District, LegacyLocationMapping, Location, LocationClosure,
-    LocationIdentifier, LocationType, MetroSystem, Region,
-)
+from location.models import LocationCompatibilityEntry, Location, LocationClosure, LocationIdentifier, LocationType, MetroSystem
 
 
 SPB = [
@@ -89,11 +86,10 @@ def test_rejects_corrupt_cached_member(tmp_path):
 @pytest.mark.django_db
 def test_preserves_district_ids_and_imports_pushkin_strelna_idempotently():
     """Retain federal roles and existing administrative districts on both runs."""
-    region = Region.objects.create(name='Санкт-Петербург', code='78')
-    city = City.objects.create(name='Санкт-Петербург', region=region)
-    districts = [District.objects.create(name=f'{name} район', city=city) for name in ('Пушкинский', 'Петродворцовый')]
-    backfill_locations(apps)
-    before = dict(LegacyLocationMapping.objects.filter(model_name='district').values_list('legacy_id', 'location_id'))
+    region = create_legacy_fixture('region', name='Санкт-Петербург', code='78')
+    city = create_legacy_fixture('city', name='Санкт-Петербург', region=region)
+    districts = [create_legacy_fixture('district', name=f'{name} район', city=city) for name in ('Пушкинский', 'Петродворцовый')]
+    before = dict(LocationCompatibilityEntry.objects.filter(model_name='district').values_list('legacy_id', 'location_id'))
     first = load_region(SPB, '78', '20261113')
     pushkin = Location.objects.get(name='Пушкин')
     strelna = Location.objects.get(name='Стрельна')
@@ -101,11 +97,11 @@ def test_preserves_district_ids_and_imports_pushkin_strelna_idempotently():
     assert strelna.parent_id == before[districts[1].pk]
     assert first['cities']['created'] == 2
     assert LocationClosure.objects.filter(ancestor_id=before[districts[0].pk], descendant=pushkin, depth=1).exists()
-    assert LegacyLocationMapping.objects.get(model_name='city', legacy_id=city.pk).location_id == pushkin.region_id
+    assert LocationCompatibilityEntry.objects.get(model_name='city', legacy_id=city.pk).location_id == pushkin.region_id
     second = load_region(SPB, '78', '20261113')
     assert all(counts['created'] == counts['updated'] == 0 for counts in second.values())
-    assert City.objects.count() == 1 and District.objects.count() == 2
-    assert dict(LegacyLocationMapping.objects.filter(model_name='district').values_list('legacy_id', 'location_id')) == before
+    assert legacy_catalog('city').count() == 1 and legacy_catalog('district').count() == 2
+    assert dict(LocationCompatibilityEntry.objects.filter(model_name='district').values_list('legacy_id', 'location_id')) == before
     assert LocationIdentifier.objects.get(provider='fias', value=SPB[1]['guid']).location_id == pushkin.pk
 
 
@@ -133,7 +129,7 @@ def test_rename_keeps_guid_district_and_search_alias():
     assert result['cities']['created'] == 0
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_audited_gar_city_keeps_its_identity_in_migration_and_repeat_import(client):
     """Correct the direct city role while retaining old search, IDs and metro links."""
     root = dict(SPB[0], id='807356', guid='29251dcf-00a1-4e34-98d4-5c47484a36d4',
@@ -141,9 +137,8 @@ def test_audited_gar_city_keeps_its_identity_in_migration_and_repeat_import(clie
     town = dict(SPB[1], id='862378', guid='6ae8ad9e-aa6c-4849-92d8-8e637059c9b0',
                 name='Одинцово', level='2', path=['807356', '862378'], parent=root['id'])
     namesake = dict(town, id='862377', guid='namesake', level='5', path=['807356', '862377'])
-    region = Region.objects.create(name='Московская область', code='50')
-    city = City.objects.create(name='Одинцово', region=region, source_identifier=f'fias/{town["guid"]}')
-    backfill_locations(apps)
+    region = create_legacy_fixture('region', name='Московская область', code='50')
+    city = create_legacy_fixture('city', name='Одинцово', region=region, source_identifier=f'fias/{town["guid"]}')
     counts = load_region([root, town, namesake], '50', '20261113')
     previous = LocationIdentifier.objects.get(provider='fias', value=town['guid']).location
     other = LocationIdentifier.objects.get(provider='fias', value=namesake['guid']).location
@@ -156,14 +151,15 @@ def test_audited_gar_city_keeps_its_identity_in_migration_and_repeat_import(clie
     Location.objects.filter(pk=other.pk).update(location_type=legacy_type)
     system = MetroSystem.objects.create(name='Тестовая система', location=previous)
     migration = import_module('location.migrations.0012_reconcile_gar_city_and_district_roles')
-    migration.reconcile_gar_geography(apps, SimpleNamespace(connection=connection))
-    migration.reconcile_gar_geography(apps, SimpleNamespace(connection=connection))
+    with historical_geography_schema() as historical_apps:
+        for _ in range(2):
+            migration.reconcile_gar_geography(historical_apps, SimpleNamespace(connection=connection))
     previous.refresh_from_db()
     other.refresh_from_db()
     assert previous.location_type.category == 'locality'
     assert other.location_type_id == legacy_type.pk
     assert previous.parent_id == previous.region_id == other.region_id
-    assert LegacyLocationMapping.objects.get(model_name='city', legacy_id=city.pk).location_id == previous.pk
+    assert LocationCompatibilityEntry.objects.get(model_name='city', legacy_id=city.pk).location_id == previous.pk
     assert MetroSystem.objects.get(pk=system.pk).location_id == previous.pk
     assert LocationClosure.objects.filter(ancestor_id=previous.region_id, descendant=previous, depth=1).exists()
     for _ in range(2):
@@ -178,17 +174,16 @@ def test_audited_gar_city_keeps_its_identity_in_migration_and_repeat_import(clie
 @pytest.mark.django_db
 def test_administrative_review_retains_district_identity_and_suburbs(client):
     """Confirm only the evidenced district under the exact federal city."""
-    region = Region.objects.create(name='Санкт-Петербург', code='78')
-    city = City.objects.create(name=region.name, region=region)
-    pushkin_district = District.objects.create(
+    region = create_legacy_fixture('region', name='Санкт-Петербург', code='78')
+    city = create_legacy_fixture('city', name=region.name, region=region)
+    pushkin_district = create_legacy_fixture('district',
         name='Пушкинский район', city=city, source_identifier='wikidata/Q220316',
     )
-    petrodvorets_district = District.objects.create(
+    petrodvorets_district = create_legacy_fixture('district',
         name='Петродворцовый район', city=city, source_identifier='wikidata/Q270114',
     )
-    unresolved = District.objects.create(name='Прежний округ', city=city)
-    backfill_locations(apps)
-    mappings = dict(LegacyLocationMapping.objects.filter(
+    unresolved = create_legacy_fixture('district', name='Прежний округ', city=city)
+    mappings = dict(LocationCompatibilityEntry.objects.filter(
         model_name='district',
     ).values_list('legacy_id', 'location_id'))
     for attempt in range(2):

@@ -12,9 +12,11 @@ from django.test.utils import CaptureQueriesContext
 
 from api_v1.test_location_dictionaries import create_location_manager
 from api_v1.test_location_import import import_user  # noqa: F401
+from location.tests.legacy_fixtures import create_legacy_fixture
+from location.legacy_catalog import legacy_catalog
 from location.metro_forms import MetroForm, MetroLineForm, MetroSystemForm
 from location.tests.legacy_fixtures import canonical_legacy_location
-from location.models import City, LegacyLocationMapping, Location, LocationIdentifier, LocationType, Metro, MetroLine, MetroSystem, Region
+from location.models import LocationCompatibilityEntry, Location, LocationIdentifier, LocationType, Metro, MetroLine, MetroSystem
 from location.tests.test_metro_architecture import metro_geography, create_complex_link  # noqa: F401
 from location.tests.source_fixtures import load_sources, source_reply
 from property.models import RealEstateComplexMetroAvailability
@@ -29,12 +31,8 @@ def catalog_url(key, identifier=None):
 def test_react_station_list_resolves_old_city_links_without_using_line_city(client, metro_geography):
     """Apply old URL IDs to the canonical network center and keep the old API shape."""
     system, line, station, _ = metro_geography
-    region = Region.objects.create(name='Прежний регион', code='TEST')
-    city = City.objects.create(region=region, name='Прежний город')
-    LegacyLocationMapping.objects.create(
-        model_name='city', legacy_id=city.pk, location=system.location,
-        legacy_name=city.name, legacy_region_id=region.pk,
-    )
+    region = create_legacy_fixture('region', name='Прежний регион', code='TEST')
+    city = create_legacy_fixture('city', region=region, name='Прежний город', location=system.location)
     canonical_legacy_location(region)
     filters = {
         'canonicalLocations': 'true', 'cityId': city.pk,
@@ -64,10 +62,10 @@ def test_legacy_metro_filters_and_repeat_use_the_same_network(client, metro_geog
     region_id, city_id = 71, 121
     if not registered_fias:
         LocationIdentifier.objects.filter(location=system.location, provider='fias').delete()
-    LegacyLocationMapping.objects.bulk_create([
-        LegacyLocationMapping(model_name='region', legacy_id=region_id, legacy_name='Москва',
+    LocationCompatibilityEntry.objects.bulk_create([
+        LocationCompatibilityEntry(model_name='region', legacy_id=region_id, legacy_name='Москва',
                               legacy_code='77', location=system.location),
-        LegacyLocationMapping(model_name='city', legacy_id=city_id, legacy_name='Москва',
+        LocationCompatibilityEntry(model_name='city', legacy_id=city_id, legacy_name='Москва',
                               legacy_region_id=region_id, location=system.location),
     ])
     primary.legacy_city_id = city_id
@@ -127,8 +125,8 @@ def test_legacy_metro_filters_and_repeat_use_the_same_network(client, metro_geog
 def test_legacy_city_used_by_metro_cannot_be_deleted(client, metro_geography):
     """Protect the retained ID and route the old admin bookmark to media-free editing."""
     _, line, _, _ = metro_geography
-    region = Region.objects.create(name='Москва', code='77')
-    city = City.objects.create(region=region, name='Москва')
+    region = create_legacy_fixture('region', name='Москва', code='77')
+    city = create_legacy_fixture('city', region=region, name='Москва')
     canonical_legacy_location(city)
     line.legacy_city_id = city.pk
     line.save(update_fields=['legacy_city_id'])
@@ -142,7 +140,7 @@ def test_legacy_city_used_by_metro_cannot_be_deleted(client, metro_geography):
     former_admin = f'/admin/location/city/{city.pk}/change/'
     assert client.get(former_admin).url == f'/locations/?model=city&edit={city.pk}'
     assert client.post(former_admin, {'name': 'Изменение старой таблицы'}).status_code == 405
-    assert City.objects.filter(pk=city.pk).exists()
+    assert legacy_catalog('city').filter(legacy_id=city.pk).exists()
 
 
 @pytest.mark.django_db
