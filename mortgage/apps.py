@@ -26,7 +26,6 @@ class CalculatorConfig(AppConfig):
         from django.db.models.signals import post_delete, post_save
 
         from bank.models import Bank, BankProgram, KeyRate
-        from location.models import City, District
         from property.models import (
             ApartmentDecoration,
             ApartmentLayout,
@@ -41,9 +40,7 @@ class CalculatorConfig(AppConfig):
             ApartmentLayout,
             Bank,
             BankProgram,
-            City,
             Developer,
-            District,
             KeyRate,
             Property,
             RealEstateComplex,

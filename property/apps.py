@@ -25,7 +25,7 @@ class PropertyConfig(AppConfig):
         """Register cache invalidation hooks for location payloads."""
         from django.db.models.signals import post_delete, post_save
 
-        from location.models import City, District, Metro
+        from location.models import Metro
         from location.compatibility import bind_new_complex
 
         from .models import (
@@ -38,9 +38,7 @@ class PropertyConfig(AppConfig):
                           dispatch_uid='property.bind_new_complex_location')
 
         for model in (
-            City,
             Developer,
-            District,
             Metro,
             RealEstateComplex,
             RealEstateComplexBuilding,

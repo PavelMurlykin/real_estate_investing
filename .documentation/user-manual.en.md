@@ -46,7 +46,9 @@ Compose stores the GAR cache in the shared `location_import_cache` volume. Local
 
 Search updates results while typing; a separate “Найти” button is unnecessary. On phones, filters use one column.
 
-Use the national GAR import to refresh canonical regions, localities and administrative districts. Selected-parent imports remain in the old API for compatibility and do not replace loading the new catalog.
+Use the national GAR import to refresh the complete catalog of regions, localities and administrative districts. Selected-parent imports and manual changes at the existing API URLs write to `Location` and the compatibility registry. Legacy numeric IDs, filter values and deletion protection for entries in use remain available. Old administrative catalog bookmarks open the location editor.
+
+Unfinished jobs from the former national import are closed with their statistics and checkpoints retained. Previously committed territories remain available in the catalog. “Обновить данные” starts GAR or resumes a saved GAR job.
 
 The background GAR import updates Location by FIAS and GAR identifiers and federal subject codes. The worker continues independently of the open page. JSON version 1 and developer registry imports use canonical locations together with retained codes and names. Legacy links, request formats and existing associations are preserved.
 

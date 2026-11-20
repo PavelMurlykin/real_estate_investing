@@ -2,18 +2,22 @@
 
 from dataclasses import dataclass
 
-from django.db import connection
-from django.db.models import Count, IntegerField, OuterRef, Q, Subquery, Value
+from django.core.cache import cache
+from django.db import connection, transaction
+from django.db.models import Count, IntegerField, Max, OuterRef, Subquery, Value
 from django.db.models.deletion import ProtectedError
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from .compatibility import refresh_legacy_mapping, register_legacy_mapping
-from .migration_support import legacy_catalog_metadata
-from .models import City, District, LegacyLocationMapping, Region
+from .catalog_service import lock_location_catalog
+from .models import LegacyLocationMapping
 
 
-LEGACY_GEOGRAPHY_MODELS = {'regions': Region, 'cities': City, 'districts': District}
+LEGACY_GEOGRAPHY_KEYS = {'regions': 'region', 'cities': 'city', 'districts': 'district'}
+LEGACY_IDENTIFIER_SEQUENCES = {
+    namespace: f'location_legacy_{namespace}_id_seq' for namespace in LEGACY_GEOGRAPHY_KEYS.values()
+}
 
 
 @dataclass(frozen=True)
@@ -55,45 +59,36 @@ def unique_legacy_region(location_id):
     return aliases[0] if len(aliases) == 1 else (None, '')
 
 
-def protected_legacy_references(model_name, identifiers, *, using='default'):
-    """Preserve references formerly enforced by the old geography keys."""
-    from bank.models import MortgageProgramRegionalCreditLimit
-    from customer.models import Customer
-    from property.models import DeveloperRegion, RealEstateComplex
+def invalidate_legacy_options():
+    """Refresh cached native selectors after the registry change commits."""
+    from mortgage.apps import FORM_DATA_CACHE_KEYS as mortgage_keys
+    from property.apps import FORM_DATA_CACHE_KEYS as property_keys
 
-    from .models import MetroLine
-
-    if model_name == 'region':
-        links = DeveloperRegion.objects.using(using).filter(region_id__in=identifiers)
-        limits = MortgageProgramRegionalCreditLimit.objects.using(using).filter(region_id__in=identifiers)
-        customers = Customer.objects.using(using).filter(desired_financial_region_id__in=identifiers)
-        return [*links.select_related('developer', 'location'),
-                *limits.select_related('mortgage_program', 'region_location'), *customers.only('pk')[:1]]
-    if model_name == 'city':
-        lines = MetroLine.objects.using(using).filter(legacy_city_id__in=identifiers).select_related('system')
-        customers = Customer.objects.using(using).filter(
-            Q(residence_city_id__in=identifiers) | Q(desired_city_id__in=identifiers),
-        )
-        return [*lines, *customers.only('pk')[:1]]
-    complexes = RealEstateComplex.objects.using(using).filter(district_id__in=identifiers)
-    customers = Customer.objects.using(using).filter(desired_district_id__in=identifiers)
-    return [*complexes, *customers.only('pk')[:1]]
+    transaction.on_commit(lambda: cache.delete_many((*mortgage_keys, *property_keys)))
 
 
-def _reserve_legacy_id(model):
-    """Reserve from the shared sequence and never issue a retained alias again."""
-    retained = LegacyLocationMapping.objects.filter(model_name=model._meta.model_name)
+def reserve_legacy_ids(model_name, count):
+    """Allocate a batch above all retained IDs while holding the catalog lock."""
+    if count == 0:
+        return []
+    sequence = LEGACY_IDENTIFIER_SEQUENCES[model_name]
+    highest_alias = LegacyLocationMapping.objects.filter(model_name=model_name).aggregate(
+        highest=Max('legacy_id'),
+    )['highest'] or 0
     with connection.cursor() as cursor:
-        while True:
-            cursor.execute('SELECT nextval(pg_get_serial_sequence(%s, %s))', [model._meta.db_table, 'id'])
-            identifier, = cursor.fetchone()
-            if not retained.filter(legacy_id=identifier).exists():
-                return identifier
+        cursor.execute('SELECT nextval(%s::regclass)', [sequence])
+        identifier, = cursor.fetchone()
+        first = max(identifier, highest_alias + 1)
+        last = first + count - 1
+        if last != identifier:
+            cursor.execute('SELECT setval(%s::regclass, %s)', [sequence, last])
+    return range(first, last + 1)
 
 
-def save_legacy_catalog_entry(model, values, *, mapping=None):
-    """Write the registry and its still-required mirror under the catalog lock."""
-    model_name = model._meta.model_name
+@transaction.atomic
+def save_legacy_catalog_entry(model_name, values, *, mapping=None):
+    """Write a compatibility ID and bind it to Location without mirroring a row."""
+    lock_location_catalog()
     reference = {f'legacy_{field}': value for field, value in values.items()}
     parent = None
     if 'region_id' in values:
@@ -102,19 +97,19 @@ def save_legacy_catalog_entry(model, values, *, mapping=None):
         parent = legacy_catalog('city').select_related('location').get(legacy_id=values['city_id'])
         reference['legacy_region_id'] = parent.legacy_region_id
 
+    timestamp = timezone.now()
+    reference['legacy_updated_at'] = timestamp
     if mapping is None:
-        identifier = _reserve_legacy_id(model)
+        identifier, = reserve_legacy_ids(model_name, 1)
+        reference['legacy_created_at'] = timestamp
         mapping = register_legacy_mapping(model_name, identifier, reference, parent=parent)
-        mirror = model.objects.create(pk=identifier, **values)
-        refresh_legacy_mapping(mapping, legacy_catalog_metadata(mirror))
     else:
-        timestamp = timezone.now()
-        refresh_legacy_mapping(mapping, {**reference, 'legacy_updated_at': timestamp})
-        model.objects.filter(pk=mapping.legacy_id).update(**values, updated_at=timestamp)
+        refresh_legacy_mapping(mapping, reference)
+    invalidate_legacy_options()
     return mapping
 
 
-def retire_legacy_catalog_entry(model, mapping):
+def retire_legacy_catalog_entry(mapping):
     """Hide the old entry while retaining its identity and canonical links."""
     from customer.models import Customer
 
@@ -124,9 +119,9 @@ def retire_legacy_catalog_entry(model, mapping):
     ):
         raise ProtectedError('Историческая локация используется.', [mapping])
     LegacyLocationMapping.objects.filter(pk=mapping.pk).update(
-        legacy_name='', legacy_code='', legacy_source_identifier='',
+        legacy_name='', legacy_code='', legacy_source_identifier='', legacy_updated_at=timezone.now(),
     )
-    model.objects.filter(pk=mapping.legacy_id).delete()
+    invalidate_legacy_options()
 
 
 def _usage_count(queryset, field, *, distinct_field=None):

@@ -5,14 +5,14 @@ import re
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
-from django.apps import apps
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Q
 from django.utils import timezone
 
 from .catalog_service import lock_location_catalog
-from .migration_support import backfill_locations
-from .models import City, District, Metro, MetroLine, Region
+from .compatibility import register_legacy_mappings
+from .legacy_catalog import LEGACY_GEOGRAPHY_KEYS, invalidate_legacy_options, legacy_catalog, reserve_legacy_ids
+from .models import LocationAlias, Metro
 from .open_data import OpenDataError, OpenLocationSource, location_key
 
 logger = logging.getLogger(__name__)
@@ -68,7 +68,7 @@ def upsert_records(model, records, parent_field=None, parent_identifier=None, *,
         )
     existing = list(queryset)
     by_source = {row.source_identifier: row for row in existing if row.source_identifier}
-    name_field = 'station' if model is Metro else 'line' if model is MetroLine else 'name'
+    name_field = 'station' if model is Metro else 'line'
     by_name = {}
     for row in existing:
         if parent_field and getattr(row, parent_field) != parent_identifier:
@@ -77,7 +77,6 @@ def upsert_records(model, records, parent_field=None, parent_identifier=None, *,
         if key in by_name:
             raise LocationImportError('Сначала устраните дубли названий в справочнике.')
         by_name[key] = row
-    by_code = {row.code: row for row in existing} if model is Region else {}
     created = []
     updated = []
     unchanged = 0
@@ -91,24 +90,12 @@ def upsert_records(model, records, parent_field=None, parent_identifier=None, *,
             raise LocationImportError(f'Конфликт переименования: {record.name}.')
         if row is None:
             row = natural_match
-        if row is None and model is Region:
-            row = by_code.get(record.attributes['code']) or by_code.get(
-                record.attributes.get('legacy_code'),
-            )
-        if (
-            row and row.source_identifier not in (None, record.source_identifier)
-            and not re.fullmatch(
-                r'(node|way|relation)/\d+(?:/subway/[^/]+(?:/(node|way|relation)/\d+)?)?',
-                row.source_identifier,
-            )
-        ):
+        if row and not compatible_source(row.source_identifier, record.source_identifier):
             raise LocationImportError(f'Конфликт источника: {record.name}.')
         attributes = {
             key: value for key, value in record.attributes.items()
             if key != 'legacy_code'
         }
-        if model is Region and row:
-            attributes['code'] = row.code
         attributes.update({
             name_field: record.name,
             'source_identifier': record.source_identifier,
@@ -134,6 +121,90 @@ def upsert_records(model, records, parent_field=None, parent_identifier=None, *,
     }
 
 
+def compatible_source(current, incoming):
+    """Allow the same source or adoption of an old OpenStreetMap identity."""
+    return not current or current == incoming or re.fullmatch(
+        r'(node|way|relation)/\d+(?:/subway/[^/]+(?:/(node|way|relation)/\d+)?)?', current,
+    ) is not None
+
+
+def upsert_geography_records(model_name, records, *, parent=None, required_id=None):
+    """Match one registry namespace and load new/changed entries in batches."""
+    catalog = legacy_catalog(model_name)
+    scope = {}
+    ancestry = {}
+    if model_name == 'city':
+        scope = {'legacy_region_id': parent.legacy_id}
+        ancestry = scope
+    elif model_name == 'district':
+        scope = {'legacy_city_id': parent.legacy_id}
+        ancestry = {**scope, 'legacy_region_id': parent.legacy_region_id}
+    source_ids = {record.source_identifier for record in records}
+    existing = catalog.select_related('location')
+    if scope:
+        existing = existing.filter(Q(**scope) | Q(legacy_source_identifier__in=source_ids))
+    by_source, by_name, by_code = {}, {}, {}
+    for alias in existing:
+        source = alias.legacy_source_identifier
+        if source in source_ids:
+            if source in by_source:
+                raise LocationImportError(f'Неоднозначный идентификатор источника: {alias.legacy_name}.')
+            by_source[source] = alias
+        if all(getattr(alias, field) == value for field, value in scope.items()):
+            name = location_key(alias.legacy_name, model_name)
+            if name in by_name:
+                raise LocationImportError('Сначала устраните дубли названий в справочнике.')
+            by_name[name] = alias
+        if model_name == 'region':
+            by_code[alias.legacy_code] = alias
+
+    result, changed, pending, renamed = {}, [], [], []
+    updated_city_parents = []
+    used_ids = set()
+    timestamp = timezone.now()
+    for record in records:
+        sourced = by_source.get(record.source_identifier)
+        named = by_name.get(location_key(record.name, model_name))
+        if sourced and named and sourced.pk != named.pk:
+            raise LocationImportError(f'Конфликт переименования: {record.name}.')
+        alias = sourced or named or by_code.get(record.attributes.get('code'))
+        if required_id is not None and (alias is None or alias.legacy_id != required_id):
+            raise LocationImportError('Конфликт существующей родительской территории.')
+        reference = {
+            'legacy_name': record.name, 'legacy_source_identifier': record.source_identifier, **ancestry,
+        }
+        if alias is None:
+            pending.append((record, reference))
+            continue
+        if alias.pk in used_ids or not compatible_source(alias.legacy_source_identifier, record.source_identifier):
+            raise LocationImportError(f'Конфликт источника: {record.name}.')
+        used_ids.add(alias.pk)
+        result[record.source_identifier] = alias
+        if any(getattr(alias, field) != value for field, value in reference.items()):
+            if alias.legacy_name != record.name:
+                renamed.append(LocationAlias(location_id=alias.location_id, name=record.name))
+            if model_name == 'city' and alias.legacy_region_id != parent.legacy_id:
+                updated_city_parents.append(alias.legacy_id)
+            for field, value in reference.items():
+                setattr(alias, field, value)
+            alias.legacy_updated_at = timestamp
+            changed.append(alias)
+
+    if changed:
+        catalog.bulk_update(changed, ['legacy_name', 'legacy_source_identifier', 'legacy_updated_at', *ancestry], batch_size=500)
+        LocationAlias.objects.bulk_create(renamed, batch_size=500, ignore_conflicts=True)
+    if updated_city_parents:
+        legacy_catalog('district').filter(legacy_city_id__in=updated_city_parents).update(legacy_region_id=parent.legacy_id)
+    identifiers = reserve_legacy_ids(model_name, len(pending))
+    created = register_legacy_mappings(model_name, (
+        (identifier, {**reference, 'legacy_code': record.attributes.get('code', ''),
+                      'legacy_created_at': timestamp, 'legacy_updated_at': timestamp})
+        for identifier, (record, reference) in zip(identifiers, pending)
+    ), parent=parent)
+    result.update((record.source_identifier, alias) for (record, _), alias in zip(pending, created))
+    return result, {'created': len(created), 'updated': len(changed), 'unchanged': len(records) - len(created) - len(changed)}
+
+
 def region_record(row):
     """Build a Russian region identity from its official KLADR prefix."""
     return LocationRecord(
@@ -142,10 +213,10 @@ def region_record(row):
     )
 
 
-def city_record(row, region):
+def city_record(row):
     """Keep city identity stable across renames using its FIAS identifier."""
     return LocationRecord(
-        f'fias/{row["fias_id"]}', row['city_name'], {'region_id': region.pk},
+        f'fias/{row["fias_id"]}', row['city_name'],
     )
 
 
@@ -198,8 +269,13 @@ def import_locations(dictionary, region=None, city=None):
         if reference is None:
             raise LocationImportError('Выберите город этого региона.')
         return import_legacy_metro(reference)
-    if dictionary not in ('regions', 'cities', 'districts'):
+    model_name = LEGACY_GEOGRAPHY_KEYS.get(dictionary)
+    if model_name is None:
         raise LocationImportError('Неизвестный справочник импорта.')
+    if dictionary != 'regions' and region is None:
+        raise LocationImportError('Выберите регион России.')
+    if dictionary == 'districts' and city is None:
+        raise LocationImportError('Выберите город этого региона.')
     with import_guard():
         source = OpenLocationSource()
         try:
@@ -209,30 +285,28 @@ def import_locations(dictionary, region=None, city=None):
             if dictionary == 'regions':
                 records = list({row['region_code']: region_record(row) for row in rows}.values())
             elif dictionary == 'cities':
-                records = unique_records([city_record(row, region) for row in selected_rows])
+                records = unique_records([city_record(row) for row in selected_rows])
             else:
                 records = unique_records([
-                    LocationRecord(identifier, name, {'city_id': city.pk})
+                    LocationRecord(identifier, name)
                     for identifier, name in source.districts(selected_city)
                 ])
             with transaction.atomic():
                 lock_location_catalog()
+                parent = None
                 if region:
-                    parents, _ = upsert_records(Region, [region_record(selected_rows[0])])
-                    if next(iter(parents.values())).pk != region.pk:
-                        raise LocationImportError('Конфликт существующего региона.')
-                if city:
-                    parents, _ = upsert_records(
-                        City, [city_record(selected_city, region)], 'region_id', region.pk,
+                    parents, _ = upsert_geography_records(
+                        'region', [region_record(selected_rows[0])], required_id=region.pk,
                     )
-                    if next(iter(parents.values())).pk != city.pk:
-                        raise LocationImportError('Конфликт существующего города.')
+                    parent = next(iter(parents.values()))
+                if city:
+                    parents, _ = upsert_geography_records(
+                        'city', [city_record(selected_city)], parent=parent, required_id=city.pk,
+                    )
+                    parent = next(iter(parents.values()))
                 line_counts = {'created': 0, 'updated': 0, 'unchanged': 0}
-                model = {'regions': Region, 'cities': City, 'districts': District}[dictionary]
-                parent_field = {'cities': 'region_id', 'districts': 'city_id'}.get(dictionary)
-                parent_identifier = region.pk if dictionary == 'cities' else city.pk if city else None
-                _, counts = upsert_records(model, records, parent_field, parent_identifier)
-                backfill_locations(apps, geography_only=True)
+                _, counts = upsert_geography_records(model_name, records, parent=parent)
+                invalidate_legacy_options()
         except OpenDataError as error:
             raise LocationImportError(str(error)) from error
         except IntegrityError as error:

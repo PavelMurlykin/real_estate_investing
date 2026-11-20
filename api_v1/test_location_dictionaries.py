@@ -10,7 +10,8 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from rest_framework.fields import DateTimeField
 
-from location.compatibility import canonical_legacy_location
+from location.tests.legacy_fixtures import canonical_legacy_location
+from location.legacy_catalog import LEGACY_IDENTIFIER_SEQUENCES, legacy_catalog
 from location.models import City, District, LegacyLocationMapping, Location, LocationIdentifier, LocationType, Metro, MetroLine, Region
 from users.roles import MODERATOR_GROUP_NAME
 
@@ -103,12 +104,12 @@ def test_old_region_api_refreshes_import_reference_and_keeps_location(client):
 
 @pytest.mark.django_db
 def test_old_region_creation_skips_reserved_id(client, location_dictionary_catalog):
-    """Never reissue a tombstoned ID, and reserve new IDs from the native sequence."""
+    """Reserve new IDs independently without resurrecting tombstones or mirror rows."""
     client.force_login(create_location_manager())
     location = Location.objects.get(legacy_mappings__model_name='region',
                                     legacy_mappings__legacy_id=location_dictionary_catalog['regions'].pk)
     with connection.cursor() as cursor:
-        cursor.execute('SELECT nextval(pg_get_serial_sequence(%s, %s))', ['region', 'id'])
+        cursor.execute('SELECT nextval(%s::regclass)', [LEGACY_IDENTIFIER_SEQUENCES['region']])
         previous, = cursor.fetchone()
     reserved = LegacyLocationMapping.objects.create(model_name='region', legacy_id=previous + 1, location=location)
 
@@ -117,8 +118,8 @@ def test_old_region_creation_skips_reserved_id(client, location_dictionary_catal
     assert response.status_code == 201, response.content
     identifier = response.json()['id']
     assert identifier > reserved.legacy_id
-    assert Region.objects.get(pk=identifier).name == 'Проверочная область'
-    assert Region.objects.create(name='Область из админки', code='T502').pk > identifier
+    assert legacy_catalog('region').get(legacy_id=identifier).legacy_name == 'Проверочная область'
+    assert not Region.objects.filter(pk=identifier).exists()
     reserved.refresh_from_db()
     assert reserved.location_id == location.pk and reserved.legacy_name == ''
 
@@ -155,7 +156,7 @@ def test_mutations_work_from_registry_and_protect_mapped_children(client, locati
 
 @pytest.mark.django_db(transaction=True)
 def test_concurrent_region_creations_validate_against_committed_registry():
-    """Serialize competing case-insensitive names before creating their mirrors."""
+    """Serialize competing case-insensitive names before assigning public IDs."""
     manager = create_location_manager()
     barrier = Barrier(2)
 
@@ -177,7 +178,8 @@ def test_concurrent_region_creations_validate_against_committed_registry():
         answers = dict((first.result(timeout=20), second.result(timeout=20)))
     assert set(answers) == {201, 400}
     assert 'name' in answers[400]
-    assert Region.objects.filter(name__iexact='Область проверки').count() == 1
+    assert legacy_catalog('region').filter(legacy_name__iexact='Область проверки').count() == 1
+    assert not Region.objects.filter(name__iexact='Область проверки').exists()
     assert LegacyLocationMapping.objects.filter(model_name='region', legacy_id=answers[201]['id']).count() == 1
 
 
@@ -401,7 +403,7 @@ def test_location_mutations_require_catalog_permission(
     )
 
     assert response.status_code == 403
-    assert not City.objects.filter(name='Зеленоград').exists()
+    assert not legacy_catalog('city').filter(legacy_name='Зеленоград').exists()
 
 
 @pytest.mark.django_db
@@ -438,13 +440,15 @@ def test_location_manager_can_create_and_update_nested_entries(
 
     assert create_response.status_code == 201, create_response.json()
     assert create_response.json()['region']['name'] == 'Москва'
-    assert City.objects.get(name='Зеленоград').region == (
-        location_dictionary_catalog['regions']
+    assert legacy_catalog('city').get(legacy_name='Зеленоград').legacy_region_id == (
+        location_dictionary_catalog['regions'].pk
     )
     assert update_response.status_code == 200, update_response.json()
     district.refresh_from_db()
-    assert district.city == location_dictionary_catalog['second_city']
-    assert district.is_active is False
+    alias = legacy_catalog('district').get(legacy_id=district.pk)
+    assert alias.legacy_city_id == location_dictionary_catalog['second_city'].pk
+    assert alias.legacy_is_active is False
+    assert district.city_id == location_dictionary_catalog['cities'].pk and district.is_active
 
 
 @pytest.mark.django_db
@@ -526,7 +530,7 @@ def test_location_region_code_is_required_normalized_and_unique(
     assert duplicate_response.status_code == 400
     assert 'code' in duplicate_response.json()
     assert success_response.status_code == 201, success_response.json()
-    assert Region.objects.get(name='Тверская область').code == 'TV'
+    assert legacy_catalog('region').get(legacy_name='Тверская область').legacy_code == 'TV'
 
 
 @pytest.mark.django_db
@@ -555,4 +559,5 @@ def test_location_delete_reports_dependencies_and_deletes_unused(
     assert conflict_response.status_code == 409
     assert Region.objects.filter(pk=used_region.pk).exists()
     assert delete_response.status_code == 204
-    assert not District.objects.filter(pk=unused_district.pk).exists()
+    assert not legacy_catalog('district').filter(legacy_id=unused_district.pk).exists()
+    assert District.objects.filter(pk=unused_district.pk).exists()

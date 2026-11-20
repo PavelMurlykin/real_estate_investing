@@ -8,8 +8,11 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import Client
 from django.urls import reverse
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 
 from location.import_service import LocationImportError
+from location.legacy_catalog import legacy_catalog
 from location.models import City, District, Metro, MetroLine, Region
 from location.tests.source_fixtures import load_sources, source_reply
 from users.roles import (
@@ -182,21 +185,21 @@ def test_full_api_import_pipeline_with_session_and_valid_csrf(import_user):
         assert response.status_code == 200, response.json()
         return response.json()
 
-    with patch(
-        'location.open_data.OpenLocationSource.download',
-        side_effect=partial(source_reply, payload),
+    with (
+        patch('location.open_data.OpenLocationSource.download', side_effect=partial(source_reply, payload)),
+        CaptureQueriesContext(connection) as queries,
     ):
         assert import_dictionary('regions')['created'] == 3
-        region = Region.objects.get(name='Москва')
-        assert import_dictionary('cities', {'regionId': region.pk})['created'] == 1
-        city = City.objects.get(name='Москва')
-        parents = {'regionId': region.pk, 'cityId': city.pk}
+        region = legacy_catalog('region').get(legacy_name='Москва')
+        assert import_dictionary('cities', {'regionId': region.legacy_id})['created'] == 1
+        city = legacy_catalog('city').get(legacy_name='Москва')
+        parents = {'regionId': region.legacy_id, 'cityId': city.legacy_id}
         assert import_dictionary('districts', parents)['created'] == 2
         first_metro = import_dictionary('metro', parents)
         assert first_metro['created'] == 2
         assert first_metro['lines']['created'] == 1
         for dictionary, selection in (
-            ('regions', {}), ('cities', {'regionId': region.pk}),
+            ('regions', {}), ('cities', {'regionId': region.legacy_id}),
             ('districts', parents), ('metro', parents),
         ):
             repeated = import_dictionary(dictionary, selection)
@@ -205,7 +208,20 @@ def test_full_api_import_pipeline_with_session_and_valid_csrf(import_user):
         updated = import_dictionary('metro', parents)
         assert updated['updated'] == 0
         assert updated['lines']['updated'] == 1
+        native_url = reverse('location:location_import')
+        selected = client.post(native_url, {
+            **parents, 'dictionary': 'districts', 'action': 'choose-city', 'legacy': '1',
+        }, HTTP_X_CSRFTOKEN=csrf_token)
+        assert selected.status_code == 302 and 'model=metro&legacy=1' in selected.url
+        page = client.get(selected.url)
+        assert page.status_code == 200 and 'Москва' in page.content.decode()
+        native = client.post(native_url, {
+            **parents, 'dictionary': 'districts', 'legacy': '1',
+        }, HTTP_X_CSRFTOKEN=csrf_token)
+        assert native.url == '/locations/?model=metro&legacy=1'
 
-    assert District.objects.filter(city=city).count() == 2
-    assert Metro.objects.get(station='Охотный Ряд').metro_line.legacy_city_id == city.pk
-    assert MetroLine.objects.get(legacy_city_id=city.pk).line_color == '#112233'
+    assert legacy_catalog('district').filter(legacy_city_id=city.legacy_id).count() == 2
+    assert Metro.objects.get(station='Охотный Ряд').metro_line.legacy_city_id == city.legacy_id
+    assert MetroLine.objects.get(legacy_city_id=city.legacy_id).line_color == '#112233'
+    assert not any(f'{verb} "{table}"' in query['sql'] for query in queries
+                   for verb in ('FROM', 'JOIN', 'UPDATE', 'INTO') for table in ('region', 'city', 'district'))

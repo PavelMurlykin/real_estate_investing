@@ -1,78 +1,7 @@
 from django.contrib import admin
-from django.db import transaction
 
-from .catalog_service import lock_location_catalog
-from .compatibility import canonical_legacy_location
-from .legacy_catalog import protected_legacy_references
-from .models import City, District, Location, Metro, MetroLine, MetroSystem, Region
+from .models import Location, Metro, MetroLine, MetroSystem
 from .metro_forms import MetroForm, MetroLineForm, MetroSystemForm
-
-
-class LegacyLocationAdmin(admin.ModelAdmin):
-    """Keep import references available after saving an old dictionary entry."""
-
-    @transaction.atomic
-    def save_model(self, request, obj, form, change):
-        """Save the legacy row and refresh its canonical lookup metadata."""
-        lock_location_catalog()
-        super().save_model(request, obj, form, change)
-        canonical_legacy_location(obj)
-
-    def get_deleted_objects(self, objects, request):
-        """Show retained references on the confirmation page."""
-        deleted, counts, permissions, protected = super().get_deleted_objects(objects, request)
-        references = protected_legacy_references(self.model._meta.model_name, [record.pk for record in objects])
-        for reference in references:
-            if reference._meta.label_lower == 'customer.customer':
-                protected.append('Территория используется в профилях клиентов.')
-            else:
-                protected.append(str(reference))
-        return deleted, counts, permissions, protected
-
-
-@admin.register(Region)
-class RegionAdmin(LegacyLocationAdmin):
-    """Описание класса RegionAdmin.
-
-    Инкапсулирует данные и поведение, необходимые для работы компонента
-    в данном модуле.
-    """
-
-    list_display = ('name', 'code', 'is_active', 'created_at')
-    list_filter = ('is_active', 'created_at')
-    search_fields = ('name', 'code')
-    list_editable = ('is_active',)
-    ordering = ('name',)
-
-
-@admin.register(City)
-class CityAdmin(LegacyLocationAdmin):
-    """Описание класса CityAdmin.
-
-    Инкапсулирует данные и поведение, необходимые для работы компонента
-    в данном модуле.
-    """
-
-    list_display = ('name', 'region', 'is_active', 'created_at')
-    list_filter = ('is_active', 'region', 'created_at')
-    search_fields = ('name', 'region__name')
-    list_editable = ('is_active',)
-    ordering = ('name',)
-
-
-@admin.register(District)
-class DistrictAdmin(LegacyLocationAdmin):
-    """Описание класса DistrictAdmin.
-
-    Инкапсулирует данные и поведение, необходимые для работы компонента
-    в данном модуле.
-    """
-
-    list_display = ('name', 'city', 'is_active', 'created_at')
-    list_filter = ('is_active', 'city', 'city__region', 'created_at')
-    search_fields = ('name', 'city__name')
-    list_editable = ('is_active',)
-    ordering = ('name',)
 
 
 @admin.register(Metro)

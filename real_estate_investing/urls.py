@@ -7,9 +7,12 @@ from django.contrib.staticfiles.views import serve as serve_static_file
 from django.urls import include, path, re_path
 
 from core.views import health_check
+from location.views import legacy_geography_admin
 
 urlpatterns = [
     path('health/', health_check, name='health_check'),
+    re_path(r'^admin/location/(?P<model_name>region|city|district)/(?:add/|(?P<identifier>[0-9]+)/change/)?$',
+            admin.site.admin_view(legacy_geography_admin)),
     path('admin/', admin.site.urls),
     path('api/v1/', include('api_v1.urls', namespace='api_v1')),
     path('app/', include('react_frontend.urls', namespace='react_frontend')),

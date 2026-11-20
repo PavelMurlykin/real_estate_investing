@@ -90,6 +90,7 @@
                 Повторный импорт добавляет и обновляет записи; отсутствующие в источнике записи не удаляются.</p>
             <form method="post" action="{% url 'location:location_import' %}">
                 {% csrf_token %}
+                <input type="hidden" name="legacy" value="1">
                 {{ location_import_form.as_p }}
                 <button type="submit" class="btn btn-secondary" name="action" value="choose-city">Показать города</button>
                 <button type="submit" class="btn btn-primary">Импортировать из API</button>

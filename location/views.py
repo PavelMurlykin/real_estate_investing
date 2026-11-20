@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.views import View
+from django.views.decorators.http import require_safe
 
 from property.views import BaseCatalogView, CatalogModelConfig
 from users.roles import ExternalDataSyncRequiredMixin, can_sync_external_data
@@ -16,8 +17,17 @@ from .import_service import LocationImportError, import_locations
 from .metro_import import import_legacy_metro, import_metro
 from .metro_forms import MetroForm, MetroLineForm, MetroSystemForm
 from .jobs import serialize_import_job, start_import_job
-from .models import City, District, LocationImportJob, Metro, MetroLine, MetroSystem, Region
+from .models import LocationImportJob, Metro, MetroLine, MetroSystem
 from .metro_geography import filter_metro_geography
+
+
+@require_safe
+def legacy_geography_admin(request, model_name, identifier=None):
+    """Send old admin bookmarks to the authorized geography editor."""
+    query = {'model': model_name}
+    if identifier:
+        query['edit'] = identifier
+    return redirect(reverse('location:location_catalog') + '?' + urlencode(query))
 
 
 class LocationImportView(ExternalDataSyncRequiredMixin, View):
@@ -34,6 +44,8 @@ class LocationImportView(ExternalDataSyncRequiredMixin, View):
                 key: request.POST.get(key, '')
                 for key in ('dictionary', 'regionId')
             })
+            if request.POST.get('legacy') == '1':
+                parameters += '&model=metro&legacy=1'
             catalog_url = reverse('location:location_catalog')
             return redirect(f'{catalog_url}?{parameters}')
         import_form = LocationImportForm(request.POST)
@@ -63,6 +75,8 @@ class LocationImportView(ExternalDataSyncRequiredMixin, View):
                     f'без изменений {result["unchanged"]}, '
                     f'пропущено {result["skipped"]}.'
                 ))
+        if request.POST.get('legacy') == '1':
+            return redirect(reverse('location:location_catalog') + '?model=metro&legacy=1')
         return redirect('location:location_catalog')
 
 
@@ -74,37 +88,14 @@ class LocationCatalogView(BaseCatalogView):
     def dispatch(self, request, *args, **kwargs):
         """Use canonical pages for geography and keep existing metro editors."""
         model_key = request.POST.get('model') or request.GET.get('model', 'region')
-        if model_key in {'region', 'city', 'locality', 'district'}:
+        if model_key not in {'metro', 'metro_line', 'metro_system'}:
             from .catalog_views import CanonicalLocationCatalogView
             return CanonicalLocationCatalogView.as_view()(request, *args, **kwargs)
         return super().dispatch(request, *args, **kwargs)
     section_title = 'Локации'
     url_name = 'location:location_catalog'
-    default_model_key = 'region'
+    default_model_key = 'metro'
     model_configs = (
-        CatalogModelConfig(
-            key='region',
-            model=Region,
-            form_fields=('name', 'code', 'is_active'),
-            table_fields=('name', 'code', 'is_active'),
-            order_by=('name',),
-        ),
-        CatalogModelConfig(
-            key='city',
-            model=City,
-            form_fields=('name', 'region', 'is_active'),
-            table_fields=('name', 'region', 'is_active'),
-            order_by=('name',),
-            select_related=('region',),
-        ),
-        CatalogModelConfig(
-            key='district',
-            model=District,
-            form_fields=('name', 'city', 'is_active'),
-            table_fields=('name', 'city', 'is_active'),
-            order_by=('name',),
-            select_related=('city',),
-        ),
         CatalogModelConfig(
             key='metro_system', model=MetroSystem,
             form_fields=('name', 'location', 'is_active'),
@@ -125,6 +116,15 @@ class LocationCatalogView(BaseCatalogView):
             select_related=('metro_line__system', 'location'),
         ),
     )
+
+    def build_nav_models(self, current_key):
+        """Keep the geography tabs available from the native metro editor."""
+        geography = [('region', 'Регионы'), ('locality', 'Населённые пункты'),
+                     ('district', 'Административные районы')]
+        return [
+            {'key': key, 'title': title, 'url': self.get_model_url(key), 'is_active': False}
+            for key, title in geography
+        ] + super().build_nav_models(current_key)
 
     def build_form(self, config, data=None, instance=None):
         """Use the same canonical metro validation as administrative editors."""
@@ -170,11 +170,6 @@ class LocationCatalogView(BaseCatalogView):
             edit_object=edit_object,
             delete_error=delete_error,
         )
-        for tab in context['model_tabs']:
-            if tab['key'] == 'city':
-                tab['title'] = 'Населённые пункты'
-                tab['url'] = reverse('location:location_catalog') + '?model=locality'
-
         if can_sync_external_data(self.request.user):
             context['national_import'] = serialize_import_job(LocationImportJob.objects.first())
             selected_region = self.request.GET.get('regionId', '')

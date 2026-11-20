@@ -20,7 +20,7 @@ from bank.models import (
 )
 from customer.models import Customer
 from customer.location_service import CUSTOMER_LOCATION_FIELDS, prepare_customer_locations
-from location.legacy_catalog import LEGACY_GEOGRAPHY_MODELS, legacy_catalog, save_legacy_catalog_entry
+from location.legacy_catalog import legacy_catalog, save_legacy_catalog_entry
 from location.presentation import geographic_label
 from location.models import LegacyLocationMapping, Location, Metro, MetroLine, MetroSystem
 from property.location_context import (
@@ -593,15 +593,14 @@ class LocationDictionaryWriteSerializer(serializers.Serializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        """Create a registry entry and mirror its ID for existing foreign keys."""
-        model = LEGACY_GEOGRAPHY_MODELS[self.context['dictionary_configuration']['key']]
-        return save_legacy_catalog_entry(model, validated_data)
+        """Create a public identity anchored to the canonical catalog."""
+        model_name = self.context['dictionary_configuration']['legacy_key']
+        return save_legacy_catalog_entry(model_name, validated_data)
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        """Update the same Location mapping and its compatibility row."""
-        model = LEGACY_GEOGRAPHY_MODELS[self.context['dictionary_configuration']['key']]
-        return save_legacy_catalog_entry(model, validated_data, mapping=instance)
+        """Update the public identity and its preserved labels."""
+        return save_legacy_catalog_entry(instance.model_name, validated_data, mapping=instance)
 
 
 class BankListQuerySerializer(serializers.Serializer):

@@ -16,7 +16,7 @@ from api_v1.test_calculation_locations import location_calculations  # noqa: F40
 from api_v1.test_customers import customer_users  # noqa: F401
 from bank.models import MortgageProgramRegionalCreditLimit
 from customer.models import Customer, CustomerCalculation, CustomerTrenchCalculation
-from location.compatibility import canonical_legacy_location
+from location.tests.legacy_fixtures import canonical_legacy_location
 from location.tests.legacy_fixtures import legacy_district_for
 from location.models import City, District, LegacyLocationMapping, LocationAlias, Region
 from mortgage.models import MortgageCalculation

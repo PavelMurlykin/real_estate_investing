@@ -6,16 +6,19 @@ from unittest.mock import MagicMock, patch
 from urllib.error import URLError
 
 import pytest
-from django.db import connection
+from django.db import connection, transaction
+from django.test.utils import CaptureQueriesContext
 
-from location.compatibility import canonical_legacy_location
+from location.catalog_service import lock_location_catalog
+from location.tests.legacy_fixtures import canonical_legacy_location
 from location.import_service import (
     IMPORT_LOCK_IDENTIFIER,
     LocationImportError,
     LocationRecord,
     import_locations,
-    upsert_records,
+    upsert_geography_records,
 )
+from location.legacy_catalog import LegacyImportScope, legacy_catalog, save_legacy_catalog_entry
 from location.models import City, District, Metro, MetroLine, Region
 from location.open_data import (
     CITY_CATALOG_URL,
@@ -51,6 +54,7 @@ def test_regions_preserve_legacy_keys_codes_status_and_links(sources, hierarchy)
     region, city = hierarchy
     region.is_active = False
     region.save()
+    canonical_legacy_location(region)
     first = import_locations('regions')
     second = import_locations('regions')
     region.refresh_from_db()
@@ -60,11 +64,14 @@ def test_regions_preserve_legacy_keys_codes_status_and_links(sources, hierarchy)
     assert first['skipped'] == 1
     assert second['created'] == second['updated'] == 0
     assert second['unchanged'] == 3
-    assert region.source_identifier == 'kladr-region/77'
+    alias = legacy_catalog('region').get(legacy_id=region.pk)
+    assert alias.legacy_source_identifier == 'kladr-region/77'
+    assert alias.legacy_code == '77' and not alias.legacy_is_active
+    assert region.source_identifier == 'relation/102269'
     assert region.code == '77'
     assert region.is_active is False
     assert city.region_id == region.pk
-    assert not Region.objects.filter(name='Берлин').exists()
+    assert not legacy_catalog('region').filter(legacy_name='Берлин').exists()
 
 
 @pytest.mark.django_db
@@ -72,12 +79,10 @@ def test_city_import_adopts_manual_and_osm_parents(sources, hierarchy):
     """Import children without forcing a separate parent reimport first."""
     region, city = hierarchy
     assert import_locations('cities', region)['updated'] == 1
-    city.refresh_from_db()
-    region.refresh_from_db()
-    assert city.source_identifier == 'fias/11111111-1111-1111-1111-111111111111'
-    assert region.source_identifier == 'kladr-region/77'
+    assert legacy_catalog('city').get(legacy_id=city.pk).legacy_source_identifier == 'fias/11111111-1111-1111-1111-111111111111'
+    assert legacy_catalog('region').get(legacy_id=region.pk).legacy_source_identifier == 'kladr-region/77'
     assert import_locations('cities', region)['unchanged'] == 1
-    assert City.objects.filter(region=region).count() == 1
+    assert legacy_catalog('city').filter(legacy_region_id=region.pk).count() == 1
 
 
 @pytest.mark.django_db
@@ -85,15 +90,16 @@ def test_districts_filter_historical_units_and_keep_existing_links(sources, hier
     """Import actual urban districts and exclude obsolete and municipal units."""
     region, city = hierarchy
     existing = District.objects.create(name='Тверской', city=city, is_active=False)
+    canonical_legacy_location(existing)
     first = import_locations('districts', region, city)
     repeated = import_locations('districts', region, city)
     assert first['created'] == first['updated'] == 1
     assert repeated['created'] == repeated['updated'] == 0
-    existing.refresh_from_db()
-    assert existing.name == 'Тверской район'
-    assert existing.source_identifier == 'wikidata/Q201'
-    assert existing.is_active is False
-    assert District.objects.count() == 2
+    alias = legacy_catalog('district').get(legacy_id=existing.pk)
+    assert alias.legacy_name == 'Тверской район'
+    assert alias.legacy_source_identifier == 'wikidata/Q201'
+    assert alias.legacy_is_active is False
+    assert legacy_catalog('district').count() == 2
 
 
 @pytest.mark.django_db
@@ -189,9 +195,9 @@ def test_regional_metro_filters_planned_and_foreign_stations(sources):
         'claims': {'P465': claims('A31E1C')},
     }
     import_locations('regions')
-    region = Region.objects.get(code='16')
+    region = LegacyImportScope.from_mapping(legacy_catalog('region').get(legacy_code='16'))
     import_locations('cities', region)
-    city = City.objects.get(region=region)
+    city = LegacyImportScope.from_mapping(legacy_catalog('city').get(legacy_region_id=region.pk))
     first = import_locations('metro', region, city)
     repeated = import_locations('metro', region, city)
     assert first['created'] == first['lines']['created'] == 1
@@ -223,7 +229,7 @@ def test_foreign_or_wrong_region_is_rejected_before_wikimedia(sources):
     region = Region.objects.create(name='Берлин', code='DE')
     with pytest.raises(LocationImportError, match='России'):
         import_locations('cities', region)
-    assert not City.objects.exists()
+    assert not legacy_catalog('city').exists()
 
 
 @pytest.mark.django_db
@@ -234,7 +240,7 @@ def test_city_country_and_type_are_verified(sources, hierarchy):
     country['value']['id'] = 'Q183'
     with pytest.raises(LocationImportError, match='российский город'):
         import_locations('districts', region, city)
-    assert not District.objects.exists()
+    assert not legacy_catalog('district').exists()
 
 
 @pytest.mark.django_db(transaction=True)
@@ -360,15 +366,18 @@ def test_ended_and_future_claims_are_excluded():
 @pytest.mark.django_db
 def test_city_loading_uses_bulk_queries(django_assert_num_queries):
     """Keep database query counts independent of city batch size."""
-    region = Region.objects.create(name='Москва', code='77')
+    region = save_legacy_catalog_entry('region', {'name': 'Москва', 'code': '77'})
     records = [
-        LocationRecord(f'fias/{index}', f'Город {index}', {'region_id': region.pk})
+        LocationRecord(f'fias/{index}', f'Город {index}')
         for index in range(200)
     ]
-    with django_assert_num_queries(2):
-        _, first = upsert_records(City, records, 'region_id', region.pk)
+    with transaction.atomic():
+        lock_location_catalog()
+        with CaptureQueriesContext(connection) as queries:
+            _, first = upsert_geography_records('city', records, parent=region)
+    assert len(queries) <= 15
     with django_assert_num_queries(1):
-        _, repeated = upsert_records(City, records, 'region_id', region.pk)
+        _, repeated = upsert_geography_records('city', records, parent=region)
     assert first['created'] == 200
     assert repeated['unchanged'] == 200
 

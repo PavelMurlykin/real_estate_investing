@@ -2,7 +2,7 @@ import pytest
 from django.urls import reverse
 from django.utils.text import Truncator
 
-from location.tests.legacy_fixtures import legacy_district_for, registered_legacy_id
+from location.tests.legacy_fixtures import canonical_legacy_location, legacy_district_for, registered_legacy_id
 from location.models import City, District
 from property.models import RealEstateComplex
 
@@ -65,6 +65,7 @@ def test_homepage_excludes_inactive_complexes_and_districts(
     district = legacy_district_for(original)
     district.is_active = False
     district.save(update_fields=['is_active'])
+    canonical_legacy_location(district)
     assert client.get(url, {'city': legacy_district_for(original).city_id}).json()[
         'totalCount'
     ] == 0
@@ -79,6 +80,7 @@ def test_homepage_excludes_inactive_complexes_and_districts(
     city = legacy_district_for(original).city
     city.is_active = False
     city.save(update_fields=['is_active'])
+    canonical_legacy_location(city)
     assert client.get(url, {'city': city.pk}).json()['selectedCity']['id'] == (
         legacy_district_for(preferred).city_id
     )

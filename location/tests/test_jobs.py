@@ -1,111 +1,136 @@
-"""Verify durable national imports, repeat runs and recovery checkpoints."""
+"""Cover retirement of the legacy queue and continued recovery of GAR work."""
 
-from copy import deepcopy
-from functools import partial
 from unittest.mock import patch
 
 import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
 
+from location.gar_source import GarSourceError
 from location.jobs import process_next_import, run_import_job, start_import_job
-from location.models import City, District, LocationImportJob, Region
-from location.open_data import OpenDataError
-from location.tests.source_fixtures import load_sources, source_reply
-
-
-@pytest.fixture
-def source_transport():
-    """Exercise real CSV and district parsers without live network requests."""
-    data = load_sources()
-    data['entities']['Q205'] = deepcopy(data['entities']['Q201'])
-    data['entities']['Q205']['id'] = 'Q205'
-    data['entities']['Q205']['labels']['ru']['value'] = 'Центральный район'
-    data['entities']['Q656']['claims']['P150'][0]['mainsnak']['datavalue']['value']['id'] = 'Q205'
-    with patch(
-        'location.open_data.OpenLocationSource.download', side_effect=partial(source_reply, data),
-    ):
-        with patch('location.open_data.OpenLocationSource.prime_cities'):
-            yield data
-
-
-@pytest.mark.django_db
-def test_national_import_creates_all_cities_and_repeats_without_changes(source_transport):
-    """Import across regions independently of a selected parent and rerun."""
-    first = start_import_job(kind='legacy')
-    assert start_import_job(kind='legacy').pk == first.pk
-    assert process_next_import()
-    first.refresh_from_db()
-    assert first.status == 'completed'
-    assert first.total_cities == first.processed_cities == 3
-    assert first.counts['cities']['created'] == 3
-    assert Region.objects.count() == City.objects.count() == 3
-    second = start_import_job(kind='legacy')
-    assert second.pk != first.pk
-    run_import_job(second)
-    second.refresh_from_db()
-    assert second.status == 'completed'
-    for counts in second.counts.values():
-        assert counts['created'] == counts['updated'] == 0
-
-
-@pytest.mark.django_db
-def test_failed_job_resumes_after_last_committed_city(source_transport):
-    """Keep earlier cities and resume a failed upstream request after reload."""
-    job = start_import_job(kind='legacy')
-    with patch('location.open_data.OpenLocationSource.districts', side_effect=[
-        [('wikidata/Q201', 'Тверской район')], OpenDataError('Временная ошибка'),
-    ]):
-        run_import_job(job)
-    job.refresh_from_db()
-    assert job.status == 'failed'
-    assert job.processed_cities == 1
-    assert District.objects.count() == 1
-    assert start_import_job(kind='legacy').pk == job.pk
-    with patch('location.open_data.OpenLocationSource.districts', return_value=[]) as districts:
-        process_next_import()
-    job.refresh_from_db()
-    assert districts.call_count == 2
-    assert job.status == 'completed'
-    assert job.processed_cities == 3
-    assert District.objects.count() == 1
-
-
-@pytest.mark.django_db
-def test_running_job_is_resumed_when_worker_restarts(source_transport):
-    """Persist progress across process death rather than leave a blocked button."""
-    job = LocationImportJob.objects.create(status='running', kind='legacy')
-    assert process_next_import()
-    job.refresh_from_db()
-    assert job.status == 'completed'
-
-
-@pytest.mark.django_db
-def test_unexpected_error_releases_job_for_retry(source_transport):
-    """Expose a recoverable failure without leaking an internal exception."""
-    job = start_import_job(kind='legacy')
-    with patch(
-        'location.open_data.OpenLocationSource.city_catalog', side_effect=ValueError('private'),
-    ):
-        run_import_job(job)
-    job.refresh_from_db()
-    assert job.status == 'failed'
-    assert 'private' not in job.error_message
-    assert start_import_job(kind='legacy').pk == job.pk
+from location.legacy_catalog import legacy_catalog, legacy_dictionary_entries, retire_legacy_catalog_entry, save_legacy_catalog_entry
+from location.models import LocationImportJob
+from location.tests.test_gar import SPB
 
 
 @pytest.mark.django_db(transaction=True)
-def test_single_worker_poll_reports_failure_and_uses_platform_temp_directory(
-    source_transport, tmp_path, monkeypatch,
-):
-    """Keep the Windows command usable and return a failure for a failed job."""
+def test_migration_retains_partial_legacy_import_and_original_allocator():
+    """Recover committed mirror rows and preserve every existing checkpoint."""
+    executor = MigrationExecutor(connection)
+    latest = executor.loader.graph.leaf_nodes()
+    previous = [
+        ('location', '0017_detach_metro_line_city'),
+        ('customer', '0009_detach_legacy_geography'),
+        ('property', '0024_detach_complex_district'),
+    ]
+    executor.migrate(previous)
+    try:
+        historical = executor.loader.project_state(previous).apps
+        region = historical.get_model('location', 'Region').objects.create(
+            name='Регион незавершённого импорта', code='T7',
+        )
+        city = historical.get_model('location', 'City').objects.create(name='Город', region=region)
+        district = historical.get_model('location', 'District').objects.create(name='Район', city=city)
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT nextval(pg_get_serial_sequence(%s, %s))', ['region', 'id'])
+            issued, = cursor.fetchone()
+        old_jobs = historical.get_model('location', 'LocationImportJob').objects
+        archived = [
+            old_jobs.create(kind='legacy', status=status, phase='districts', catalog=[{'city_name': city.name}],
+                            processed_cities=1, total_cities=3, counts={'districts': {'created': 1}},
+                            coverage={'withoutDistricts': 1}, error_message='Прежний протокол')
+            for status in ('completed', 'failed', 'running')
+        ]
+        expected = {job.pk: old_jobs.values().get(pk=job.pk) for job in archived}
+        MigrationExecutor(connection).migrate(latest)
+        for identifier, snapshot in expected.items():
+            current = LocationImportJob.objects.values().get(pk=identifier)
+            if snapshot['status'] == 'running':
+                assert current['status'] == 'failed'
+                assert 'Контрольная точка сохранена' in current['error_message']
+                current.update(status=snapshot['status'], error_message=snapshot['error_message'])
+            assert current == snapshot
+        aliases = (
+            ('region', region.pk, region.name), ('city', city.pk, city.name),
+            ('district', district.pk, district.name),
+        )
+        for model_name, identifier, name in aliases:
+            assert legacy_catalog(model_name).get(legacy_id=identifier).legacy_name == name
+        created = save_legacy_catalog_entry('region', {'name': 'Новая область', 'code': 'NEW'})
+        assert created.legacy_id > max(region.pk, issued)
+        retained = legacy_catalog('region').get(legacy_id=region.pk)
+        save_legacy_catalog_entry('region', {'name': 'Новое имя области'}, mapping=retained)
+        retire_legacy_catalog_entry(legacy_dictionary_entries('district').get(legacy_id=district.pk))
+        MigrationExecutor(connection).migrate(previous)
+        MigrationExecutor(connection).migrate(latest)
+        assert legacy_catalog('region').get(legacy_id=region.pk).legacy_name == 'Новое имя области'
+        assert not legacy_catalog('district').filter(legacy_id=district.pk).exists()
+    finally:
+        MigrationExecutor(connection).migrate(latest)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('status', ['queued', 'running'])
+def test_queue_releases_archived_import_without_accessing_its_source(status):
+    """Archive any obsolete active job and leave its snapshot available."""
+    previous = LocationImportJob.objects.create(
+        kind='legacy', status=status, phase='districts', processed_cities=1, total_cities=3,
+        catalog=[{'city_name': 'Город'}], counts={'districts': {'created': 1}},
+    )
+    with patch('location.open_data.OpenLocationSource.download') as download:
+        job = start_import_job()
+        assert start_import_job().pk == job.pk
+        download.assert_not_called()
+    previous.refresh_from_db()
+    assert previous.status == 'failed'
+    assert previous.processed_cities == 1 and previous.phase == 'districts'
+    assert previous.catalog == [{'city_name': 'Город'}]
+    assert previous.counts == {'districts': {'created': 1}}
+    assert job.kind == 'gar' and job.pk != previous.pk
+
+
+@pytest.mark.django_db
+def test_running_gar_job_resumes_when_worker_restarts():
+    """Process the GAR catalog at the next stored subject and ignore legacy jobs."""
+    old_job = LocationImportJob.objects.create(kind='legacy', status='failed', error_message='Сохранённый отчёт')
+    job = LocationImportJob.objects.create(
+        status='running', catalog=['78'], total_regions=1, source_version='20261113',
+        source_url='https://fias-file.nalog.ru/test.zip',
+        counts={key: {'created': 0, 'updated': 0, 'unchanged': 0}
+                for key in ('regions', 'cities', 'districts')},
+    )
+    with patch('location.jobs.GarSource') as source:
+        source.return_value.extract_region.return_value = SPB
+        assert process_next_import().pk == job.pk
+        assert source.return_value.extract_region.call_count == 1
+    job.refresh_from_db()
+    old_job.refresh_from_db()
+    assert job.status == 'completed' and job.processed_regions == 1
+    assert old_job.status == 'failed' and old_job.error_message == 'Сохранённый отчёт'
+
+
+@pytest.mark.django_db
+def test_unexpected_error_releases_gar_job_for_retry():
+    """Do not expose internal exception details through job progress."""
+    job = start_import_job()
+    with patch('location.jobs.latest_snapshot', side_effect=ValueError('private detail')):
+        run_import_job(job)
+    job.refresh_from_db()
+    assert job.status == 'failed' and 'private detail' not in job.error_message
+    assert start_import_job().pk == job.pk
+
+
+@pytest.mark.django_db(transaction=True)
+def test_single_worker_poll_reports_gar_failure_and_keeps_heartbeat(tmp_path, monkeypatch):
+    """Return a CLI error for a failed GAR job and keep the worker heartbeat."""
     monkeypatch.setattr(
         'location.management.commands.process_location_imports.tempfile.gettempdir',
         lambda: str(tmp_path),
     )
-    start_import_job(kind='legacy')
-    with patch('location.open_data.OpenLocationSource.city_catalog',
-               side_effect=OpenDataError('Источник недоступен')):
+    start_import_job()
+    with patch('location.jobs.latest_snapshot', side_effect=GarSourceError('Источник недоступен')):
         with pytest.raises(CommandError, match='Источник недоступен'):
             call_command('process_location_imports', once=True)
     assert (tmp_path / 'location-import-worker-heartbeat').exists()

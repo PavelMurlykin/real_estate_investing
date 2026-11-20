@@ -94,7 +94,7 @@ from customer.views import (
 from location.import_forms import LocationImportForm
 from location.catalog_service import lock_location_catalog
 from location.legacy_catalog import (
-    LEGACY_GEOGRAPHY_MODELS, legacy_choices, legacy_dictionary_entries, retire_legacy_catalog_entry,
+    LEGACY_GEOGRAPHY_KEYS, legacy_choices, legacy_dictionary_entries, retire_legacy_catalog_entry,
 )
 from location.models import Location, Metro, MetroLine, MetroSystem
 from location.metro_import import import_legacy_metro, import_metro
@@ -1639,7 +1639,7 @@ class LocationDictionaryImportAPIView(APIView):
             raise ValidationError({'detail': 'Передайте регион и город либо систему метро.'})
         import_form = LocationImportForm({
             **request.data, 'dictionary': dictionary_key,
-        }, mapped_geography=True)
+        })
         if not import_form.is_valid():
             raise ValidationError(dict(import_form.errors))
         try:
@@ -1666,7 +1666,7 @@ class LocationDictionaryAPIViewMixin:
 
     def get_object(self):
         """Keep the public ID in the original dictionary's namespace."""
-        if self.kwargs['dictionary_key'] in LEGACY_GEOGRAPHY_MODELS:
+        if self.kwargs['dictionary_key'] in LEGACY_GEOGRAPHY_KEYS:
             self.lookup_field = 'legacy_id'
         return super().get_object()
 
@@ -1688,7 +1688,7 @@ class LocationDictionaryAPIViewMixin:
     def get_base_queryset(self):
         """Return a relation-efficient queryset with dependency counts."""
         configuration = self.get_dictionary_configuration()
-        if configuration['key'] in LEGACY_GEOGRAPHY_MODELS:
+        if configuration['key'] in LEGACY_GEOGRAPHY_KEYS:
             return legacy_dictionary_entries(configuration['legacy_key'])
         queryset = configuration['model'].objects.all()
         related_fields = configuration['select_related']
@@ -1775,7 +1775,7 @@ class LocationDictionaryListCreateAPIView(
                 search_query |= Q(**{f'{field_name}__icontains': search})
             queryset = queryset.filter(search_query)
         if filters['status'] != 'all':
-            status_field = 'legacy_is_active' if configuration['key'] in LEGACY_GEOGRAPHY_MODELS else 'is_active'
+            status_field = 'legacy_is_active' if configuration['key'] in LEGACY_GEOGRAPHY_KEYS else 'is_active'
             queryset = queryset.filter(**{status_field: filters['status'] == 'active'})
         for api_field, model_field in configuration[
             'filter_fields'
@@ -1800,7 +1800,7 @@ class LocationDictionaryListCreateAPIView(
             'usageCount': 'usage_count',
         }
         model = configuration.get('model')
-        if configuration['key'] in LEGACY_GEOGRAPHY_MODELS:
+        if configuration['key'] in LEGACY_GEOGRAPHY_KEYS:
             ordering_fields['status'] = 'legacy_is_active'
             if configuration['key'] == 'regions':
                 ordering_fields['code'] = 'legacy_code'
@@ -1829,13 +1829,13 @@ class LocationDictionaryListCreateAPIView(
         return queryset.order_by(
             f'{ordering_prefix}{ordering_field}',
             configuration['name_field'],
-            'legacy_id' if configuration['key'] in LEGACY_GEOGRAPHY_MODELS else 'pk',
+            'legacy_id' if configuration['key'] in LEGACY_GEOGRAPHY_KEYS else 'pk',
         )
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         """Create an entry and return its normalized public representation."""
-        if self.kwargs['dictionary_key'] in LEGACY_GEOGRAPHY_MODELS:
+        if self.kwargs['dictionary_key'] in LEGACY_GEOGRAPHY_KEYS:
             lock_location_catalog()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -1860,7 +1860,7 @@ class LocationDictionaryDetailAPIView(
     @transaction.atomic
     def update(self, request, *args, **kwargs):
         """Update an entry and return its normalized public representation."""
-        if self.kwargs['dictionary_key'] in LEGACY_GEOGRAPHY_MODELS:
+        if self.kwargs['dictionary_key'] in LEGACY_GEOGRAPHY_KEYS:
             lock_location_catalog()
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
@@ -1879,12 +1879,12 @@ class LocationDictionaryDetailAPIView(
         """Delete an unused entry or explain its protected dependency."""
         try:
             with transaction.atomic():
-                model = LEGACY_GEOGRAPHY_MODELS.get(self.kwargs['dictionary_key'])
-                if model:
+                has_legacy_identity = self.kwargs['dictionary_key'] in LEGACY_GEOGRAPHY_KEYS
+                if has_legacy_identity:
                     lock_location_catalog()
                 instance = self.get_object()
-                if model:
-                    retire_legacy_catalog_entry(model, instance)
+                if has_legacy_identity:
+                    retire_legacy_catalog_entry(instance)
                 else:
                     instance.delete()
         except ProtectedError:

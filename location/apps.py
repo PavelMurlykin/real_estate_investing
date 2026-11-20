@@ -13,5 +13,5 @@ class LocationConfig(AppConfig):
     verbose_name = 'Локации'
 
     def ready(self):
-        """Register station protection and legacy lookup cleanup."""
+        """Register station membership protection."""
         from . import signals  # noqa: F401

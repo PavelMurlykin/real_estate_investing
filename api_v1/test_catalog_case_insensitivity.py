@@ -6,7 +6,8 @@ from django.contrib.auth.models import Group
 from django.urls import reverse
 
 from bank.models import Bank, DeveloperMortgageProgram, MortgageProgram
-from location.compatibility import canonical_legacy_location
+from location.legacy_catalog import legacy_catalog
+from location.tests.legacy_fixtures import canonical_legacy_location
 from location.models import City, Region
 from property.models import ApartmentLayout, CompanyGroup
 from users.roles import MODERATOR_GROUP_NAME
@@ -138,7 +139,8 @@ def test_catalog_rejects_case_duplicates_without_rejecting_own_name(
     )
     assert response.status_code == 200, response.content
     instance.refresh_from_db()
-    assert instance.name == ' '.join(requested_name.split())
+    name = legacy_catalog('city').get(legacy_id=instance.pk).legacy_name if catalog_key == 'cities' else instance.name
+    assert name == ' '.join(requested_name.split())
     assert model.objects.count() == initial_count
 
 
@@ -174,18 +176,18 @@ def test_city_name_uniqueness_follows_the_selected_region(
         content_type='application/json',
     )
     assert response.status_code == 201, response.content
-    created = City.objects.get(pk=response.json()['id'])
-    assert created.region == other_region
-    original_name = created.name
+    created = legacy_catalog('city').get(legacy_id=response.json()['id'])
+    assert created.legacy_region_id == other_region.pk
+    original_name = created.legacy_name
     response = client.patch(
         reverse(record['detail_name'], kwargs={
-            'dictionary_key': 'cities', 'pk': created.pk,
+            'dictionary_key': 'cities', 'pk': created.legacy_id,
         }),
         {'regionId': original.region_id}, content_type='application/json',
     )
     assert response.status_code == 400, response.content
     assert 'name' in response.json()
     created.refresh_from_db()
-    assert created.region == other_region
-    assert created.name == original_name
-    assert City.objects.count() == 2
+    assert created.legacy_region_id == other_region.pk
+    assert created.legacy_name == original_name
+    assert legacy_catalog('city').count() == 2

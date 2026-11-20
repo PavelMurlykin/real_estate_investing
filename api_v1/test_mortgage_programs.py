@@ -11,7 +11,7 @@ from bank.models import (
     MortgageProgram,
     MortgageProgramRegionalCreditLimit,
 )
-from location.compatibility import canonical_legacy_location
+from location.tests.legacy_fixtures import canonical_legacy_location
 from location.models import Region
 from users.roles import MODERATOR_GROUP_NAME
 

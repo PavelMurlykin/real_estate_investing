@@ -19,7 +19,7 @@ from django.urls import reverse
 from openpyxl import Workbook
 
 from location.tests.legacy_fixtures import registered_legacy_id
-from location.compatibility import canonical_legacy_location
+from location.tests.legacy_fixtures import canonical_legacy_location
 from location.models import City, District, Metro, MetroLine, Region
 from users.roles import (
     APPLICATION_ADMINISTRATOR_GROUP_NAME,

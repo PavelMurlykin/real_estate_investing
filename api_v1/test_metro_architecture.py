@@ -13,7 +13,7 @@ from django.test.utils import CaptureQueriesContext
 from api_v1.test_location_dictionaries import create_location_manager
 from api_v1.test_location_import import import_user  # noqa: F401
 from location.metro_forms import MetroForm, MetroLineForm, MetroSystemForm
-from location.compatibility import canonical_legacy_location
+from location.tests.legacy_fixtures import canonical_legacy_location
 from location.models import City, LegacyLocationMapping, Location, LocationIdentifier, LocationType, Metro, MetroLine, MetroSystem, Region
 from location.tests.test_metro_architecture import metro_geography, create_complex_link  # noqa: F401
 from location.tests.source_fixtures import load_sources, source_reply
@@ -125,7 +125,7 @@ def test_legacy_metro_filters_and_repeat_use_the_same_network(client, metro_geog
 
 @pytest.mark.django_db
 def test_legacy_city_used_by_metro_cannot_be_deleted(client, metro_geography):
-    """Preserve the existing protection in the API and Django admin."""
+    """Protect the retained ID and route the old admin bookmark to media-free editing."""
     _, line, _, _ = metro_geography
     region = Region.objects.create(name='Москва', code='77')
     city = City.objects.create(region=region, name='Москва')
@@ -133,13 +133,15 @@ def test_legacy_city_used_by_metro_cannot_be_deleted(client, metro_geography):
     line.legacy_city_id = city.pk
     line.save(update_fields=['legacy_city_id'])
 
-    client.force_login(create_location_manager())
+    manager = create_location_manager()
+    manager.is_staff = True
+    manager.save(update_fields=['is_staff'])
+    client.force_login(manager)
     response = client.delete(catalog_url('cities', city.pk))
     assert response.status_code == 409
-    with pytest.raises(ProtectedError), transaction.atomic():
-        City.objects.filter(pk=city.pk).delete()
-    _, _, _, protected = admin.site._registry[City].get_deleted_objects([city], response.wsgi_request)
-    assert str(line) in protected
+    former_admin = f'/admin/location/city/{city.pk}/change/'
+    assert client.get(former_admin).url == f'/locations/?model=city&edit={city.pk}'
+    assert client.post(former_admin, {'name': 'Изменение старой таблицы'}).status_code == 405
     assert City.objects.filter(pk=city.pk).exists()
 
 

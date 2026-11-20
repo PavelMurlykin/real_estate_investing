@@ -26,7 +26,7 @@ from bank.models import MortgageProgram, MortgageProgramRegionalCreditLimit
 from core.json_import import JsonImportError
 from customer.models import Customer, CustomerCalculation, CustomerTrenchCalculation
 from location.tests.legacy_fixtures import registered_legacy_id
-from location.compatibility import canonical_legacy_location
+from location.tests.legacy_fixtures import canonical_legacy_location
 from location.gar_import import load_region
 from location.migration_support import backfill_locations
 from location.models import City, District, Location, LocationAlias, LocationIdentifier, Metro, MetroLine, MetroSystem, Region

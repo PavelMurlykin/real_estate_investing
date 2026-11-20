@@ -12,7 +12,7 @@ from api_v1.test_location_import import import_user
 from api_v1.test_real_estate_complexes import complex_catalog
 from api_v1.serializers import ManualCalculationPropertySerializer
 from location.tests.legacy_fixtures import legacy_district_for
-from location.compatibility import canonical_legacy_location
+from location.tests.legacy_fixtures import canonical_legacy_location
 from location.models import City, LegacyLocationMapping, Location, LocationClosure
 from property.location_context import set_primary_location
 from property.models import (

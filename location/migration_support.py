@@ -32,7 +32,7 @@ def ensure_referenced_geography(registry, database, records, references):
             return
 
 
-def backfill_locations(registry, database='default', *, geography_only=False):
+def backfill_locations(registry, database='default', *, geography_only=False, prefer_registry=False):
     """Map legacy records and complexes without changing any legacy field."""
     Location = registry.get_model('location', 'Location')
     LocationType = registry.get_model('location', 'LocationType')
@@ -62,6 +62,7 @@ def backfill_locations(registry, database='default', *, geography_only=False):
     capture_catalog_metadata = any(field.name == 'legacy_created_at' for field in Mapping._meta.fields)
     references_to_update = []
     aliases_to_preserve = []
+    new_mapping_locations = set()
     identifiers = {
         (row.provider, row.value): row.location_id
         for row in Identifier.objects.using(database).filter(
@@ -81,6 +82,10 @@ def backfill_locations(registry, database='default', *, geography_only=False):
                 reference.update(ancestry)
         if key in mappings:
             mapping = existing_mappings[key]
+            if prefer_registry and (not mapping.legacy_name or (
+                mapping.legacy_updated_at is not None and mapping.legacy_updated_at >= row.updated_at
+            )):
+                return mappings[key]
             if any(getattr(mapping, field) != value for field, value in reference.items()):
                 for field, value in reference.items():
                     setattr(mapping, field, value)
@@ -107,6 +112,7 @@ def backfill_locations(registry, database='default', *, geography_only=False):
             **reference,
         )
         mappings[key] = identifier
+        new_mapping_locations.add(identifier)
         Identifier.objects.using(database).get_or_create(
             provider='legacy', value=f'{model_name}/{row.pk}',
             defaults={'location_id': identifier},
@@ -154,8 +160,10 @@ def backfill_locations(registry, database='default', *, geography_only=False):
         Alias.objects.using(database).bulk_create(
             aliases_to_preserve, batch_size=1000, ignore_conflicts=True,
         )
+    mapped_locations = new_mapping_locations if prefer_registry else set(mappings.values())
+    if geography_only and not mapped_locations:
+        return
     parents = dict(Location.objects.using(database).values_list('pk', 'parent_id'))
-    mapped_locations = set(mappings.values())
     existing_closure = set(Closure.objects.using(database).filter(
         descendant_id__in=mapped_locations,
     ).values_list('ancestor_id', 'descendant_id'))

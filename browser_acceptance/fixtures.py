@@ -23,10 +23,16 @@ def ensure_isolated_database():
         raise RuntimeError('Acceptance fixtures require PostgreSQL')
 
 
+def legacy_fixture(model_name, **values):
+    """Seed one stable compatibility identity without populating archived tables."""
+    from location.legacy_catalog import legacy_catalog, save_legacy_catalog_entry
+
+    keys = {f'legacy_{name}': value for name, value in values.items()}
+    return legacy_catalog(model_name).filter(**keys).first() or save_legacy_catalog_entry(model_name, values)
+
+
 def create_property_fixture():
     """Create an idempotent synthetic property graph for saved calculations."""
-    from location.compatibility import canonical_legacy_location
-    from location.models import City, District, Region
     from property.models import (
         ApartmentDecoration,
         ApartmentLayout,
@@ -38,12 +44,9 @@ def create_property_fixture():
         RealEstateType,
     )
 
-    region, _ = Region.objects.get_or_create(
-        code='E2E', defaults={'name': 'E2E регион'},
-    )
-    city, _ = City.objects.get_or_create(name='E2E город', region=region)
-    district, _ = District.objects.get_or_create(name='E2E район', city=city)
-    canonical_legacy_location(district)
+    region = legacy_fixture('region', code='E2E', name='E2E регион')
+    city = legacy_fixture('city', name='E2E город', region_id=region.legacy_id)
+    district = legacy_fixture('district', name='E2E район', city_id=city.legacy_id)
     developer, _ = Developer.objects.get_or_create(name='E2E застройщик')
     real_estate_type, _ = RealEstateType.objects.get_or_create(name='E2E квартира')
     real_estate_class, _ = RealEstateClass.objects.get_or_create(
@@ -53,7 +56,7 @@ def create_property_fixture():
         name='E2E квартал',
         developer=developer,
         defaults={
-            'district_id': district.pk,
+            'district_id': district.legacy_id,
             'real_estate_class': real_estate_class,
             'real_estate_type': real_estate_type,
         },
@@ -176,26 +179,21 @@ def seed_acceptance_fixtures():
 def create_geography_fixture(property_object):
     """Seed a small official extract only inside the guarded acceptance database."""
     ensure_isolated_database()
-    from django.apps import apps
-    from location.compatibility import canonical_legacy_location
     from location.gar_import import load_region
-    from location.migration_support import backfill_locations
-    from location.models import City, District, Location, Region
+    from location.models import Location
     from property.models import RealEstateComplex, RealEstateComplexBuilding
 
-    region, _ = Region.objects.get_or_create(code='78', defaults={'name': 'Санкт-Петербург'})
-    city, _ = City.objects.get_or_create(name='Санкт-Петербург', region=region)
-    district, _ = District.objects.get_or_create(name='Пушкинский район', city=city)
-    District.objects.get_or_create(name='Петродворцовый район', city=city)
-    canonical_legacy_location(district)
+    region = legacy_fixture('region', code='78', name='Санкт-Петербург')
+    city = legacy_fixture('city', name='Санкт-Петербург', region_id=region.legacy_id)
+    district = legacy_fixture('district', name='Пушкинский район', city_id=city.legacy_id)
+    legacy_fixture('district', name='Петродворцовый район', city_id=city.legacy_id)
     source_complex = property_object.building.real_estate_complex
     complex_object, _ = RealEstateComplex.objects.get_or_create(
         name='E2E пригородный квартал', developer=source_complex.developer,
-        defaults={'district_id': district.pk, 'real_estate_class': source_complex.real_estate_class,
+        defaults={'district_id': district.legacy_id, 'real_estate_class': source_complex.real_estate_class,
                   'real_estate_type': source_complex.real_estate_type},
     )
     building, _ = RealEstateComplexBuilding.objects.get_or_create(real_estate_complex=complex_object, number='1')
-    backfill_locations(apps)
     load_region(json.loads((Path(__file__).parent / 'data' / 'geography.json').read_text(encoding='utf-8')), '78', '20261113')
     load_region(json.loads((Path(__file__).parent / 'data' / 'likino.json').read_text(encoding='utf-8')), '50', '20261113')
     return {'geographyComplexId': complex_object.pk, 'geographyBuildingId': building.pk,

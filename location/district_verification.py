@@ -1,8 +1,5 @@
 """Confirm administrative districts where the GAR address extract skips that level."""
 
-from django.apps import apps
-
-
 ADMINISTRATIVE_REVIEW_VERSION = 'administrative:20261118'
 
 # Parent FIAS UUIDs and original identifiers of the independently verified
@@ -21,7 +18,7 @@ VERIFIED_DISTRICTS = (
 )
 
 
-def verify_legacy_districts(registry=apps, database='default', *, region_id=None, region_code=None):
+def verify_legacy_districts(registry, database='default', *, region_id=None, region_code=None):
     """Verify known district identities in place under the exact GAR parent."""
     locations = registry.get_model('location', 'Location').objects.using(database)
     districts = registry.get_model('location', 'District').objects.using(database)
