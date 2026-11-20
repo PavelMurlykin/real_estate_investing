@@ -5,11 +5,12 @@ import re
 
 from django.db import IntegrityError, transaction
 
-from .compatibility import canonical_legacy_location
+from .catalog_service import lock_location_catalog
 from .import_service import (
     LocationImportError, LocationRecord, import_guard, select_city, select_region, unique_records, upsert_records,
 )
-from .models import City, Location, LocationIdentifier, Metro, MetroLine, MetroSystem
+from .metro_geography import legacy_metro_city
+from .models import LocationIdentifier, Metro, MetroLine, MetroSystem
 from .open_data import METRO_SCHEMES, OpenDataError, OpenLocationSource
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ def import_metro(system):
 
 def import_legacy_metro(city):
     """Import by network while retaining the original API city identity."""
-    return _run_metro_import(city.name, legacy=city)
+    return _run_metro_import(city.center_name, legacy=city)
 
 
 def _fias_identifier(location_id):
@@ -47,15 +48,8 @@ def _run_metro_import(center_name, identifier=None, *, system=None, legacy=None)
             if legacy:
                 identifier = _fias_identifier(legacy.location_id)
                 if not identifier:
-                    old_city = legacy.city or City.objects.select_related('region').filter(
-                        pk=legacy.identifier, region_id=legacy.region_id,
-                    ).first()
-                    if old_city is None:
-                        raise LocationImportError('Для центра системы нужен подтверждённый идентификатор ФИАС.')
-                    row = select_city(select_region(source.city_catalog(), old_city.region), old_city)
+                    row = select_city(select_region(source.city_catalog(), legacy.region), legacy.city)
                     center_name, identifier = row['city_name'], row['fias_id']
-                else:
-                    center_name = Location.objects.get(pk=legacy.location_id).name
             raw_lines, raw_stations = source.metro({'city_name': center_name, 'fias_id': identifier})
             if not raw_lines or not raw_stations:
                 raise LocationImportError('Источник не вернул линии и станции. Изменения не сохранены.')
@@ -66,6 +60,11 @@ def _run_metro_import(center_name, identifier=None, *, system=None, legacy=None)
                 raise LocationImportError('Источник содержит станции с неизвестной линией.')
             with transaction.atomic():
                 if legacy:
+                    lock_location_catalog()
+                    current_scope = legacy_metro_city(legacy.region.pk, legacy.city.pk)
+                    if current_scope is None or current_scope.location_id != legacy.location_id:
+                        raise LocationImportError('Привязка города изменилась. Повторите импорт.')
+                    legacy = current_scope
                     system = _resolve_legacy_system(legacy, center_name, identifier)
                 else:
                     current = MetroSystem.objects.select_for_update().get(pk=system.pk)
@@ -89,9 +88,9 @@ def _run_metro_import(center_name, identifier=None, *, system=None, legacy=None)
     return result
 
 
-def _resolve_legacy_system(city, name, identifier):
+def _resolve_legacy_system(scope, name, identifier):
     """Recover historical lines in place and require explicit choice on ambiguity."""
-    location_id = canonical_legacy_location(city.city).pk if city.city else city.location_id
+    location_id = scope.location_id
     if identifier:
         source, _ = LocationIdentifier.objects.get_or_create(
             provider='fias', value=identifier, defaults={'location_id': location_id},
@@ -99,7 +98,8 @@ def _resolve_legacy_system(city, name, identifier):
         if source.location_id != location_id:
             raise LocationImportError('Идентификатор города уже сопоставлен с другой локацией.')
     systems = MetroSystem.objects.all()
-    identifiers = list(systems.filter(metroline__city_id=city.identifier).order_by('pk').values_list('pk', flat=True).distinct()[:2])
+    identifiers = list(systems.filter(metroline__legacy_city_id=scope.city.pk)
+                       .order_by('pk').values_list('pk', flat=True).distinct()[:2])
     if not identifiers:
         identifiers = list(systems.filter(location_id=location_id).values_list('pk', flat=True)[:2])
     if len(identifiers) > 1:
@@ -114,7 +114,7 @@ def _resolve_legacy_system(city, name, identifier):
         system.save(update_fields=['location'])
     elif system.location_id != location_id:
         raise LocationImportError('Город соответствует другому центру. Выберите систему метро.')
-    MetroLine.objects.filter(city_id=city.identifier, system_id=None).update(system_id=system.pk)
+    MetroLine.objects.filter(legacy_city_id=scope.city.pk, system_id=None).update(system_id=system.pk)
     return system
 
 
@@ -125,8 +125,8 @@ def _save_network(system, raw_lines, raw_stations, legacy):
         for identifier, name, color in raw_lines
     ])
     legacy_defaults = {
-        'city_id': legacy.identifier, 'legacy_city_name': legacy.name,
-        'legacy_region_id': legacy.region_id, 'legacy_region_name': legacy.region_name,
+        'legacy_city_id': legacy.city.pk, 'legacy_city_name': legacy.city.name,
+        'legacy_region_id': legacy.region.pk, 'legacy_region_name': legacy.region.name,
     } if legacy else None
     objects, line_counts = upsert_records(MetroLine, lines, 'system_id', system.pk, create_defaults=legacy_defaults)
     counts = {'created': 0, 'updated': 0, 'unchanged': 0}

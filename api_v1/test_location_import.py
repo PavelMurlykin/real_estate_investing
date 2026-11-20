@@ -207,5 +207,5 @@ def test_full_api_import_pipeline_with_session_and_valid_csrf(import_user):
         assert updated['lines']['updated'] == 1
 
     assert District.objects.filter(city=city).count() == 2
-    assert Metro.objects.get(station='Охотный Ряд').metro_line.city_id == city.pk
-    assert MetroLine.objects.get(city=city).line_color == '#112233'
+    assert Metro.objects.get(station='Охотный Ряд').metro_line.legacy_city_id == city.pk
+    assert MetroLine.objects.get(legacy_city_id=city.pk).line_color == '#112233'

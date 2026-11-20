@@ -24,7 +24,7 @@ def location_dictionary_catalog():
     metro_line = MetroLine.objects.create(
         line='Сокольническая',
         line_color='#D92B2B',
-        city=city,
+        legacy_city_id=city.pk,
     )
     metro = Metro.objects.create(
         station='Охотный Ряд',
@@ -42,7 +42,7 @@ def location_dictionary_catalog():
     second_line = MetroLine.objects.create(
         line='Невско-Василеостровская',
         line_color='#2384C6',
-        city=second_city,
+        legacy_city_id=second_city.pk,
     )
     Metro.objects.create(station='Гостиный двор', metro_line=second_line)
     canonical_legacy_location(district)

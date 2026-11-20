@@ -1946,7 +1946,7 @@ class LocationDictionaryOptionsAPIView(APIView):
                     'id',
                     'line',
                     'line_color',
-                    'city_id',
+                    'legacy_city_id',
                 )[:maximum_results + 1]
             )
             metro_lines_truncated = len(metro_lines) > maximum_results
@@ -1955,7 +1955,7 @@ class LocationDictionaryOptionsAPIView(APIView):
                     'id': metro_line['id'],
                     'name': metro_line['line'],
                     'color': metro_line['line_color'],
-                    'cityId': metro_line['city_id'],
+                    'cityId': metro_line['legacy_city_id'],
                 }
                 for metro_line in metro_lines[:maximum_results]
             ]

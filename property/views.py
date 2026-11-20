@@ -7,7 +7,7 @@ from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import models as django_models
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, F, Q
 from django.db.models.deletion import ProtectedError
 from django.forms import modelform_factory
 from django.http import HttpResponseRedirect
@@ -90,6 +90,7 @@ def build_complex_form_location_payload():
         ),
         'location_metro_stations': list(
             annotate_legacy_metro_geography(Metro.objects.all())
+            .annotate(metro_line__city_id=F('metro_line__legacy_city_id'))
             .order_by(
                 'legacy_metro_city_name',
                 'metro_line__line',
@@ -1364,7 +1365,7 @@ class RealEstateComplexFormsetMixin:
             if not metro:
                 continue
 
-            if metro.metro_line.city_id and metro.metro_line.city_id != selected_city.pk:
+            if metro.metro_line.legacy_city_id and metro.metro_line.legacy_city_id != selected_city.pk:
                 metro_form.add_error(
                     'metro',
                     'Станция метро не относится к выбранному городу.',

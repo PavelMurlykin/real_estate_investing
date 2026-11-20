@@ -310,7 +310,7 @@ def test_natural_metro_uses_network_and_adds_no_old_city(import_payload, import_
     import_complex_catalog(payload)
     station = Metro.objects.get(station='Новая импортная')
     assert station.metro_line.system_id == import_geography['metro'].metro_line.system_id
-    assert station.metro_line.city_id is None and station.location_id is None
+    assert station.metro_line.legacy_city_id is None and station.location_id is None
     assert station.lines.filter(pk=station.metro_line_id).exists()
     assert old_counts == (City.objects.count(), District.objects.count(), Region.objects.count())
 

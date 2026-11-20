@@ -13,7 +13,8 @@ from django.test.utils import CaptureQueriesContext
 from api_v1.test_location_dictionaries import create_location_manager
 from api_v1.test_location_import import import_user  # noqa: F401
 from location.metro_forms import MetroForm, MetroLineForm, MetroSystemForm
-from location.models import City, LegacyLocationMapping, Location, LocationType, Metro, MetroLine, MetroSystem, Region
+from location.compatibility import canonical_legacy_location
+from location.models import City, LegacyLocationMapping, Location, LocationIdentifier, LocationType, Metro, MetroLine, MetroSystem, Region
 from location.tests.test_metro_architecture import metro_geography, create_complex_link  # noqa: F401
 from location.tests.source_fixtures import load_sources, source_reply
 from property.models import RealEstateComplexMetroAvailability
@@ -30,7 +31,11 @@ def test_react_station_list_resolves_old_city_links_without_using_line_city(clie
     system, line, station, _ = metro_geography
     region = Region.objects.create(name='Прежний регион', code='TEST')
     city = City.objects.create(region=region, name='Прежний город')
-    LegacyLocationMapping.objects.create(model_name='city', legacy_id=city.pk, location=system.location)
+    LegacyLocationMapping.objects.create(
+        model_name='city', legacy_id=city.pk, location=system.location,
+        legacy_name=city.name, legacy_region_id=region.pk,
+    )
+    canonical_legacy_location(region)
     filters = {
         'canonicalLocations': 'true', 'cityId': city.pk,
         'ordering': '-location', 'status': 'active', 'q': system.location.name,
@@ -44,31 +49,34 @@ def test_react_station_list_resolves_old_city_links_without_using_line_city(clie
     assert [row['id'] for row in rows] == [station.pk]
     assert rows[0]['city'] is None
     assert client.get(catalog_url('metro'), {'cityId': city.pk}).json()['results'] == []
-    line.city = city
-    line.save(update_fields=['city'])
+    line.legacy_city_id = city.pk
+    line.save(update_fields=['legacy_city_id'])
     old_row = client.get(catalog_url('metro'), {'cityId': city.pk}).json()['results'][0]
     assert old_row['city'] == {'id': city.pk, 'name': city.name}
     assert old_row['region'] == {'id': region.pk, 'name': region.name}
 
 
 @pytest.mark.django_db
-def test_legacy_metro_filters_and_repeat_use_the_same_network(client, metro_geography, import_user):
-    """Keep old filters, station locality, multiple lines and the exact complex link."""
+@pytest.mark.parametrize('registered_fias', (True, False))
+def test_legacy_metro_filters_and_repeat_use_the_same_network(client, metro_geography, import_user, registered_fias):
+    """Keep filters, an exact complex link and repeatability with mappings alone."""
     system, primary, station, suburb = metro_geography
-    region = Region.objects.create(name='Москва', code='77')
-    city = City.objects.create(name='Москва', region=region)
+    region_id, city_id = 71, 121
+    if not registered_fias:
+        LocationIdentifier.objects.filter(location=system.location, provider='fias').delete()
     LegacyLocationMapping.objects.bulk_create([
-        LegacyLocationMapping(model_name='region', legacy_id=region.pk, legacy_name=region.name, location=system.location),
-        LegacyLocationMapping(model_name='city', legacy_id=city.pk, legacy_name=city.name,
-                              legacy_region_id=region.pk, location=system.location),
+        LegacyLocationMapping(model_name='region', legacy_id=region_id, legacy_name='Москва',
+                              legacy_code='77', location=system.location),
+        LegacyLocationMapping(model_name='city', legacy_id=city_id, legacy_name='Москва',
+                              legacy_region_id=region_id, location=system.location),
     ])
-    primary.city = city
-    primary.save(update_fields=['city'])
+    primary.legacy_city_id = city_id
+    primary.save(update_fields=['legacy_city_id'])
     alternate = MetroLine.objects.create(line='Пересадочная', line_color='#222222', system=system)
     station.lines.add(primary, alternate)
     link = create_complex_link(station, suburb)
     original_link = RealEstateComplexMetroAvailability.objects.values().get(pk=link.pk)
-    parameters = {'regionId': region.pk, 'cityId': city.pk}
+    parameters = {'regionId': region_id, 'cityId': city_id}
     with CaptureQueriesContext(connection) as queries:
         old = client.get(catalog_url('metro'), {**parameters, 'ordering': 'region'}).json()['results']
         new = client.get(catalog_url('metro'), {
@@ -76,29 +84,63 @@ def test_legacy_metro_filters_and_repeat_use_the_same_network(client, metro_geog
             'metroLineId': alternate.pk, 'systemId': system.pk,
         }).json()['results']
     assert old[0]['id'] == new[0]['id'] == station.pk
-    assert old[0]['city'] == {'id': city.pk, 'name': city.name}
-    assert old[0]['region'] == {'id': region.pk, 'name': region.name}
+    assert old[0]['city'] == {'id': city_id, 'name': 'Москва'}
+    assert old[0]['region'] == {'id': region_id, 'name': 'Москва'}
     assert new[0]['location']['id'] == suburb.pk and new[0]['city'] is None
     assert not any(f'{verb} "{table}"' in query['sql'] for query in queries
                    for verb in ('FROM', 'JOIN') for table in ('city', 'region'))
 
     client.force_login(import_user('administrator'))
+    with CaptureQueriesContext(connection) as queries:
+        native = client.get('/locations/', {
+            'model': 'metro', 'dictionary': 'metro', 'regionId': region_id, 'legacy': '1',
+        })
+    assert native.status_code == 200
+    form = native.context['location_import_form']
+    assert (region_id, 'Москва') in form.fields['regionId'].widget.choices
+    assert (city_id, 'Москва') in form.fields['cityId'].widget.choices
+    assert not any(f'{verb} "{table}"' in query['sql'] for query in queries
+                   for verb in ('FROM', 'JOIN') for table in ('city', 'region'))
     sources = load_sources()
     endpoint = catalog_url('metro') + 'import/'
     with patch('location.open_data.OpenLocationSource.download', side_effect=partial(source_reply, sources)), \
             CaptureQueriesContext(connection) as queries:
         first = client.post(endpoint, parameters, content_type='application/json')
+        legacy_repeat = client.post(endpoint, parameters, content_type='application/json')
         again = client.post(endpoint, {'systemId': system.pk}, content_type='application/json')
-    assert first.status_code == again.status_code == 200, (first.content, again.content)
+    assert first.status_code == legacy_repeat.status_code == again.status_code == 200, (
+        first.content, legacy_repeat.content, again.content,
+    )
     assert first.json()['created'] == 1
-    assert again.json()['created'] == again.json()['updated'] == 0
-    assert again.json()['lines']['created'] == again.json()['lines']['updated'] == 0
+    for response in (legacy_repeat, again):
+        assert response.json()['created'] == response.json()['updated'] == 0
+        assert response.json()['lines']['created'] == response.json()['lines']['updated'] == 0
     assert not any(f'{verb} "{table}"' in query['sql'] for query in queries
                    for verb in ('FROM', 'JOIN', 'UPDATE', 'INTO') for table in ('city', 'region'))
     station.refresh_from_db()
     assert station.location_id == suburb.pk and not station.location_is_inferred
     assert set(station.lines.values_list('pk', flat=True)) == {primary.pk, alternate.pk}
     assert RealEstateComplexMetroAvailability.objects.values().get(pk=link.pk) == original_link
+
+
+@pytest.mark.django_db
+def test_legacy_city_used_by_metro_cannot_be_deleted(client, metro_geography):
+    """Preserve the existing protection in the API and Django admin."""
+    _, line, _, _ = metro_geography
+    region = Region.objects.create(name='Москва', code='77')
+    city = City.objects.create(region=region, name='Москва')
+    canonical_legacy_location(city)
+    line.legacy_city_id = city.pk
+    line.save(update_fields=['legacy_city_id'])
+
+    client.force_login(create_location_manager())
+    response = client.delete(catalog_url('cities', city.pk))
+    assert response.status_code == 409
+    with pytest.raises(ProtectedError), transaction.atomic():
+        City.objects.filter(pk=city.pk).delete()
+    _, _, _, protected = admin.site._registry[City].get_deleted_objects([city], response.wsgi_request)
+    assert str(line) in protected
+    assert City.objects.filter(pk=city.pk).exists()
 
 
 @pytest.mark.django_db
@@ -111,7 +153,7 @@ def test_canonical_crud_memberships_and_geography(client, metro_geography):
     }, content_type='application/json')
     assert response.status_code == 201, response.content
     other = response.json()['id']
-    assert MetroLine.objects.get(pk=other).city_id is None
+    assert MetroLine.objects.get(pk=other).legacy_city_id is None
     link = create_complex_link(station, locality)
     response = client.patch(catalog_url('metro', station.pk), {
         'lineIds': [other], 'locationId': locality.pk,

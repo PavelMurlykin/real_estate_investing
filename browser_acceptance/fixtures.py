@@ -153,7 +153,7 @@ def seed_acceptance_fixtures():
         )
         metro_line, _ = MetroLine.objects.get_or_create(
             line='E2E линия',
-            city=real_estate_complex.district.city,
+            legacy_city_id=real_estate_complex.district.city_id,
             defaults={'line_color': '#336699'},
         )
         return {

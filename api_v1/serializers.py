@@ -478,7 +478,7 @@ class LocationDictionaryEntrySerializer(serializers.Serializer):
         if isinstance(dictionary_entry, LegacyLocationMapping) and dictionary_entry.legacy_city_id:
             return {'id': dictionary_entry.legacy_city_id, 'name': dictionary_entry.city_name}
         if isinstance(dictionary_entry, Metro):
-            identifier = dictionary_entry.metro_line.city_id
+            identifier = dictionary_entry.metro_line.legacy_city_id
             return {'id': identifier, 'name': dictionary_entry.legacy_metro_city_name} if identifier else None
         return None
 
@@ -3304,7 +3304,7 @@ class RealEstateComplexWriteSerializer(serializers.ModelSerializer):
                 model_name='district', legacy_id=district_id,
             ).values_list('legacy_city_id', flat=True).first()
             for row in attributes['metroAvailability']:
-                metro_city_id = row['metro'].metro_line.city_id
+                metro_city_id = row['metro'].metro_line.legacy_city_id
                 if metro_city_id and metro_city_id != city_id:
                     raise serializers.ValidationError(
                         {

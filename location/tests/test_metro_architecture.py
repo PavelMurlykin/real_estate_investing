@@ -88,14 +88,15 @@ def test_incomplete_or_conflicting_source_is_atomic(metro_geography):
             with pytest.raises(LocationImportError):
                 import_metro(system)
         assert list(MetroLine.objects.values()) == original
-    assert line.city_id is None
+    assert line.legacy_city_id is None
 
 
 @pytest.mark.django_db(transaction=True)
 def test_actual_metro_migration_preserves_ids_links_and_repeat():
     """Migrate old rows forward, reverse and reapply without replacing references."""
     previous = [('location', '0009_locationtype_locationimportjob_kind_and_more')]
-    target = [('location', '0015_metro_legacy_geography')]
+    before_detach = [('location', '0016_legacy_catalog_metadata')]
+    target = [('location', '0017_detach_metro_line_city')]
     try:
         MigrationExecutor(connection).migrate(previous)
         registry = MigrationExecutor(connection).loader.project_state(previous).apps
@@ -111,17 +112,34 @@ def test_actual_metro_migration_preserves_ids_links_and_repeat():
         assert current.location_is_inferred
         assert current.lines.filter(pk=line.pk).exists()
         assert current.metro_line.system_id is not None
+        assert current.metro_line.legacy_city_id == old_city.pk
         assert current.metro_line.legacy_city_name == old_city.name
         assert current.metro_line.legacy_region_id == old_region.pk
         kind = LocationType.objects.create(code='migration-town', category='locality', name='Город')
         locality = Location.objects.create(name='Стрельна', location_type=kind)
         link = create_complex_link(current, locality)
         link_snapshot = RealEstateComplexMetroAvailability.objects.values().get(pk=link.pk)
-        backfill_metro(apps, connection.schema_editor())
+        historical_metro = MigrationExecutor(connection).loader.project_state(before_detach).apps
+        backfill_metro(historical_metro, connection.schema_editor())
         assert current.lines.count() == 1
         MigrationExecutor(connection).migrate(previous)
         MigrationExecutor(connection).migrate(target)
         assert Metro.objects.values(*old_fields).get(pk=station.pk) == snapshot
+        assert RealEstateComplexMetroAvailability.objects.values().get(pk=link.pk) == link_snapshot
+        Metro.objects.filter(pk=station.pk).update(location=locality, location_is_inferred=False)
+        exact_station = Metro.objects.values().get(pk=station.pk)
+        line_snapshot = MetroLine.objects.values().get(pk=line.pk)
+        MigrationExecutor(connection).migrate(before_detach)
+        with connection.cursor() as cursor:
+            constraints = connection.introspection.get_constraints(cursor, 'metro_line')
+        assert any(constraint['foreign_key'] == ('city', 'id') for constraint in constraints.values())
+        MigrationExecutor(connection).migrate(target)
+        with connection.cursor() as cursor:
+            constraints = connection.introspection.get_constraints(cursor, 'metro_line')
+        assert not any(constraint['foreign_key'] == ('city', 'id') for constraint in constraints.values())
+        assert MetroLine.objects.values().get(pk=line.pk) == line_snapshot
+        assert Metro.objects.values().get(pk=station.pk) == exact_station
+        assert Metro.objects.get(pk=station.pk).lines.filter(pk=line.pk).exists()
         assert RealEstateComplexMetroAvailability.objects.values().get(pk=link.pk) == link_snapshot
     finally:
         executor = MigrationExecutor(connection)

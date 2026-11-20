@@ -8,6 +8,7 @@ from urllib.error import URLError
 import pytest
 from django.db import connection
 
+from location.compatibility import canonical_legacy_location
 from location.import_service import (
     IMPORT_LOCK_IDENTIFIER,
     LocationImportError,
@@ -40,6 +41,7 @@ def hierarchy():
     """Create existing OSM records whose primary keys must survive replacement."""
     region = Region.objects.create(name='Москва', code='77', source_identifier='relation/102269')
     city = City.objects.create(name='Москва', region=region, source_identifier='relation/102269')
+    canonical_legacy_location(city)
     return region, city
 
 
@@ -98,7 +100,7 @@ def test_districts_filter_historical_units_and_keep_existing_links(sources, hier
 def test_metro_import_and_updates_preserve_station_identity(sources, hierarchy):
     """Refresh real names and colors while retaining manual state and keys."""
     region, city = hierarchy
-    line = MetroLine.objects.create(line='Сокольническая', line_color='#000000', city=city)
+    line = MetroLine.objects.create(line='Сокольническая', line_color='#000000', legacy_city_id=city.pk)
     station = Metro.objects.create(station='Охотный Ряд', metro_line=line, is_active=False)
     first = import_locations('metro', region, city)
     second = import_locations('metro', region, city)
@@ -127,7 +129,7 @@ def test_metro_import_and_updates_preserve_station_identity(sources, hierarchy):
 def test_conflict_rolls_back_parent_and_line_changes(sources, hierarchy):
     """A later station conflict must undo already written parent metadata."""
     region, city = hierarchy
-    line = MetroLine.objects.create(line='Сокольническая', line_color='#000000', city=city)
+    line = MetroLine.objects.create(line='Сокольническая', line_color='#000000', legacy_city_id=city.pk)
     Metro.objects.create(station='Лубянка', metro_line=line, source_identifier='unknown-source')
     with pytest.raises(LocationImportError, match='Конфликт источника'):
         import_locations('metro', region, city)

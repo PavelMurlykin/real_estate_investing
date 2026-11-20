@@ -11,6 +11,7 @@ from property.views import BaseCatalogView, CatalogModelConfig
 from users.roles import ExternalDataSyncRequiredMixin, can_sync_external_data
 
 from .import_forms import LocationImportForm
+from .legacy_catalog import legacy_choices
 from .import_service import LocationImportError, import_locations
 from .metro_import import import_legacy_metro, import_metro
 from .metro_forms import MetroForm, MetroLineForm, MetroSystemForm
@@ -183,15 +184,15 @@ class LocationCatalogView(BaseCatalogView):
             })
             import_form.fields['regionId'].widget = forms.Select(choices=[
                 ('', 'Выберите регион'),
-                *Region.objects.order_by('name').values_list('pk', 'name')[:200],
+                *legacy_choices('region').values_list('legacy_id', 'legacy_name')[:200],
             ])
-            cities = City.objects.none()
+            cities = []
             if selected_region.isdecimal():
-                cities = City.objects.filter(
-                    region_id=int(selected_region),
-                ).order_by('name')
+                cities = legacy_choices('city', region_id=int(selected_region)).values_list(
+                    'legacy_id', 'legacy_name',
+                )[:1000]
             import_form.fields['cityId'].widget = forms.Select(choices=[
-                ('', 'Выберите город'), *cities.values_list('pk', 'name')[:1000],
+                ('', 'Выберите город'), *cities,
             ])
             context['location_import_form'] = import_form
 

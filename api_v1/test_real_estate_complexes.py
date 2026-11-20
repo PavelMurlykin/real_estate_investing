@@ -43,7 +43,7 @@ def complex_catalog():
         TransportAccessibilityType.objects.get_or_create(name='Пешком')
     )
     metro_line = MetroLine.objects.create(
-        line='Зелёная', line_color='#118844', city=city
+        line='Зелёная', line_color='#118844', legacy_city_id=city.pk
     )
     metro = Metro.objects.create(
         station='Тестовая', metro_line=metro_line

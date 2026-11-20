@@ -89,7 +89,7 @@
                             <select name="filter_metro_line" class="form-select" data-metro-filter-line>
                                 <option value="">Все линии</option>
                                 {% for metro_line in metro_lines_for_filter %}
-                                <option value="{{ metro_line.id }}" data-city-id="{{ metro_line.city_id }}" {% if metro_filters.metro_line == metro_line.id|stringformat:'s' %}selected{% endif %}>
+                                <option value="{{ metro_line.id }}" data-city-id="{{ metro_line.legacy_city_id }}" {% if metro_filters.metro_line == metro_line.id|stringformat:'s' %}selected{% endif %}>
                                     {{ metro_line }}
                                 </option>
                                 {% endfor %}

@@ -360,7 +360,7 @@ def test_prepared_complex_snapshot_is_portable(settings, tmp_path):
         region, _ = Region.objects.get_or_create(code=row['region_code'], defaults={'name': row['region']})
         city, _ = City.objects.get_or_create(name=row['city'], region=region)
         District.objects.get_or_create(name=row['district'], city=city)
-        MetroLine.objects.get_or_create(line=row['metro'][0]['line'], city=city,
+        MetroLine.objects.get_or_create(line=row['metro'][0]['line'], legacy_city_id=city.pk,
                                        defaults={'line_color': row['metro'][0]['color']})
     backfill_locations(apps)
     for name in {row['real_estate_class'] for row in payload['complexes']}:

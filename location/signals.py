@@ -4,6 +4,7 @@ from django.db.models.deletion import ProtectedError
 from django.db.models.signals import post_delete, post_save, pre_delete
 from django.dispatch import receiver
 
+from .catalog_service import lock_location_catalog
 from .models import City, District, LegacyLocationMapping, MetroLine, Region
 from .migration_support import legacy_catalog_metadata
 
@@ -13,6 +14,15 @@ def protect_station_line_memberships(sender, instance, using, **kwargs):
     """Keep an additional line as protected as the primary station line."""
     if instance.stations.using(using).exists():
         raise ProtectedError('Линия используется станциями метро.', [instance])
+
+
+@receiver(pre_delete, sender=City)
+def protect_legacy_metro_city(sender, instance, using, **kwargs):
+    """Protect references for direct and administrative deletions during cutover."""
+    lock_location_catalog(using)
+    lines = list(MetroLine.objects.using(using).filter(legacy_city_id=instance.pk).select_related('system'))
+    if lines:
+        raise ProtectedError('Город используется линиями метро.', lines)
 
 
 @receiver(post_delete, sender=Region)

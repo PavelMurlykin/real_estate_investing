@@ -879,7 +879,7 @@ class RealEstateComplexFormLocationTests(TestCase):
         self.metro_line = MetroLine.objects.create(
             line='Line 1',
             line_color='#FF0000',
-            city=self.city,
+            legacy_city_id=self.city.pk,
         )
         self.metro = Metro.objects.create(
             station='Station 1',
@@ -1475,7 +1475,7 @@ class RealEstateComplexFormLocationTests(TestCase):
         other_line = MetroLine.objects.create(
             line='Other line',
             line_color='#00FF00',
-            city=self.other_city,
+            legacy_city_id=self.other_city.pk,
         )
         other_metro = Metro.objects.create(
             station='Other station',
@@ -1504,7 +1504,10 @@ class LocationCatalogMetroTests(TestCase):
         self.metro_line = MetroLine.objects.create(
             line='Line 1',
             line_color='#FF0000',
-            city=self.city,
+            legacy_city_id=self.city.pk,
+            legacy_city_name=self.city.name,
+            legacy_region_id=self.region.pk,
+            legacy_region_name=self.region.name,
         )
 
     def test_location_catalog_renders_canonical_metro_line_editor(self):
@@ -1624,7 +1627,7 @@ class LocationCatalogMetroTests(TestCase):
         other_line = MetroLine.objects.create(
             line='Line 2',
             line_color='#00FF00',
-            city=self.city,
+            legacy_city_id=self.city.pk,
         )
         create_response = self.client.post(
             reverse('location:location_catalog'),
@@ -1697,7 +1700,7 @@ class LocationCatalogMetroTests(TestCase):
         other_line = MetroLine.objects.create(
             line='Line 2',
             line_color='#00FF00',
-            city=other_city,
+            legacy_city_id=other_city.pk,
         )
         Metro.objects.create(station='Station 1', metro_line=self.metro_line)
         Metro.objects.create(station='Station 2', metro_line=other_line)

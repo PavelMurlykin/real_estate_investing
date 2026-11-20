@@ -170,19 +170,22 @@ def backfill_locations(registry, database='default', *, geography_only=False):
     MetroLine = registry.get_model('location', 'MetroLine')
     Metro = registry.get_model('location', 'Metro')
     System = registry.get_model('location', 'MetroSystem')
-    for city_id in MetroLine.objects.using(database).exclude(city_id=None).order_by().values_list('city_id', flat=True).distinct():
+    city_field = 'legacy_city_id' if any(field.name == 'legacy_city_id' for field in MetroLine._meta.fields) else 'city_id'
+    lines = MetroLine.objects.using(database)
+    for city_id in lines.exclude(**{city_field: None}).order_by().values_list(city_field, flat=True).distinct():
         city = City.objects.using(database).get(pk=city_id)
         system, _ = System.objects.using(database).get_or_create(
             name=f'Метрополитен: {city.name}', defaults={'location_id': cities[city_id]},
         )
-        MetroLine.objects.using(database).filter(city_id=city_id, system_id=None).update(system_id=system.pk)
+        lines.filter(**{city_field: city_id}, system_id=None).update(system_id=system.pk)
     memberships = []
     Membership = Metro.lines.through
     for station in Metro.objects.using(database).select_related('metro_line'):
+        city_id = getattr(station.metro_line, city_field)
         if (
-            station.location_id is None and station.metro_line.city_id in cities
+            station.location_id is None and city_id in cities
             and getattr(station, 'location_is_inferred', True)
         ):
-            Metro.objects.using(database).filter(pk=station.pk).update(location_id=cities[station.metro_line.city_id])
+            Metro.objects.using(database).filter(pk=station.pk).update(location_id=cities[city_id])
         memberships.append(Membership(metro_id=station.pk, metroline_id=station.metro_line_id))
     Membership.objects.using(database).bulk_create(memberships, ignore_conflicts=True, batch_size=1000)

@@ -128,7 +128,7 @@ def legacy_dictionary_entries(model_name):
     if model_name == 'city':
         return queryset.annotate(usage_count=(
             _usage_count(legacy_catalog('district'), 'legacy_city_id')
-            + _usage_count(MetroLine.objects.all(), 'city_id')
+            + _usage_count(MetroLine.objects.all(), 'legacy_city_id')
             + _usage_count(Customer.objects.all(), 'residence_city_id')
             + _usage_count(Customer.objects.all(), 'desired_city_id')
         ))

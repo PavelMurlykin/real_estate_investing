@@ -47,6 +47,14 @@ class CityAdmin(LegacyLocationAdmin):
     list_editable = ('is_active',)
     ordering = ('name',)
 
+    def get_deleted_objects(self, objects, request):
+        """Show retained metro references before confirming deletion."""
+        deleted, counts, permissions, protected = super().get_deleted_objects(objects, request)
+        protected.extend(str(line) for line in MetroLine.objects.filter(
+            legacy_city_id__in=[city.pk for city in objects],
+        ).select_related('system'))
+        return deleted, counts, permissions, protected
+
 
 @admin.register(District)
 class DistrictAdmin(LegacyLocationAdmin):

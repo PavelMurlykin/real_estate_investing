@@ -86,7 +86,7 @@ def test_seed_is_idempotent_and_assigns_least_privilege(monkeypatch):
     )
     assert MetroLine.objects.count() == 1
     metro_line = MetroLine.objects.get(pk=manifest['metroLineId'])
-    assert metro_line.city_id == real_estate_complex.district.city_id
+    assert metro_line.legacy_city_id == real_estate_complex.district.city_id
     assert metro_line.line_color == '#336699'
     assert get_user_model().objects.count() == 4
     assert password not in str(manifest)

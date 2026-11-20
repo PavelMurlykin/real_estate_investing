@@ -5,43 +5,40 @@ from dataclasses import dataclass
 from django.db.models import BigIntegerField, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Coalesce, NullIf
 
-from .models import City, LegacyLocationMapping
+from .legacy_catalog import LegacyImportScope, legacy_catalog
+from .models import LegacyLocationMapping
 
 
 @dataclass(frozen=True)
 class LegacyMetroCity:
     """Keep the original import scope independently of the network center."""
 
-    identifier: int
-    name: str
-    region_id: int
-    region_name: str
-    location_id: int | None
-    city: City | None = None
+    city: LegacyImportScope
+    region: LegacyImportScope
+    location_id: int
+    center_name: str
 
 
 def legacy_metro_city(region_id, city_id):
-    """Validate the exact legacy region and city, looking up unreconciled IDs only."""
-    mapping = LegacyLocationMapping.objects.filter(model_name='city', legacy_id=city_id).first()
-    if mapping and mapping.legacy_region_id and mapping.legacy_name:
-        if mapping.legacy_region_id != region_id:
-            return None
-        name = LegacyLocationMapping.objects.filter(
-            model_name='region', legacy_id=region_id,
-        ).exclude(legacy_name='').values_list('legacy_name', flat=True).first()
-        if name:
-            return LegacyMetroCity(city_id, mapping.legacy_name, region_id, name, mapping.location_id)
-    city = City.objects.select_related('region').filter(pk=city_id, region_id=region_id).first()
-    if city:
-        return LegacyMetroCity(city.pk, city.name, city.region_id, city.region.name,
-                              mapping.location_id if mapping else None, city)
-    return None
+    """Validate the legacy hierarchy and resolve the canonical center only through mappings."""
+    city = legacy_catalog('city').select_related('location').filter(
+        legacy_id=city_id, legacy_region_id=region_id,
+    ).first()
+    if city is None:
+        return None
+    region = legacy_catalog('region').filter(legacy_id=region_id).first()
+    if region is None:
+        return None
+    return LegacyMetroCity(
+        LegacyImportScope.from_mapping(city), LegacyImportScope.from_mapping(region),
+        city.location_id, city.location.name,
+    )
 
 
 def annotate_legacy_metro_geography(queryset, line_prefix='metro_line__'):
     """Keep old line labels and IDs available without joining Region or City."""
     references = LegacyLocationMapping.objects.all()
-    city = references.filter(model_name='city', legacy_id=OuterRef(f'{line_prefix}city_id'))
+    city = references.filter(model_name='city', legacy_id=OuterRef(f'{line_prefix}legacy_city_id'))
     queryset = queryset.annotate(
         legacy_metro_city_name=Coalesce(
             Subquery(city.exclude(legacy_name='').values('legacy_name')[:1]),
@@ -73,7 +70,7 @@ def filter_metro_geography(queryset, parameters, *, canonical=False, line_prefix
             queryset = queryset.filter(Q(**{f'{center}__region_id__in': mapped}) | Q(**{f'{center}_id__in': mapped}))
     else:
         if city_id:
-            queryset = queryset.filter(**{f'{line_prefix}city_id': city_id})
+            queryset = queryset.filter(**{f'{line_prefix}legacy_city_id': city_id})
         if region_id:
             if 'legacy_metro_region_id' not in queryset.query.annotations:
                 queryset = annotate_legacy_metro_geography(queryset, line_prefix)

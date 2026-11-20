@@ -311,8 +311,9 @@ class MetroLine(ImportedLocation):
             )
         ],
     )
-    city = models.ForeignKey(
-        City, null=True, blank=True, on_delete=models.PROTECT, verbose_name='Прежний город'
+    legacy_city_id = models.PositiveBigIntegerField(
+        db_column='city_id', db_index=True, null=True, blank=True, editable=False,
+        verbose_name='Прежний ID города',
     )
     system = models.ForeignKey(MetroSystem, null=True, blank=True, on_delete=models.PROTECT)
     legacy_city_name = models.CharField(max_length=100, blank=True, editable=False)
@@ -330,7 +331,7 @@ class MetroLine(ImportedLocation):
         ordering = ['system__name', 'line']
         constraints = [
             models.UniqueConstraint(
-                fields=['line', 'city'],
+                fields=['line', 'legacy_city_id'],
                 name='unique_metro_line_line_city',
             ),
             models.UniqueConstraint(
@@ -343,19 +344,6 @@ class MetroLine(ImportedLocation):
         """Возвращает строковое представление линии метро."""
         territory = self.system or self.legacy_city_name or 'система не указана'
         return f'{self.line} ({territory})'
-
-    def save(self, *args, **kwargs):
-        """Retain labels for callers that still assign a legacy city directly."""
-        update_fields = kwargs.get('update_fields')
-        explicit_city_edit = update_fields is not None and bool({'city', 'city_id'}.intersection(update_fields))
-        if explicit_city_edit or (self.city_id and not self.legacy_city_name and update_fields is None):
-            city = self.city
-            self.legacy_city_name = city.name if city else ''
-            self.legacy_region_id = city.region_id if city else None
-            self.legacy_region_name = city.region.name if city else ''
-            if update_fields is not None:
-                kwargs['update_fields'] = set(update_fields) | {'legacy_city_name', 'legacy_region_id', 'legacy_region_name'}
-        super().save(*args, **kwargs)
 
 
 class Metro(ImportedLocation):
